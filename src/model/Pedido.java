@@ -1,19 +1,17 @@
+package model;
+
 import java.time.LocalDateTime;
 
 public class Pedido {
 
-    public enum Tipo {
-        ENTRADA, SAIDA
-    }
+    private final int id;
+    private final Produto produto;
+    private final int quantidade;
+    private final TipoMovimentacao tipo;
+    private final LocalDateTime dataHora;
+    private final Usuario usuario;
 
-    private int id;
-    private Produto produto;
-    private int quantidade;
-    private Tipo tipo;
-    private LocalDateTime dataHora;
-    private Usuario usuario; // quem fez
-
-    public Pedido(int id, Produto produto, int quantidade, Tipo tipo, Usuario usuario) {
+    public Pedido(int id, Produto produto, int quantidade, TipoMovimentacao tipo, Usuario usuario) {
         this.id = id;
         this.produto = produto;
         this.quantidade = quantidade;
@@ -34,7 +32,7 @@ public class Pedido {
         return quantidade;
     }
 
-    public Tipo getTipo() {
+    public TipoMovimentacao getTipo() {
         return tipo;
     }
 

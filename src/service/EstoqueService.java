@@ -1,7 +1,13 @@
+package service;
+
+import model.Pedido;
+import model.Produto;
+import model.Usuario;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Estoque {
+public class EstoqueService {
 
     private List<Produto> produtos = new ArrayList<>();
     private List<Pedido> pedidos = new ArrayList<>();
@@ -57,6 +63,11 @@ public class Estoque {
         }
     }
 
+    // Expor lista de pedidos (se quiser usar no menu depois)
+    public List<Pedido> listarPedidos() {
+        return pedidos;
+    }
+
     // Avisos de nível de estoque
     private void verificarAvisos(Produto produto) {
         double percentual = (produto.getQuantidadeAtual() * 100.0) / Math.max(produto.getQuantidadeMinima(), 1);
@@ -71,4 +82,4 @@ public class Estoque {
             System.out.println("Aviso: estoque de " + produto.getNome() + " está em 75% ou menos.");
         }
     }
-} 
+}
