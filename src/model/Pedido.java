@@ -3,7 +3,6 @@ package model;
 import java.time.LocalDateTime;
 
 public class Pedido {
-
     private final int id;
     private final Produto produto;
     private final int quantidade;
@@ -20,39 +19,28 @@ public class Pedido {
         this.dataHora = LocalDateTime.now();
     }
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
 
-    public Produto getProduto() {
-        return produto;
-    }
+    public Produto getProduto() { return produto; }
 
-    public int getQuantidade() {
-        return quantidade;
-    }
+    public int getQuantidade() { return quantidade; }
 
-    public TipoMovimentacao getTipo() {
-        return tipo;
-    }
+    public TipoMovimentacao getTipo() { return tipo; }
 
-    public LocalDateTime getDataHora() {
-        return dataHora;
-    }
+    public LocalDateTime getDataHora() { return dataHora; }
 
-    public Usuario getUsuario() {
-        return usuario;
-    }
+    public Usuario getUsuario() { return usuario; }
 
     @Override
     public String toString() {
+        String usuarioNome = usuario == null ? "N/A" : usuario.getNomeCompleto();
         return "Pedido{" +
                 "id=" + id +
                 ", tipo=" + tipo +
                 ", produto=" + produto.getNome() +
                 ", quantidade=" + quantidade +
                 ", dataHora=" + dataHora +
-                ", usuario=" + usuario.getLogin() +
+                ", usuario='" + usuarioNome + '\'' +
                 '}';
     }
 }

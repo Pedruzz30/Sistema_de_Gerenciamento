@@ -1,44 +1,63 @@
 package service;
 
+import model.NivelEstoque;
 import model.Pedido;
 import model.Produto;
+import model.TipoMovimentacao;
 import model.Usuario;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class EstoqueService {
 
-    private List<Produto> produtos = new ArrayList<>();
-    private List<Pedido> pedidos = new ArrayList<>();
+    private final List<Produto> produtos = new ArrayList<>();
+    private final List<Pedido> pedidos = new ArrayList<>();
+    private final Map<Integer, List<NivelEstoque>> historicoNiveis = new HashMap<>();
     private int proximoIdProduto = 1;
     private int proximoIdPedido = 1;
 
-    // Cadastrar novo produto
     public Produto cadastrarProduto(String nome, int quantidadeInicial, int quantidadeMinima, double preco) {
+        if (nome == null || nome.trim().isEmpty()) {
+            throw new IllegalArgumentException("Nome do produto é obrigatório.");
+        }
+        if (quantidadeInicial < 0 || quantidadeMinima < 0 || preco < 0) {
+            throw new IllegalArgumentException("Quantidade e preço devem ser não negativos.");
+        }
+
         Produto produto = new Produto(proximoIdProduto++, nome, quantidadeInicial, quantidadeMinima, preco);
         produtos.add(produto);
+        registrarNivelEstoque(produto);
         return produto;
     }
 
-    // Buscar produto por ID
     public Produto buscarProdutoPorId(int id) {
-        for (Produto p : produtos) {
-            if (p.getId() == id) {
-                return p;
+        for (Produto produto : produtos) {
+            if (produto.getId() == id) {
+                return produto;
             }
         }
         return null;
     }
 
-    // Registrar movimentação (entrada ou saída)
-    public Pedido registrarMovimentacao(Produto produto, int quantidade, Pedido.Tipo tipo, Usuario usuario) {
-        if (tipo == Pedido.Tipo.SAIDA && produto.getQuantidadeAtual() < quantidade) {
-            System.out.println("Quantidade insuficiente em estoque para saída.");
+    public Pedido registrarMovimentacao(int idProduto, int quantidade, TipoMovimentacao tipo, Usuario usuario) {
+        Produto produto = buscarProdutoPorId(idProduto);
+        if (produto == null) {
+            System.out.println("Produto não encontrado.");
             return null;
         }
 
-        if (tipo == Pedido.Tipo.ENTRADA) {
+        if (quantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
+        }
+
+        if (tipo == TipoMovimentacao.SAIDA && produto.getQuantidadeAtual() < quantidade) {
+            throw new IllegalArgumentException("Quantidade insuficiente em estoque para saída.");
+        }
+
+        if (tipo == TipoMovimentacao.ENTRADA) {
             produto.setQuantidadeAtual(produto.getQuantidadeAtual() + quantidade);
         } else {
             produto.setQuantidadeAtual(produto.getQuantidadeAtual() - quantidade);
@@ -46,40 +65,55 @@ public class EstoqueService {
 
         Pedido pedido = new Pedido(proximoIdPedido++, produto, quantidade, tipo, usuario);
         pedidos.add(pedido);
-
-        verificarAvisos(produto);
-
+        registrarNivelEstoque(produto);
         return pedido;
     }
 
-    // Listar produtos
-    public void listarProdutos() {
-        if (produtos.isEmpty()) {
-            System.out.println("Nenhum produto cadastrado.");
+    public List<Produto> listarProdutos() {
+        return new ArrayList<>(produtos);
+    }
+
+    public List<Pedido> listarPedidos() {
+        return new ArrayList<>(pedidos);
+    }
+
+    public NivelEstoque calcularNivelEstoque(Produto produto) {
+        if (produto.getQuantidadeAtual() == 0) {
+            return NivelEstoque.SEM_ESTOQUE;
+        }
+
+        if (produto.getQuantidadeMinima() <= 0) {
+            return NivelEstoque.EXCELENTE;
+        }
+
+        double percentual = (produto.getQuantidadeAtual() * 100.0) / produto.getQuantidadeMinima();
+        if (percentual <= 25) {
+            return NivelEstoque.CRITICO;
+        }
+        if (percentual <= 50) {
+            return NivelEstoque.BAIXO;
+        }
+        if (percentual <= 100) {
+            return NivelEstoque.BOM;
+        }
+        return NivelEstoque.EXCELENTE;
+    }
+
+    public void exibirHistoricoNiveis(int idProduto) {
+        List<NivelEstoque> historico = historicoNiveis.get(idProduto);
+        if (historico == null || historico.isEmpty()) {
+            System.out.println("Sem histórico de níveis para o produto informado.");
             return;
         }
-        for (Produto p : produtos) {
-            System.out.println(p);
+
+        System.out.println("Histórico de níveis do produto " + idProduto + ":");
+        for (NivelEstoque nivel : historico) {
+            System.out.println("- " + nivel + " | " + nivel.getMessage());
         }
     }
 
-    // Expor lista de pedidos (se quiser usar no menu depois)
-    public List<Pedido> listarPedidos() {
-        return pedidos;
-    }
-
-    // Avisos de nível de estoque
-    private void verificarAvisos(Produto produto) {
-        double percentual = (produto.getQuantidadeAtual() * 100.0) / Math.max(produto.getQuantidadeMinima(), 1);
-
-        if (produto.getQuantidadeAtual() == 0) {
-            System.out.println("⚠ Produto " + produto.getNome() + " está FORA DE ESTOQUE (0%).");
-        } else if (percentual <= 25) {
-            System.out.println("⚠ Estoque crítico de " + produto.getNome() + " (<= 25%).");
-        } else if (percentual <= 50) {
-            System.out.println("Atenção: estoque baixo de " + produto.getNome() + " (<= 50%).");
-        } else if (percentual <= 75) {
-            System.out.println("Aviso: estoque de " + produto.getNome() + " está em 75% ou menos.");
-        }
+    private void registrarNivelEstoque(Produto produto) {
+        NivelEstoque nivel = calcularNivelEstoque(produto);
+        historicoNiveis.computeIfAbsent(produto.getId(), ignored -> new ArrayList<>()).add(nivel);
     }
 }
