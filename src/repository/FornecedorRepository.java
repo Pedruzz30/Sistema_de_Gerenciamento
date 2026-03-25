@@ -14,12 +14,12 @@ import java.util.Optional;
  * nos services.
  */
 
-public interface FoornecedorRepository {
+public interface FornecedorRepository {
     Fornecedor salvar(Fornecedor fornecedor);
 
-    Optional<Fornecedor> bascuarPorId(long id);
+    Optional<Fornecedor> buscarPorId(long id);
     Optional<Fornecedor> buscarPorCnpj(String cnpj);
 
     List<Fornecedor> listarAtivos();
-    List<Fornecedor> ListarTodos();
+    List<Fornecedor> listarTodos();
 }

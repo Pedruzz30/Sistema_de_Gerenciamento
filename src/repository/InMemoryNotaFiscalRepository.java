@@ -20,9 +20,9 @@ public class InMemoryNotaFiscalRepository implements NotaFiscalRepository {
     @Override
     public NotaFiscal salvar(NotaFiscal nota) {
         if (nota == null) {
-            throw new IllegalArgumentException ("NOta fiscal nao pode ser nula.");
+            throw new IllegalArgumentException ("Nota fiscal nao pode ser nula.");
         }
-        notas.removeIf(n -> n.getId() == nota.getId();
+        notas.removeIf(n -> n.getId() == nota.getId());
         notas.add(nota);
         return nota;
     }
@@ -41,7 +41,7 @@ public class InMemoryNotaFiscalRepository implements NotaFiscalRepository {
                 .collect(Collectors.toList());
     }
     @Override
-    public List<NotaFiscal> lisrtarTodos() {
+    public List<NotaFiscal> listarTodos() {
         return new ArrayList<>(notas);
     }
 }

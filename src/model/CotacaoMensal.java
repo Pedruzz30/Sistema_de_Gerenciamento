@@ -1,7 +1,7 @@
 package model;
 
 import java.time.YearMonth;
-import java.time.format.DataTimeFormatter;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Registra o preço de compra de um produto em um determinado mês.
@@ -13,11 +13,12 @@ import java.time.format.DataTimeFormatter;
  * YearMonth é uma classe do Java que representa apenas ano + mês,
  * sem dia nem hora — perfeito para esse caso.
  */
-public class final long id;
-private final Produto produto;
-        private final YearMonth mesReferencia;   // ex: 2025-01
-        private final double precoUnitario;      // preço médio no mês
-        private final int quantidadeComprada;    // total comprado no mês
+public class CotacaoMensal {
+    private final long id;
+    private final Produto produto;
+    private final YearMonth mesReferencia;   // ex: 2025-01
+    private final double precoUnitario;      // preço médio no mês
+    private final int quantidadeComprada;    // total comprado no mês
 
         public CotacaoMensal(long id,
                              Produto produto,
@@ -27,7 +28,7 @@ private final Produto produto;
             if (produto == null) {
                 throw new IllegalArgumentException("Produto é obrigatório.");
             }
-            if (mesreferencia == null) {
+            if (mesReferencia == null) {
                 throw new IllegalArgumentException("Mês de referência é obrigatório.");
             }
             if (precoUnitario < 0) {
