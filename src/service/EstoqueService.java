@@ -58,9 +58,9 @@ public class EstoqueService {
         }
 
         if (tipo == TipoMovimentacao.ENTRADA) {
-            produto.setQuantidadeAtual(produto.getQuantidadeAtual() + quantidade);
+            produto.atualizarQuantidade(produto.getQuantidadeAtual() + quantidade);
         } else {
-            produto.setQuantidadeAtual(produto.getQuantidadeAtual() - quantidade);
+            produto.atualizarQuantidade(produto.getQuantidadeAtual() - quantidade);
         }
 
         Pedido pedido = new Pedido(proximoIdPedido++, produto, quantidade, tipo, usuario);
@@ -83,7 +83,7 @@ public class EstoqueService {
         }
 
         if (produto.getQuantidadeMinima() <= 0) {
-            return NivelEstoque.EXCELENTE;
+            return NivelEstoque.ADEQUADO;
         }
 
         double percentual = (produto.getQuantidadeAtual() * 100.0) / produto.getQuantidadeMinima();
@@ -93,10 +93,10 @@ public class EstoqueService {
         if (percentual <= 50) {
             return NivelEstoque.BAIXO;
         }
-        if (percentual <= 100) {
-            return NivelEstoque.BOM;
+        if (percentual <= 75) {
+            return NivelEstoque.MODERADO;
         }
-        return NivelEstoque.EXCELENTE;
+        return NivelEstoque.ADEQUADO;
     }
 
     public void exibirHistoricoNiveis(int idProduto) {

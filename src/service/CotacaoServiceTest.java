@@ -35,7 +35,7 @@ public class CotacaoServiceTest {
 
         // ── Registrar cotações ─────────────────────────────────
         cotacaoService.registrarCotacao(gerente, morango, janeiro,   4.99, 20);
-        cotacaoService.registrarCotacao(gerente, morando, fevereiro, 5.15, 18);
+        cotacaoService.registrarCotacao(gerente, morango, fevereiro, 5.15, 18);
         cotacaoService.registrarCotacao(gerente, morango, marco,     4.89, 25);
 
         cotacaoService.registrarCotacao(gerente, laranja, janeiro,   3.50, 30);
