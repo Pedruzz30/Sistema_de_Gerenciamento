@@ -9,7 +9,10 @@ public class NotaFiscalServiceTest {
 
         // ── Setup ──────────────────────────────────────────────
         LogRepository logRepo        = new InMemoryLogRepository();
-        EstoqueService estoqueService = new EstoqueService();
+        EstoqueService estoqueService = new EstoqueService(
+                new InMemoryProdutoRepository(),
+                new InMemoryPedidoRepository()
+        );
         NotaFiscalRepository notaRepo = new InMemoryNotaFiscalRepository();
         NotaFiscalService notaService = new NotaFiscalService(notaRepo, logRepo, estoqueService);
 

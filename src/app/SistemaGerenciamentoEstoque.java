@@ -21,9 +21,11 @@ public class SistemaGerenciamentoEstoque {
         NotaFiscalRepository notaFiscalRepo      = new InMemoryNotaFiscalRepository();
         CotacaoRepository    cotacaoRepo         = new InMemoryCotacaoRepository();
         CaixaRepository      caixaRepo           = new InMemoryCaixaRepository();
+        ProdutoRepository    produtoRepo         = new InMemoryProdutoRepository();
+        PedidoRepository     pedidoRepo          = new InMemoryPedidoRepository();
 
         // ── Services ───────────────────────────────────────────
-        EstoqueService              estoqueService    = new EstoqueService();
+        EstoqueService              estoqueService    = new EstoqueService(produtoRepo, pedidoRepo);
         AutenticacaoService         autenticacaoService
                 = new AutenticacaoService(usuarioRepository, logRepository);
         CadastroFuncionarioService  cadastroService

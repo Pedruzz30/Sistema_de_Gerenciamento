@@ -14,7 +14,10 @@ public class CotacaoServiceTest {
         // ── Setup ──────────────────────────────────────────────
         CotacaoRepository cotacaoRepo = new InMemoryCotacaoRepository();
         LogRepository logRepo         = new InMemoryLogRepository();
-        EstoqueService estoqueService  = new EstoqueService();
+        EstoqueService estoqueService  = new EstoqueService(
+                new InMemoryProdutoRepository(),
+                new InMemoryPedidoRepository()
+        );
         CotacaoService cotacaoService  = new CotacaoService(cotacaoRepo, logRepo);
 
         ClasseFuncionario classeGerente = new ClasseFuncionario(1, "Gerente", "Acesso financeiro");
@@ -90,4 +93,3 @@ public class CotacaoServiceTest {
         if (!condition) throw new AssertionError(message);
     }
 }
-

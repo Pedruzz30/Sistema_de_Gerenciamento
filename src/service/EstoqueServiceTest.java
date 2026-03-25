@@ -5,11 +5,16 @@ import model.Permissao;
 import model.Produto;
 import model.TipoMovimentacao;
 import model.Usuario;
+import repository.InMemoryPedidoRepository;
+import repository.InMemoryProdutoRepository;
 
 public class EstoqueServiceTest {
 
     public static void main(String[] args) {
-        EstoqueService estoqueService = new EstoqueService();
+        EstoqueService estoqueService = new EstoqueService(
+                new InMemoryProdutoRepository(),
+                new InMemoryPedidoRepository()
+        );
 
         ClasseFuncionario classeAdminTeste = new ClasseFuncionario(100, "ADMIN_TESTE", "Classe para testes de estoque");
         classeAdminTeste.adicionarPermissao(Permissao.VER_ESTOQUE);

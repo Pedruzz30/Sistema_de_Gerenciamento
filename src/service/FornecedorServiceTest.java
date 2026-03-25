@@ -10,7 +10,10 @@ public class FornecedorServiceTest {
         // ── Setup ──────────────────────────────────────────────
         FornecedorRepository fornecedorRepo = new InMemoryFornecedorRepository();
         LogRepository logRepo               = new InMemoryLogRepository();
-        EstoqueService estoqueService        = new EstoqueService();
+        EstoqueService estoqueService        = new EstoqueService(
+                new InMemoryProdutoRepository(),
+                new InMemoryPedidoRepository()
+        );
         FornecedorService fornecedorService  = new FornecedorService(fornecedorRepo, logRepo);
 
         // Usuário com permissão de gestão
