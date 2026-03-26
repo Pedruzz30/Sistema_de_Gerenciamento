@@ -129,16 +129,14 @@ function renderSidebar() {
     .filter(item => !item.perm || temPermissao(item.perm))
     .map((item, i) => `
       <button class="nav-item ${i === 0 ? 'active' : ''}"
-              onclick="navegarPara('${item.id}', this)">
+              onclick="navegarPara('${item.id}')">
         <span class="nav-icon">${item.icon}</span>
         ${item.label}
       </button>
     `).join('');
 }
 
-function navegarPara(id, el) {
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
+function navegarPara(id) {
   // Redireciona a navegação do menu para as rotas/páginas existentes.
     // Mantemos foco no fluxo de estoque: /estoque.
     if (id === 'dashboard') {
