@@ -136,9 +136,20 @@ function renderSidebar() {
 function navegarPara(id, el) {
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
-  // Por enquanto mostra o dashboard — as outras páginas serão criadas depois
-  document.getElementById('header-title-text').textContent = el.textContent.trim();
-}
+  // Redireciona a navegação do menu para as rotas/páginas existentes.
+    // Mantemos foco no fluxo de estoque: /estoque.
+    if (id === 'dashboard') {
+      window.location.href = '/dashboard.html';
+      return;
+    }
+
+    if (id === 'estoque') {
+      window.location.href = '/estoque';
+      return;
+    }
+
+    window.location.href = `/${id}.html`;
+  }
 
 // ── User card ──────────────────────────────────────────────
 function renderUserCard() {
