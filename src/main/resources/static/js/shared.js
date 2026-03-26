@@ -25,6 +25,9 @@ const PERFIL_PERMISSOES = {
 };
 
 function getPermissoes() {
+    if (Array.isArray(usuario.permissoes) && usuario.permissoes.length > 0) {
+        return usuario.permissoes;
+      }
   if (usuario.perfil === 'ADMIN') return PERFIL_PERMISSOES.SUPERIOR;
   return PERFIL_PERMISSOES[usuario.nomeClasse] || PERFIL_PERMISSOES.ESTOQUISTA;
 }

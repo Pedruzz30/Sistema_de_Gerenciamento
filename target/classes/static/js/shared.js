@@ -25,6 +25,9 @@ const PERFIL_PERMISSOES = {
 };
 
 function getPermissoes() {
+    if (Array.isArray(usuario.permissoes) && usuario.permissoes.length > 0) {
+        return usuario.permissoes;
+      }
   if (usuario.perfil === 'ADMIN') return PERFIL_PERMISSOES.SUPERIOR;
   return PERFIL_PERMISSOES[usuario.nomeClasse] || PERFIL_PERMISSOES.ESTOQUISTA;
 }
@@ -53,7 +56,7 @@ function paginaAtual() {
 
 const NAV_ITENS = [
   { icon: '⊞',  label: 'Dashboard',    perm: null,                        href: '/dashboard.html',    id: 'dashboard'    },
-  { icon: '📦', label: 'Estoque',       perm: 'VER_ESTOQUE',               href: '/estoque.html',      id: 'estoque'      },
+  { icon: '📦', label: 'Estoque',       perm: 'VER_ESTOQUE',               href: '/estoque',      id: 'estoque'      },
   { icon: '🚚', label: 'Fornecedores',  perm: 'VER_COMPRAS',               href: '/fornecedores.html', id: 'fornecedores' },
   { icon: '🧾', label: 'Notas Fiscais', perm: 'VER_COMPRAS',               href: '/notas.html',        id: 'notas'        },
   { icon: '💰', label: 'Caixas',        perm: 'VER_VENDAS',                href: '/caixas.html',       id: 'caixas'       },

@@ -1,6 +1,7 @@
 repository\InMemoryCotacaoRepository.class
 model\Caixa$Status.class
 app\Main.class
+controller\EstoquePageController.class
 controller\AuthController$LoginRequest.class
 model\CotacaoMensal.class
 model\ItemNotaFiscal.class

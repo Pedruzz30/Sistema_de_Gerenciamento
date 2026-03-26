@@ -40,6 +40,9 @@ const PERFIL_PERMISSOES = {
 
 // Descobre as permissões do usuário logado pelo nome da classe
 function getPermissoes() {
+    if (Array.isArray(usuario.permissoes) && usuario.permissoes.length > 0) {
+        return usuario.permissoes;
+      }
   // A classe vem do campo 'classe' retornado pela API
   // Por ora, mapeamos pelo perfil (ADMIN = SUPERIOR, OPERADOR varia)
   if (usuario.perfil === 'ADMIN') return PERFIL_PERMISSOES.SUPERIOR;
