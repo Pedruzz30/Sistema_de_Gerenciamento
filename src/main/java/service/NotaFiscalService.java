@@ -157,7 +157,7 @@ public class NotaFiscalService {
     }
 
     public List<NotaFiscal> listarTodas() {
-        return notaFiscalRepository.listarTodas();
+        return notaFiscalRepository.listarTodos();
     }
 
     // ── Validação interna ──────────────────────────────────────
