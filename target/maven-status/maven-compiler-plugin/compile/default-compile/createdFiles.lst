@@ -14,9 +14,12 @@ model\ResultadoComparacao.class
 service\CotacaoServiceTest.class
 model\TipoMovimentacao.class
 model\ClasseFuncionario.class
+controller\ProdutoController$ErroResponse.class
 model\Permissao.class
 model\FechamentoCaixa.class
 model\Usuario$Perfil.class
+controller\ProdutoController$CadastroProdutoRequest.class
+controller\ProdutoController$ProdutoResponse.class
 model\NotaFiscal$Status.class
 service\CotacaoService.class
 repository\InMemoryNotaFiscalRepository.class
@@ -29,6 +32,7 @@ model\Caixa.class
 service\EstoqueService.class
 controller\AuthController$UsuarioResponse.class
 repository\LogRepository.class
+controller\ProdutoController.class
 repository\InMemoryCaixaRepository.class
 model\Fornecedor.class
 repository\UsuarioRepository.class
@@ -37,6 +41,7 @@ model\Usuario.class
 repository\InMemoryLogRepository.class
 model\ResultadoComparacao$Tendencia.class
 service\FornecedorServiceTest.class
+controller\ProdutoController$MovimentacaoRequest.class
 repository\InMemoryProdutoRepository.class
 service\EstoqueServiceTest.class
 controller\AuthController.class
