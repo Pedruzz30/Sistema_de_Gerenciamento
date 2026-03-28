@@ -4,7 +4,10 @@
       "Bash(mv /c/WorkSpaceJava/Sistema_Gerenciamento/src/main/java/repository/NotaFiscalService.java /c/WorkSpaceJava/Sistema_Gerenciamento/src/main/java/service/NotaFiscalService.java)",
       "Bash(mv /c/WorkSpaceJava/Sistema_Gerenciamento/src/main/java/repository/NotaFiscalServiceTest.java /c/WorkSpaceJava/Sistema_Gerenciamento/src/main/java/service/NotaFiscalServiceTest.java)",
       "Bash(powershell -Command \"Stop-Process -Id 28816 -Force\" 2>&1)",
-      "Bash(\"/c/Users/Pedro/AppData/Local/Temp/chocolatey/ChocolateyScratch/maven/3.9.14/apache-maven-3.9.14/bin/mvn\" spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8081\")"
+      "Bash(\"/c/Users/Pedro/AppData/Local/Temp/chocolatey/ChocolateyScratch/maven/3.9.14/apache-maven-3.9.14/bin/mvn\" spring-boot:run -Dspring-boot.run.arguments=\"--server.port=8081\")",
+      "Bash(mvn clean:*)",
+      "Bash(grep -n \"public.*buscarHistoricoPorNumero\\\\|public.*listarTodas\\\\|public.*listarAtivos\\\\|public.*buscarCaixaAberto\\\\|public.*listarPedidos\\\\|public.*buscarProdutoPorId\\\\|public.*listarFuncionarios\\\\|public.*mudarClasse\\\\|public.*desativarFuncionario\" src/main/java/repository/*.java src/main/java/service/*.java)",
+      "Bash(grep -n \"public.*calcularTotal\\\\|public.*getPrecoUnitarioNota\\\\|public.*calcularSubtotal\\\\|public.*getId\\\\|public.*getDataHora\\\\|public.*getTipo\\\\|public.*getStatus\\\\|public.*getItens\\\\|public.*getFornecedor\\\\|public.*getDataEmissao\\\\|public.*getDataAbertura\\\\|public.*getDataEncerramento\\\\|public.*getSaldoInicial\\\\|public.*getSaldoAtual\\\\|public.*getOperadorAtual\\\\|public.*getNumeroCaixa\\\\|public.*getMovimentacoes\" src/main/java/model/*.java)"
     ]
   }
 }

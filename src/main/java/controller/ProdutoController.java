@@ -4,15 +4,12 @@ import model.NivelEstoque;
 import model.Pedido;
 import model.Produto;
 import model.TipoMovimentacao;
-import repository.InMemoryPedidoRepository;
-import repository.InMemoryProdutoRepository;
-import repository.PedidoRepository;
-import repository.ProdutoRepository;
 import service.EstoqueService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,10 +19,8 @@ public class ProdutoController {
 
     private final EstoqueService estoqueService;
 
-    public ProdutoController() {
-        ProdutoRepository produtoRepository = new InMemoryProdutoRepository();
-        PedidoRepository pedidoRepository = new InMemoryPedidoRepository();
-        this.estoqueService = new EstoqueService(produtoRepository, pedidoRepository);
+    public ProdutoController(EstoqueService estoqueService) {
+        this.estoqueService = estoqueService;
     }
 
     // GET /api/produtos
@@ -93,7 +88,18 @@ public class ProdutoController {
         }
     }
 
-    // ── Records ──────────────────────────────────────────────────────────────
+    // GET /api/movimentacoes — used by dashboard and history views
+    @GetMapping("/movimentacoes")
+    public ResponseEntity<List<PedidoResponse>> listarMovimentacoes() {
+        List<PedidoResponse> resp = estoqueService.listarPedidos().stream()
+                .sorted(Comparator.comparing(Pedido::getDataHora).reversed())
+                .limit(100)
+                .map(PedidoResponse::from)
+                .toList();
+        return ResponseEntity.ok(resp);
+    }
+
+    // ── Records ───────────────────────────────────────────────────────────────
 
     public record CadastroProdutoRequest(
             String nome,
@@ -124,6 +130,24 @@ public class ProdutoController {
                     p.getQuantidadeMinima(),
                     p.getPrecoUnitario(),
                     nivel.name()
+            );
+        }
+    }
+
+    public record PedidoResponse(
+            int id,
+            String tipo,
+            String produto,
+            int quantidade,
+            String dataHora
+    ) {
+        public static PedidoResponse from(Pedido p) {
+            return new PedidoResponse(
+                    p.getId(),
+                    p.getTipo().name(),
+                    p.getProduto().getNome(),
+                    p.getQuantidade(),
+                    p.getDataHora().toString()
             );
         }
     }

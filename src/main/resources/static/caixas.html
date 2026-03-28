@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockOS — Caixas</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/global.css">
+<link rel="stylesheet" href="/css/estoque.css">
+<link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📦</div>
+      StockOS
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Menu</div>
+      <div id="nav-items"></div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">--</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Carregando...</div>
+          <div class="user-role" id="user-role">--</div>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div>
+      <div class="header-title">Caixas PDV</div>
+      <div class="header-sub">Gerencie abertura, vendas e encerramento de caixas</div>
+    </div>
+    <div class="header-right">
+      <button class="btn-primary" onclick="abrirModalAbrirCaixa()">+ Abrir Caixa</button>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- Resumo do dia -->
+    <div class="info-grid fade-up" id="resumo-dia" style="display:none">
+      <div class="info-card">
+        <div class="info-label">Total Vendas (dia)</div>
+        <div class="info-value green" id="total-vendas-dia">R$0,00</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Caixas Abertos</div>
+        <div class="info-value purple" id="total-caixas-abertos">0</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">Saldo Total em Caixa</div>
+        <div class="info-value" id="saldo-total">R$0,00</div>
+      </div>
+    </div>
+
+    <!-- Grid de caixas -->
+    <div class="caixas-grid fade-up fade-up-1" id="caixas-grid">
+      <div class="loading">Carregando caixas</div>
+    </div>
+
+    <!-- Fechamento card -->
+    <div id="fechamento-container" style="display:none" class="fade-up fade-up-2"></div>
+
+    <!-- Consolidado do dia -->
+    <div class="card fade-up fade-up-3" id="consolidado-card" style="display:none">
+      <div class="card-header">
+        <span class="card-title">Consolidado do Dia</span>
+        <button class="btn-secondary" onclick="carregarConsolidado()" style="padding:5px 14px;font-size:12px;">Atualizar</button>
+      </div>
+      <pre id="consolidado-texto" style="font-size:12.5px; color:var(--text-2); white-space:pre-wrap; font-family:'DM Sans',sans-serif;"></pre>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Modal: Abrir Caixa ── -->
+<div class="modal-overlay" id="modal-abrir" onclick="fecharModalSeClicouFora(event,'modal-abrir')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Abrir Caixa</h3>
+      <button class="modal-close" onclick="fecharModal('modal-abrir')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Número do Caixa</label>
+        <input type="number" id="abrir-numero" placeholder="Ex: 1" min="1">
+      </div>
+      <div class="form-group">
+        <label>Saldo Inicial (R$)</label>
+        <input type="number" id="abrir-saldo" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="alert-modal" id="alert-abrir"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModal('modal-abrir')">Cancelar</button>
+      <button class="btn-primary" onclick="confirmarAbrirCaixa()">Abrir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Movimentação ── -->
+<div class="modal-overlay" id="modal-mov" onclick="fecharModalSeClicouFora(event,'modal-mov')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-mov-titulo">Registrar Movimentação</h3>
+      <button class="modal-close" onclick="fecharModal('modal-mov')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="produto-info-card">
+        <div class="produto-info-nome" id="mov-caixa-info">Caixa —</div>
+        <div class="produto-info-qtd">Saldo atual: <strong id="mov-saldo-atual">—</strong></div>
+      </div>
+      <div class="form-group">
+        <label>Valor (R$)</label>
+        <input type="number" id="mov-valor" placeholder="0,00" step="0.01" min="0.01">
+      </div>
+      <div class="form-group">
+        <label>Descrição (opcional)</label>
+        <input type="text" id="mov-descricao" placeholder="Ex: Venda 3 laranjas">
+      </div>
+      <div class="alert-modal" id="alert-mov"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModal('modal-mov')">Cancelar</button>
+      <button class="btn-primary" id="btn-confirmar-mov" onclick="confirmarMovimentacao()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Movimentações do Caixa ── -->
+<div class="modal-overlay" id="modal-movs-lista" onclick="fecharModalSeClicouFora(event,'modal-movs-lista')">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-movs-titulo">Movimentações</h3>
+      <button class="modal-close" onclick="fecharModal('modal-movs-lista')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:400px; overflow-y:auto;">
+      <div class="mov-caixa-list" id="movs-lista"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModal('modal-movs-lista')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Encerramento ── -->
+<div class="modal-overlay" id="modal-encerrar" onclick="fecharModalSeClicouFora(event,'modal-encerrar')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Encerrar Caixa</h3>
+      <button class="modal-close" onclick="fecharModal('modal-encerrar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal error" id="alert-encerrar-warn" style="display:block">
+        ⚠ Tem certeza? Após encerrar, o caixa não poderá receber mais movimentações.
+      </div>
+      <p style="font-size:13px; color:var(--text-2);">
+        Caixa: <strong id="encerrar-caixa-num">—</strong>
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModal('modal-encerrar')">Cancelar</button>
+      <button class="btn-primary" id="btn-confirmar-encerrar" onclick="confirmarEncerrar()" style="background:linear-gradient(135deg,var(--red),#dc2626)">Encerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/shared.js"></script>
+<script src="/js/caixas.js"></script>
+</body>
+</html>

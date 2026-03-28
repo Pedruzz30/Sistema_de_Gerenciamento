@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockOS — Cotações</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/global.css">
+<link rel="stylesheet" href="/css/estoque.css">
+<link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📦</div>
+      StockOS
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Menu</div>
+      <div id="nav-items"></div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">--</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Carregando...</div>
+          <div class="user-role" id="user-role">--</div>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div>
+      <div class="header-title">Cotações Mensais</div>
+      <div class="header-sub">Registre e compare preços de compra mês a mês</div>
+    </div>
+    <div class="header-right">
+      <button class="btn-primary" onclick="abrirModalCotacao()">+ Registrar Cotação</button>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- Tabs -->
+    <div class="tabs fade-up">
+      <button class="tab-btn active" id="tab-relatorio" onclick="abrirAba('aba-relatorio')">Relatório Mensal</button>
+      <button class="tab-btn" id="tab-historico" onclick="abrirAba('aba-historico')">Histórico por Produto</button>
+    </div>
+
+    <!-- Aba: Relatório -->
+    <div class="tab-panel active" id="aba-relatorio">
+      <div class="card fade-up">
+        <div class="card-header">
+          <span class="card-title">Comparação com Mês Anterior</span>
+          <div style="display:flex; gap:8px; align-items:center">
+            <input type="month" id="relatorio-mes"
+              style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-1);font-size:12.5px;outline:none">
+            <button class="btn-secondary" onclick="carregarRelatorio()" style="padding:6px 14px;font-size:12px">Buscar</button>
+          </div>
+        </div>
+        <div id="relatorio-container">
+          <div class="empty">Selecione um mês e clique em Buscar para ver o relatório.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aba: Histórico por produto -->
+    <div class="tab-panel" id="aba-historico">
+      <div class="card fade-up">
+        <div class="card-header">
+          <span class="card-title">Histórico de Preços</span>
+          <div style="display:flex; gap:8px; align-items:center">
+            <select id="historico-produto"
+              style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-1);font-size:12.5px;outline:none;min-width:200px">
+              <option value="">— carregando produtos —</option>
+            </select>
+            <button class="btn-secondary" onclick="carregarHistorico()" style="padding:6px 14px;font-size:12px">Buscar</button>
+          </div>
+        </div>
+        <div id="historico-container">
+          <div class="empty">Selecione um produto para ver o histórico de cotações.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Modal: Registrar Cotação ── -->
+<div class="modal-overlay" id="modal-cotacao" onclick="fecharModalSeClicouFora(event,'modal-cotacao')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Registrar Cotação</h3>
+      <button class="modal-close" onclick="fecharModal('modal-cotacao')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Produto</label>
+        <select id="c-produto">
+          <option value="">— carregando produtos —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mês de Referência (AAAA-MM)</label>
+        <input type="month" id="c-mes">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Preço Unitário (R$)</label>
+          <input type="number" id="c-preco" placeholder="0,00" step="0.01" min="0.01">
+        </div>
+        <div class="form-group">
+          <label>Quantidade Comprada</label>
+          <input type="number" id="c-qtd" placeholder="0" min="1">
+        </div>
+      </div>
+      <div class="alert-modal" id="alert-cotacao"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModal('modal-cotacao')">Cancelar</button>
+      <button class="btn-primary" onclick="registrarCotacao()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/shared.js"></script>
+<script src="/js/cotacoes.js"></script>
+</body>
+</html>

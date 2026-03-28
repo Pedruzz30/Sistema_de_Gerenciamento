@@ -1,19 +1,16 @@
 package controller;
 
 import model.Caixa;
-import model.ClasseFuncionario;
 import model.FechamentoCaixa;
-import model.Permissao;
+import model.MovimentacaoCaixa;
 import model.Usuario;
 import repository.CaixaRepository;
-import repository.InMemoryCaixaRepository;
-import repository.InMemoryLogRepository;
-import repository.LogRepository;
 import service.CaixaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @RestController
@@ -24,18 +21,12 @@ public class CaixaController {
     private final CaixaRepository caixaRepository;
     private final Usuario adminSuperior;
 
-    public CaixaController() {
-        CaixaRepository caixaRepo = new InMemoryCaixaRepository();
-        LogRepository logRepo = new InMemoryLogRepository();
-        this.caixaRepository = caixaRepo;
-        this.caixaService = new CaixaService(caixaRepo, logRepo);
-        this.adminSuperior = criarAdminSuperior();
-    }
-
-    private static Usuario criarAdminSuperior() {
-        ClasseFuncionario classeSuperior = new ClasseFuncionario(1, "SUPERIOR", "Acesso total ao sistema");
-        for (Permissao p : Permissao.values()) classeSuperior.adicionarPermissao(p);
-        return new Usuario(1, "Admin", "Superior", "000.000.000-00", "1234", classeSuperior, Usuario.Perfil.ADMIN);
+    public CaixaController(CaixaService caixaService,
+                           CaixaRepository caixaRepository,
+                           Usuario adminSuperior) {
+        this.caixaService = caixaService;
+        this.caixaRepository = caixaRepository;
+        this.adminSuperior = adminSuperior;
     }
 
     // GET /api/caixas
@@ -56,6 +47,24 @@ public class CaixaController {
         } catch (IllegalStateException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    // GET /api/caixas/{numero}/movimentacoes
+    @GetMapping("/{numero}/movimentacoes")
+    public ResponseEntity<?> listarMovimentacoesDoCaixa(@PathVariable int numero) {
+        List<Caixa> historico = caixaRepository.buscarHistoricoPorNumero(numero);
+        if (historico.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        // Returns movements from the most recent caixa for this number
+        Caixa maisRecente = historico.stream()
+                .max(Comparator.comparingLong(Caixa::getId))
+                .orElse(historico.get(0));
+
+        List<MovimentacaoCaixaResponse> movs = maisRecente.getMovimentacoes().stream()
+                .map(MovimentacaoCaixaResponse::from)
+                .toList();
+        return ResponseEntity.ok(movs);
     }
 
     // POST /api/caixas/abrir
@@ -186,6 +195,26 @@ public class CaixaController {
                     c.getOperadorAtual() != null ? c.getOperadorAtual().getNomeCompleto() : null,
                     c.getDataAbertura() != null ? c.getDataAbertura().toString() : null,
                     c.getDataEncerramento() != null ? c.getDataEncerramento().toString() : null
+            );
+        }
+    }
+
+    public record MovimentacaoCaixaResponse(
+            long id,
+            String tipo,
+            double valor,
+            String descricao,
+            String dataHora,
+            String operador
+    ) {
+        public static MovimentacaoCaixaResponse from(MovimentacaoCaixa m) {
+            return new MovimentacaoCaixaResponse(
+                    m.getId(),
+                    m.getTipo().name(),
+                    m.getValor(),
+                    m.getDescricao(),
+                    m.getDataHora().toString(),
+                    m.getOperador() != null ? m.getOperador().getNomeCompleto() : null
             );
         }
     }

@@ -1,12 +1,10 @@
 // ── Estado global ──────────────────────────────────────────
 const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
 
-// Redireciona para login se não estiver autenticado
 if (!usuario) {
   window.location.href = '/login.html';
 }
 
-// Permissões disponíveis (espelha o enum Java)
 const PERMISSOES = {
   VER_ESTOQUE:           'VER_ESTOQUE',
   EDITAR_ESTOQUE:        'EDITAR_ESTOQUE',
@@ -17,7 +15,6 @@ const PERMISSOES = {
   VER_LOGS:              'VER_LOGS',
 };
 
-// Mapa de permissões por perfil (espelha SistemaGerenciamentoEstoque.java)
 const PERFIL_PERMISSOES = {
   SUPERIOR: Object.values(PERMISSOES),
   GERENTE_ESTOQUE: [
@@ -38,16 +35,11 @@ const PERFIL_PERMISSOES = {
   ],
 };
 
-// Descobre as permissões do usuário logado pelo nome da classe
 function getPermissoes() {
     if (Array.isArray(usuario.permissoes) && usuario.permissoes.length > 0) {
         return usuario.permissoes;
       }
-  // A classe vem do campo 'classe' retornado pela API
-  // Por ora, mapeamos pelo perfil (ADMIN = SUPERIOR, OPERADOR varia)
   if (usuario.perfil === 'ADMIN') return PERFIL_PERMISSOES.SUPERIOR;
-
-  // Tenta achar pelo nome da classe se disponível
   const classe = usuario.nomeClasse || '';
   return PERFIL_PERMISSOES[classe] || PERFIL_PERMISSOES.ESTOQUISTA;
 }
@@ -56,25 +48,11 @@ function temPermissao(perm) {
   return getPermissoes().includes(perm);
 }
 
-// TODO: conectar a /api/caixas quando o endpoint estiver pronto
-const MOCK_CAIXAS = [
-  { numero: 1, status: 'ABERTO',  vendas: 342.50, operador: 'Ana'  },
-  { numero: 2, status: 'ABERTO',  vendas: 218.00, operador: 'João' },
-  { numero: 3, status: 'FECHADO', vendas: 0,      operador: '—'    },
-];
-
-// TODO: conectar a /api/movimentacoes quando o endpoint estiver pronto
-const MOCK_MOVIMENTACOES = [
-  { tipo: 'ENTRADA', produto: 'Morango', qtd: 10, hora: '08:32' },
-  { tipo: 'SAIDA',   produto: 'Laranja', qtd: 4,  hora: '09:15' },
-  { tipo: 'ENTRADA', produto: 'Tomate',  qtd: 20, hora: '10:05' },
-  { tipo: 'SAIDA',   produto: 'Alface',  qtd: 3,  hora: '11:40' },
-  { tipo: 'SAIDA',   produto: 'Morango', qtd: 2,  hora: '13:20' },
-];
-
 // ── Inicialização ──────────────────────────────────────────
 async function carregarDados() {
   let produtos = [];
+  let caixas = [];
+  let movimentacoes = [];
 
   try {
     const resp = await fetch('/api/produtos');
@@ -84,10 +62,26 @@ async function carregarDados() {
     console.error('Erro ao carregar produtos:', err);
   }
 
-  renderSummaryCards(produtos);
+  try {
+    const resp = await fetch('/api/caixas');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    caixas = await resp.json();
+  } catch (err) {
+    console.error('Erro ao carregar caixas:', err);
+  }
+
+  try {
+    const resp = await fetch('/api/movimentacoes');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    movimentacoes = await resp.json();
+  } catch (err) {
+    console.error('Erro ao carregar movimentações:', err);
+  }
+
+  renderSummaryCards(produtos, caixas);
   renderAlertas(produtos);
-  renderMovimentacoes();
-  renderFinanceiro();
+  renderMovimentacoes(movimentacoes);
+  renderFinanceiro(caixas);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -137,18 +131,14 @@ function renderSidebar() {
 }
 
 function navegarPara(id) {
-  // Redireciona a navegação do menu para as rotas/páginas existentes.
-    // Mantemos foco no fluxo de estoque: /estoque.
     if (id === 'dashboard') {
       window.location.href = '/dashboard.html';
       return;
     }
-
     if (id === 'estoque') {
       window.location.href = '/estoque';
       return;
     }
-
     window.location.href = `/${id}.html`;
   }
 
@@ -166,12 +156,13 @@ function logout() {
 }
 
 // ── Summary cards ──────────────────────────────────────────
-function renderSummaryCards(produtos) {
+function renderSummaryCards(produtos, caixas) {
   const totalProdutos = produtos.length;
   const alertas = produtos.filter(p =>
     p.nivelEstoque === 'CRITICO' || p.nivelEstoque === 'BAIXO').length;
-  const vendasDia = MOCK_CAIXAS.reduce((s, c) => s + c.vendas, 0);
-  const caixasAbertos = MOCK_CAIXAS.filter(c => c.status === 'ABERTO').length;
+  const vendasDia = caixas.reduce((s, c) => s + (c.totalVendas || 0), 0);
+  const caixasAbertos = caixas.filter(c => c.status === 'ABERTO').length;
+  const totalCaixas = caixas.length || '—';
 
   const cards = [
     {
@@ -203,7 +194,7 @@ function renderSummaryCards(produtos) {
     },
     {
       label: 'Caixas Abertos',
-      value: `${caixasAbertos}/3`,
+      value: `${caixasAbertos}/${totalCaixas}`,
       icon: '🖥️',
       color: 'rgba(6,182,212,.12)',
       trend: 'neutral',
@@ -264,23 +255,34 @@ function renderAlertas(produtos) {
   `).join('');
 }
 
-// ── Movimentações recentes ─────────────────────────────────
-function renderMovimentacoes() {
+// ── Movimentações recentes (real data) ────────────────────
+function renderMovimentacoes(movimentacoes) {
   const list = document.getElementById('mov-list');
-  list.innerHTML = MOCK_MOVIMENTACOES.map(m => `
-    <div class="mov-item">
-      <span class="mov-badge ${m.tipo.toLowerCase()}">${m.tipo}</span>
-      <span class="mov-produto">${m.produto}</span>
-      <span class="mov-qty">${m.tipo === 'ENTRADA' ? '+' : '-'}${m.qtd} un.</span>
-      <span class="mov-time">${m.hora}</span>
-    </div>
-  `).join('');
+  if (!movimentacoes || movimentacoes.length === 0) {
+    list.innerHTML = '<div class="empty">Nenhuma movimentação registrada.</div>';
+    return;
+  }
+
+  list.innerHTML = movimentacoes.slice(0, 10).map(m => {
+    let hora = '—';
+    try {
+      hora = new Date(m.dataHora).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    } catch {}
+    return `
+      <div class="mov-item">
+        <span class="mov-badge ${(m.tipo || '').toLowerCase()}">${m.tipo}</span>
+        <span class="mov-produto">${m.produto}</span>
+        <span class="mov-qty">${m.tipo === 'ENTRADA' ? '+' : '-'}${m.quantidade} un.</span>
+        <span class="mov-time">${hora}</span>
+      </div>
+    `;
+  }).join('');
 }
 
-// ── Resumo financeiro ──────────────────────────────────────
-function renderFinanceiro() {
-  const totalVendas = MOCK_CAIXAS.reduce((s, c) => s + c.vendas, 0);
-  const caixasAbertos = MOCK_CAIXAS.filter(c => c.status === 'ABERTO').length;
+// ── Resumo financeiro (real data) ──────────────────────────
+function renderFinanceiro(caixas) {
+  const totalVendas = caixas.reduce((s, c) => s + (c.totalVendas || 0), 0);
+  const caixasAbertos = caixas.filter(c => c.status === 'ABERTO').length;
 
   document.getElementById('fin-total-vendas').textContent = `R$${totalVendas.toFixed(2)}`;
   document.getElementById('fin-caixas-abertos').textContent = caixasAbertos;
@@ -288,11 +290,15 @@ function renderFinanceiro() {
     caixasAbertos > 0 ? `R$${(totalVendas / caixasAbertos).toFixed(2)}` : 'R$0,00';
 
   const caixaList = document.getElementById('caixa-list');
-  caixaList.innerHTML = MOCK_CAIXAS.map(c => `
+  if (caixas.length === 0) {
+    caixaList.innerHTML = '<div class="empty">Nenhum caixa registrado.</div>';
+    return;
+  }
+  caixaList.innerHTML = caixas.map(c => `
     <div class="caixa-item">
-      <span class="caixa-name">Caixa ${c.numero} — ${c.operador}</span>
+      <span class="caixa-name">Caixa ${c.numeroCaixa}${c.nomeOperador ? ' — ' + c.nomeOperador : ''}</span>
       <span class="caixa-status ${c.status.toLowerCase()}">${c.status}</span>
-      <span class="caixa-valor">${c.status === 'ABERTO' ? 'R$' + c.vendas.toFixed(2) : '—'}</span>
+      <span class="caixa-valor">${c.status === 'ABERTO' ? 'R$' + (c.totalVendas||0).toFixed(2) : '—'}</span>
     </div>
   `).join('');
 }

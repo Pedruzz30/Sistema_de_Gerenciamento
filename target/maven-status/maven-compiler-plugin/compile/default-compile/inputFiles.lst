@@ -1,8 +1,14 @@
+C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\app\AppConfig.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\app\Main.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\app\SistemaGerenciamentoEstoque.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\AuthController.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\CaixaController.java
+C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\CotacaoController.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\EstoquePageController.java
+C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\FornecedorController.java
+C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\FuncionarioController.java
+C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\LogController.java
+C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\NotaFiscalController.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\controller\ProdutoController.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\model\Caixa.java
 C:\WorkSpaceJava\Sistema_Gerenciamento\src\main\java\model\ClasseFuncionario.java
