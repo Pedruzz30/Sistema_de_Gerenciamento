@@ -1,5 +1,6 @@
 repository\InMemoryCotacaoRepository.class
 model\Caixa$Status.class
+controller\CaixaController$CaixaResponse.class
 app\Main.class
 controller\EstoquePageController.class
 controller\AuthController$LoginRequest.class
@@ -8,6 +9,7 @@ model\ItemNotaFiscal.class
 service\CadastroFuncionarioService.class
 model\MovimentacaoCaixa.class
 repository\FornecedorRepository.class
+controller\CaixaController$EncerrarCaixaRequest.class
 model\Produto.class
 repository\CaixaRepository.class
 repository\CotacaoRepository.class
@@ -20,10 +22,13 @@ model\Permissao.class
 model\FechamentoCaixa.class
 model\Usuario$Perfil.class
 controller\ProdutoController$CadastroProdutoRequest.class
+controller\CaixaController$MovimentacaoRequest.class
 controller\ProdutoController$ProdutoResponse.class
 model\NotaFiscal$Status.class
+controller\CaixaController$ConsolidadoResponse.class
 service\CotacaoService.class
 repository\InMemoryNotaFiscalRepository.class
+controller\CaixaController$FechamentoResponse.class
 service\NotaFiscalService.class
 model\NotaFiscal.class
 model\TipoMovimentacaoCaixa.class
@@ -51,11 +56,14 @@ service\CaixaService.class
 repository\InMemoryUsuarioRepository.class
 model\Pedido.class
 model\ResultadoComparacao$1.class
+controller\CaixaController$ErroResponse.class
 repository\PedidoRepository.class
 repository\NotaFiscalRepository.class
 service\CaixaServiceTest.class
 repository\ProdutoRepository.class
 service\FornecedorService.class
 app\SistemaGerenciamentoEstoque.class
+controller\CaixaController.class
+controller\CaixaController$AbrirCaixaRequest.class
 model\LogAcao.class
 repository\InMemoryFornecedorRepository.class
