@@ -44,4 +44,9 @@ public class InMemoryNotaFiscalRepository implements NotaFiscalRepository {
     public List<NotaFiscal> listarTodos() {
         return new ArrayList<>(notas);
     }
+
+    @Override
+    public void deletar(long id) {
+        notas.removeIf(n -> n.getId() == id);
+    }
 }

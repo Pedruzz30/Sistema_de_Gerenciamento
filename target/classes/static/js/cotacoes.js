@@ -44,7 +44,7 @@ function abrirAba(abaId) {
 
 async function carregarRelatorio() {
   const mes = document.getElementById('relatorio-mes').value;
-  if (!mes) { alert('Selecione um mês.'); return; }
+  if (!mes) { showToast('Selecione um mês.', 'error'); return; }
 
   const container = document.getElementById('relatorio-container');
   container.innerHTML = '<div class="loading">Carregando relatório</div>';
@@ -98,7 +98,7 @@ function renderComparacao(c) {
 
 async function carregarHistorico() {
   const produtoId = document.getElementById('historico-produto').value;
-  if (!produtoId) { alert('Selecione um produto.'); return; }
+  if (!produtoId) { showToast('Selecione um produto.', 'error'); return; }
 
   const container = document.getElementById('historico-container');
   container.innerHTML = '<div class="loading">Carregando histórico</div>';
@@ -112,7 +112,12 @@ async function carregarHistorico() {
     }
 
     if (historico.length === 0) {
-      container.innerHTML = '<div class="empty">Nenhuma cotação registrada para este produto.</div>';
+      container.innerHTML = `
+        <div style="padding:32px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">📈</div>
+          <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhuma cotação registrada</div>
+          <div style="color:var(--text-3);font-size:13px">Registre cotações mensais para acompanhar o histórico de preços.</div>
+        </div>`;
       return;
     }
 

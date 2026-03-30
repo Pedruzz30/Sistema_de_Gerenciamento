@@ -150,14 +150,65 @@ public class NotaFiscalService {
         ));
     }
 
+    // ── Etapa: Descartar rascunho ──────────────────────────────
+
+    /**
+     * Exclui permanentemente uma nota PENDENTE sem itens.
+     * Usado para limpar ghost invoices do wizard.
+     */
+    public void descartarRascunho(Usuario usuarioLogado, NotaFiscal nota) {
+        validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
+        if (nota.getStatus() != NotaFiscal.Status.PENDENTE) {
+            throw new IllegalStateException("Apenas rascunhos PENDENTES podem ser descartados.");
+        }
+        if (!nota.getItens().isEmpty()) {
+            throw new IllegalStateException("Apenas notas sem itens podem ser descartadas. Use cancelar() para notas com itens.");
+        }
+        notaFiscalRepository.deletar(nota.getId());
+        logRepository.salvar(new LogAcao(
+                0, usuarioLogado.getRu(),
+                "NOTA_DESCARTADA",
+                "Rascunho da nota #" + nota.getId() + " descartado."
+        ));
+    }
+
+    // ── Etapa: Cancelar nota ───────────────────────────────────
+
+    /**
+     * Cancela uma nota PENDENTE.
+     * CONFIRMADA e PAGA não podem ser canceladas.
+     */
+    public void cancelarNota(Usuario usuarioLogado, NotaFiscal nota) {
+        validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
+        nota.cancelar();
+        notaFiscalRepository.salvar(nota);
+        logRepository.salvar(new LogAcao(
+                0, usuarioLogado.getRu(),
+                "NOTA_CANCELADA",
+                "Nota #" + nota.getId() + " cancelada."
+        ));
+    }
+
     // ── Consultas ──────────────────────────────────────────────
 
     public List<NotaFiscal> listarNotasPorFornecedor(long fornecedorId) {
         return notaFiscalRepository.buscarPorFornecedor(fornecedorId);
     }
 
+    /**
+     * Lista notas fiscais. Por padrão, oculta rascunhos vazios (PENDENTE sem itens).
+     * Use incluirVazias=true para incluí-las.
+     */
+    public List<NotaFiscal> listarTodas(boolean incluirVazias) {
+        List<NotaFiscal> todas = notaFiscalRepository.listarTodos();
+        if (incluirVazias) return todas;
+        return todas.stream()
+                .filter(n -> !(n.getStatus() == NotaFiscal.Status.PENDENTE && n.getItens().isEmpty()))
+                .toList();
+    }
+
     public List<NotaFiscal> listarTodas() {
-        return notaFiscalRepository.listarTodos();
+        return listarTodas(false);
     }
 
     // ── Validação interna ──────────────────────────────────────

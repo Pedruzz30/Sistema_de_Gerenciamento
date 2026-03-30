@@ -40,7 +40,7 @@ public class CaixaService {
     // ── Abertura ───────────────────────────────────────────────
 
     public Caixa abrirCaixa(Usuario operador, int numeroCaixa, double saldoInicial) {
-        validarPermissao(operador, Permissao.VER_ESTOQUE);
+        validarPermissao(operador, Permissao.VER_VENDAS);
 
         // Garante que não tem outro caixa aberto com o mesmo número
         caixaRepository.buscarAbertoporNumero(numeroCaixa).ifPresent(c -> {

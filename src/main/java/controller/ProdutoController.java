@@ -5,7 +5,6 @@ import model.Pedido;
 import model.Produto;
 import model.TipoMovimentacao;
 import service.EstoqueService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -77,10 +76,6 @@ public class ProdutoController {
                     tipo,
                     null
             );
-            if (pedido == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ErroResponse("Produto com id " + request.idProduto() + " não encontrado."));
-            }
             Produto p = pedido.getProduto();
             return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)));
         } catch (IllegalArgumentException e) {

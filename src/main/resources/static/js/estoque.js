@@ -121,12 +121,24 @@ function renderTabela() {
 
   countEl.textContent = `${produtos.length} produto${produtos.length !== 1 ? 's' : ''}`;
 
+  const podeEditar = temPermissao(PERMISSOES.EDITAR_ESTOQUE);
+
   if (produtos.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum produto encontrado.</td></tr>`;
+    if (todosOsProdutos.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="6">
+          <div style="padding:40px;text-align:center">
+            <div style="font-size:40px;margin-bottom:12px">📦</div>
+            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum produto cadastrado</div>
+            <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Cadastre produtos para começar a gerenciar seu estoque.</div>
+            ${podeEditar ? '<button class="btn-primary" onclick="abrirModalCadastro()">+ Cadastrar Produto</button>' : ''}
+          </div>
+        </td></tr>`;
+    } else {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum produto encontrado para os filtros aplicados.</td></tr>`;
+    }
     return;
   }
-
-  const podeEditar = temPermissao(PERMISSOES.EDITAR_ESTOQUE);
 
   tbody.innerHTML = produtos.map(p => `
     <tr>

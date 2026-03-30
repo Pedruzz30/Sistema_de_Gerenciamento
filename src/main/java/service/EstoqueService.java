@@ -45,8 +45,7 @@ public class EstoqueService {
     public Pedido registrarMovimentacao(int idProduto, int quantidade, TipoMovimentacao tipo, Usuario usuario) {
         Optional<Produto> optProduto = buscarProdutoPorId(idProduto);
         if (optProduto.isEmpty()) {
-            System.out.println("Produto não encontrado.");
-            return null;
+            throw new IllegalArgumentException("Produto não encontrado com ID: " + idProduto);
         }
         Produto produto = optProduto.get();
 

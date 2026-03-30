@@ -18,6 +18,7 @@ model\FechamentoCaixa.class
 service\CotacaoService.class
 repository\InMemoryNotaFiscalRepository.class
 controller\FuncionarioController$ErroResponse.class
+controller\GlobalExceptionHandler.class
 model\NivelEstoque.class
 model\Caixa.class
 controller\AuthController$UsuarioResponse.class
@@ -33,8 +34,11 @@ service\FornecedorServiceTest.class
 service\EstoqueServiceTest.class
 controller\FornecedorController.class
 controller\FornecedorController$MensagemResponse.class
+controller\CaixaController$MetricasResponse.class
 controller\FornecedorController$CadastroFornecedorRequest.class
 repository\InMemoryPedidoRepository.class
+controller\NotaFiscalController$MensagemResponse.class
+controller\ControllerUtils.class
 model\ResultadoComparacao$1.class
 controller\CaixaController$ErroResponse.class
 controller\FornecedorController$ErroResponse.class
@@ -42,6 +46,7 @@ repository\PedidoRepository.class
 repository\NotaFiscalRepository.class
 service\CaixaServiceTest.class
 controller\CotacaoController.class
+controller\GlobalExceptionHandler$ErroResponse.class
 app\SistemaGerenciamentoEstoque.class
 controller\NotaFiscalController$ErroResponse.class
 controller\CaixaController$AbrirCaixaRequest.class

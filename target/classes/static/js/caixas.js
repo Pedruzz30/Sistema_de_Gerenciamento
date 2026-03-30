@@ -71,7 +71,13 @@ async function carregarConsolidado() {
 function renderCaixas() {
   const grid = document.getElementById('caixas-grid');
   if (caixas.length === 0) {
-    grid.innerHTML = '<div class="empty" style="padding:40px;text-align:center;color:var(--text-3)">Nenhum caixa registrado. Abra um caixa para começar.</div>';
+    grid.innerHTML = `
+      <div style="padding:48px 20px;text-align:center;grid-column:1/-1">
+        <div style="font-size:40px;margin-bottom:12px">🏧</div>
+        <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum caixa registrado</div>
+        <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Abra um caixa para registrar vendas e movimentações.</div>
+        <button class="btn-primary" onclick="abrirModalAbrirCaixa()">+ Abrir Caixa</button>
+      </div>`;
     return;
   }
 

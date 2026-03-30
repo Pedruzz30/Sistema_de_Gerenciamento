@@ -3,6 +3,7 @@ package controller;
 import model.Fornecedor;
 import model.Produto;
 import model.Usuario;
+import repository.UsuarioRepository;
 import service.EstoqueService;
 import service.FornecedorService;
 import org.springframework.http.HttpStatus;
@@ -18,13 +19,16 @@ public class FornecedorController {
 
     private final FornecedorService fornecedorService;
     private final EstoqueService estoqueService;
+    private final UsuarioRepository usuarioRepository;
     private final Usuario adminSuperior;
 
     public FornecedorController(FornecedorService fornecedorService,
                                 EstoqueService estoqueService,
+                                UsuarioRepository usuarioRepository,
                                 Usuario adminSuperior) {
         this.fornecedorService = fornecedorService;
         this.estoqueService = estoqueService;
+        this.usuarioRepository = usuarioRepository;
         this.adminSuperior = adminSuperior;
     }
 
@@ -61,7 +65,8 @@ public class FornecedorController {
 
     // POST /api/fornecedores
     @PostMapping
-    public ResponseEntity<?> cadastrar(@RequestBody CadastroFornecedorRequest request) {
+    public ResponseEntity<?> cadastrar(@RequestBody CadastroFornecedorRequest request,
+                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.nome() == null || request.nome().isBlank()) {
             return ResponseEntity.badRequest().body(new ErroResponse("Nome é obrigatório."));
         }
@@ -69,14 +74,15 @@ public class FornecedorController {
             return ResponseEntity.badRequest().body(new ErroResponse("CNPJ é obrigatório."));
         }
         try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
             Fornecedor f = fornecedorService.cadastrarFornecedor(
-                    adminSuperior,
+                    ator,
                     request.nome(),
                     request.cnpj(),
                     request.telefone() != null ? request.telefone() : ""
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(FornecedorResponse.from(f));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -84,7 +90,8 @@ public class FornecedorController {
     // POST /api/fornecedores/{id}/vincular-produto
     @PostMapping("/{id}/vincular-produto")
     public ResponseEntity<?> vincularProduto(@PathVariable long id,
-                                              @RequestBody VincularProdutoRequest request) {
+                                              @RequestBody VincularProdutoRequest request,
+                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.produtoId() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("ID do produto inválido."));
         }
@@ -94,32 +101,37 @@ public class FornecedorController {
                     .body(new ErroResponse("Produto não encontrado com id: " + request.produtoId()));
         }
         try {
-            fornecedorService.vincularProduto(adminSuperior, id, produto.get());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            fornecedorService.vincularProduto(ator, id, produto.get());
             Fornecedor f = fornecedorService.buscarPorId(id);
             return ResponseEntity.ok(FornecedorResponse.from(f));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
 
     // PUT /api/fornecedores/{id}/desativar
     @PutMapping("/{id}/desativar")
-    public ResponseEntity<?> desativar(@PathVariable long id) {
+    public ResponseEntity<?> desativar(@PathVariable long id,
+                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            fornecedorService.desativarFornecedor(adminSuperior, id);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            fornecedorService.desativarFornecedor(ator, id);
             return ResponseEntity.ok(new MensagemResponse("Fornecedor desativado com sucesso."));
-        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
 
     // PUT /api/fornecedores/{id}/reativar
     @PutMapping("/{id}/reativar")
-    public ResponseEntity<?> reativar(@PathVariable long id) {
+    public ResponseEntity<?> reativar(@PathVariable long id,
+                                      @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            fornecedorService.reativarFornecedor(adminSuperior, id);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            fornecedorService.reativarFornecedor(ator, id);
             return ResponseEntity.ok(new MensagemResponse("Fornecedor reativado com sucesso."));
-        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }

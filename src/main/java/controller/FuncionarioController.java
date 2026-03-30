@@ -3,6 +3,7 @@ package controller;
 import model.ClasseFuncionario;
 import model.Permissao;
 import model.Usuario;
+import repository.UsuarioRepository;
 import service.CadastroFuncionarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,19 +18,24 @@ import java.util.stream.Collectors;
 public class FuncionarioController {
 
     private final CadastroFuncionarioService funcionarioService;
+    private final UsuarioRepository usuarioRepository;
     private final Usuario adminSuperior;
 
     public FuncionarioController(CadastroFuncionarioService funcionarioService,
+                                 UsuarioRepository usuarioRepository,
                                  Usuario adminSuperior) {
         this.funcionarioService = funcionarioService;
+        this.usuarioRepository = usuarioRepository;
         this.adminSuperior = adminSuperior;
     }
 
     // GET /api/funcionarios
     @GetMapping
-    public ResponseEntity<List<FuncionarioResponse>> listar() {
+    public ResponseEntity<List<FuncionarioResponse>> listar(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
         return ResponseEntity.ok(
-                funcionarioService.listarFuncionarios(adminSuperior).stream()
+                funcionarioService.listarFuncionarios(ator).stream()
                         .map(FuncionarioResponse::from)
                         .toList()
         );
@@ -37,7 +43,8 @@ public class FuncionarioController {
 
     // POST /api/funcionarios
     @PostMapping
-    public ResponseEntity<?> cadastrar(@RequestBody CadastroFuncionarioRequest request) {
+    public ResponseEntity<?> cadastrar(@RequestBody CadastroFuncionarioRequest request,
+                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.nome() == null || request.nome().isBlank()) {
             return ResponseEntity.badRequest().body(new ErroResponse("Nome é obrigatório."));
         }
@@ -62,8 +69,9 @@ public class FuncionarioController {
         }
 
         try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
             Usuario usuario = funcionarioService.cadastrarFuncionario(
-                    adminSuperior,
+                    ator,
                     request.nome(),
                     request.sobrenome(),
                     request.cpf(),
@@ -71,7 +79,7 @@ public class FuncionarioController {
                     classe
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(FuncionarioResponse.from(usuario));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -79,7 +87,8 @@ public class FuncionarioController {
     // PUT /api/funcionarios/{ru}/classe
     @PutMapping("/{ru}/classe")
     public ResponseEntity<?> mudarClasse(@PathVariable long ru,
-                                          @RequestBody MudarClasseRequest request) {
+                                          @RequestBody MudarClasseRequest request,
+                                          @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.nomeClasse() == null || request.nomeClasse().isBlank()) {
             return ResponseEntity.badRequest().body(new ErroResponse("Classe é obrigatória."));
         }
@@ -92,20 +101,23 @@ public class FuncionarioController {
         }
 
         try {
-            Usuario usuario = funcionarioService.mudarClasse(adminSuperior, ru, novaClasse);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario usuario = funcionarioService.mudarClasse(ator, ru, novaClasse);
             return ResponseEntity.ok(FuncionarioResponse.from(usuario));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
 
     // PUT /api/funcionarios/{ru}/desativar
     @PutMapping("/{ru}/desativar")
-    public ResponseEntity<?> desativar(@PathVariable long ru) {
+    public ResponseEntity<?> desativar(@PathVariable long ru,
+                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            funcionarioService.desativarFuncionario(adminSuperior, ru);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            funcionarioService.desativarFuncionario(ator, ru);
             return ResponseEntity.ok(new MensagemResponse("Funcionário desativado com sucesso."));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }

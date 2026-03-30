@@ -4,6 +4,7 @@ import model.CotacaoMensal;
 import model.Produto;
 import model.ResultadoComparacao;
 import model.Usuario;
+import repository.UsuarioRepository;
 import service.CotacaoService;
 import service.EstoqueService;
 import org.springframework.http.HttpStatus;
@@ -21,19 +22,23 @@ public class CotacaoController {
 
     private final CotacaoService cotacaoService;
     private final EstoqueService estoqueService;
+    private final UsuarioRepository usuarioRepository;
     private final Usuario adminSuperior;
 
     public CotacaoController(CotacaoService cotacaoService,
                              EstoqueService estoqueService,
+                             UsuarioRepository usuarioRepository,
                              Usuario adminSuperior) {
         this.cotacaoService = cotacaoService;
         this.estoqueService = estoqueService;
+        this.usuarioRepository = usuarioRepository;
         this.adminSuperior = adminSuperior;
     }
 
     // POST /api/cotacoes — register monthly quote
     @PostMapping
-    public ResponseEntity<?> registrarCotacao(@RequestBody RegistrarCotacaoRequest request) {
+    public ResponseEntity<?> registrarCotacao(@RequestBody RegistrarCotacaoRequest request,
+                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.produtoId() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("ID do produto inválido."));
         }
@@ -61,12 +66,13 @@ public class CotacaoController {
         }
 
         try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
             CotacaoMensal cotacao = cotacaoService.registrarCotacao(
-                    adminSuperior, produtoOpt.get(), mes,
+                    ator, produtoOpt.get(), mes,
                     request.precoUnitario(), request.quantidadeComprada()
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(CotacaoResponse.from(cotacao));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -86,7 +92,6 @@ public class CotacaoController {
     }
 
     // GET /api/cotacoes/produto/{produtoId}/comparar?mes=YYYY-MM
-    // Compare the given month with the previous month. If mes is omitted, uses current month.
     @GetMapping("/produto/{produtoId}/comparar")
     public ResponseEntity<?> comparar(@PathVariable int produtoId,
                                        @RequestParam(required = false) String mes) {

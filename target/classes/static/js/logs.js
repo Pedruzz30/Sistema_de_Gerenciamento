@@ -43,7 +43,18 @@ function renderTabela() {
 
   const tbody = document.getElementById('tabela-logs');
   if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum log encontrado.</td></tr>';
+    if (todosLogs.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="5">
+          <div style="padding:40px;text-align:center">
+            <div style="font-size:40px;margin-bottom:12px">📋</div>
+            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhuma ação registrada</div>
+            <div style="color:var(--text-3);font-size:13px">Os logs de auditoria aparecerão aqui conforme o sistema for utilizado.</div>
+          </div>
+        </td></tr>`;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum log encontrado para a busca aplicada.</td></tr>';
+    }
     return;
   }
 

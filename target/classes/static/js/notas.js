@@ -59,16 +59,27 @@ function renderTabelaNotas(notas) {
   document.getElementById('notas-count').textContent = `${notas.length} nota(s)`;
   const tbody = document.getElementById('tabela-notas');
   if (notas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma nota fiscal registrada.</td></tr>';
+    tbody.innerHTML = `
+      <tr><td colspan="7">
+        <div style="padding:40px;text-align:center">
+          <div style="font-size:40px;margin-bottom:12px">🧾</div>
+          <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhuma nota fiscal registrada</div>
+          <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Crie uma nova nota para registrar compras de fornecedores.</div>
+          <button class="btn-primary" onclick="abrirAba('aba-nova')">+ Nova Nota</button>
+        </div>
+      </td></tr>`;
     return;
   }
 
   const statusBadge = {
     PENDENTE:   'badge-amber',
     CONFIRMADA: 'badge-cyan',
-    PAGA:       'badge-green'
+    PAGA:       'badge-green',
+    CANCELADA:  'badge-gray'
   };
-  const statusLabel = { PENDENTE: 'Pendente', CONFIRMADA: 'Confirmada', PAGA: 'Paga' };
+  const statusLabel = {
+    PENDENTE: 'Pendente', CONFIRMADA: 'Confirmada', PAGA: 'Paga', CANCELADA: 'Cancelada'
+  };
 
   tbody.innerHTML = notas.map(n => {
     const data = new Date(n.dataEmissao).toLocaleString('pt-BR', {
@@ -89,6 +100,9 @@ function renderTabelaNotas(notas) {
             ${n.status === 'CONFIRMADA'
               ? `<button class="btn-acao entrada" onclick="pagarNota(${n.id})">Pagar</button>`
               : ''}
+            ${n.status === 'PENDENTE'
+              ? `<button class="btn-acao saida" onclick="confirmarCancelarNota(${n.id})">Cancelar</button>`
+              : ''}
           </div>
         </td>
       </tr>
@@ -99,25 +113,31 @@ function renderTabelaNotas(notas) {
 // ── Wizard Step 1: Select supplier and open nota ──────────────────────────
 
 async function avancarStep1() {
+  const btn = document.getElementById('btn-step1-avancar');
   const fornecedorId = parseInt(document.getElementById('s1-fornecedor').value);
   if (!fornecedorId) {
     mostrarAlert('alert-s1', 'Selecione um fornecedor ativo.', 'error'); return;
   }
 
-  const resp = await fetch('/api/notas', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fornecedorId })
-  });
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-s1', data.erro || 'Erro ao abrir nota.', 'error'); return;
-  }
+  setLoading(btn, true);
+  try {
+    const resp = await fetch('/api/notas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fornecedorId })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      mostrarAlert('alert-s1', data.erro || 'Erro ao abrir nota.', 'error'); return;
+    }
 
-  notaAtual = data;
-  limparAlert('alert-s1');
-  irParaStep(2);
-  prepararStep2();
+    notaAtual = data;
+    limparAlert('alert-s1');
+    irParaStep(2);
+    prepararStep2();
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 // ── Wizard Step 2: Add items ──────────────────────────────────────────────
@@ -159,6 +179,7 @@ function renderItensStep2() {
 }
 
 async function adicionarItem() {
+  const btn = document.getElementById('btn-adicionar-item');
   const produtoId = parseInt(document.getElementById('s2-produto').value);
   const qtd = parseInt(document.getElementById('s2-qtd').value);
   const preco = parseFloat(document.getElementById('s2-preco').value);
@@ -167,21 +188,26 @@ async function adicionarItem() {
   if (!qtd || qtd <= 0) { mostrarAlert('alert-s2', 'Quantidade deve ser maior que zero.', 'error'); return; }
   if (!preco || preco < 0) { mostrarAlert('alert-s2', 'Informe um preço válido.', 'error'); return; }
 
-  const resp = await fetch(`/api/notas/${notaAtual.id}/itens`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ produtoId, quantidade: qtd, precoUnitario: preco })
-  });
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-s2', data.erro || 'Erro ao adicionar item.', 'error'); return;
+  setLoading(btn, true);
+  try {
+    const resp = await fetch(`/api/notas/${notaAtual.id}/itens`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ produtoId, quantidade: qtd, precoUnitario: preco })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      mostrarAlert('alert-s2', data.erro || 'Erro ao adicionar item.', 'error'); return;
+    }
+    notaAtual = data;
+    limparAlert('alert-s2');
+    document.getElementById('s2-produto').value = '';
+    document.getElementById('s2-qtd').value = '';
+    document.getElementById('s2-preco').value = '';
+    renderItensStep2();
+  } finally {
+    setLoading(btn, false);
   }
-  notaAtual = data;
-  limparAlert('alert-s2');
-  document.getElementById('s2-produto').value = '';
-  document.getElementById('s2-qtd').value = '';
-  document.getElementById('s2-preco').value = '';
-  renderItensStep2();
 }
 
 async function avancarStep2() {
@@ -190,6 +216,33 @@ async function avancarStep2() {
   }
   irParaStep(3);
   renderItensStep3();
+}
+
+// ── Descartar rascunho (BUG 1) ────────────────────────────────────────────
+
+async function descartarRascunho() {
+  if (!notaAtual) { resetWizard(); return; }
+  if (!confirm('Descartar este rascunho? A nota será excluída permanentemente.')) return;
+
+  try {
+    const resp = await fetch(`/api/notas/${notaAtual.id}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok) {
+      showToast(data.erro || 'Erro ao descartar rascunho.', 'error'); return;
+    }
+    showToast('Rascunho descartado.', 'success');
+  } catch {
+    showToast('Erro ao descartar rascunho.', 'error');
+  }
+  resetWizard();
+  await carregarNotas();
+}
+
+function resetWizard() {
+  notaAtual = null;
+  irParaStep(1);
+  document.getElementById('s1-fornecedor').value = '';
+  limparAlert('alert-s1');
 }
 
 // ── Wizard Step 3: Confirm ────────────────────────────────────────────────
@@ -208,15 +261,21 @@ function renderItensStep3() {
 }
 
 async function avancarStep3() {
-  const resp = await fetch(`/api/notas/${notaAtual.id}/confirmar`, { method: 'POST' });
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-s3', data.erro || 'Erro ao confirmar nota.', 'error'); return;
+  const btn = document.getElementById('btn-step3-avancar');
+  setLoading(btn, true);
+  try {
+    const resp = await fetch(`/api/notas/${notaAtual.id}/confirmar`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) {
+      mostrarAlert('alert-s3', data.erro || 'Erro ao confirmar nota.', 'error'); return;
+    }
+    notaAtual = data;
+    limparAlert('alert-s3');
+    irParaStep(4);
+    renderStep4();
+  } finally {
+    setLoading(btn, false);
   }
-  notaAtual = data;
-  limparAlert('alert-s3');
-  irParaStep(4);
-  renderStep4();
 }
 
 // ── Wizard Step 4: Payment ────────────────────────────────────────────────
@@ -239,27 +298,31 @@ function renderStep4() {
 }
 
 async function avancarStep4() {
-  const resp = await fetch(`/api/notas/${notaAtual.id}/pagamento`, { method: 'POST' });
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-s4', data.erro || 'Erro ao registrar pagamento.', 'error'); return;
+  const btn = document.getElementById('btn-step4-avancar');
+  setLoading(btn, true);
+  try {
+    const resp = await fetch(`/api/notas/${notaAtual.id}/pagamento`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) {
+      mostrarAlert('alert-s4', data.erro || 'Erro ao registrar pagamento.', 'error'); return;
+    }
+    notaAtual = data;
+    irParaStep(5); // done state
+  } finally {
+    setLoading(btn, false);
   }
-  notaAtual = data;
-  irParaStep(5); // done state
 }
 
 // ── Wizard navigation ─────────────────────────────────────────────────────
 
 function irParaStep(step) {
   stepAtual = step;
-  // Update step indicators
   for (let i = 1; i <= 4; i++) {
     const el = document.getElementById(`step-${i}`);
     const conn = document.getElementById(`conn-${i}`);
     el.className = 'wizard-step' + (i < step ? ' done' : i === step ? ' active' : '');
     if (conn) conn.className = 'wizard-connector' + (i < step ? ' done' : '');
   }
-  // Show/hide panels
   document.getElementById('painel-step1').style.display = step === 1 ? 'block' : 'none';
   document.getElementById('painel-step2').style.display = step === 2 ? 'block' : 'none';
   document.getElementById('painel-step3').style.display = step === 3 ? 'block' : 'none';
@@ -274,14 +337,31 @@ function iniciarNovaNota() {
   carregarNotas();
 }
 
+// ── Cancel nota from list ─────────────────────────────────────────────────
+
+async function confirmarCancelarNota(id) {
+  if (!confirm('Cancelar esta nota fiscal? Esta ação não pode ser desfeita.')) return;
+  try {
+    const resp = await fetch(`/api/notas/${id}/cancelar`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) {
+      showToast(data.erro || 'Erro ao cancelar nota.', 'error'); return;
+    }
+    showToast('Nota cancelada com sucesso.', 'success');
+    await carregarNotas();
+  } catch {
+    showToast('Erro ao cancelar nota.', 'error');
+  }
+}
+
 // ── Nota detail from list ─────────────────────────────────────────────────
 
 async function verDetalhe(id) {
   try {
     const resp = await fetch(`/api/notas/${id}`);
     const nota = await resp.json();
-    const statusLabel = { PENDENTE: 'Pendente', CONFIRMADA: 'Confirmada', PAGA: 'Paga' };
-    const statusBadge = { PENDENTE: 'badge-amber', CONFIRMADA: 'badge-cyan', PAGA: 'badge-green' };
+    const statusLabel = { PENDENTE: 'Pendente', CONFIRMADA: 'Confirmada', PAGA: 'Paga', CANCELADA: 'Cancelada' };
+    const statusBadge = { PENDENTE: 'badge-amber', CONFIRMADA: 'badge-cyan', PAGA: 'badge-green', CANCELADA: 'badge-gray' };
 
     document.getElementById('modal-detalhe-titulo').textContent = `Nota #${nota.id}`;
     document.getElementById('detalhe-info').innerHTML = `
@@ -304,16 +384,25 @@ async function verDetalhe(id) {
     limparAlert('alert-detalhe');
     abrirModal('modal-detalhe');
   } catch {
-    alert('Erro ao carregar detalhes da nota.');
+    showToast('Erro ao carregar detalhes da nota.', 'error');
   }
 }
 
 async function pagarNota(id) {
-  const resp = await fetch(`/api/notas/${id}/pagamento`, { method: 'POST' });
-  const data = await resp.json();
-  if (!resp.ok) { alert(data.erro || 'Erro ao registrar pagamento.'); return; }
-  await carregarNotas();
-  fecharModal('modal-detalhe');
+  const btn = event && event.target ? event.target : null;
+  setLoading(btn, true);
+  try {
+    const resp = await fetch(`/api/notas/${id}/pagamento`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) {
+      showToast(data.erro || 'Erro ao registrar pagamento.', 'error'); return;
+    }
+    showToast('Pagamento registrado com sucesso.', 'success');
+    await carregarNotas();
+    fecharModal('modal-detalhe');
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────

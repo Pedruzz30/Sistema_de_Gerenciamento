@@ -3,8 +3,10 @@ package controller;
 import model.Caixa;
 import model.FechamentoCaixa;
 import model.MovimentacaoCaixa;
+import model.TipoMovimentacaoCaixa;
 import model.Usuario;
 import repository.CaixaRepository;
+import repository.UsuarioRepository;
 import service.CaixaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,13 +21,16 @@ public class CaixaController {
 
     private final CaixaService caixaService;
     private final CaixaRepository caixaRepository;
+    private final UsuarioRepository usuarioRepository;
     private final Usuario adminSuperior;
 
     public CaixaController(CaixaService caixaService,
                            CaixaRepository caixaRepository,
+                           UsuarioRepository usuarioRepository,
                            Usuario adminSuperior) {
         this.caixaService = caixaService;
         this.caixaRepository = caixaRepository;
+        this.usuarioRepository = usuarioRepository;
         this.adminSuperior = adminSuperior;
     }
 
@@ -36,6 +41,23 @@ public class CaixaController {
                 .map(CaixaResponse::from)
                 .toList();
         return ResponseEntity.ok(lista);
+    }
+
+    // GET /api/caixas/metricas — correct average ticket formula (BUG 2)
+    @GetMapping("/metricas")
+    public ResponseEntity<MetricasResponse> metricas() {
+        List<Caixa> todos = caixaRepository.listarTodos();
+        double totalVendas = todos.stream().mapToDouble(Caixa::calcularTotalVendas).sum();
+        long caixasAbertos = todos.stream()
+                .filter(c -> c.getStatus() == Caixa.Status.ABERTO).count();
+        long totalMovimentacoesVenda = todos.stream()
+                .flatMap(c -> c.getMovimentacoes().stream())
+                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+                .count();
+        double ticketMedio = totalMovimentacoesVenda > 0
+                ? totalVendas / totalMovimentacoesVenda
+                : 0;
+        return ResponseEntity.ok(new MetricasResponse(totalVendas, caixasAbertos, totalMovimentacoesVenda, ticketMedio));
     }
 
     // GET /api/caixas/{numero}
@@ -56,7 +78,6 @@ public class CaixaController {
         if (historico.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        // Returns movements from the most recent caixa for this number
         Caixa maisRecente = historico.stream()
                 .max(Comparator.comparingLong(Caixa::getId))
                 .orElse(historico.get(0));
@@ -69,7 +90,8 @@ public class CaixaController {
 
     // POST /api/caixas/abrir
     @PostMapping("/abrir")
-    public ResponseEntity<?> abrirCaixa(@RequestBody AbrirCaixaRequest request) {
+    public ResponseEntity<?> abrirCaixa(@RequestBody AbrirCaixaRequest request,
+                                        @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.numeroCaixa() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Número do caixa inválido."));
         }
@@ -77,7 +99,8 @@ public class CaixaController {
             return ResponseEntity.badRequest().body(new ErroResponse("Saldo inicial não pode ser negativo."));
         }
         try {
-            Caixa caixa = caixaService.abrirCaixa(adminSuperior, request.numeroCaixa(), request.saldoInicial());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Caixa caixa = caixaService.abrirCaixa(ator, request.numeroCaixa(), request.saldoInicial());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
@@ -86,11 +109,13 @@ public class CaixaController {
 
     // POST /api/caixas/venda
     @PostMapping("/venda")
-    public ResponseEntity<?> registrarVenda(@RequestBody MovimentacaoRequest request) {
+    public ResponseEntity<?> registrarVenda(@RequestBody MovimentacaoRequest request,
+                                            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         ResponseEntity<?> erro = validarMovimentacao(request);
         if (erro != null) return erro;
         try {
-            caixaService.registrarVenda(adminSuperior, request.numeroCaixa(), request.valor(), request.descricao());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            caixaService.registrarVenda(ator, request.numeroCaixa(), request.valor(), request.descricao());
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -100,11 +125,13 @@ public class CaixaController {
 
     // POST /api/caixas/sangria
     @PostMapping("/sangria")
-    public ResponseEntity<?> registrarSangria(@RequestBody MovimentacaoRequest request) {
+    public ResponseEntity<?> registrarSangria(@RequestBody MovimentacaoRequest request,
+                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         ResponseEntity<?> erro = validarMovimentacao(request);
         if (erro != null) return erro;
         try {
-            caixaService.registrarSangria(adminSuperior, request.numeroCaixa(), request.valor(), request.descricao());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            caixaService.registrarSangria(ator, request.numeroCaixa(), request.valor(), request.descricao());
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -114,11 +141,13 @@ public class CaixaController {
 
     // POST /api/caixas/suprimento
     @PostMapping("/suprimento")
-    public ResponseEntity<?> registrarSuprimento(@RequestBody MovimentacaoRequest request) {
+    public ResponseEntity<?> registrarSuprimento(@RequestBody MovimentacaoRequest request,
+                                                 @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         ResponseEntity<?> erro = validarMovimentacao(request);
         if (erro != null) return erro;
         try {
-            caixaService.registrarSuprimento(adminSuperior, request.numeroCaixa(), request.valor(), request.descricao());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            caixaService.registrarSuprimento(ator, request.numeroCaixa(), request.valor(), request.descricao());
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -128,12 +157,14 @@ public class CaixaController {
 
     // POST /api/caixas/encerrar
     @PostMapping("/encerrar")
-    public ResponseEntity<?> encerrarCaixa(@RequestBody EncerrarCaixaRequest request) {
+    public ResponseEntity<?> encerrarCaixa(@RequestBody EncerrarCaixaRequest request,
+                                           @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.numeroCaixa() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Número do caixa inválido."));
         }
         try {
-            FechamentoCaixa fechamento = caixaService.encerrarCaixa(adminSuperior, request.numeroCaixa());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            FechamentoCaixa fechamento = caixaService.encerrarCaixa(ator, request.numeroCaixa());
             return ResponseEntity.ok(FechamentoResponse.from(fechamento));
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
@@ -244,6 +275,13 @@ public class CaixaController {
             );
         }
     }
+
+    public record MetricasResponse(
+            double totalVendas,
+            long caixasAbertos,
+            long totalMovimentacoesVenda,
+            double ticketMedio
+    ) {}
 
     public record ConsolidadoResponse(String data, String resumo) {}
 

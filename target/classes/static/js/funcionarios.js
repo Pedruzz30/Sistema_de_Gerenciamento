@@ -57,7 +57,19 @@ function renderTabela() {
 
   const tbody = document.getElementById('tabela-funcionarios');
   if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum funcionário encontrado.</td></tr>';
+    if (todosFuncionarios.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="6">
+          <div style="padding:40px;text-align:center">
+            <div style="font-size:40px;margin-bottom:12px">👥</div>
+            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum funcionário cadastrado</div>
+            <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Adicione funcionários para gerenciar os acessos ao sistema.</div>
+            <button class="btn-primary" onclick="abrirModalCadastro()">+ Adicionar Funcionário</button>
+          </div>
+        </td></tr>`;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
+    }
     return;
   }
 
@@ -162,7 +174,8 @@ async function desativar(ru) {
   if (!confirm('Desativar este funcionário?')) return;
   const resp = await fetch(`/api/funcionarios/${ru}/desativar`, { method: 'PUT' });
   const data = await resp.json();
-  if (!resp.ok) { alert(data.erro || 'Erro ao desativar.'); return; }
+  if (!resp.ok) { showToast(data.erro || 'Erro ao desativar.', 'error'); return; }
+  showToast('Funcionário desativado.', 'success');
   await carregarFuncionarios();
 }
 

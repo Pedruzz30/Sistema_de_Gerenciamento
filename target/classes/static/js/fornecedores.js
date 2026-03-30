@@ -59,7 +59,19 @@ function renderTabela() {
 
   const tbody = document.getElementById('tabela-fornecedores');
   if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum fornecedor encontrado.</td></tr>';
+    if (todosFornecedores.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="6">
+          <div style="padding:40px;text-align:center">
+            <div style="font-size:40px;margin-bottom:12px">🚚</div>
+            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum fornecedor cadastrado</div>
+            <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Adicione fornecedores para vincular a notas fiscais.</div>
+            <button class="btn-primary" onclick="abrirModalCadastro()">+ Adicionar Fornecedor</button>
+          </div>
+        </td></tr>`;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum fornecedor encontrado para os filtros aplicados.</td></tr>';
+    }
     return;
   }
 
@@ -116,30 +128,36 @@ async function cadastrarFornecedor() {
   if (!nome) { mostrarAlert('alert-cadastro', 'Nome é obrigatório.', 'error'); return; }
   if (!cnpj) { mostrarAlert('alert-cadastro', 'CNPJ é obrigatório.', 'error'); return; }
 
+  const btn = document.querySelector('#modal-cadastro .btn-primary');
+  setLoading(btn, true);
   const resp = await fetch('/api/fornecedores', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nome, cnpj, telefone })
   });
   const data = await resp.json();
+  setLoading(document.querySelector('#modal-cadastro .btn-primary'), false);
   if (!resp.ok) {
     mostrarAlert('alert-cadastro', data.erro || 'Erro ao cadastrar.', 'error'); return;
   }
   fecharModal('modal-cadastro');
+  showToast('Fornecedor cadastrado com sucesso!', 'success');
   await carregarFornecedores();
 }
 
 async function desativar(id) {
   const resp = await fetch(`/api/fornecedores/${id}/desativar`, { method: 'PUT' });
   const data = await resp.json();
-  if (!resp.ok) { alert(data.erro || 'Erro ao desativar.'); return; }
+  if (!resp.ok) { showToast(data.erro || 'Erro ao desativar.', 'error'); return; }
+  showToast('Fornecedor desativado.', 'success');
   await carregarFornecedores();
 }
 
 async function reativar(id) {
   const resp = await fetch(`/api/fornecedores/${id}/reativar`, { method: 'PUT' });
   const data = await resp.json();
-  if (!resp.ok) { alert(data.erro || 'Erro ao reativar.'); return; }
+  if (!resp.ok) { showToast(data.erro || 'Erro ao reativar.', 'error'); return; }
+  showToast('Fornecedor reativado.', 'success');
   await carregarFornecedores();
 }
 

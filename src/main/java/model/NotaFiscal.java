@@ -16,11 +16,12 @@ import java.util.List;
  */
 public class NotaFiscal {
 
-    // Os 3 estados possíveis de uma nota
+    // Os estados possíveis de uma nota
     public enum Status {
         PENDENTE,    // Nota criada, ainda não confirmada
         CONFIRMADA,  // Produtos conferidos e aceitos
-        PAGA         // Pagamento registrado
+        PAGA,        // Pagamento registrado
+        CANCELADA    // Nota cancelada antes da confirmação
     }
 
     private final long id;
@@ -78,6 +79,19 @@ public class NotaFiscal {
             throw new IllegalStateException("Não é possível confirmar uma nota sem itens.");
         }
         this.status = Status.CONFIRMADA;
+    }
+
+    /**
+     * Cancela a nota. Só pode ser chamado quando está PENDENTE.
+     * Notas CONFIRMADAS ou PAGAS não podem ser canceladas.
+     */
+    public void cancelar() {
+        if (status != Status.PENDENTE) {
+            throw new IllegalStateException(
+                    "Apenas notas PENDENTES podem ser canceladas. Status atual: " + status
+            );
+        }
+        this.status = Status.CANCELADA;
     }
 
     /**

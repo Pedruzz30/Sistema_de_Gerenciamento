@@ -6,6 +6,7 @@ import model.NotaFiscal;
 import model.Produto;
 import model.Usuario;
 import repository.NotaFiscalRepository;
+import repository.UsuarioRepository;
 import service.EstoqueService;
 import service.FornecedorService;
 import service.NotaFiscalService;
@@ -24,30 +25,35 @@ public class NotaFiscalController {
     private final NotaFiscalRepository notaFiscalRepository;
     private final FornecedorService fornecedorService;
     private final EstoqueService estoqueService;
+    private final UsuarioRepository usuarioRepository;
     private final Usuario adminSuperior;
 
     public NotaFiscalController(NotaFiscalService notaFiscalService,
                                 NotaFiscalRepository notaFiscalRepository,
                                 FornecedorService fornecedorService,
                                 EstoqueService estoqueService,
+                                UsuarioRepository usuarioRepository,
                                 Usuario adminSuperior) {
         this.notaFiscalService = notaFiscalService;
         this.notaFiscalRepository = notaFiscalRepository;
         this.fornecedorService = fornecedorService;
         this.estoqueService = estoqueService;
+        this.usuarioRepository = usuarioRepository;
         this.adminSuperior = adminSuperior;
     }
 
     // ── GET ───────────────────────────────────────────────────────────────────
 
     // GET /api/notas
+    // By default hides empty drafts (PENDENTE with 0 items).
+    // Pass ?includeEmpty=true to include them.
     @GetMapping
-    public ResponseEntity<List<NotaResponse>> listarTodas() {
-        return ResponseEntity.ok(
-                notaFiscalService.listarTodas().stream()
-                        .map(NotaResponse::from)
-                        .toList()
-        );
+    public ResponseEntity<List<NotaResponse>> listarTodas(
+            @RequestParam(value = "includeEmpty", defaultValue = "false") boolean includeEmpty) {
+        List<NotaFiscal> notas = includeEmpty
+                ? notaFiscalService.listarTodas(true)
+                : notaFiscalService.listarTodas();
+        return ResponseEntity.ok(notas.stream().map(NotaResponse::from).toList());
     }
 
     // GET /api/notas/{id}
@@ -75,15 +81,17 @@ public class NotaFiscalController {
 
     // POST /api/notas
     @PostMapping
-    public ResponseEntity<?> abrirNota(@RequestBody AbrirNotaRequest request) {
+    public ResponseEntity<?> abrirNota(@RequestBody AbrirNotaRequest request,
+                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.fornecedorId() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("ID do fornecedor inválido."));
         }
         try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
             Fornecedor fornecedor = fornecedorService.buscarPorId(request.fornecedorId());
-            NotaFiscal nota = notaFiscalService.abrirNota(adminSuperior, fornecedor);
+            NotaFiscal nota = notaFiscalService.abrirNota(ator, fornecedor);
             return ResponseEntity.status(HttpStatus.CREATED).body(NotaResponse.from(nota));
-        } catch (IllegalArgumentException | SecurityException e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -93,7 +101,8 @@ public class NotaFiscalController {
     // POST /api/notas/{id}/itens
     @PostMapping("/{id}/itens")
     public ResponseEntity<?> adicionarItem(@PathVariable long id,
-                                           @RequestBody AdicionarItemRequest request) {
+                                           @RequestBody AdicionarItemRequest request,
+                                           @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.produtoId() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("ID do produto inválido."));
         }
@@ -117,12 +126,12 @@ public class NotaFiscalController {
         }
 
         try {
-            notaFiscalService.adicionarItem(adminSuperior, notaOpt.get(),
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            notaFiscalService.adicionarItem(ator, notaOpt.get(),
                     produtoOpt.get(), request.quantidade(), request.precoUnitario());
-            // Re-fetch updated nota
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
-        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -131,17 +140,19 @@ public class NotaFiscalController {
 
     // POST /api/notas/{id}/confirmar
     @PostMapping("/{id}/confirmar")
-    public ResponseEntity<?> confirmarNota(@PathVariable long id) {
+    public ResponseEntity<?> confirmarNota(@PathVariable long id,
+                                           @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
         }
         try {
-            notaFiscalService.confirmarNota(adminSuperior, notaOpt.get());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            notaFiscalService.confirmarNota(ator, notaOpt.get());
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
-        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -150,17 +161,62 @@ public class NotaFiscalController {
 
     // POST /api/notas/{id}/pagamento
     @PostMapping("/{id}/pagamento")
-    public ResponseEntity<?> registrarPagamento(@PathVariable long id) {
+    public ResponseEntity<?> registrarPagamento(@PathVariable long id,
+                                                @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
         }
         try {
-            notaFiscalService.registrarPagamento(adminSuperior, notaOpt.get());
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            notaFiscalService.registrarPagamento(ator, notaOpt.get());
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
-        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+        }
+    }
+
+    // ── Descartar rascunho (BUG 1) ────────────────────────────────────────────
+
+    // DELETE /api/notas/{id}
+    // Only allowed when status == PENDENTE and item count == 0
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> descartarRascunho(@PathVariable long id,
+                                               @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
+        if (notaOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+        }
+        try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            notaFiscalService.descartarRascunho(ator, notaOpt.get());
+            return ResponseEntity.ok(new MensagemResponse("Rascunho descartado com sucesso."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+        }
+    }
+
+    // ── Cancelar nota (Improvement 4) ────────────────────────────────────────
+
+    // POST /api/notas/{id}/cancelar
+    // Only PENDENTE invoices can be cancelled
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<?> cancelarNota(@PathVariable long id,
+                                          @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
+        if (notaOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+        }
+        try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            notaFiscalService.cancelarNota(ator, notaOpt.get());
+            NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
+            return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
@@ -209,6 +265,8 @@ public class NotaFiscalController {
             double precoUnitario,
             double subtotal
     ) {}
+
+    public record MensagemResponse(String mensagem) {}
 
     public record ErroResponse(String erro) {}
 }

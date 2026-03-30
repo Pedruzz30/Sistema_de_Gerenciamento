@@ -14,4 +14,6 @@ public interface NotaFiscalRepository {
     List<NotaFiscal> buscarPorFornecedor(long fornecedorId);
 
     List<NotaFiscal> listarTodos();
+
+    void deletar(long id);
 }
