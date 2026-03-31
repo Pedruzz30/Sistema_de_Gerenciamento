@@ -118,6 +118,17 @@ public class NotaFiscalService {
                     TipoMovimentacao.ENTRADA,
                     usuarioLogado
             );
+
+            // Garante trilha de auditoria explícita para cada entrada de estoque
+            // originada pela confirmação da nota fiscal.
+            logRepository.salvar(new LogAcao(
+                    0,
+                    usuarioLogado.getRu(),
+                    "MOVIMENTACAO_ESTOQUE",
+                    "Entrada por nota #" + nota.getId() + ": produto '" +
+                            item.getProduto().getNome() + "' (ID: " + item.getProduto().getId() +
+                            "), quantidade: " + item.getQuantidade()
+            ));
         }
 
         nota.confirmar();
