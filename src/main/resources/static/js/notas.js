@@ -120,16 +120,26 @@ async function avancarStep1() {
   }
 
   setLoading(btn, true);
-  try {
-    const resp = await fetch('/api/notas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fornecedorId })
-    });
-    const data = await resp.json();
-    if (!resp.ok) {
-      mostrarAlert('alert-s1', data.erro || 'Erro ao abrir nota.', 'error'); return;
+    try {
+      const resp = await fetch('/api/notas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fornecedorId })
+      });
+      if (!resp.ok) {
+        const err = await safeReadErrorMessage(resp, 'Erro ao abrir nota.');
+        mostrarAlert('alert-s1', err, 'error'); return;
+      }
+      const data = await resp.json();
+
+      notaAtual = data;
+      limparAlert('alert-s1');
+      irParaStep(2);
+      prepararStep2();
+    } finally {
+      setLoading(btn, false);
     }
+  }
 
     notaAtual = data;
     limparAlert('alert-s1');
@@ -189,26 +199,27 @@ async function adicionarItem() {
   if (!preco || preco < 0) { mostrarAlert('alert-s2', 'Informe um preço válido.', 'error'); return; }
 
   setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${notaAtual.id}/itens`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ produtoId, quantidade: qtd, precoUnitario: preco })
-    });
-    const data = await resp.json();
-    if (!resp.ok) {
-      mostrarAlert('alert-s2', data.erro || 'Erro ao adicionar item.', 'error'); return;
+    try {
+      const resp = await fetch(`/api/notas/${notaAtual.id}/itens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ produtoId, quantidade: qtd, precoUnitario: preco })
+      });
+      if (!resp.ok) {
+        const err = await safeReadErrorMessage(resp, 'Erro ao adicionar item.');
+        mostrarAlert('alert-s2', err, 'error'); return;
+      }
+      const data = await resp.json();
+      notaAtual = data;
+      limparAlert('alert-s2');
+      document.getElementById('s2-produto').value = '';
+      document.getElementById('s2-qtd').value = '';
+      document.getElementById('s2-preco').value = '';
+      renderItensStep2();
+    } finally {
+      setLoading(btn, false);
     }
-    notaAtual = data;
-    limparAlert('alert-s2');
-    document.getElementById('s2-produto').value = '';
-    document.getElementById('s2-qtd').value = '';
-    document.getElementById('s2-preco').value = '';
-    renderItensStep2();
-  } finally {
-    setLoading(btn, false);
   }
-}
 
 async function avancarStep2() {
   if (!notaAtual || notaAtual.itens.length === 0) {
@@ -224,12 +235,12 @@ async function descartarRascunho() {
   if (!notaAtual) { resetWizard(); return; }
   if (!confirm('Descartar este rascunho? A nota será excluída permanentemente.')) return;
 
-  try {
-    const resp = await fetch(`/api/notas/${notaAtual.id}`, { method: 'DELETE' });
-    const data = await resp.json();
-    if (!resp.ok) {
-      showToast(data.erro || 'Erro ao descartar rascunho.', 'error'); return;
-    }
+   try {
+      const resp = await fetch(`/api/notas/${notaAtual.id}`, { method: 'DELETE' });
+      if (!resp.ok) {
+        const err = await safeReadErrorMessage(resp, 'Erro ao descartar rascunho.');
+        showToast(err, 'error'); return;
+      }
     showToast('Rascunho descartado.', 'success');
   } catch {
     showToast('Erro ao descartar rascunho.', 'error');
@@ -265,10 +276,11 @@ async function avancarStep3() {
   setLoading(btn, true);
   try {
     const resp = await fetch(`/api/notas/${notaAtual.id}/confirmar`, { method: 'POST' });
-    const data = await resp.json();
     if (!resp.ok) {
-      mostrarAlert('alert-s3', data.erro || 'Erro ao confirmar nota.', 'error'); return;
+      const err = await safeReadErrorMessage(resp, 'Erro ao confirmar nota.');
+      mostrarAlert('alert-s3', err, 'error'); return;
     }
+    const data = await resp.json();
     notaAtual = data;
     limparAlert('alert-s3');
     irParaStep(4);
@@ -302,10 +314,11 @@ async function avancarStep4() {
   setLoading(btn, true);
   try {
     const resp = await fetch(`/api/notas/${notaAtual.id}/pagamento`, { method: 'POST' });
-    const data = await resp.json();
     if (!resp.ok) {
-      mostrarAlert('alert-s4', data.erro || 'Erro ao registrar pagamento.', 'error'); return;
+      const err = await safeReadErrorMessage(resp, 'Erro ao registrar pagamento.');
+      mostrarAlert('alert-s4', err, 'error'); return;
     }
+    const data = await resp.json();
     notaAtual = data;
     irParaStep(5); // done state
   } finally {
@@ -343,9 +356,9 @@ async function confirmarCancelarNota(id) {
   if (!confirm('Cancelar esta nota fiscal? Esta ação não pode ser desfeita.')) return;
   try {
     const resp = await fetch(`/api/notas/${id}/cancelar`, { method: 'POST' });
-    const data = await resp.json();
     if (!resp.ok) {
-      showToast(data.erro || 'Erro ao cancelar nota.', 'error'); return;
+      const err = await safeReadErrorMessage(resp, 'Erro ao cancelar nota.');
+      showToast(err, 'error'); return;
     }
     showToast('Nota cancelada com sucesso.', 'success');
     await carregarNotas();
@@ -393,9 +406,9 @@ async function pagarNota(id) {
   setLoading(btn, true);
   try {
     const resp = await fetch(`/api/notas/${id}/pagamento`, { method: 'POST' });
-    const data = await resp.json();
     if (!resp.ok) {
-      showToast(data.erro || 'Erro ao registrar pagamento.', 'error'); return;
+      const err = await safeReadErrorMessage(resp, 'Erro ao registrar pagamento.');
+      showToast(err, 'error'); return;
     }
     showToast('Pagamento registrado com sucesso.', 'success');
     await carregarNotas();

@@ -166,13 +166,14 @@ async function confirmarAbrirCaixa() {
   }
 
   const resp = await abrirCaixa(numero, saldo);
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-abrir', data.erro || 'Erro ao abrir caixa.', 'error'); return;
+    if (!resp.ok) {
+      const err = await safeReadErrorMessage(resp, 'Erro ao abrir caixa.');
+      mostrarAlert('alert-abrir', err, 'error'); return;
+    }
+    fecharModal('modal-abrir');
+    await carregarCaixas();
   }
-  fecharModal('modal-abrir');
-  await carregarCaixas();
-}
+
 
 function abrirModalMov(tipo, numero, saldoAtual) {
   tipoMovAtual = tipo;
@@ -195,14 +196,14 @@ async function confirmarMovimentacao() {
     mostrarAlert('alert-mov', 'Informe um valor maior que zero.', 'error'); return;
   }
 
-  const resp = await registrarMovimentacao(tipoMovAtual, numeroCaixaAtual, valor, descricao);
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-mov', data.erro || 'Erro ao registrar movimentação.', 'error'); return;
+   const resp = await registrarMovimentacao(tipoMovAtual, numeroCaixaAtual, valor, descricao);
+    if (!resp.ok) {
+      const err = await safeReadErrorMessage(resp, 'Erro ao registrar movimentação.');
+      mostrarAlert('alert-mov', err, 'error'); return;
+    }
+    fecharModal('modal-mov');
+    await carregarCaixas();
   }
-  fecharModal('modal-mov');
-  await carregarCaixas();
-}
 
 function abrirModalEncerrar(numero) {
   numeroCaixaEncerrar = numero;
@@ -216,12 +217,14 @@ async function confirmarEncerrar() {
   fecharModal('modal-encerrar');
 
   if (!resp.ok) {
-    mostrarFechamento(null, data.erro);
-  } else {
-    mostrarFechamento(data);
+      const err = await safeReadErrorMessage(resp, 'Erro ao encerrar caixa.');
+      mostrarFechamento(null, err);
+    } else {
+      const data = await resp.json();
+      mostrarFechamento(data);
+    }
+    await carregarCaixas();
   }
-  await carregarCaixas();
-}
 
 async function abrirModalMovsLista(numero) {
   document.getElementById('modal-movs-titulo').textContent = `Movimentações — Caixa ${numero}`;

@@ -166,17 +166,17 @@ async function registrarCotacao() {
   if (!qtd || qtd <= 0)    { mostrarAlert('alert-cotacao', 'Quantidade deve ser maior que zero.', 'error'); return; }
 
   const resp = await fetch('/api/cotacoes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ produtoId, mes, precoUnitario: preco, quantidadeComprada: qtd })
-  });
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-cotacao', data.erro || 'Erro ao registrar.', 'error'); return;
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ produtoId, mes, precoUnitario: preco, quantidadeComprada: qtd })
+    });
+    if (!resp.ok) {
+      const err = await safeReadErrorMessage(resp, 'Erro ao registrar.');
+      mostrarAlert('alert-cotacao', err, 'error'); return;
+    }
+    fecharModal('modal-cotacao');
+    mostrarAlert('alert-cotacao', '', '');
   }
-  fecharModal('modal-cotacao');
-  mostrarAlert('alert-cotacao', '', '');
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
