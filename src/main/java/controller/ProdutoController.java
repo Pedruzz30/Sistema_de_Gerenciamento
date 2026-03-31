@@ -4,9 +4,13 @@ import model.NivelEstoque;
 import model.Pedido;
 import model.Produto;
 import model.TipoMovimentacao;
+import model.LogAcao;
+import model.Usuario;
 import service.EstoqueService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import repository.LogRepository;
+import repository.UsuarioRepository;
 
 import java.util.Comparator;
 import java.util.List;
@@ -17,11 +21,19 @@ import java.util.Optional;
 public class ProdutoController {
 
     private final EstoqueService estoqueService;
+    private final UsuarioRepository usuarioRepository;
+    private final LogRepository logRepository;
+    private final Usuario adminSuperior;
 
-    public ProdutoController(EstoqueService estoqueService) {
+    public ProdutoController(EstoqueService estoqueService,
+                             UsuarioRepository usuarioRepository,
+                             LogRepository logRepository,
+                             Usuario adminSuperior) {
         this.estoqueService = estoqueService;
+        this.usuarioRepository = usuarioRepository;
+        this.logRepository = logRepository;
+        this.adminSuperior = adminSuperior;
     }
-
     // GET /api/produtos
     @GetMapping("/produtos")
     public ResponseEntity<List<ProdutoResponse>> listarProdutos() {
@@ -44,14 +56,22 @@ public class ProdutoController {
 
     // POST /api/produtos
     @PostMapping("/produtos")
-    public ResponseEntity<?> cadastrarProduto(@RequestBody CadastroProdutoRequest request) {
+    public ResponseEntity<?> cadastrarProduto(@RequestBody CadastroProdutoRequest request,
+                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
             Produto produto = estoqueService.cadastrarProduto(
                     request.nome(),
                     request.quantidadeInicial(),
                     request.quantidadeMinima(),
                     request.precoUnitario()
             );
+            logRepository.salvar(new LogAcao(
+                    0,
+                    ator.getRu(),
+                    "PRODUTO_CADASTRADO",
+                    "Produto cadastrado: " + produto.getNome() + " (ID: " + produto.getId() + ")"
+            ));
             return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
@@ -60,7 +80,8 @@ public class ProdutoController {
 
     // POST /api/movimentacoes
     @PostMapping("/movimentacoes")
-    public ResponseEntity<?> registrarMovimentacao(@RequestBody MovimentacaoRequest request) {
+    public ResponseEntity<?> registrarMovimentacao(@RequestBody MovimentacaoRequest request,
+                                                   @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         TipoMovimentacao tipo;
         try {
             tipo = TipoMovimentacao.valueOf(request.tipo().toUpperCase());
@@ -70,12 +91,20 @@ public class ProdutoController {
         }
 
         try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
             Pedido pedido = estoqueService.registrarMovimentacao(
                     request.idProduto(),
                     request.quantidade(),
                     tipo,
-                    null
+                    ator
             );
+            logRepository.salvar(new LogAcao(
+                    0,
+                    ator.getRu(),
+                    "MOVIMENTACAO_ESTOQUE",
+                    "Movimentação " + tipo.name() + " registrada para produto '" +
+                            pedido.getProduto().getNome() + "' (" + request.quantidade() + " un.)"
+            ));
             Produto p = pedido.getProduto();
             return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)));
         } catch (IllegalArgumentException e) {
