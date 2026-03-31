@@ -147,6 +147,33 @@ function setLoading(btn, loading) {
   }
 }
 
+// ── Safe error parsing ───────────────────────────────────────
+// Reads API error payloads defensively:
+// - prefers JSON { erro | mensagem | message } when available
+// - falls back to text body
+// - always returns a non-empty fallback string
+async function safeReadErrorMessage(response, fallbackMessage) {
+  var fallback = fallbackMessage || ('HTTP ' + (response ? response.status : 'erro'));
+  if (!response) return fallback;
+
+  try {
+    var contentType = (response.headers && response.headers.get('Content-Type')) || '';
+    if (contentType.toLowerCase().includes('application/json')) {
+      var json = await response.json();
+      if (json && typeof json === 'object') {
+        return json.erro || json.mensagem || json.message || fallback;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    var text = await response.text();
+    if (text && text.trim()) return text.trim();
+  } catch (e) {}
+
+  return fallback;
+}
+
 // ── Page detection ────────────────────────────────────────────
 function paginaAtual() {
   const path = window.location.pathname;
