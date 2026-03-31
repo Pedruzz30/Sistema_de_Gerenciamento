@@ -98,6 +98,19 @@ public class CaixaService {
         );
         caixa.registrarMovimentacao(mov);
         caixaRepository.salvar(caixa);
+
+        logRepository.salvar(new LogAcao(
+                0,
+                operador.getRu(),
+                "MOVIMENTACAO_CAIXA",
+                String.format(
+                        "Caixa %d: %s de R$%.2f (%s)",
+                        numeroCaixa,
+                        tipo.name(),
+                        valor,
+                        (descricao == null || descricao.isBlank()) ? "sem descrição" : descricao
+                )
+        ));
     }
 
     // ── Encerramento ───────────────────────────────────────────

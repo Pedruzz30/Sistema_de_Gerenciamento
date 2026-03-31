@@ -46,8 +46,6 @@ async function carregarDados() {
 
 document.addEventListener('DOMContentLoaded', function () {
   renderHeader();
-  renderSidebar();
-  renderUserCard();
   renderPermissionSections();
   carregarDados();
 });

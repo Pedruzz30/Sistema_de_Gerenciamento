@@ -9,14 +9,34 @@ if (!usuario) window.location.href = '/login.html';
 // Controllers fall back to adminSuperior when the header is absent.
 (function () {
   const _fetch = window.fetch.bind(window);
-  window.fetch = function (url, options) {
-    options = options || {};
-    if (usuario && typeof url === 'string' && url.startsWith('/api/')) {
-      const headers = new Headers(options.headers || {});
+  window.fetch = function (input, init) {
+    const isRequestObject = input instanceof Request;
+    const requestUrl = isRequestObject ? input.url : String(input || '');
+    const isApiCall = requestUrl.startsWith('/api/')
+      || requestUrl.includes('/api/');
+
+    if (usuario && isApiCall) {
+      const headers = new Headers(
+        isRequestObject ? input.headers : (init && init.headers ? init.headers : {})
+      );
+
+      // If caller passed fetch(Request, init.headers), preserve those headers too.
+      if (isRequestObject && init && init.headers) {
+        new Headers(init.headers).forEach(function (value, key) {
+          headers.set(key, value);
+        });
+      }
+
       headers.set('X-User-RU', String(usuario.ru));
-      options = Object.assign({}, options, { headers });
+
+      if (isRequestObject) {
+        const requestComCabecalho = new Request(input, Object.assign({}, init || {}, { headers }));
+        return _fetch(requestComCabecalho);
+      }
+
+      init = Object.assign({}, init || {}, { headers });
     }
-    return _fetch(url, options);
+    return _fetch(input, init);
   };
 })();
 

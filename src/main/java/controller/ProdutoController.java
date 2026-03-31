@@ -4,13 +4,13 @@ import model.NivelEstoque;
 import model.Pedido;
 import model.Produto;
 import model.TipoMovimentacao;
-import model.LogAcao;
 import model.Usuario;
+import model.LogAcao;
+import repository.LogRepository;
+import repository.UsuarioRepository;
 import service.EstoqueService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import repository.LogRepository;
-import repository.UsuarioRepository;
 
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +34,7 @@ public class ProdutoController {
         this.logRepository = logRepository;
         this.adminSuperior = adminSuperior;
     }
+
     // GET /api/produtos
     @GetMapping("/produtos")
     public ResponseEntity<List<ProdutoResponse>> listarProdutos() {
@@ -66,12 +67,14 @@ public class ProdutoController {
                     request.quantidadeMinima(),
                     request.precoUnitario()
             );
+
             logRepository.salvar(new LogAcao(
                     0,
                     ator.getRu(),
                     "PRODUTO_CADASTRADO",
                     "Produto cadastrado: " + produto.getNome() + " (ID: " + produto.getId() + ")"
             ));
+
             return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
@@ -98,14 +101,16 @@ public class ProdutoController {
                     tipo,
                     ator
             );
+            Produto p = pedido.getProduto();
+
             logRepository.salvar(new LogAcao(
                     0,
                     ator.getRu(),
                     "MOVIMENTACAO_ESTOQUE",
-                    "Movimentação " + tipo.name() + " registrada para produto '" +
-                            pedido.getProduto().getNome() + "' (" + request.quantidade() + " un.)"
+                    "Movimentação " + tipo.name() + " no produto '" + p.getNome() +
+                            "' (ID: " + p.getId() + "), quantidade: " + request.quantidade()
             ));
-            Produto p = pedido.getProduto();
+
             return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
