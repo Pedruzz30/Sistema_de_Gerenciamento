@@ -1,54 +1,3 @@
-// ── dashboard.js ──────────────────────────────────────────────
-
-const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
-
-if (!usuario) {
-  window.location.href = '/login.html';
-}
-
-const PERMISSOES = {
-  VER_ESTOQUE:           'VER_ESTOQUE',
-  EDITAR_ESTOQUE:        'EDITAR_ESTOQUE',
-  VER_COMPRAS:           'VER_COMPRAS',
-  VER_VENDAS:            'VER_VENDAS',
-  VER_FINANCAS:          'VER_FINANCAS',
-  GERENCIAR_FUNCIONARIOS:'GERENCIAR_FUNCIONARIOS',
-  VER_LOGS:              'VER_LOGS',
-};
-
-const PERFIL_PERMISSOES = {
-  SUPERIOR: Object.values(PERMISSOES),
-  GERENTE_ESTOQUE: [
-    PERMISSOES.VER_ESTOQUE,
-    PERMISSOES.EDITAR_ESTOQUE,
-    PERMISSOES.VER_COMPRAS,
-    PERMISSOES.VER_FINANCAS,
-    PERMISSOES.GERENCIAR_FUNCIONARIOS,
-    PERMISSOES.VER_LOGS,
-  ],
-  ESTOQUISTA: [
-    PERMISSOES.VER_ESTOQUE,
-    PERMISSOES.EDITAR_ESTOQUE,
-  ],
-  CAIXA: [
-    PERMISSOES.VER_VENDAS,
-    PERMISSOES.VER_ESTOQUE,
-  ],
-};
-
-function getPermissoes() {
-    if (Array.isArray(usuario.permissoes) && usuario.permissoes.length > 0) {
-        return usuario.permissoes;
-      }
-  if (usuario.perfil === 'ADMIN') return PERFIL_PERMISSOES.SUPERIOR;
-  const classe = usuario.nomeClasse || '';
-  return PERFIL_PERMISSOES[classe] || PERFIL_PERMISSOES.ESTOQUISTA;
-}
-
-function temPermissao(perm) {
-  return getPermissoes().includes(perm);
-}
-
 // ── Inicialização ──────────────────────────────────────────
 async function carregarDados() {
   let produtos = [];
@@ -113,48 +62,6 @@ function renderHeader() {
     new Date().toLocaleDateString('pt-BR', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
-}
-
-// ── Sidebar ────────────────────────────────────────────────
-function renderSidebar() {
-  const nav = document.getElementById('nav-items');
-
-  const itens = [
-    { icon: '⊞',  label: 'Dashboard',     perm: null,                        id: 'dashboard'    },
-    { icon: '📦', label: 'Estoque',        perm: PERMISSOES.VER_ESTOQUE,      id: 'estoque'      },
-    { icon: '🚚', label: 'Fornecedores',   perm: PERMISSOES.VER_COMPRAS,      id: 'fornecedores' },
-    { icon: '🧾', label: 'Notas Fiscais',  perm: PERMISSOES.VER_COMPRAS,      id: 'notas'        },
-    { icon: '💰', label: 'Caixas',         perm: PERMISSOES.VER_VENDAS,       id: 'caixas'       },
-    { icon: '📈', label: 'Cotações',       perm: PERMISSOES.VER_FINANCAS,     id: 'cotacoes'     },
-    { icon: '👥', label: 'Funcionários',   perm: PERMISSOES.GERENCIAR_FUNCIONARIOS, id: 'funcionarios' },
-    { icon: '📋', label: 'Logs',           perm: PERMISSOES.VER_LOGS,         id: 'logs'         },
-  ];
-
-  nav.innerHTML = itens
-    .filter(function (item) { return !item.perm || temPermissao(item.perm); })
-    .map(function (item, i) {
-      return '<button class="nav-item ' + (i === 0 ? 'active' : '') + '" onclick="navegarPara(\'' + item.id + '\')">' +
-             '<span class="nav-icon">' + item.icon + '</span>' + item.label + '</button>';
-    }).join('');
-}
-
-function navegarPara(id) {
-    if (id === 'dashboard') { window.location.href = '/dashboard.html'; return; }
-    if (id === 'estoque')   { window.location.href = '/estoque'; return; }
-    window.location.href = '/' + id + '.html';
-}
-
-// ── User card ──────────────────────────────────────────────
-function renderUserCard() {
-  var initiais = (usuario.nome[0] + usuario.sobrenome[0]).toUpperCase();
-  document.getElementById('user-avatar').textContent = initiais;
-  document.getElementById('user-name').textContent   = usuario.nome + ' ' + usuario.sobrenome;
-  document.getElementById('user-role').textContent   = usuario.perfil === 'ADMIN' ? 'Superior' : 'Operador';
-}
-
-function logout() {
-  sessionStorage.removeItem('usuario');
-  window.location.href = '/login.html';
 }
 
 // ── Summary cards (Improvement 5: clickable cards) ────────
