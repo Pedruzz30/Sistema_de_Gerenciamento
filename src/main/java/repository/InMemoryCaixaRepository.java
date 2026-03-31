@@ -14,12 +14,13 @@ public class InMemoryCaixaRepository implements CaixaRepository {
     private final List<Caixa> caixas = new ArrayList<>();
     private final AtomicLong sequenceId = new AtomicLong(1);
 
+    @Override
     public long proximoId() {
         return sequenceId.getAndIncrement();
     }
 
     @Override
-    public Caixa salvar(Caixa caixa) {
+    public synchronized Caixa salvar(Caixa caixa) {
         if (caixa == null) {
             throw new IllegalArgumentException("Caixa não pode ser nulo.");
         }
@@ -29,14 +30,14 @@ public class InMemoryCaixaRepository implements CaixaRepository {
     }
 
     @Override
-    public Optional<Caixa> buscarPorId(long id) {
+    public synchronized Optional<Caixa> buscarPorId(long id) {
         return caixas.stream()
                 .filter(c -> c.getId() == id)
                 .findFirst();
     }
 
     @Override
-    public Optional<Caixa> buscarAbertoporNumero(int numeroCaixa) {
+    public synchronized Optional<Caixa> buscarAbertoporNumero(int numeroCaixa) {
         return caixas.stream()
                 .filter(c -> c.getNumeroCaixa() == numeroCaixa)
                 .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
@@ -44,22 +45,23 @@ public class InMemoryCaixaRepository implements CaixaRepository {
     }
 
     @Override
-    public List<Caixa> buscarHistoricoPorNumero(int numeroCaixa) {
+    public synchronized List<Caixa> buscarHistoricoPorNumero(int numeroCaixa) {
         return caixas.stream()
                 .filter(c -> c.getNumeroCaixa() == numeroCaixa)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Caixa> buscarEncerradosPorData(LocalDate data) {
+    public synchronized List<Caixa> buscarEncerradosPorData(LocalDate data) {
         return caixas.stream()
                 .filter(c -> c.getStatus() == Caixa.Status.ENCERRADO)
-                .filter(c -> c.getDataEncerramento().toLocalDate().equals(data))
+                .filter(c -> c.getDataEncerramento() != null
+                        && c.getDataEncerramento().toLocalDate().equals(data))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Caixa> listarTodos() {
+    public synchronized List<Caixa> listarTodos() {
         return new ArrayList<>(caixas);
     }
 }

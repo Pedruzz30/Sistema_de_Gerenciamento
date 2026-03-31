@@ -13,7 +13,7 @@ public class InMemoryProdutoRepository implements ProdutoRepository {
     private final AtomicInteger sequenceId = new AtomicInteger(1);
 
     @Override
-    public Produto salvar(Produto produto) {
+    public synchronized Produto salvar(Produto produto) {
         if (produto == null) {
             throw new IllegalArgumentException("Produto não pode ser nulo.");
         }
@@ -31,26 +31,25 @@ public class InMemoryProdutoRepository implements ProdutoRepository {
             sequenceId.updateAndGet(atual -> Math.max(atual, produto.getId() + 1));
         }
 
-        Optional<Produto> existente = buscarPorId(persistido.getId());
-        existente.ifPresent(produtos::remove);
+        produtos.removeIf(p -> p.getId() == persistido.getId());
         produtos.add(persistido);
         return persistido;
     }
 
     @Override
-    public Optional<Produto> buscarPorId(int id) {
+    public synchronized Optional<Produto> buscarPorId(int id) {
         return produtos.stream().filter(p -> p.getId() == id).findFirst();
     }
 
     @Override
-    public Optional<Produto> buscarPorNome(String nome) {
+    public synchronized Optional<Produto> buscarPorNome(String nome) {
         return produtos.stream()
                 .filter(p -> p.getNome().equalsIgnoreCase(nome))
                 .findFirst();
     }
 
     @Override
-    public List<Produto> listarTodos() {
+    public synchronized List<Produto> listarTodos() {
         return new ArrayList<>(produtos);
     }
 }

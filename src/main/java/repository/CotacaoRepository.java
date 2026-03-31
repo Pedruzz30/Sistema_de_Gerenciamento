@@ -8,6 +8,9 @@ import java.util.Optional;
 
 public interface CotacaoRepository {
 
+    /** Returns the next available ID without consuming it from the sequence. */
+    long proximoId();
+
     CotacaoMensal salvar(CotacaoMensal cotacao);
 
     // Busca a cotação de um produto num mês específico

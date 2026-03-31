@@ -8,11 +8,11 @@ import model.Permissao;
 import model.TipoMovimentacaoCaixa;
 import model.Usuario;
 import repository.CaixaRepository;
-import repository.InMemoryCaixaRepository;
 import repository.LogRepository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -29,7 +29,7 @@ public class CaixaService {
 
     private final CaixaRepository caixaRepository;
     private final LogRepository logRepository;
-    private long proximoIdMovimentacao = 1;
+    private final AtomicLong proximoIdMovimentacao = new AtomicLong(1);
 
     public CaixaService(CaixaRepository caixaRepository,
                         LogRepository logRepository) {
@@ -50,7 +50,7 @@ public class CaixaService {
             );
         });
 
-        long id = ((InMemoryCaixaRepository) caixaRepository).proximoId();
+        long id = caixaRepository.proximoId();
         Caixa caixa = new Caixa(id, numeroCaixa);
         caixa.abrir(operador, saldoInicial);
         caixaRepository.salvar(caixa);
@@ -94,7 +94,7 @@ public class CaixaService {
         Caixa caixa = buscarCaixaAbertoOuLancar(numeroCaixa);
 
         MovimentacaoCaixa mov = new MovimentacaoCaixa(
-                proximoIdMovimentacao++, tipo, valor, descricao, operador
+                proximoIdMovimentacao.getAndIncrement(), tipo, valor, descricao, operador
         );
         caixa.registrarMovimentacao(mov);
         caixaRepository.salvar(caixa);

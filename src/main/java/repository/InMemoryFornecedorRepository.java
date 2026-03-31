@@ -14,7 +14,7 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     private final AtomicLong sequenceId = new AtomicLong(1);
 
     @Override
-    public Fornecedor salvar(Fornecedor fornecedor) {
+    public synchronized Fornecedor salvar(Fornecedor fornecedor) {
         if (fornecedor == null) {
             throw new IllegalArgumentException("Fornecedor não pode ser nulo.");
         }
@@ -34,14 +34,14 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     }
 
     @Override
-    public Optional<Fornecedor> buscarPorId(long id) {
+    public synchronized Optional<Fornecedor> buscarPorId(long id) {
         return fornecedores.stream()
                 .filter(f -> f.getId() == id)
                 .findFirst();
     }
 
     @Override
-    public Optional<Fornecedor> buscarPorCnpj(String cnpj) {
+    public synchronized Optional<Fornecedor> buscarPorCnpj(String cnpj) {
         if (cnpj == null) return Optional.empty();
         return fornecedores.stream()
                 .filter(f -> f.getCnpj().equals(cnpj.trim()))
@@ -49,14 +49,14 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     }
 
     @Override
-    public List<Fornecedor> listarAtivos() {
+    public synchronized List<Fornecedor> listarAtivos() {
         return fornecedores.stream()
                 .filter(Fornecedor::isAtivo)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Fornecedor> listarTodos() {
+    public synchronized List<Fornecedor> listarTodos() {
         return new ArrayList<>(fornecedores);
     }
 }

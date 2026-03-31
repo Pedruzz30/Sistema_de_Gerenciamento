@@ -1,7 +1,11 @@
 package controller;
 
 import model.LogAcao;
+import model.Permissao;
+import model.Usuario;
 import repository.LogRepository;
+import repository.UsuarioRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,14 +17,26 @@ import java.util.List;
 public class LogController {
 
     private final LogRepository logRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final Usuario adminSuperior;
 
-    public LogController(LogRepository logRepository) {
+    public LogController(LogRepository logRepository,
+                         UsuarioRepository usuarioRepository,
+                         Usuario adminSuperior) {
         this.logRepository = logRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.adminSuperior = adminSuperior;
     }
 
-    // GET /api/logs — returns all logs, latest first
+    // GET /api/logs — returns all logs, latest first (requires VER_LOGS)
     @GetMapping
-    public ResponseEntity<List<LogResponse>> listarLogs() {
+    public ResponseEntity<?> listarLogs(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(Permissao.VER_LOGS)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErroResponse("Você não tem permissão para visualizar os logs."));
+        }
         List<LogResponse> logs = logRepository.listarTodos().stream()
                 .sorted(Comparator.comparing(LogAcao::getDataHora).reversed())
                 .map(LogResponse::from)
@@ -47,4 +63,6 @@ public class LogController {
             );
         }
     }
+
+    public record ErroResponse(String erro) {}
 }

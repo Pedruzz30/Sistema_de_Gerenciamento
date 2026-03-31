@@ -13,7 +13,7 @@ public class InMemoryPedidoRepository implements PedidoRepository {
     private final AtomicInteger sequenceId = new AtomicInteger(1);
 
     @Override
-    public Pedido salvar(Pedido pedido) {
+    public synchronized Pedido salvar(Pedido pedido) {
         if (pedido == null) {
             throw new IllegalArgumentException("Pedido não pode ser nulo.");
         }
@@ -31,19 +31,19 @@ public class InMemoryPedidoRepository implements PedidoRepository {
             sequenceId.updateAndGet(atual -> Math.max(atual, pedido.getId() + 1));
         }
 
-        Optional<Pedido> existente = buscarPorId(persistido.getId());
-        existente.ifPresent(pedidos::remove);
+        final Pedido p = persistido;
+        pedidos.removeIf(existing -> existing.getId() == p.getId());
         pedidos.add(persistido);
         return persistido;
     }
 
     @Override
-    public Optional<Pedido> buscarPorId(int id) {
+    public synchronized Optional<Pedido> buscarPorId(int id) {
         return pedidos.stream().filter(p -> p.getId() == id).findFirst();
     }
 
     @Override
-    public List<Pedido> listarTodos() {
+    public synchronized List<Pedido> listarTodos() {
         return new ArrayList<>(pedidos);
     }
 }

@@ -43,9 +43,15 @@ public class CaixaController {
         return ResponseEntity.ok(lista);
     }
 
-    // GET /api/caixas/metricas — correct average ticket formula (BUG 2)
+    // GET /api/caixas/metricas — correct average ticket formula (requires VER_VENDAS)
     @GetMapping("/metricas")
-    public ResponseEntity<MetricasResponse> metricas() {
+    public ResponseEntity<?> metricas(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_VENDAS)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(new ErroResponse("Você não tem permissão para visualizar métricas de caixa."));
+        }
         List<Caixa> todos = caixaRepository.listarTodos();
         double totalVendas = todos.stream().mapToDouble(Caixa::calcularTotalVendas).sum();
         long caixasAbertos = todos.stream()
@@ -171,9 +177,15 @@ public class CaixaController {
         }
     }
 
-    // GET /api/caixas/consolidado
+    // GET /api/caixas/consolidado — requires VER_FINANCAS
     @GetMapping("/consolidado")
-    public ResponseEntity<ConsolidadoResponse> consolidadoDia() {
+    public ResponseEntity<?> consolidadoDia(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_FINANCAS)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(new ErroResponse("Você não tem permissão para acessar o consolidado diário."));
+        }
         String resumo = caixaService.consolidarDia(LocalDate.now());
         return ResponseEntity.ok(new ConsolidadoResponse(LocalDate.now().toString(), resumo));
     }

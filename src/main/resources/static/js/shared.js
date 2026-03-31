@@ -119,7 +119,7 @@ function showToast(message, type) {
     'animation:_toastIn .2s ease;';
   toast.innerHTML =
     '<span style="color:' + color + ';font-weight:700;flex-shrink:0">' + icon + '</span>' +
-    '<span>' + message + '</span>';
+    '<span>' + escapeHtml(message) + '</span>';
   container.appendChild(toast);
 
   setTimeout(function () {
@@ -145,6 +145,19 @@ function setLoading(btn, loading) {
       btn.textContent = btn.dataset._origText;
     }
   }
+}
+
+// ── HTML escaping ─────────────────────────────────────────
+// Use this for ALL user-controlled strings inserted via innerHTML.
+// Prevents stored XSS from product names, supplier names, descriptions, etc.
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 // ── Safe error parsing ───────────────────────────────────────

@@ -12,7 +12,7 @@ public class InMemoryLogRepository implements LogRepository {
     private final AtomicLong sequenceId = new AtomicLong(1);
 
     @Override
-    public LogAcao salvar(LogAcao log) {
+    public synchronized LogAcao salvar(LogAcao log) {
         if (log == null) {
             throw new IllegalArgumentException("Log não pode ser nulo.");
         }
@@ -28,7 +28,7 @@ public class InMemoryLogRepository implements LogRepository {
     }
 
     @Override
-    public List<LogAcao> listarTodos() {
+    public synchronized List<LogAcao> listarTodos() {
         return new ArrayList<>(logs);
     }
 }

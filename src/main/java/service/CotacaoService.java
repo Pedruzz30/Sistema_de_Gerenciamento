@@ -7,7 +7,6 @@ import model.Produto;
 import model.ResultadoComparacao;
 import model.Usuario;
 import repository.CotacaoRepository;
-import repository.InMemoryCotacaoRepository;
 import repository.LogRepository;
 
 import java.time.YearMonth;
@@ -50,7 +49,7 @@ public class CotacaoService {
                                           int quantidadeComprada) {
         validarPermissao(usuarioLogado);
 
-        long id = ((InMemoryCotacaoRepository) cotacaoRepository).proximoId();
+        long id = cotacaoRepository.proximoId();
         CotacaoMensal cotacao = new CotacaoMensal(
                 id, produto, mes, precoUnitario, quantidadeComprada
         );

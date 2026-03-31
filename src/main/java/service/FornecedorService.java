@@ -11,6 +11,7 @@ import repository.LogRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Gerencia o ciclo de vida dos fornecedores.
@@ -26,8 +27,8 @@ public class FornecedorService {
     private final FornecedorRepository fornecedorRepository;
     private final LogRepository logRepository;
 
-    // Sequência interna de IDs — mesmo padrão do EstoqueService
-    private long proximoId = 1;
+    // Sequência interna de IDs — AtomicLong garante segurança sob concorrência
+    private final AtomicLong proximoId = new AtomicLong(1);
 
     public FornecedorService(FornecedorRepository fornecedorRepository,
                              LogRepository logRepository) {
@@ -58,7 +59,7 @@ public class FornecedorService {
             );
         }
 
-        Fornecedor novoFornecedor = new Fornecedor(proximoId++, nome, cnpj, telefone);
+        Fornecedor novoFornecedor = new Fornecedor(proximoId.getAndIncrement(), nome, cnpj, telefone);
         fornecedorRepository.salvar(novoFornecedor);
 
         logRepository.salvar(new LogAcao(

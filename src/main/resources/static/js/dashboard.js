@@ -165,9 +165,9 @@ function renderAlertas(produtos) {
   list.innerHTML = alertas.map(function (p) {
     return '<div class="alert-item ' + (nivelClass[p.nivelEstoque] || '') + '">' +
            '<div class="alert-dot"></div>' +
-           '<span class="alert-name">' + p.nome + '</span>' +
+           '<span class="alert-name">' + escapeHtml(p.nome) + '</span>' +
            '<span class="alert-qty">' + p.quantidadeAtual + '/' + p.quantidadeMinima + ' un.</span>' +
-           '<span class="alert-level">' + (nivelLabel[p.nivelEstoque] || p.nivelEstoque) + '</span>' +
+           '<span class="alert-level">' + (nivelLabel[p.nivelEstoque] || escapeHtml(p.nivelEstoque)) + '</span>' +
            '</div>';
   }).join('');
 }
@@ -197,10 +197,10 @@ function renderMovimentacoes(movimentacoes) {
       }
     } catch (e) {}
     return '<div class="mov-item">' +
-           '<span class="mov-badge ' + (m.tipo || '').toLowerCase() + '">' + m.tipo + '</span>' +
-           '<span class="mov-produto">' + m.produto + '</span>' +
+           '<span class="mov-badge ' + (m.tipo || '').toLowerCase() + '">' + escapeHtml(m.tipo) + '</span>' +
+           '<span class="mov-produto">' + escapeHtml(m.produto) + '</span>' +
            '<span class="mov-qty">' + (m.tipo === 'ENTRADA' ? '+' : '-') + m.quantidade + ' un.</span>' +
-           '<span class="mov-time">' + hora + '</span>' +
+           '<span class="mov-time">' + escapeHtml(hora) + '</span>' +
            '</div>';
   }).join('');
 }
@@ -225,8 +225,8 @@ function renderFinanceiro(caixas, metricas) {
   }
   caixaList.innerHTML = caixas.map(function (c) {
     return '<div class="caixa-item">' +
-           '<span class="caixa-name">Caixa ' + c.numeroCaixa + (c.nomeOperador ? ' — ' + c.nomeOperador : '') + '</span>' +
-           '<span class="caixa-status ' + c.status.toLowerCase() + '">' + c.status + '</span>' +
+           '<span class="caixa-name">Caixa ' + c.numeroCaixa + (c.nomeOperador ? ' — ' + escapeHtml(c.nomeOperador) : '') + '</span>' +
+           '<span class="caixa-status ' + escapeHtml(c.status.toLowerCase()) + '">' + escapeHtml(c.status) + '</span>' +
            '<span class="caixa-valor">' + (c.status === 'ABERTO' ? 'R$' + (c.totalVendas || 0).toFixed(2) : '—') + '</span>' +
            '</div>';
   }).join('');

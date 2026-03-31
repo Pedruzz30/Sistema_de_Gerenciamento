@@ -8,6 +8,9 @@ import java.util.Optional;
 
 public interface CaixaRepository {
 
+    /** Returns the next available ID without consuming it from the sequence. */
+    long proximoId();
+
     Caixa salvar(Caixa caixa);
 
     Optional<Caixa> buscarPorId(long id);

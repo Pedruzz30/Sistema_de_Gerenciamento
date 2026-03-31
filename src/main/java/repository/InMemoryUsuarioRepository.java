@@ -13,7 +13,7 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
     private final AtomicLong sequenceRu = new AtomicLong(1);
 
     @Override
-    public Usuario salvar(Usuario usuario) {
+    public synchronized Usuario salvar(Usuario usuario) {
         if (usuario == null) {
             throw new IllegalArgumentException("Usuário não pode ser nulo.");
         }
@@ -37,14 +37,13 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
             sequenceRu.updateAndGet(atual -> Math.max(atual, usuario.getRu() + 1));
         }
 
-        Optional<Usuario> existente = buscarPorRu(persistido.getRu());
-        existente.ifPresent(usuarios::remove);
+        usuarios.removeIf(u -> u.getRu() == persistido.getRu());
         usuarios.add(persistido);
         return persistido;
     }
 
     @Override
-    public Optional<Usuario> buscarPorNomeSobrenomeESenha(String nome, String sobrenome, String senha) {
+    public synchronized Optional<Usuario> buscarPorNomeSobrenomeESenha(String nome, String sobrenome, String senha) {
         return usuarios.stream()
                 .filter(Usuario::isAtivo)
                 .filter(usuario -> usuario.autenticar(nome, sobrenome, senha))
@@ -52,13 +51,12 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
     }
 
     @Override
-    public Optional<Usuario> buscarPorRu(long ru) {
+    public synchronized Optional<Usuario> buscarPorRu(long ru) {
         return usuarios.stream().filter(usuario -> usuario.getRu() == ru).findFirst();
     }
 
     @Override
-    public List<Usuario> listarTodos() {
+    public synchronized List<Usuario> listarTodos() {
         return new ArrayList<>(usuarios);
     }
 }
-

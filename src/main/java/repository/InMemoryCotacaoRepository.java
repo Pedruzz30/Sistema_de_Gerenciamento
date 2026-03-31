@@ -15,12 +15,13 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
     private final List<CotacaoMensal> cotacoes = new ArrayList<>();
     private final AtomicLong sequenceId = new AtomicLong(1);
 
+    @Override
     public long proximoId() {
         return sequenceId.getAndIncrement();
     }
 
     @Override
-    public CotacaoMensal salvar(CotacaoMensal cotacao) {
+    public synchronized CotacaoMensal salvar(CotacaoMensal cotacao) {
         if (cotacao == null) {
             throw new IllegalArgumentException("Cotação não pode ser nula.");
         }
@@ -34,7 +35,7 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
     }
 
     @Override
-    public Optional<CotacaoMensal> buscarPorProdutoEMes(int produtoId, YearMonth mes) {
+    public synchronized Optional<CotacaoMensal> buscarPorProdutoEMes(int produtoId, YearMonth mes) {
         return cotacoes.stream()
                 .filter(c -> c.getProduto().getId() == produtoId
                         && c.getMesReferencia().equals(mes))
@@ -42,7 +43,7 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
     }
 
     @Override
-    public List<CotacaoMensal> buscarHistoricoPorProduto(int produtoId) {
+    public synchronized List<CotacaoMensal> buscarHistoricoPorProduto(int produtoId) {
         return cotacoes.stream()
                 .filter(c -> c.getProduto().getId() == produtoId)
                 .sorted(Comparator.comparing(CotacaoMensal::getMesReferencia))
@@ -50,7 +51,7 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
     }
 
     @Override
-    public List<CotacaoMensal> listarTodas() {
+    public synchronized List<CotacaoMensal> listarTodas() {
         return new ArrayList<>(cotacoes);
     }
 }

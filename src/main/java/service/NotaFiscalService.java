@@ -53,8 +53,7 @@ public class NotaFiscalService {
             throw new IllegalArgumentException("Fornecedor inválido ou inativo.");
         }
 
-        // O ID da nota é gerado pelo repositório
-        long novoId = ((repository.InMemoryNotaFiscalRepository) notaFiscalRepository).proximoId();
+        long novoId = notaFiscalRepository.proximoId();
         NotaFiscal nota = new NotaFiscal(novoId, fornecedor, usuarioLogado);
         notaFiscalRepository.salvar(nota);
 
@@ -109,6 +108,18 @@ public class NotaFiscalService {
      */
     public void confirmarNota(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
+
+        // Pré-validação: garante que todos os produtos existem no estoque antes de
+        // iniciar qualquer mutação. Evita entrada parcial de estoque em caso de erro
+        // no meio do loop.
+        for (ItemNotaFiscal item : nota.getItens()) {
+            estoqueService.buscarProdutoPorId(item.getProduto().getId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Produto '" + item.getProduto().getNome() +
+                            "' (ID: " + item.getProduto().getId() +
+                            ") não encontrado no estoque. Confirme o cadastro do produto antes de confirmar a nota."
+                    ));
+        }
 
         // Dá entrada no estoque para cada item da nota
         for (ItemNotaFiscal item : nota.getItens()) {
