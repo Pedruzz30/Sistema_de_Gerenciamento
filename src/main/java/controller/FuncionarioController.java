@@ -19,21 +19,18 @@ public class FuncionarioController {
 
     private final CadastroFuncionarioService funcionarioService;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario adminSuperior;
 
     public FuncionarioController(CadastroFuncionarioService funcionarioService,
-                                 UsuarioRepository usuarioRepository,
-                                 Usuario adminSuperior) {
+                                 UsuarioRepository usuarioRepository) {
         this.funcionarioService = funcionarioService;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // GET /api/funcionarios
     @GetMapping
     public ResponseEntity<List<FuncionarioResponse>> listar(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
         return ResponseEntity.ok(
                 funcionarioService.listarFuncionarios(ator).stream()
                         .map(FuncionarioResponse::from)
@@ -69,7 +66,7 @@ public class FuncionarioController {
         }
 
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             Usuario usuario = funcionarioService.cadastrarFuncionario(
                     ator,
                     request.nome(),
@@ -101,7 +98,7 @@ public class FuncionarioController {
         }
 
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             Usuario usuario = funcionarioService.mudarClasse(ator, ru, novaClasse);
             return ResponseEntity.ok(FuncionarioResponse.from(usuario));
         } catch (IllegalArgumentException e) {
@@ -114,7 +111,7 @@ public class FuncionarioController {
     public ResponseEntity<?> desativar(@PathVariable long ru,
                                        @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             funcionarioService.desativarFuncionario(ator, ru);
             return ResponseEntity.ok(new MensagemResponse("Funcionário desativado com sucesso."));
         } catch (IllegalArgumentException e) {

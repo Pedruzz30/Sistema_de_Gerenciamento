@@ -34,6 +34,7 @@ controller\FornecedorController.class
 controller\FornecedorController$MensagemResponse.class
 controller\CaixaController$MetricasResponse.class
 controller\FornecedorController$CadastroFornecedorRequest.class
+model\CategoriaEstoque.class
 repository\InMemoryPedidoRepository.class
 controller\NotaFiscalController$MensagemResponse.class
 controller\ControllerUtils.class
@@ -51,6 +52,7 @@ app\AppConfig.class
 model\Caixa$Status.class
 controller\LogController$ErroResponse.class
 controller\EstoquePageController.class
+controller\ProdutoController$AtualizarProdutoRequest.class
 service\CadastroFuncionarioService.class
 controller\FuncionarioController$FuncionarioResponse.class
 model\Produto.class

@@ -26,20 +26,17 @@ public class NotaFiscalController {
     private final FornecedorService fornecedorService;
     private final EstoqueService estoqueService;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario adminSuperior;
 
     public NotaFiscalController(NotaFiscalService notaFiscalService,
                                 NotaFiscalRepository notaFiscalRepository,
                                 FornecedorService fornecedorService,
                                 EstoqueService estoqueService,
-                                UsuarioRepository usuarioRepository,
-                                Usuario adminSuperior) {
+                                UsuarioRepository usuarioRepository) {
         this.notaFiscalService = notaFiscalService;
         this.notaFiscalRepository = notaFiscalRepository;
         this.fornecedorService = fornecedorService;
         this.estoqueService = estoqueService;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // ── GET ───────────────────────────────────────────────────────────────────
@@ -87,7 +84,7 @@ public class NotaFiscalController {
             return ResponseEntity.badRequest().body(new ErroResponse("ID do fornecedor inválido."));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             Fornecedor fornecedor = fornecedorService.buscarPorId(request.fornecedorId());
             NotaFiscal nota = notaFiscalService.abrirNota(ator, fornecedor);
             return ResponseEntity.status(HttpStatus.CREATED).body(NotaResponse.from(nota));
@@ -126,7 +123,7 @@ public class NotaFiscalController {
         }
 
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             notaFiscalService.adicionarItem(ator, notaOpt.get(),
                     produtoOpt.get(), request.quantidade(), request.precoUnitario());
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
@@ -148,7 +145,7 @@ public class NotaFiscalController {
                     .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             notaFiscalService.confirmarNota(ator, notaOpt.get());
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
@@ -169,7 +166,7 @@ public class NotaFiscalController {
                     .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             notaFiscalService.registrarPagamento(ator, notaOpt.get());
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
@@ -191,7 +188,7 @@ public class NotaFiscalController {
                     .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             notaFiscalService.descartarRascunho(ator, notaOpt.get());
             return ResponseEntity.ok(new MensagemResponse("Rascunho descartado com sucesso."));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -212,7 +209,7 @@ public class NotaFiscalController {
                     .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             notaFiscalService.cancelarNota(ator, notaOpt.get());
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));

@@ -1,9 +1,9 @@
 package controller;
 
 import model.Usuario;
-import repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import repository.UsuarioRepository;
 
 /**
  * Utility methods shared across REST controllers.
@@ -14,28 +14,34 @@ public class ControllerUtils {
     /**
      * Resolves the acting user from the X-User-RU request header.
      *
-     * If the header is present and matches a known user, that user is returned.
-     * Otherwise falls back to the supplied adminSuperior bean so that
-     * existing behaviour is preserved for callers that do not send the header.
+     * Requests are denied when identity is missing, malformed, unknown or inactive.
      */
     public static Usuario resolveUser(String ruHeader,
-                                      UsuarioRepository repo,
-                                      Usuario fallback) {
-        if (ruHeader != null && !ruHeader.isBlank()) {
-            try {
-                long ru = Long.parseLong(ruHeader.trim());
-                return repo.buscarPorRu(ru).orElseGet(() -> {
-                    log.warn("X-User-RU '{}' não encontrado. Aplicando fallback para RU {}.",
-                            ruHeader, fallback.getRu());
-                    return fallback;
-                });
-            } catch (NumberFormatException ignored) {
-                log.warn("X-User-RU inválido ('{}'). Aplicando fallback para RU {}.",
-                        ruHeader, fallback.getRu());
-            }
-        } else {
-            log.warn("X-User-RU ausente. Aplicando fallback para RU {}.", fallback.getRu());
+                                      UsuarioRepository repo) {
+        if (ruHeader == null || ruHeader.isBlank()) {
+            log.warn("X-User-RU ausente.");
+            throw new SecurityException("Identidade ausente. Informe o cabecalho X-User-RU.");
         }
-        return fallback;
+
+        final long ru;
+        try {
+            ru = Long.parseLong(ruHeader.trim());
+        } catch (NumberFormatException ignored) {
+            log.warn("X-User-RU invalido ('{}').", ruHeader);
+            throw new SecurityException("Identidade invalida. X-User-RU deve ser numerico.");
+        }
+
+        Usuario usuario = repo.buscarPorRu(ru)
+                .orElseThrow(() -> {
+                    log.warn("X-User-RU '{}' nao encontrado.", ruHeader);
+                    return new SecurityException("Usuario nao encontrado para o cabecalho X-User-RU.");
+                });
+
+        if (!usuario.isAtivo()) {
+            log.warn("X-User-RU '{}' pertence a usuario inativo.", ruHeader);
+            throw new SecurityException("Usuario inativo.");
+        }
+
+        return usuario;
     }
 }

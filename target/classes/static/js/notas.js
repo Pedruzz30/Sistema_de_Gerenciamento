@@ -139,15 +139,6 @@ async function avancarStep1() {
     } finally {
       setLoading(btn, false);
     }
-  }
-
-    notaAtual = data;
-    limparAlert('alert-s1');
-    irParaStep(2);
-    prepararStep2();
-  } finally {
-    setLoading(btn, false);
-  }
 }
 
 // ── Wizard Step 2: Add items ──────────────────────────────────────────────

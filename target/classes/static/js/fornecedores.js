@@ -128,22 +128,25 @@ async function cadastrarFornecedor() {
   if (!nome) { mostrarAlert('alert-cadastro', 'Nome é obrigatório.', 'error'); return; }
   if (!cnpj) { mostrarAlert('alert-cadastro', 'CNPJ é obrigatório.', 'error'); return; }
 
-  cconst btn = document.querySelector('#modal-cadastro .btn-primary');
-     setLoading(btn, true);
-     const resp = await fetch('/api/fornecedores', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({ nome, cnpj, telefone })
-     });
-     setLoading(document.querySelector('#modal-cadastro .btn-primary'), false);
-     if (!resp.ok) {
-       const err = await safeReadErrorMessage(resp, 'Erro ao cadastrar.');
-       mostrarAlert('alert-cadastro', err, 'error'); return;
-     }
-     fecharModal('modal-cadastro');
-     showToast('Fornecedor cadastrado com sucesso!', 'success');
-     await carregarFornecedores();
-   }
+  const btn = document.querySelector('#modal-cadastro .btn-primary');
+  setLoading(btn, true);
+  try {
+    const resp = await fetch('/api/fornecedores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, cnpj, telefone })
+    });
+    if (!resp.ok) {
+      const err = await safeReadErrorMessage(resp, 'Erro ao cadastrar.');
+      mostrarAlert('alert-cadastro', err, 'error'); return;
+    }
+    fecharModal('modal-cadastro');
+    showToast('Fornecedor cadastrado com sucesso!', 'success');
+    await carregarFornecedores();
+  } finally {
+    setLoading(btn, false);
+  }
+}
 
 async function desativar(id) {
   const resp = await fetch(`/api/fornecedores/${id}/desativar`, { method: 'PUT' });

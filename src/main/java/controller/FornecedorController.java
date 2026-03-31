@@ -20,16 +20,13 @@ public class FornecedorController {
     private final FornecedorService fornecedorService;
     private final EstoqueService estoqueService;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario adminSuperior;
 
     public FornecedorController(FornecedorService fornecedorService,
                                 EstoqueService estoqueService,
-                                UsuarioRepository usuarioRepository,
-                                Usuario adminSuperior) {
+                                UsuarioRepository usuarioRepository) {
         this.fornecedorService = fornecedorService;
         this.estoqueService = estoqueService;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // GET /api/fornecedores
@@ -74,7 +71,7 @@ public class FornecedorController {
             return ResponseEntity.badRequest().body(new ErroResponse("CNPJ é obrigatório."));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             Fornecedor f = fornecedorService.cadastrarFornecedor(
                     ator,
                     request.nome(),
@@ -101,7 +98,7 @@ public class FornecedorController {
                     .body(new ErroResponse("Produto não encontrado com id: " + request.produtoId()));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             fornecedorService.vincularProduto(ator, id, produto.get());
             Fornecedor f = fornecedorService.buscarPorId(id);
             return ResponseEntity.ok(FornecedorResponse.from(f));
@@ -115,7 +112,7 @@ public class FornecedorController {
     public ResponseEntity<?> desativar(@PathVariable long id,
                                        @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             fornecedorService.desativarFornecedor(ator, id);
             return ResponseEntity.ok(new MensagemResponse("Fornecedor desativado com sucesso."));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -128,7 +125,7 @@ public class FornecedorController {
     public ResponseEntity<?> reativar(@PathVariable long id,
                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             fornecedorService.reativarFornecedor(ator, id);
             return ResponseEntity.ok(new MensagemResponse("Fornecedor reativado com sucesso."));
         } catch (IllegalArgumentException | IllegalStateException e) {

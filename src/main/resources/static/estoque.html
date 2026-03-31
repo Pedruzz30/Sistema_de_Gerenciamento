@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockOS — Estoque</title>
+<title>StockOS - Estoque</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/global.css">
 <link rel="stylesheet" href="/css/estoque.css">
@@ -11,11 +11,9 @@
 <body>
 
 <div class="app">
-
-  <!-- ── Sidebar ── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
+      <div class="sidebar-logo-icon">[ ]</div>
       StockOS
     </div>
     <div class="sidebar-section">
@@ -29,16 +27,15 @@
           <div class="user-name" id="user-name">Carregando...</div>
           <div class="user-role" id="user-role">--</div>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+        <button class="btn-logout" onclick="logout()" title="Sair">x</button>
       </div>
     </div>
   </aside>
 
-  <!-- ── Header ── -->
   <header class="header">
     <div>
       <div class="header-title">Estoque</div>
-      <div class="header-sub">Gerencie produtos, entradas e saídas</div>
+      <div class="header-sub">Gerencie produtos, categorias, entradas e saidas</div>
     </div>
     <div class="header-right">
       <button class="btn-primary" onclick="abrirModalCadastro()" id="btn-novo-produto">
@@ -47,28 +44,44 @@
     </div>
   </header>
 
-  <!-- ── Main ── -->
   <main class="main">
+    <div class="categoria-summary-grid fade-up" id="categoria-summary"></div>
 
-    <!-- Filtros e busca -->
     <div class="toolbar fade-up">
       <div class="search-wrap">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon">?</span>
         <input type="text" id="busca" placeholder="Buscar produto..." oninput="filtrarProdutos()">
       </div>
-      <div class="filter-group">
+      <div class="filter-group" data-filter-group="nivel">
         <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
-        <button class="filter-btn" onclick="filtrar('critico', this)">⚠ Crítico</button>
-        <button class="filter-btn" onclick="filtrar('baixo', this)">↓ Baixo</button>
-        <button class="filter-btn" onclick="filtrar('adequado', this)">✓ Adequado</button>
+        <button class="filter-btn" onclick="filtrar('critico', this)">Critico</button>
+        <button class="filter-btn" onclick="filtrar('baixo', this)">Baixo</button>
+        <button class="filter-btn" onclick="filtrar('adequado', this)">Adequado</button>
+      </div>
+      <div class="filter-group" data-filter-group="categoria">
+        <button class="filter-btn active" onclick="filtrarCategoria('todas', this)">Todas</button>
+        <button class="filter-btn" onclick="filtrarCategoria('BEBIDAS', this)">Bebidas</button>
+        <button class="filter-btn" onclick="filtrarCategoria('SECO', this)">Estoque seco</button>
+        <button class="filter-btn" onclick="filtrarCategoria('FRIO', this)">Estoque frio</button>
+        <button class="filter-btn" onclick="filtrarCategoria('CONGELADO', this)">Estoque congelado</button>
       </div>
     </div>
 
-    <!-- Tabela -->
     <div class="table-card fade-up fade-up-1">
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="table-title">Produtos por Categoria</span>
+          <span class="chart-sub">Baseado nas linhas visiveis</span>
+        </div>
+        <div class="categoria-chart" id="categoria-chart"></div>
+      </div>
+
       <div class="table-header">
         <span class="table-title">Produtos em Estoque</span>
-        <span class="table-count" id="table-count">—</span>
+        <div class="table-header-actions">
+          <button class="btn-secondary" id="btn-exportar-csv" onclick="exportarCsvProdutos()">Exportar CSV</button>
+          <span class="table-count" id="table-count">-</span>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -76,34 +89,37 @@
           <thead>
             <tr>
               <th>Produto</th>
+              <th>Categoria</th>
               <th>Qtd. Atual</th>
-              <th>Qtd. Mínima</th>
-              <th>Nível</th>
-              <th>Preço Unit.</th>
-              <th>Ações</th>
+              <th>Qtd. Minima</th>
+              <th>Nivel</th>
+              <th>Preco Unit.</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody id="tabela-produtos">
-            <tr><td colspan="6" class="empty">Carregando produtos...</td></tr>
+            <tr><td colspan="7" class="empty">Carregando produtos...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
-
   </main>
 </div>
 
-<!-- ── Modal: Cadastrar Produto ── -->
 <div class="modal-overlay" id="modal-cadastro" onclick="fecharModalSeClicouFora(event, 'modal-cadastro')">
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Novo Produto</h3>
-      <button class="modal-close" onclick="fecharModal('modal-cadastro')">✕</button>
+      <button class="modal-close" onclick="fecharModal('modal-cadastro')">x</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
         <label>Nome do produto</label>
         <input type="text" id="c-nome" placeholder="Ex: Laranja">
+      </div>
+      <div class="form-group">
+        <label>Categoria de estoque</label>
+        <select id="c-categoria"></select>
       </div>
       <div class="form-row-2">
         <div class="form-group">
@@ -111,12 +127,12 @@
           <input type="number" id="c-qtd-inicial" placeholder="0" min="0">
         </div>
         <div class="form-group">
-          <label>Quantidade mínima</label>
+          <label>Quantidade minima</label>
           <input type="number" id="c-qtd-minima" placeholder="0" min="0">
         </div>
       </div>
       <div class="form-group">
-        <label>Preço unitário (R$)</label>
+        <label>Preco unitario (R$)</label>
         <input type="number" id="c-preco" placeholder="0,00" step="0.01" min="0">
       </div>
       <div class="alert-modal" id="alert-cadastro"></div>
@@ -128,26 +144,59 @@
   </div>
 </div>
 
-<!-- ── Modal: Movimentação ── -->
+<div class="modal-overlay" id="modal-edicao" onclick="fecharModalSeClicouFora(event, 'modal-edicao')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Editar Produto</h3>
+      <button class="modal-close" onclick="fecharModal('modal-edicao')">x</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nome do produto</label>
+        <input type="text" id="e-nome">
+      </div>
+      <div class="form-group">
+        <label>Categoria de estoque</label>
+        <select id="e-categoria"></select>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Quantidade minima</label>
+          <input type="number" id="e-qtd-minima" min="0">
+        </div>
+        <div class="form-group">
+          <label>Preco unitario (R$)</label>
+          <input type="number" id="e-preco" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="alert-modal" id="alert-edicao"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharModal('modal-edicao')">Cancelar</button>
+      <button class="btn-primary" onclick="atualizarProduto()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-mov" onclick="fecharModalSeClicouFora(event, 'modal-mov')">
   <div class="modal">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-mov-titulo">Movimentação</h3>
-      <button class="modal-close" onclick="fecharModal('modal-mov')">✕</button>
+      <h3 class="modal-title" id="modal-mov-titulo">Movimentacao</h3>
+      <button class="modal-close" onclick="fecharModal('modal-mov')">x</button>
     </div>
     <div class="modal-body">
       <div class="produto-info-card" id="produto-info-card">
-        <div class="produto-info-nome" id="mov-produto-nome">—</div>
+        <div class="produto-info-nome" id="mov-produto-nome">-</div>
         <div class="produto-info-qtd">
-          Estoque atual: <strong id="mov-produto-qtd">—</strong>
+          Estoque atual: <strong id="mov-produto-qtd">-</strong>
         </div>
       </div>
       <div class="tipo-toggle">
         <button class="tipo-btn entrada active" id="btn-entrada" onclick="setTipo('ENTRADA')">
-          ↑ Entrada
+          Entrada
         </button>
         <button class="tipo-btn saida" id="btn-saida" onclick="setTipo('SAIDA')">
-          ↓ Saída
+          Saida
         </button>
       </div>
       <div class="form-group">

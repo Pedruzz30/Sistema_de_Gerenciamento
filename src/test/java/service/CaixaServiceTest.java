@@ -68,6 +68,14 @@ class CaixaServiceTest {
     }
 
     @Test
+    void registrarVenda_semPermissao_lancaSecurityException() {
+        service.abrirCaixa(operadorFinancas, 6, 100.00);
+
+        assertThrows(SecurityException.class,
+                () -> service.registrarVenda(operadorSemPermissao, 6, 30.00, "Venda bloqueada"));
+    }
+
+    @Test
     void registrarSangria_comSaldoInsuficiente_lancaIllegalArgument() {
         service.abrirCaixa(operadorFinancas, 3, 50.00);
 
@@ -76,8 +84,24 @@ class CaixaServiceTest {
     }
 
     @Test
+    void registrarSangria_semPermissao_lancaSecurityException() {
+        service.abrirCaixa(operadorFinancas, 7, 100.00);
+
+        assertThrows(SecurityException.class,
+                () -> service.registrarSangria(operadorSemPermissao, 7, 10.00, "Sangria bloqueada"));
+    }
+
+    @Test
+    void registrarSuprimento_semPermissao_lancaSecurityException() {
+        service.abrirCaixa(operadorFinancas, 8, 100.00);
+
+        assertThrows(SecurityException.class,
+                () -> service.registrarSuprimento(operadorSemPermissao, 8, 10.00, "Suprimento bloqueado"));
+    }
+
+    @Test
     void encerrarCaixa_retornaFechamentoCorreto() {
-        service.abrirCaixa(operadorFinancas, 4, 100.00);
+        Caixa caixa = service.abrirCaixa(operadorFinancas, 4, 100.00);
         service.registrarVenda(operadorFinancas, 4, 25.00, "Venda A");
         service.registrarVenda(operadorFinancas, 4, 18.50, "Venda B");
         service.registrarSangria(operadorFinancas, 4, 50.00, "Envio ao cofre");
@@ -86,8 +110,8 @@ class CaixaServiceTest {
 
         assertEquals(43.50, fechamento.getTotalVendas(), 0.001);
         assertEquals(93.50, fechamento.getSaldoFinal(), 0.001);
-        assertEquals(Caixa.Status.ENCERRADO, service.buscarCaixaAberto(4) == null
-                ? Caixa.Status.ENCERRADO : null);
+        assertEquals(Caixa.Status.ENCERRADO, caixa.getStatus());
+        assertThrows(IllegalStateException.class, () -> service.buscarCaixaAberto(4));
     }
 
     @Test

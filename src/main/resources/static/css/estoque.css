@@ -35,7 +35,7 @@
 .search-wrap input:focus { border-color: var(--purple); }
 .search-wrap input::placeholder { color: var(--text-3); }
 
-.filter-group { display: flex; gap: 6px; }
+.filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
 .filter-btn {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -51,6 +51,39 @@
   background: rgba(124,58,237,.15);
   border-color: rgba(124,58,237,.3);
   color: var(--purple-light);
+}
+
+.categoria-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.categoria-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.categoria-summary-label {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.categoria-summary-value {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.categoria-summary-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 4px;
 }
 
 /* ── Botões header ── */
@@ -95,6 +128,12 @@
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
+
+.table-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .table-title {
   font-family: 'Syne', sans-serif;
   font-size: 14px;
@@ -109,6 +148,62 @@
 }
 
 .table-wrap { overflow-x: auto; }
+
+.chart-card {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.01), transparent);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.chart-sub {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.categoria-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.categoria-chart-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 32px;
+  align-items: center;
+  gap: 12px;
+}
+
+.categoria-chart-label {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.categoria-chart-bar {
+  height: 10px;
+  background: var(--bg-hover);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.categoria-chart-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 999px;
+}
+
+.categoria-chart-value {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-2);
+}
 
 table {
   width: 100%;
@@ -147,6 +242,23 @@ td.empty {
 /* Produto nome na tabela */
 .produto-nome { font-weight: 500; }
 .produto-id { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+.categoria-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+.categoria-BEBIDAS { background: rgba(6,182,212,.12); color: var(--cyan); }
+.categoria-SECO { background: rgba(245,158,11,.12); color: var(--amber); }
+.categoria-FRIO { background: rgba(59,130,246,.12); color: #60a5fa; }
+.categoria-CONGELADO { background: rgba(124,58,237,.15); color: var(--purple-light); }
+.categoria-nao-definida { background: rgba(74,88,128,.2); color: var(--text-3); }
 
 /* Barra de nível */
 .nivel-wrap { display: flex; align-items: center; gap: 8px; }
@@ -194,6 +306,7 @@ td.empty {
   white-space: nowrap;
 }
 .btn-acao:hover { border-color: var(--border-light); color: var(--text-1); }
+.btn-acao.editar:hover  { border-color: rgba(124,58,237,.3); color: var(--purple-light); }
 .btn-acao.entrada:hover { border-color: rgba(16,185,129,.4); color: var(--green); }
 .btn-acao.saida:hover   { border-color: rgba(244,63,94,.4);  color: var(--red); }
 
@@ -265,7 +378,8 @@ td.empty {
   letter-spacing: .6px;
   color: var(--text-2);
 }
-.form-group input {
+.form-group input,
+.form-group select {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -276,7 +390,8 @@ td.empty {
   outline: none;
   transition: border-color .2s;
 }
-.form-group input:focus { border-color: var(--purple); }
+.form-group input:focus,
+.form-group select:focus { border-color: var(--purple); }
 .form-group input::placeholder { color: var(--text-3); }
 
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

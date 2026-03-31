@@ -6,8 +6,14 @@ public class Produto {
     private int quantidadeAtual;
     private final int quantidadeMinima;
     private final double precoUnitario;
+    private final CategoriaEstoque categoriaEstoque;
 
     public Produto(int id, String nome, int quantidadeAtual, int quantidadeMinima, double precoUnitario) {
+        this(id, nome, quantidadeAtual, quantidadeMinima, precoUnitario, null);
+    }
+
+    public Produto(int id, String nome, int quantidadeAtual, int quantidadeMinima, double precoUnitario,
+                   CategoriaEstoque categoriaEstoque) {
         if (nome == null || nome.isBlank()) {
             throw new IllegalArgumentException("Product name is required.");
         }
@@ -20,6 +26,7 @@ public class Produto {
         this.quantidadeAtual = quantidadeAtual;
         this.quantidadeMinima = quantidadeMinima;
         this.precoUnitario = precoUnitario;
+        this.categoriaEstoque = categoriaEstoque;
     }
 
     public int getId() { return id; }
@@ -31,6 +38,8 @@ public class Produto {
     public int getQuantidadeMinima() { return quantidadeMinima; }
 
     public double getPrecoUnitario() { return precoUnitario; }
+
+    public CategoriaEstoque getCategoriaEstoque() { return categoriaEstoque; }
 
     public void atualizarQuantidade(int novaQuantidade) {
         if (novaQuantidade < 0) {

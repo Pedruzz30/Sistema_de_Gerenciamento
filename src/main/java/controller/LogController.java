@@ -18,21 +18,18 @@ public class LogController {
 
     private final LogRepository logRepository;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario adminSuperior;
 
     public LogController(LogRepository logRepository,
-                         UsuarioRepository usuarioRepository,
-                         Usuario adminSuperior) {
+                         UsuarioRepository usuarioRepository) {
         this.logRepository = logRepository;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // GET /api/logs — returns all logs, latest first (requires VER_LOGS)
     @GetMapping
     public ResponseEntity<?> listarLogs(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
         if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(Permissao.VER_LOGS)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ErroResponse("Você não tem permissão para visualizar os logs."));

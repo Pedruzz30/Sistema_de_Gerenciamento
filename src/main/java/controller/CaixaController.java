@@ -22,16 +22,13 @@ public class CaixaController {
     private final CaixaService caixaService;
     private final CaixaRepository caixaRepository;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario adminSuperior;
 
     public CaixaController(CaixaService caixaService,
                            CaixaRepository caixaRepository,
-                           UsuarioRepository usuarioRepository,
-                           Usuario adminSuperior) {
+                           UsuarioRepository usuarioRepository) {
         this.caixaService = caixaService;
         this.caixaRepository = caixaRepository;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // GET /api/caixas
@@ -47,7 +44,7 @@ public class CaixaController {
     @GetMapping("/metricas")
     public ResponseEntity<?> metricas(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
         if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_VENDAS)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
                     .body(new ErroResponse("Você não tem permissão para visualizar métricas de caixa."));
@@ -105,7 +102,7 @@ public class CaixaController {
             return ResponseEntity.badRequest().body(new ErroResponse("Saldo inicial não pode ser negativo."));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             Caixa caixa = caixaService.abrirCaixa(ator, request.numeroCaixa(), request.saldoInicial());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -120,7 +117,7 @@ public class CaixaController {
         ResponseEntity<?> erro = validarMovimentacao(request);
         if (erro != null) return erro;
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             caixaService.registrarVenda(ator, request.numeroCaixa(), request.valor(), request.descricao());
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
@@ -136,7 +133,7 @@ public class CaixaController {
         ResponseEntity<?> erro = validarMovimentacao(request);
         if (erro != null) return erro;
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             caixaService.registrarSangria(ator, request.numeroCaixa(), request.valor(), request.descricao());
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
@@ -152,7 +149,7 @@ public class CaixaController {
         ResponseEntity<?> erro = validarMovimentacao(request);
         if (erro != null) return erro;
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             caixaService.registrarSuprimento(ator, request.numeroCaixa(), request.valor(), request.descricao());
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
@@ -169,7 +166,7 @@ public class CaixaController {
             return ResponseEntity.badRequest().body(new ErroResponse("Número do caixa inválido."));
         }
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             FechamentoCaixa fechamento = caixaService.encerrarCaixa(ator, request.numeroCaixa());
             return ResponseEntity.ok(FechamentoResponse.from(fechamento));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -181,7 +178,7 @@ public class CaixaController {
     @GetMapping("/consolidado")
     public ResponseEntity<?> consolidadoDia(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
         if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_FINANCAS)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
                     .body(new ErroResponse("Você não tem permissão para acessar o consolidado diário."));

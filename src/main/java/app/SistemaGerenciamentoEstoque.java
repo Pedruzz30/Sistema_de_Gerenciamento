@@ -48,7 +48,9 @@ public class SistemaGerenciamentoEstoque {
         // ── Seed de dados ──────────────────────────────────────
         criarUsuariosPadrao(usuarioRepository,
                 classeSuperior, classeGerenteEstoque, classeEstoquista, classeCaixa);
-        criarProdutosPadrao(estoqueService);
+        Usuario usuarioSeedProdutos = usuarioRepository.buscarPorRu(1)
+                .orElseThrow(() -> new IllegalStateException("Usuario seed nao encontrado para criar produtos padrao."));
+        criarProdutosPadrao(estoqueService, usuarioSeedProdutos);
 
         // ── Login ──────────────────────────────────────────────
         System.out.println("╔══════════════════════════════════════════╗");
@@ -177,7 +179,7 @@ public class SistemaGerenciamentoEstoque {
             switch (opcao) {
                 case 1 -> {
                     validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
-                    cadastrarProduto(scanner, estoqueService);
+                    cadastrarProduto(scanner, estoqueService, usuarioLogado);
                 }
                 case 2 -> {
                     validarPermissao(usuarioLogado, Permissao.VER_ESTOQUE);
@@ -205,7 +207,7 @@ public class SistemaGerenciamentoEstoque {
         } while (opcao != 0);
     }
 
-    private static void cadastrarProduto(Scanner scanner, EstoqueService estoqueService) {
+    private static void cadastrarProduto(Scanner scanner, EstoqueService estoqueService, Usuario usuarioLogado) {
         System.out.print("Nome do produto: ");
         String nome = scanner.nextLine();
         System.out.print("Quantidade inicial: ");
@@ -215,7 +217,7 @@ public class SistemaGerenciamentoEstoque {
         System.out.print("Preço unitário: ");
         double preco = lerDouble(scanner);
 
-        estoqueService.cadastrarProduto(nome, qtdInicial, qtdMin, preco);
+        estoqueService.cadastrarProduto(usuarioLogado, nome, qtdInicial, qtdMin, preco);
         System.out.println("Produto cadastrado com sucesso!");
     }
 
@@ -744,11 +746,11 @@ public class SistemaGerenciamentoEstoque {
         System.out.println("  Ana   Caixa     / senha: 1234");
     }
 
-    private static void criarProdutosPadrao(EstoqueService estoqueService) {
-        estoqueService.cadastrarProduto("Laranja",  50, 20, 4.99);
-        estoqueService.cadastrarProduto("Morango",  30, 10, 8.50);
-        estoqueService.cadastrarProduto("Alface",   40, 15, 2.50);
-        estoqueService.cadastrarProduto("Tomate",   60, 25, 3.80);
+    private static void criarProdutosPadrao(EstoqueService estoqueService, Usuario usuarioLogado) {
+        estoqueService.cadastrarProduto(usuarioLogado, "Laranja",  50, 20, 4.99);
+        estoqueService.cadastrarProduto(usuarioLogado, "Morango",  30, 10, 8.50);
+        estoqueService.cadastrarProduto(usuarioLogado, "Alface",   40, 15, 2.50);
+        estoqueService.cadastrarProduto(usuarioLogado, "Tomate",   60, 25, 3.80);
     }
 
     // ─────────────────────────────────────────────────────────

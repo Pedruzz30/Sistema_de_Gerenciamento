@@ -69,6 +69,7 @@ public class CaixaService {
 
     public void registrarVenda(Usuario operador, int numeroCaixa,
                                double valor, String descricao) {
+        validarPermissao(operador, Permissao.VER_VENDAS);
         registrarMovimentacao(operador, numeroCaixa,
                 TipoMovimentacaoCaixa.VENDA, valor, descricao);
     }

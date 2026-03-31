@@ -2,6 +2,8 @@ package controller;
 
 import model.NivelEstoque;
 import model.Pedido;
+import model.Permissao;
+import model.CategoriaEstoque;
 import model.Produto;
 import model.TipoMovimentacao;
 import model.Usuario;
@@ -23,16 +25,13 @@ public class ProdutoController {
     private final EstoqueService estoqueService;
     private final UsuarioRepository usuarioRepository;
     private final LogRepository logRepository;
-    private final Usuario adminSuperior;
 
     public ProdutoController(EstoqueService estoqueService,
                              UsuarioRepository usuarioRepository,
-                             LogRepository logRepository,
-                             Usuario adminSuperior) {
+                             LogRepository logRepository) {
         this.estoqueService = estoqueService;
         this.usuarioRepository = usuarioRepository;
         this.logRepository = logRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // GET /api/produtos
@@ -60,12 +59,15 @@ public class ProdutoController {
     public ResponseEntity<?> cadastrarProduto(@RequestBody CadastroProdutoRequest request,
                                               @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
+            validarPermissaoEdicaoEstoque(ator);
             Produto produto = estoqueService.cadastrarProduto(
+                    ator,
                     request.nome(),
                     request.quantidadeInicial(),
                     request.quantidadeMinima(),
-                    request.precoUnitario()
+                    request.precoUnitario(),
+                    parseCategoriaEstoque(request.categoriaEstoque())
             );
 
             logRepository.salvar(new LogAcao(
@@ -73,6 +75,36 @@ public class ProdutoController {
                     ator.getRu(),
                     "PRODUTO_CADASTRADO",
                     "Produto cadastrado: " + produto.getNome() + " (ID: " + produto.getId() + ")"
+            ));
+
+            return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+        }
+    }
+
+    // PUT /api/produtos/{id}
+    @PutMapping("/produtos/{id}")
+    public ResponseEntity<?> atualizarProduto(@PathVariable int id,
+                                              @RequestBody AtualizarProdutoRequest request,
+                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
+            validarPermissaoEdicaoEstoque(ator);
+            Produto produto = estoqueService.atualizarProduto(
+                    ator,
+                    id,
+                    request.nome(),
+                    request.quantidadeMinima(),
+                    request.precoUnitario(),
+                    parseCategoriaEstoque(request.categoriaEstoque())
+            );
+
+            logRepository.salvar(new LogAcao(
+                    0,
+                    ator.getRu(),
+                    "PRODUTO_ATUALIZADO",
+                    "Produto atualizado: " + produto.getNome() + " (ID: " + produto.getId() + ")"
             ));
 
             return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto)));
@@ -94,7 +126,7 @@ public class ProdutoController {
         }
 
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             Pedido pedido = estoqueService.registrarMovimentacao(
                     request.idProduto(),
                     request.quantidade(),
@@ -134,7 +166,15 @@ public class ProdutoController {
             String nome,
             int quantidadeInicial,
             int quantidadeMinima,
-            double precoUnitario
+            double precoUnitario,
+            String categoriaEstoque
+    ) {}
+
+    public record AtualizarProdutoRequest(
+            String nome,
+            int quantidadeMinima,
+            double precoUnitario,
+            String categoriaEstoque
     ) {}
 
     public record MovimentacaoRequest(
@@ -149,7 +189,8 @@ public class ProdutoController {
             int quantidadeAtual,
             int quantidadeMinima,
             double precoUnitario,
-            String nivelEstoque
+            String nivelEstoque,
+            String categoriaEstoque
     ) {
         public static ProdutoResponse from(Produto p, NivelEstoque nivel) {
             return new ProdutoResponse(
@@ -158,7 +199,8 @@ public class ProdutoController {
                     p.getQuantidadeAtual(),
                     p.getQuantidadeMinima(),
                     p.getPrecoUnitario(),
-                    nivel.name()
+                    nivel.name(),
+                    p.getCategoriaEstoque() != null ? p.getCategoriaEstoque().name() : null
             );
         }
     }
@@ -178,6 +220,25 @@ public class ProdutoController {
                     p.getQuantidade(),
                     p.getDataHora().toString()
             );
+        }
+    }
+
+    private static void validarPermissaoEdicaoEstoque(Usuario usuario) {
+        if (usuario.getClasse() == null
+                || !usuario.getClasse().possuiPermissao(Permissao.EDITAR_ESTOQUE)) {
+            throw new SecurityException("Voce nao tem permissao para editar estoque.");
+        }
+    }
+
+    private static CategoriaEstoque parseCategoriaEstoque(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+
+        try {
+            return CategoriaEstoque.valueOf(valor.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Categoria de estoque invalida.");
         }
     }
 

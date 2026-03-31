@@ -111,17 +111,6 @@ public class AppConfig {
     }
 
     // ── Shared privileged user ────────────────────────────────────────────────
-    // Used by controllers to satisfy service permission checks.
-    // RU 1 matches the seeded Admin Superior user in the repository.
-
-    @Bean
-    public Usuario adminSuperior() {
-        ClasseFuncionario classeSuperior = new ClasseFuncionario(1, "SUPERIOR", "Acesso total ao sistema");
-        for (Permissao p : Permissao.values()) classeSuperior.adicionarPermissao(p);
-        return new Usuario(1, "Admin", "Superior", "000.000.000-00", "1234",
-                classeSuperior, Usuario.Perfil.ADMIN);
-    }
-
     // ── Default seed users ────────────────────────────────────────────────────
 
     private static void popularUsuariosPadrao(UsuarioRepository repo) {

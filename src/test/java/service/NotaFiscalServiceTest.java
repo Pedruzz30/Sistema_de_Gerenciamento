@@ -20,6 +20,7 @@ class NotaFiscalServiceTest {
     private NotaFiscalService service;
     private EstoqueService estoqueService;
     private Usuario gerente;
+    private Usuario semPermissao;
     private Fornecedor fornecedor;
     private Produto laranja;
     private Produto alface;
@@ -34,8 +35,13 @@ class NotaFiscalServiceTest {
         classe.adicionarPermissao(Permissao.VER_ESTOQUE);
         gerente = new Usuario(1, "Carlos", "Silva", "111.111.111-11", "senha", classe, Usuario.Perfil.OPERADOR);
 
-        laranja = estoqueService.cadastrarProduto("Laranja", 0, 10, 4.99);
-        alface  = estoqueService.cadastrarProduto("Alface",  0, 5,  2.50);
+        ClasseFuncionario classeSemPermissao = new ClasseFuncionario(2, "CAIXA", "Caixa");
+        classeSemPermissao.adicionarPermissao(Permissao.VER_VENDAS);
+        semPermissao = new Usuario(2, "Ana", "Costa", "222.222.222-22", "1234",
+                classeSemPermissao, Usuario.Perfil.OPERADOR);
+
+        laranja = estoqueService.cadastrarProduto(gerente, "Laranja", 0, 10, 4.99);
+        alface  = estoqueService.cadastrarProduto(gerente, "Alface",  0, 5,  2.50);
 
         fornecedor = new Fornecedor(1, "Hortifruit Central", "12.345.678/0001-99", "(11) 99999-0000");
         fornecedor.adicionarProduto(laranja);
@@ -52,17 +58,13 @@ class NotaFiscalServiceTest {
 
     @Test
     void abrirNota_semPermissao_lancaSecurityException() {
-        ClasseFuncionario semPerm = new ClasseFuncionario(2, "CAIXA", "Caixa");
-        semPerm.adicionarPermissao(Permissao.VER_VENDAS);
-        Usuario caixa = new Usuario(2, "Ana", "Costa", "222.222.222-22", "1234", semPerm, Usuario.Perfil.OPERADOR);
-
-        assertThrows(SecurityException.class, () -> service.abrirNota(caixa, fornecedor));
+        assertThrows(SecurityException.class, () -> service.abrirNota(semPermissao, fornecedor));
     }
 
     @Test
     void adicionarItem_produtoNaoVinculado_lancaIllegalArgument() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        Produto outrosProduto = estoqueService.cadastrarProduto("Manga", 0, 1, 3.0);
+        Produto outrosProduto = estoqueService.cadastrarProduto(gerente, "Manga", 0, 1, 3.0);
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.adicionarItem(gerente, nota, outrosProduto, 1, 3.0));
@@ -86,6 +88,33 @@ class NotaFiscalServiceTest {
         service.registrarPagamento(gerente, nota);
 
         assertEquals(NotaFiscal.Status.PAGA, nota.getStatus());
+    }
+
+    @Test
+    void adicionarItem_semPermissao_lancaSecurityException() {
+        NotaFiscal nota = service.abrirNota(gerente, fornecedor);
+
+        assertThrows(SecurityException.class,
+                () -> service.adicionarItem(semPermissao, nota, laranja, 1, 4.99));
+    }
+
+    @Test
+    void confirmarNota_semPermissao_lancaSecurityException() {
+        NotaFiscal nota = service.abrirNota(gerente, fornecedor);
+        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+
+        assertThrows(SecurityException.class,
+                () -> service.confirmarNota(semPermissao, nota));
+    }
+
+    @Test
+    void registrarPagamento_semPermissao_lancaSecurityException() {
+        NotaFiscal nota = service.abrirNota(gerente, fornecedor);
+        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+        service.confirmarNota(gerente, nota);
+
+        assertThrows(SecurityException.class,
+                () -> service.registrarPagamento(semPermissao, nota));
     }
 
     @Test
@@ -120,6 +149,23 @@ class NotaFiscalServiceTest {
         service.confirmarNota(gerente, nota);
 
         assertThrows(IllegalStateException.class, () -> service.cancelarNota(gerente, nota));
+    }
+
+    @Test
+    void descartarRascunho_semPermissao_lancaSecurityException() {
+        NotaFiscal nota = service.abrirNota(gerente, fornecedor);
+
+        assertThrows(SecurityException.class,
+                () -> service.descartarRascunho(semPermissao, nota));
+    }
+
+    @Test
+    void cancelarNota_semPermissao_lancaSecurityException() {
+        NotaFiscal nota = service.abrirNota(gerente, fornecedor);
+        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+
+        assertThrows(SecurityException.class,
+                () -> service.cancelarNota(semPermissao, nota));
     }
 
     @Test

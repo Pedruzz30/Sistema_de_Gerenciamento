@@ -23,16 +23,13 @@ public class CotacaoController {
     private final CotacaoService cotacaoService;
     private final EstoqueService estoqueService;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario adminSuperior;
 
     public CotacaoController(CotacaoService cotacaoService,
                              EstoqueService estoqueService,
-                             UsuarioRepository usuarioRepository,
-                             Usuario adminSuperior) {
+                             UsuarioRepository usuarioRepository) {
         this.cotacaoService = cotacaoService;
         this.estoqueService = estoqueService;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior = adminSuperior;
     }
 
     // POST /api/cotacoes — register monthly quote
@@ -66,7 +63,7 @@ public class CotacaoController {
         }
 
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
             CotacaoMensal cotacao = cotacaoService.registrarCotacao(
                     ator, produtoOpt.get(), mes,
                     request.precoUnitario(), request.quantidadeComprada()
