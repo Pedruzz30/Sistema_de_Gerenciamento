@@ -9,14 +9,34 @@ if (!usuario) window.location.href = '/login.html';
 // Controllers fall back to adminSuperior when the header is absent.
 (function () {
   const _fetch = window.fetch.bind(window);
-  window.fetch = function (url, options) {
-    options = options || {};
-    if (usuario && typeof url === 'string' && url.startsWith('/api/')) {
-      const headers = new Headers(options.headers || {});
+  window.fetch = function (input, init) {
+    const isRequestObject = input instanceof Request;
+    const requestUrl = isRequestObject ? input.url : String(input || '');
+    const isApiCall = requestUrl.startsWith('/api/')
+      || requestUrl.includes('/api/');
+
+    if (usuario && isApiCall) {
+      const headers = new Headers(
+        isRequestObject ? input.headers : (init && init.headers ? init.headers : {})
+      );
+
+      // If caller passed fetch(Request, init.headers), preserve those headers too.
+      if (isRequestObject && init && init.headers) {
+        new Headers(init.headers).forEach(function (value, key) {
+          headers.set(key, value);
+        });
+      }
+
       headers.set('X-User-RU', String(usuario.ru));
-      options = Object.assign({}, options, { headers });
+
+      if (isRequestObject) {
+        const requestComCabecalho = new Request(input, Object.assign({}, init || {}, { headers }));
+        return _fetch(requestComCabecalho);
+      }
+
+      init = Object.assign({}, init || {}, { headers });
     }
-    return _fetch(url, options);
+    return _fetch(input, init);
   };
 })();
 
@@ -99,7 +119,7 @@ function showToast(message, type) {
     'animation:_toastIn .2s ease;';
   toast.innerHTML =
     '<span style="color:' + color + ';font-weight:700;flex-shrink:0">' + icon + '</span>' +
-    '<span>' + message + '</span>';
+    '<span>' + escapeHtml(message) + '</span>';
   container.appendChild(toast);
 
   setTimeout(function () {
@@ -125,6 +145,46 @@ function setLoading(btn, loading) {
       btn.textContent = btn.dataset._origText;
     }
   }
+}
+
+// ── HTML escaping ─────────────────────────────────────────
+// Use this for ALL user-controlled strings inserted via innerHTML.
+// Prevents stored XSS from product names, supplier names, descriptions, etc.
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// ── Safe error parsing ───────────────────────────────────────
+// Reads API error payloads defensively:
+// - prefers JSON { erro | mensagem | message } when available
+// - falls back to text body
+// - always returns a non-empty fallback string
+async function safeReadErrorMessage(response, fallbackMessage) {
+  var fallback = fallbackMessage || ('HTTP ' + (response ? response.status : 'erro'));
+  if (!response) return fallback;
+
+  try {
+    var contentType = (response.headers && response.headers.get('Content-Type')) || '';
+    if (contentType.toLowerCase().includes('application/json')) {
+      var json = await response.json();
+      if (json && typeof json === 'object') {
+        return json.erro || json.mensagem || json.message || fallback;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    var text = await response.text();
+    if (text && text.trim()) return text.trim();
+  } catch (e) {}
+
+  return fallback;
 }
 
 // ── Page detection ────────────────────────────────────────────

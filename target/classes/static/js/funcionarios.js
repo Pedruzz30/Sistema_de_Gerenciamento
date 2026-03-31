@@ -132,17 +132,17 @@ async function cadastrarFuncionario() {
   if (!nomeClasse){ mostrarAlert('alert-cadastro', 'Selecione uma classe.', 'error'); return; }
 
   const resp = await fetch('/api/funcionarios', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nome, sobrenome, cpf, senha, nomeClasse })
-  });
-  const data = await resp.json();
-  if (!resp.ok) {
-    mostrarAlert('alert-cadastro', data.erro || 'Erro ao cadastrar.', 'error'); return;
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, sobrenome, cpf, senha, nomeClasse })
+    });
+    if (!resp.ok) {
+      const err = await safeReadErrorMessage(resp, 'Erro ao cadastrar.');
+      mostrarAlert('alert-cadastro', err, 'error'); return;
+    }
+    fecharModal('modal-cadastro');
+    await carregarFuncionarios();
   }
-  fecharModal('modal-cadastro');
-  await carregarFuncionarios();
-}
 
 function abrirModalClasse(ru, nomeCompleto, classeAtual) {
   ruMudarClasse = ru;
@@ -162,9 +162,9 @@ async function confirmarMudarClasse() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nomeClasse })
   });
-  const data = await resp.json();
   if (!resp.ok) {
-    mostrarAlert('alert-classe', data.erro || 'Erro ao alterar classe.', 'error'); return;
+    const err = await safeReadErrorMessage(resp, 'Erro ao alterar classe.');
+    mostrarAlert('alert-classe', err, 'error'); return;
   }
   fecharModal('modal-classe');
   await carregarFuncionarios();
@@ -173,8 +173,10 @@ async function confirmarMudarClasse() {
 async function desativar(ru) {
   if (!confirm('Desativar este funcionário?')) return;
   const resp = await fetch(`/api/funcionarios/${ru}/desativar`, { method: 'PUT' });
-  const data = await resp.json();
-  if (!resp.ok) { showToast(data.erro || 'Erro ao desativar.', 'error'); return; }
+  if (!resp.ok) {
+    const err = await safeReadErrorMessage(resp, 'Erro ao desativar.');
+    showToast(err, 'error'); return;
+  }
   showToast('Funcionário desativado.', 'success');
   await carregarFuncionarios();
 }

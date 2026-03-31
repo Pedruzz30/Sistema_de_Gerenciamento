@@ -30,8 +30,6 @@ model\Usuario.class
 repository\InMemoryLogRepository.class
 controller\ProdutoController$PedidoResponse.class
 model\ResultadoComparacao$Tendencia.class
-service\FornecedorServiceTest.class
-service\EstoqueServiceTest.class
 controller\FornecedorController.class
 controller\FornecedorController$MensagemResponse.class
 controller\CaixaController$MetricasResponse.class
@@ -44,7 +42,6 @@ controller\CaixaController$ErroResponse.class
 controller\FornecedorController$ErroResponse.class
 repository\PedidoRepository.class
 repository\NotaFiscalRepository.class
-service\CaixaServiceTest.class
 controller\CotacaoController.class
 controller\GlobalExceptionHandler$ErroResponse.class
 app\SistemaGerenciamentoEstoque.class
@@ -52,6 +49,7 @@ controller\NotaFiscalController$ErroResponse.class
 controller\CaixaController$AbrirCaixaRequest.class
 app\AppConfig.class
 model\Caixa$Status.class
+controller\LogController$ErroResponse.class
 controller\EstoquePageController.class
 service\CadastroFuncionarioService.class
 controller\FuncionarioController$FuncionarioResponse.class
@@ -59,7 +57,6 @@ model\Produto.class
 repository\CaixaRepository.class
 repository\CotacaoRepository.class
 model\ResultadoComparacao.class
-service\CotacaoServiceTest.class
 controller\FornecedorController$FornecedorResponse.class
 model\ClasseFuncionario.class
 controller\ProdutoController$ErroResponse.class
@@ -77,7 +74,6 @@ controller\CotacaoController$ComparacaoResponse.class
 controller\CotacaoController$RelatorioResponse.class
 model\NotaFiscal.class
 model\TipoMovimentacaoCaixa.class
-service\NotaFiscalServiceTest.class
 service\EstoqueService.class
 controller\CotacaoController$ErroResponse.class
 controller\LogController$LogResponse.class
@@ -92,7 +88,6 @@ controller\ProdutoController$MovimentacaoRequest.class
 repository\InMemoryProdutoRepository.class
 controller\AuthController.class
 service\CaixaService.class
-repository\InMemoryUsuarioRepository.class
 controller\NotaFiscalController$NotaResponse.class
 model\Pedido.class
 controller\FuncionarioController$MensagemResponse.class

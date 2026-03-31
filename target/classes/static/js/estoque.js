@@ -50,9 +50,9 @@ async function cadastrarProduto() {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err || 'Erro ao cadastrar produto.');
-    }
+          const err = await safeReadErrorMessage(res, 'Erro ao cadastrar produto.');
+          throw new Error(err);
+        }
 
     mostrarAlertaModal(alertEl, 'success', `"${nome}" cadastrado com sucesso!`);
     limparFormCadastro();
@@ -88,9 +88,9 @@ async function confirmarMovimentacao() {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err || 'Erro ao registrar movimentação.');
-    }
+          const err = await safeReadErrorMessage(res, 'Erro ao registrar movimentação.');
+          throw new Error(err);
+        }
 
     const sinal = tipoMovAtual === 'ENTRADA' ? '+' : '-';
     mostrarAlertaModal(alertEl, 'success',

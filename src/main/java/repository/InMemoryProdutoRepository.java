@@ -31,14 +31,17 @@ public class InMemoryProdutoRepository implements ProdutoRepository {
             sequenceId.updateAndGet(atual -> Math.max(atual, produto.getId() + 1));
         }
 
-        produtos.removeIf(p -> p.getId() == persistido.getId());
+        final int idPersistido = persistido.getId();
+        produtos.removeIf(p -> p.getId() == idPersistido);
         produtos.add(persistido);
         return persistido;
     }
 
     @Override
     public synchronized Optional<Produto> buscarPorId(int id) {
-        return produtos.stream().filter(p -> p.getId() == id).findFirst();
+        return produtos.stream()
+                .filter(p -> p.getId() == id)
+                .findFirst();
     }
 
     @Override
