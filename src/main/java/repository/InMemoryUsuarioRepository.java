@@ -37,7 +37,8 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
             sequenceRu.updateAndGet(atual -> Math.max(atual, usuario.getRu() + 1));
         }
 
-        usuarios.removeIf(u -> u.getRu() == persistido.getRu());
+        final Usuario usuarioPersistido = persistido;
+        usuarios.removeIf(u -> u.getRu() == usuarioPersistido.getRu());
         usuarios.add(persistido);
         return persistido;
     }

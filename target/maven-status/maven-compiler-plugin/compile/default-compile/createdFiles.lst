@@ -88,6 +88,7 @@ controller\ProdutoController$MovimentacaoRequest.class
 repository\InMemoryProdutoRepository.class
 controller\AuthController.class
 service\CaixaService.class
+repository\InMemoryUsuarioRepository.class
 controller\NotaFiscalController$NotaResponse.class
 model\Pedido.class
 controller\FuncionarioController$MensagemResponse.class
