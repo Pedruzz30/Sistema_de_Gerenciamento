@@ -1,5 +1,6 @@
 package controller;
 
+import java.math.BigDecimal;
 import model.NivelEstoque;
 import model.Pedido;
 import model.Permissao;
@@ -166,14 +167,14 @@ public class ProdutoController {
             String nome,
             int quantidadeInicial,
             int quantidadeMinima,
-            double precoUnitario,
+            BigDecimal precoUnitario,
             String categoriaEstoque
     ) {}
 
     public record AtualizarProdutoRequest(
             String nome,
             int quantidadeMinima,
-            double precoUnitario,
+            BigDecimal precoUnitario,
             String categoriaEstoque
     ) {}
 
@@ -188,7 +189,7 @@ public class ProdutoController {
             String nome,
             int quantidadeAtual,
             int quantidadeMinima,
-            double precoUnitario,
+            BigDecimal precoUnitario,
             String nivelEstoque,
             String categoriaEstoque
     ) {

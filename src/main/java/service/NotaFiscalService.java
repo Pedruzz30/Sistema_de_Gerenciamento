@@ -1,5 +1,7 @@
 package service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import model.Fornecedor;
 import model.ItemNotaFiscal;
 import model.LogAcao;
@@ -79,7 +81,7 @@ public class NotaFiscalService {
                               NotaFiscal nota,
                               Produto produto,
                               int quantidade,
-                              double precoUnitario) {
+                              BigDecimal precoUnitario) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
         // Valida que o produto pertence ao fornecedor da nota
@@ -151,7 +153,7 @@ public class NotaFiscalService {
                 "NOTA_CONFIRMADA",
                 "Nota #" + nota.getId() + " confirmada. " +
                         nota.getItens().size() + " item(ns), total R$" +
-                        String.format("%.2f", nota.calcularTotal())
+                        formatarValorMonetario(nota.calcularTotal())
         ));
     }
 
@@ -168,7 +170,7 @@ public class NotaFiscalService {
                 usuarioLogado.getRu(),
                 "NOTA_PAGA",
                 "Pagamento registrado para nota #" + nota.getId() +
-                        " — R$" + String.format("%.2f", nota.calcularTotal())
+                        " — R$" + formatarValorMonetario(nota.calcularTotal())
         ));
     }
 
@@ -243,5 +245,9 @@ public class NotaFiscalService {
                     "Você não tem permissão para executar esta ação."
             );
         }
+    }
+
+    private String formatarValorMonetario(BigDecimal valor) {
+        return valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 }

@@ -1,5 +1,6 @@
 package service;
 
+import java.math.BigDecimal;
 import model.NivelEstoque;
 import model.Pedido;
 import model.Permissao;
@@ -28,17 +29,30 @@ public class EstoqueService {
     }
 
     public Produto cadastrarProduto(Usuario usuario, String nome, int quantidadeInicial, int quantidadeMinima, double preco) {
+        return cadastrarProduto(usuario, nome, quantidadeInicial, quantidadeMinima, BigDecimal.valueOf(preco), null);
+    }
+
+    public Produto cadastrarProduto(Usuario usuario, String nome, int quantidadeInicial, int quantidadeMinima,
+                                    BigDecimal preco) {
         return cadastrarProduto(usuario, nome, quantidadeInicial, quantidadeMinima, preco, null);
     }
 
     public Produto cadastrarProduto(Usuario usuario, String nome, int quantidadeInicial, int quantidadeMinima,
                                     double preco, CategoriaEstoque categoriaEstoque) {
+        return cadastrarProduto(usuario, nome, quantidadeInicial, quantidadeMinima, BigDecimal.valueOf(preco), categoriaEstoque);
+    }
+
+    public Produto cadastrarProduto(Usuario usuario, String nome, int quantidadeInicial, int quantidadeMinima,
+                                    BigDecimal preco, CategoriaEstoque categoriaEstoque) {
         validarPermissaoEdicaoEstoque(usuario);
 
         if (nome == null || nome.trim().isEmpty()) {
             throw new IllegalArgumentException("Nome do produto e obrigatorio.");
         }
-        if (quantidadeInicial < 0 || quantidadeMinima < 0 || preco < 0) {
+        if (quantidadeInicial < 0 || quantidadeMinima < 0) {
+            throw new IllegalArgumentException("Quantidade e preco devem ser nao negativos.");
+        }
+        if (preco == null || preco.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Quantidade e preco devem ser nao negativos.");
         }
 
@@ -51,12 +65,20 @@ public class EstoqueService {
 
     public Produto atualizarProduto(Usuario usuario, int id, String nome, int quantidadeMinima, double preco,
                                     CategoriaEstoque categoriaEstoque) {
+        return atualizarProduto(usuario, id, nome, quantidadeMinima, BigDecimal.valueOf(preco), categoriaEstoque);
+    }
+
+    public Produto atualizarProduto(Usuario usuario, int id, String nome, int quantidadeMinima, BigDecimal preco,
+                                    CategoriaEstoque categoriaEstoque) {
         validarPermissaoEdicaoEstoque(usuario);
 
         if (nome == null || nome.trim().isEmpty()) {
             throw new IllegalArgumentException("Nome do produto e obrigatorio.");
         }
-        if (quantidadeMinima < 0 || preco < 0) {
+        if (quantidadeMinima < 0) {
+            throw new IllegalArgumentException("Quantidade minima e preco devem ser nao negativos.");
+        }
+        if (preco == null || preco.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Quantidade minima e preco devem ser nao negativos.");
         }
 
@@ -97,7 +119,7 @@ public class EstoqueService {
             throw new IllegalArgumentException("Quantidade insuficiente em estoque para saida.");
         }
 
-        produto.atualizarQuantidade(tipo.applyTo(produto.getQuantidadeAtual(), quantidade));
+        produto.atualizarQuantidade(tipo.aplicarAoEstoque(produto.getQuantidadeAtual(), quantidade));
 
         Pedido pedido = pedidoRepository.salvar(new Pedido(0, produto, quantidade, tipo, usuario));
         registrarNivelEstoque(produto);
@@ -125,7 +147,7 @@ public class EstoqueService {
 
         System.out.println("Historico de niveis do produto " + idProduto + ":");
         for (NivelEstoque nivel : historico) {
-            System.out.println("- " + nivel + " | " + nivel.getMessage());
+            System.out.println("- " + nivel + " | " + nivel.gerarMensagem());
         }
     }
 

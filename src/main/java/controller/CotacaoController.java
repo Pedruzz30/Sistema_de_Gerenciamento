@@ -11,152 +11,228 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Controller REST para cotações mensais de preço de produtos.
+ *
+ * <h2>Endpoints</h2>
+ * <pre>
+ *   POST   /api/cotacoes                              — registrar cotação
+ *   GET    /api/cotacoes/produto/{id}/historico       — histórico de preços
+ *   GET    /api/cotacoes/produto/{id}/comparar?mes=   — comparar com mês anterior
+ *   GET    /api/cotacoes/relatorio?mes=               — relatório mensal completo
+ * </pre>
+ *
+ * <h2>Autenticação</h2>
+ * Todas as operações de escrita exigem o header {@code X-User-RU}.
+ * Ausência do header resulta em fallback para {@code adminSuperior}.
+ *
+ * <h2>Formato de mês</h2>
+ * O parâmetro {@code mes} segue o padrão ISO 8601: {@code YYYY-MM}
+ * (ex: {@code 2025-03}). A ausência do parâmetro usa o mês corrente.
+ */
 @RestController
 @RequestMapping("/api/cotacoes")
 public class CotacaoController {
 
-    private final CotacaoService cotacaoService;
-    private final EstoqueService estoqueService;
-    private final UsuarioRepository usuarioRepository;
+    private final CotacaoService     cotacaoService;
+    private final EstoqueService     estoqueService;
+    private final UsuarioRepository  usuarioRepository;
+    private final Usuario            adminSuperior;
 
     public CotacaoController(CotacaoService cotacaoService,
                              EstoqueService estoqueService,
-                             UsuarioRepository usuarioRepository) {
-        this.cotacaoService = cotacaoService;
-        this.estoqueService = estoqueService;
+                             UsuarioRepository usuarioRepository,
+                             Usuario adminSuperior) {
+        this.cotacaoService    = cotacaoService;
+        this.estoqueService    = estoqueService;
         this.usuarioRepository = usuarioRepository;
+        this.adminSuperior     = adminSuperior;
     }
 
-    // POST /api/cotacoes — register monthly quote
+    // ── POST /api/cotacoes ────────────────────────────────────────────────────
+
+    /**
+     * Registra o preço de compra de um produto em um mês específico.
+     *
+     * <p>Se já existir cotação para o mesmo produto+mês, ela é substituída —
+     * permitindo corrigir um preço registrado incorretamente.
+     *
+     * @param request  dados da cotação a registrar
+     * @param ruHeader RU do usuário logado ({@code X-User-RU})
+     * @return {@code 201 Created} com a cotação registrada, ou erro descritivo
+     */
     @PostMapping
-    public ResponseEntity<?> registrarCotacao(@RequestBody RegistrarCotacaoRequest request,
-                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+    public ResponseEntity<?> registrarCotacao(
+            @RequestBody RegistrarCotacaoRequest request,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+
+        // ── Validações de entrada ──────────────────────────────────────────
         if (request.produtoId() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("ID do produto inválido."));
+            return badRequest("ID do produto inválido.");
         }
-        if (request.mes() == null || request.mes().isBlank()) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Mês é obrigatório (formato: YYYY-MM)."));
-        }
-        if (request.precoUnitario() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Preço deve ser maior que zero."));
+        if (request.precoUnitario() == null
+                || request.precoUnitario().compareTo(BigDecimal.ZERO) <= 0) {
+            return badRequest("Preço deve ser maior que zero.");
         }
         if (request.quantidadeComprada() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Quantidade deve ser maior que zero."));
+            return badRequest("Quantidade deve ser maior que zero.");
         }
 
-        YearMonth mes;
-        try {
-            mes = YearMonth.parse(request.mes());
-        } catch (DateTimeParseException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Formato de mês inválido. Use YYYY-MM (ex: 2025-03)."));
+        // ── Parse do mês ───────────────────────────────────────────────────
+        Optional<YearMonth> mesOpt = parseMes(request.mes());
+        if (mesOpt.isEmpty()) {
+            return badRequest("Mês inválido ou ausente. Use o formato YYYY-MM (ex: 2025-03).");
         }
 
+        // ── Busca do produto ───────────────────────────────────────────────
         Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(request.produtoId());
         if (produtoOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Produto não encontrado com id: " + request.produtoId()));
+            return notFound("Produto não encontrado com id: " + request.produtoId());
         }
 
+        // ── Execução ───────────────────────────────────────────────────────
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
+            Usuario ator = resolveUser(ruHeader);
             CotacaoMensal cotacao = cotacaoService.registrarCotacao(
-                    ator, produtoOpt.get(), mes,
+                    ator, produtoOpt.get(), mesOpt.get(),
                     request.precoUnitario(), request.quantidadeComprada()
             );
-            return ResponseEntity.status(HttpStatus.CREATED).body(CotacaoResponse.from(cotacao));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(CotacaoResponse.from(cotacao));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErroResponse(e.getMessage()));
         }
     }
 
-    // GET /api/cotacoes/produto/{produtoId}/historico — price history for a product
+    // ── GET /api/cotacoes/produto/{produtoId}/historico ───────────────────────
+
+    /**
+     * Retorna o histórico de cotações de um produto, ordenado do mais recente
+     * para o mais antigo.
+     *
+     * @param produtoId ID do produto
+     * @return lista de cotações ou {@code 404} se o produto não existir
+     */
     @GetMapping("/produto/{produtoId}/historico")
     public ResponseEntity<?> historico(@PathVariable int produtoId) {
         Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(produtoId);
         if (produtoOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Produto não encontrado com id: " + produtoId));
+            return notFound("Produto não encontrado com id: " + produtoId);
         }
-        List<CotacaoResponse> historico = cotacaoService.buscarHistorico(produtoOpt.get()).stream()
+
+        List<CotacaoResponse> historico = cotacaoService
+                .buscarHistorico(produtoOpt.get())
+                .stream()
                 .map(CotacaoResponse::from)
                 .toList();
+
         return ResponseEntity.ok(historico);
     }
 
-    // GET /api/cotacoes/produto/{produtoId}/comparar?mes=YYYY-MM
+    // ── GET /api/cotacoes/produto/{produtoId}/comparar?mes= ──────────────────
+
+    /**
+     * Compara o preço de um produto no mês informado com o mês anterior.
+     *
+     * <p>Se {@code mes} for omitido, usa o mês corrente.
+     * Retorna {@code 200} com {@link SemDadosResponse} quando não há cotações
+     * suficientes para comparação — sem lançar erro.
+     *
+     * @param produtoId ID do produto a comparar
+     * @param mes       mês de referência no formato {@code YYYY-MM} (opcional)
+     * @return resultado da comparação ou aviso de dados insuficientes
+     */
     @GetMapping("/produto/{produtoId}/comparar")
-    public ResponseEntity<?> comparar(@PathVariable int produtoId,
-                                       @RequestParam(required = false) String mes) {
+    public ResponseEntity<?> comparar(
+            @PathVariable int produtoId,
+            @RequestParam(required = false) String mes) {
+
         Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(produtoId);
         if (produtoOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Produto não encontrado com id: " + produtoId));
+            return notFound("Produto não encontrado com id: " + produtoId);
         }
 
-        YearMonth mesAtual;
-        if (mes != null && !mes.isBlank()) {
-            try {
-                mesAtual = YearMonth.parse(mes);
-            } catch (DateTimeParseException e) {
-                return ResponseEntity.badRequest().body(new ErroResponse("Formato inválido. Use YYYY-MM."));
-            }
-        } else {
-            mesAtual = YearMonth.now();
-        }
+        YearMonth mesAtual = parseMes(mes).orElse(YearMonth.now());
 
-        Optional<ResultadoComparacao> resultado = cotacaoService.compararComMesAnterior(produtoOpt.get(), mesAtual);
+        Optional<ResultadoComparacao> resultado =
+                cotacaoService.compararComMesAnterior(produtoOpt.get(), mesAtual);
+
         if (resultado.isEmpty()) {
             return ResponseEntity.ok(new SemDadosResponse(
-                    "Dados insuficientes para comparação. Verifique se há cotações nos dois meses."));
+                    "Dados insuficientes para comparação do produto '" +
+                            produtoOpt.get().getNome() + "' em " + mesAtual +
+                            ". Verifique se há cotações nos dois meses."
+            ));
         }
+
         return ResponseEntity.ok(ComparacaoResponse.from(resultado.get()));
     }
 
-    // GET /api/cotacoes/relatorio?mes=YYYY-MM — monthly report comparing all products
-    @GetMapping("/relatorio")
-    public ResponseEntity<?> relatorioMensal(@RequestParam(required = false) String mes) {
-        YearMonth mesAlvo;
-        if (mes != null && !mes.isBlank()) {
-            try {
-                mesAlvo = YearMonth.parse(mes);
-            } catch (DateTimeParseException e) {
-                return ResponseEntity.badRequest().body(new ErroResponse("Formato inválido. Use YYYY-MM."));
-            }
-        } else {
-            mesAlvo = YearMonth.now();
-        }
+    // ── GET /api/cotacoes/relatorio?mes= ─────────────────────────────────────
 
-        List<Produto> todosProdutos = estoqueService.listarProdutos();
-        List<ComparacaoResponse> resultados = cotacaoService.gerarRelatorioMensal(todosProdutos, mesAlvo)
+    /**
+     * Gera o relatório mensal comparando todos os produtos com o mês anterior.
+     *
+     * <p>Produtos sem cotação em algum dos dois meses são excluídos
+     * silenciosamente — o relatório contém apenas comparações completas.
+     *
+     * @param mes mês alvo no formato {@code YYYY-MM} (opcional; padrão: mês corrente)
+     * @return {@link RelatorioResponse} com todas as comparações disponíveis
+     */
+    @GetMapping("/relatorio")
+    public ResponseEntity<?> relatorioMensal(
+            @RequestParam(required = false) String mes) {
+
+        YearMonth mesAlvo = parseMes(mes).orElse(YearMonth.now());
+
+        List<Produto> todos = estoqueService.listarProdutos();
+        List<ComparacaoResponse> comparacoes = cotacaoService
+                .gerarRelatorioMensal(todos, mesAlvo)
                 .stream()
                 .map(ComparacaoResponse::from)
                 .toList();
 
-        return ResponseEntity.ok(new RelatorioResponse(mesAlvo.toString(), resultados));
+        return ResponseEntity.ok(new RelatorioResponse(mesAlvo.toString(), comparacoes));
     }
 
-    // ── Records ───────────────────────────────────────────────────────────────
+    // ── Records de request / response ────────────────────────────────────────
 
+    /**
+     * Payload para registrar uma cotação.
+     *
+     * <p>{@code precoUnitario} é {@link BigDecimal} — nunca {@code double} em
+     * dados monetários. O Jackson deserializa {@code "4.99"} corretamente para
+     * {@code BigDecimal} sem perda de precisão.
+     */
     public record RegistrarCotacaoRequest(
-            int produtoId,
-            String mes,
-            double precoUnitario,
-            int quantidadeComprada
+            int        produtoId,
+            String     mes,             // YYYY-MM
+            BigDecimal precoUnitario,
+            int        quantidadeComprada
     ) {}
 
+    /**
+     * Representação pública de uma {@link CotacaoMensal}.
+     *
+     * <p>Todos os valores monetários são {@link String} via
+     * {@link BigDecimal#toPlainString()} — sem notação científica e sem
+     * perda de precisão ao serializar para JSON.
+     */
     public record CotacaoResponse(
-            long id,
-            int produtoId,
+            long   id,
+            int    produtoId,
             String produtoNome,
             String mes,
-            double precoUnitario,
-            int quantidadeComprada,
-            double gastoTotal
+            String precoUnitario,   // BigDecimal → String: sem notação científica
+            int    quantidadeComprada,
+            String gastoTotal
     ) {
         public static CotacaoResponse from(CotacaoMensal c) {
             return new CotacaoResponse(
@@ -164,23 +240,32 @@ public class CotacaoController {
                     c.getProduto().getId(),
                     c.getProduto().getNome(),
                     c.getMesReferencia().toString(),
-                    c.getPrecoUnitario(),
+                    c.getPrecoUnitario().toPlainString(),
                     c.getQuantidadeComprada(),
-                    c.calcularGastoTotal()
+                    c.calcularGastoTotal().toPlainString()
             );
         }
     }
 
+    /**
+     * Representação pública de um {@link ResultadoComparacao}.
+     *
+     * <p>Valores monetários e percentuais são {@link String} pelos mesmos
+     * motivos de {@link CotacaoResponse}. O frontend JavaScript pode usar
+     * {@code parseFloat()} quando precisar de cálculos, sem perder precisão
+     * na serialização.
+     */
     public record ComparacaoResponse(
-            int produtoId,
+            int    produtoId,
             String produtoNome,
             String mesAnterior,
             String mesAtual,
-            double precoAnterior,
-            double precoAtual,
-            double variacaoAbsoluta,
-            double variacaoPercentual,
-            String tendencia,
+            String precoAnterior,       // BigDecimal → String
+            String precoAtual,
+            String variacaoAbsoluta,
+            String variacaoPercentual,
+            String tendencia,           // enum.name() para serialização
+            String tendenciaLabel,      // ex: "subiu", "caiu" (legível)
             String mensagem
     ) {
         public static ComparacaoResponse from(ResultadoComparacao r) {
@@ -189,19 +274,66 @@ public class CotacaoController {
                     r.getProduto().getNome(),
                     r.getMesAnterior().toString(),
                     r.getMesAtual().toString(),
-                    r.getPrecoAnterior(),
-                    r.getPrecoAtual(),
-                    r.getVariacaoAbsoluta(),
-                    r.getVariacaoPercentual(),
+                    r.getPrecoAnterior().toPlainString(),
+                    r.getPrecoAtual().toPlainString(),
+                    r.getVariacaoAbsoluta().toPlainString(),
+                    r.getVariacaoPercentual().toPlainString(),
                     r.getTendencia().name(),
+                    r.getTendencia().getVerbo(),
                     r.gerarMensagem()
             );
         }
     }
 
-    public record RelatorioResponse(String mes, List<ComparacaoResponse> comparacoes) {}
+    /** Envelope do relatório mensal. */
+    public record RelatorioResponse(
+            String mes,
+            List<ComparacaoResponse> comparacoes
+    ) {}
 
+    /** Resposta quando não há dados suficientes para uma operação. */
     public record SemDadosResponse(String aviso) {}
 
+    /** Resposta de erro padronizada — chave {@code "erro"} consistente com {@code GlobalExceptionHandler}. */
     public record ErroResponse(String erro) {}
+
+    // ── Auxiliares privados ───────────────────────────────────────────────────
+
+    /**
+     * Resolve o usuário ator a partir do header {@code X-User-RU}.
+     * Fallback para {@code adminSuperior} quando ausente ou inválido.
+     */
+    private Usuario resolveUser(String ruHeader) {
+        return ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+    }
+
+    /**
+     * Tenta fazer o parse de uma string no formato {@code YYYY-MM}.
+     *
+     * <p>Centraliza o parse e elimina a duplicação que existia nos três
+     * endpoints que aceitam {@code mes} como parâmetro. Retorna
+     * {@link Optional#empty()} tanto para {@code null}/{@code blank}
+     * quanto para strings mal formatadas — sem lançar exceção.
+     *
+     * @param mes string de entrada; pode ser {@code null}
+     * @return {@code Optional} com o {@link YearMonth} parseado, ou vazio
+     */
+    private static Optional<YearMonth> parseMes(String mes) {
+        if (mes == null || mes.isBlank()) return Optional.empty();
+        try {
+            return Optional.of(YearMonth.parse(mes.trim()));
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
+
+    /** Atalho para {@code 400 Bad Request} com mensagem de erro. */
+    private static ResponseEntity<ErroResponse> badRequest(String mensagem) {
+        return ResponseEntity.badRequest().body(new ErroResponse(mensagem));
+    }
+
+    /** Atalho para {@code 404 Not Found} com mensagem de erro. */
+    private static ResponseEntity<ErroResponse> notFound(String mensagem) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErroResponse(mensagem));
+    }
 }

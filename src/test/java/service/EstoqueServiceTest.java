@@ -1,5 +1,6 @@
 package service;
 
+import java.math.BigDecimal;
 import model.ClasseFuncionario;
 import model.CategoriaEstoque;
 import model.NivelEstoque;
@@ -154,7 +155,7 @@ class EstoqueServiceTest {
         assertEquals("Suco Integral", atualizado.getNome());
         assertEquals(10, atualizado.getQuantidadeAtual());
         assertEquals(3, atualizado.getQuantidadeMinima());
-        assertEquals(7.5, atualizado.getPrecoUnitario());
+        assertEquals(0, BigDecimal.valueOf(7.5).compareTo(atualizado.getPrecoUnitario()));
         assertEquals(CategoriaEstoque.FRIO, atualizado.getCategoriaEstoque());
     }
 }

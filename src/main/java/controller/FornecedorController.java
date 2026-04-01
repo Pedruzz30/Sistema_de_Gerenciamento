@@ -1,5 +1,6 @@
 package controller;
 
+import java.math.BigDecimal;
 import model.Fornecedor;
 import model.Produto;
 import model.Usuario;
@@ -149,14 +150,18 @@ public class FornecedorController {
     ) {
         public static FornecedorResponse from(Fornecedor f) {
             List<ProdutoVinculadoResponse> produtos = f.getProdutos().stream()
-                    .map(p -> new ProdutoVinculadoResponse(p.getId(), p.getNome(), p.getPrecoUnitario()))
+                    .map(ProdutoVinculadoResponse::from)
                     .toList();
             return new FornecedorResponse(f.getId(), f.getNome(), f.getCnpj(),
                     f.getTelefone(), f.isAtivo(), produtos);
         }
     }
 
-    public record ProdutoVinculadoResponse(int id, String nome, double precoUnitario) {}
+    public record ProdutoVinculadoResponse(int id, String nome, BigDecimal precoUnitario) {
+        public static ProdutoVinculadoResponse from(Produto produto) {
+            return new ProdutoVinculadoResponse(produto.getId(), produto.getNome(), produto.getPrecoUnitario());
+        }
+    }
 
     public record MensagemResponse(String mensagem) {}
 

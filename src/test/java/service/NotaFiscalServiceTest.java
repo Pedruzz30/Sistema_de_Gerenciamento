@@ -1,5 +1,6 @@
 package service;
 
+import java.math.BigDecimal;
 import model.ClasseFuncionario;
 import model.Fornecedor;
 import model.NotaFiscal;
@@ -67,14 +68,14 @@ class NotaFiscalServiceTest {
         Produto outrosProduto = estoqueService.cadastrarProduto(gerente, "Manga", 0, 1, 3.0);
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.adicionarItem(gerente, nota, outrosProduto, 1, 3.0));
+                () -> service.adicionarItem(gerente, nota, outrosProduto, 1, valor(3.0)));
     }
 
     @Test
     void fluxoCompleto_abrirAdicionarConfirmarPagar_atualizaEstoque() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 20, 4.99);
-        service.adicionarItem(gerente, nota, alface,  10, 2.50);
+        service.adicionarItem(gerente, nota, laranja, 20, valor(4.99));
+        service.adicionarItem(gerente, nota, alface,  10, valor(2.50));
 
         assertEquals(0, laranja.getQuantidadeAtual());
         assertEquals(0, alface.getQuantidadeAtual());
@@ -95,13 +96,13 @@ class NotaFiscalServiceTest {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
 
         assertThrows(SecurityException.class,
-                () -> service.adicionarItem(semPermissao, nota, laranja, 1, 4.99));
+                () -> service.adicionarItem(semPermissao, nota, laranja, 1, valor(4.99)));
     }
 
     @Test
     void confirmarNota_semPermissao_lancaSecurityException() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 1, valor(4.99));
 
         assertThrows(SecurityException.class,
                 () -> service.confirmarNota(semPermissao, nota));
@@ -110,7 +111,7 @@ class NotaFiscalServiceTest {
     @Test
     void registrarPagamento_semPermissao_lancaSecurityException() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 1, valor(4.99));
         service.confirmarNota(gerente, nota);
 
         assertThrows(SecurityException.class,
@@ -127,7 +128,7 @@ class NotaFiscalServiceTest {
     @Test
     void registrarPagamento_semConfirmar_lancaIllegalState() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 1, valor(4.99));
 
         assertThrows(IllegalStateException.class, () -> service.registrarPagamento(gerente, nota));
     }
@@ -135,7 +136,7 @@ class NotaFiscalServiceTest {
     @Test
     void cancelarNota_estadoPendente_mudaParaCancelada() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 1, valor(4.99));
 
         service.cancelarNota(gerente, nota);
 
@@ -145,7 +146,7 @@ class NotaFiscalServiceTest {
     @Test
     void cancelarNota_estadoConfirmado_lancaIllegalState() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 5, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 5, valor(4.99));
         service.confirmarNota(gerente, nota);
 
         assertThrows(IllegalStateException.class, () -> service.cancelarNota(gerente, nota));
@@ -162,7 +163,7 @@ class NotaFiscalServiceTest {
     @Test
     void cancelarNota_semPermissao_lancaSecurityException() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 1, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 1, valor(4.99));
 
         assertThrows(SecurityException.class,
                 () -> service.cancelarNota(semPermissao, nota));
@@ -172,7 +173,7 @@ class NotaFiscalServiceTest {
     void confirmarNota_naoAlteraEstoqueSePreValidacaoFalhar() {
         // Cria uma nota com um produto válido e confirma para colocar o produto no estoque
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 5, 4.99);
+        service.adicionarItem(gerente, nota, laranja, 5, valor(4.99));
 
         // Verifica que estoque está em 0 antes
         assertEquals(0, laranja.getQuantidadeAtual());
@@ -185,10 +186,14 @@ class NotaFiscalServiceTest {
     @Test
     void calcularTotal_somaSubtotaisCorretamente() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        service.adicionarItem(gerente, nota, laranja, 2, 4.99);
-        service.adicionarItem(gerente, nota, alface,  5, 2.50);
+        service.adicionarItem(gerente, nota, laranja, 2, valor(4.99));
+        service.adicionarItem(gerente, nota, alface,  5, valor(2.50));
 
-        double esperado = (2 * 4.99) + (5 * 2.50);
-        assertEquals(esperado, nota.calcularTotal(), 0.001);
+        BigDecimal esperado = valor(22.48);
+        assertEquals(0, esperado.compareTo(nota.calcularTotal()));
+    }
+
+    private BigDecimal valor(double valor) {
+        return BigDecimal.valueOf(valor);
     }
 }

@@ -4,6 +4,7 @@ import model.*;
 import repository.*;
 import service.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -228,9 +229,9 @@ public class SistemaGerenciamentoEstoque {
             return;
         }
         produtos.forEach(p -> System.out.printf(
-                "  [%d] %-20s qtd: %3d | mín: %3d | R$%.2f%n",
+                "  [%d] %-20s qtd: %3d | mín: %3d | R$%s%n",
                 p.getId(), p.getNome(), p.getQuantidadeAtual(),
-                p.getQuantidadeMinima(), p.getPrecoUnitario()
+                p.getQuantidadeMinima(), p.getPrecoUnitario().toPlainString()
         ));
     }
 
@@ -373,17 +374,17 @@ public class SistemaGerenciamentoEstoque {
             System.out.print("Quantidade: ");
             int qtd = lerInteiro(scanner);
             System.out.print("Preço unitário nesta nota: ");
-            double preco = lerDouble(scanner);
+            BigDecimal preco = BigDecimal.valueOf(lerDouble(scanner));
 
             notaFiscalService.adicionarItem(usuarioLogado, nota, produto, qtd, preco);
-            System.out.printf("Item adicionado: %s × %d @ R$%.2f%n",
-                    produto.getNome(), qtd, preco);
+            System.out.printf("Item adicionado: %s × %d @ R$%s%n",
+                    produto.getNome(), qtd, preco.toPlainString());
         } while (true);
 
         // Etapa 3 — confirma e dá entrada no estoque
         notaFiscalService.confirmarNota(usuarioLogado, nota);
-        System.out.printf("Nota confirmada. Total: R$%.2f | Estoque atualizado.%n",
-                nota.calcularTotal());
+        System.out.printf("Nota confirmada. Total: R$%s | Estoque atualizado.%n",
+                nota.calcularTotal().toPlainString());
 
         // Etapa 4 — pagamento
         System.out.print("Registrar pagamento agora? (s/n): ");
@@ -400,9 +401,9 @@ public class SistemaGerenciamentoEstoque {
             return;
         }
         notas.forEach(n -> System.out.printf(
-                "  [%d] %-20s status: %-12s total: R$%.2f%n",
+                "  [%d] %-20s status: %-12s total: R$%s%n",
                 n.getId(), n.getFornecedor().getNome(),
-                n.getStatus(), n.calcularTotal()
+                n.getStatus(), n.calcularTotal().toPlainString()
         ));
     }
 

@@ -1,5 +1,6 @@
 package controller;
 
+import java.math.BigDecimal;
 import model.Fornecedor;
 import model.ItemNotaFiscal;
 import model.NotaFiscal;
@@ -106,7 +107,10 @@ public class NotaFiscalController {
         if (request.quantidade() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Quantidade deve ser maior que zero."));
         }
-        if (request.precoUnitario() < 0) {
+        if (request.precoUnitario() == null) {
+            return ResponseEntity.badRequest().body(new ErroResponse("Preco e obrigatorio."));
+        }
+        if (request.precoUnitario().compareTo(BigDecimal.ZERO) < 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Preço não pode ser negativo."));
         }
 
@@ -222,7 +226,7 @@ public class NotaFiscalController {
 
     public record AbrirNotaRequest(long fornecedorId) {}
 
-    public record AdicionarItemRequest(int produtoId, int quantidade, double precoUnitario) {}
+    public record AdicionarItemRequest(int produtoId, int quantidade, BigDecimal precoUnitario) {}
 
     public record NotaResponse(
             long id,
@@ -230,18 +234,12 @@ public class NotaFiscalController {
             String fornecedorNome,
             String status,
             String dataEmissao,
-            double total,
+            BigDecimal total,
             List<ItemResponse> itens
     ) {
         public static NotaResponse from(NotaFiscal n) {
             List<ItemResponse> itens = n.getItens().stream()
-                    .map(i -> new ItemResponse(
-                            i.getProduto().getId(),
-                            i.getProduto().getNome(),
-                            i.getQuantidade(),
-                            i.getPrecoUnitarioNota(),
-                            i.calcularSubtotal()
-                    ))
+                    .map(ItemResponse::from)
                     .toList();
             return new NotaResponse(
                     n.getId(),
@@ -259,9 +257,19 @@ public class NotaFiscalController {
             int produtoId,
             String produtoNome,
             int quantidade,
-            double precoUnitario,
-            double subtotal
-    ) {}
+            BigDecimal precoUnitario,
+            BigDecimal subtotal
+    ) {
+        public static ItemResponse from(ItemNotaFiscal item) {
+            return new ItemResponse(
+                    item.getProduto().getId(),
+                    item.getProduto().getNome(),
+                    item.getQuantidade(),
+                    item.getPrecoUnitarioNota(),
+                    item.calcularSubtotal()
+            );
+        }
+    }
 
     public record MensagemResponse(String mensagem) {}
 

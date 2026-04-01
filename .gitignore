@@ -1,29 +1,17 @@
-### IntelliJ IDEA ###
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
+# Maven
+target/
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+# Compiled files
+*.class
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# Logs
+*.log
 
-### VS Code ###
+# IDEs
+.idea/
 .vscode/
+*.iml
 
-### Mac OS ###
+# OS
 .DS_Store
+Thumbs.db
