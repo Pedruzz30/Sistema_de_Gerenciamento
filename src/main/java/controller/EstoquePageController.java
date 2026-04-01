@@ -52,55 +52,55 @@ public class EstoquePageController {
     /** Rota raiz redireciona para o dashboard. */
     @GetMapping("/")
     public String raiz() {
-        return "redirect:/dashboard";
+        return "redirect:/dashboard.html";
     }
 
     @GetMapping("/dashboard")
     public String dashboard() {
-        return "dashboard";
+        return "redirect:/dashboard.html";
     }
 
     // ── Módulos principais ────────────────────────────────────────────────────
 
     @GetMapping("/estoque")
     public String estoque() {
-        return "estoque";
+        return "redirect:/estoque.html";
     }
 
     @GetMapping("/fornecedores")
     public String fornecedores() {
-        return "fornecedores";
+        return "redirect:/fornecedores.html";
     }
 
     @GetMapping("/notas")
     public String notas() {
-        return "notas";
+        return "redirect:/notas.html";
     }
 
     @GetMapping("/caixas")
     public String caixas() {
-        return "caixas";
+        return "redirect:/caixas.html";
     }
 
     @GetMapping("/cotacoes")
     public String cotacoes() {
-        return "cotacoes";
+        return "redirect:/cotacoes.html";
     }
 
     @GetMapping("/funcionarios")
     public String funcionarios() {
-        return "funcionarios";
+        return "redirect:/funcionarios.html";
     }
 
     @GetMapping("/logs")
     public String logs() {
-        return "logs";
+        return "redirect:/logs.html";
     }
 
     // ── Autenticação ──────────────────────────────────────────────────────────
 
     @GetMapping("/login")
     public String login() {
-        return "login";
+        return "redirect:/login.html";
     }
 }

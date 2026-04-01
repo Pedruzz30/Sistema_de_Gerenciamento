@@ -1,5 +1,7 @@
 package service;
 
+import java.math.BigDecimal;
+
 import model.Caixa;
 import model.ClasseFuncionario;
 import model.FechamentoCaixa;
@@ -25,12 +27,12 @@ class CaixaServiceTest {
         ClasseFuncionario classeCompleta = new ClasseFuncionario(1, "CAIXA", "PDV");
         classeCompleta.adicionarPermissao(Permissao.VER_VENDAS);
         classeCompleta.adicionarPermissao(Permissao.VER_FINANCAS);
-        operadorFinancas = new Usuario(1, "João", "Silva", "111.111.111-11", "1234",
+        operadorFinancas = new Usuario(1, "João", "Silva", "529.982.247-25", "1234",
                 classeCompleta, Usuario.Perfil.OPERADOR);
 
         ClasseFuncionario classeSemPermissao = new ClasseFuncionario(2, "ESTOQUISTA", "Estoque");
         classeSemPermissao.adicionarPermissao(Permissao.VER_ESTOQUE);
-        operadorSemPermissao = new Usuario(2, "Maria", "Lima", "222.222.222-22", "1234",
+        operadorSemPermissao = new Usuario(2, "Maria", "Lima", "111.444.777-35", "1234",
                 classeSemPermissao, Usuario.Perfil.OPERADOR);
     }
 
@@ -39,7 +41,7 @@ class CaixaServiceTest {
         Caixa caixa = service.abrirCaixa(operadorFinancas, 1, 100.00);
 
         assertEquals(Caixa.Status.ABERTO, caixa.getStatus());
-        assertEquals(100.00, caixa.getSaldoAtual());
+        assertBigDecimalEquals(100.00, caixa.getSaldoAtual());
         assertEquals(1, caixa.getNumeroCaixa());
     }
 
@@ -63,8 +65,8 @@ class CaixaServiceTest {
 
         service.registrarVenda(operadorFinancas, 2, 30.00, "Venda de produto");
 
-        assertEquals(130.00, caixa.getSaldoAtual(), 0.001);
-        assertEquals(30.00, caixa.calcularTotalVendas(), 0.001);
+        assertBigDecimalEquals(130.00, caixa.getSaldoAtual());
+        assertBigDecimalEquals(30.00, caixa.calcularTotalVendas());
     }
 
     @Test
@@ -108,8 +110,8 @@ class CaixaServiceTest {
 
         FechamentoCaixa fechamento = service.encerrarCaixa(operadorFinancas, 4);
 
-        assertEquals(43.50, fechamento.getTotalVendas(), 0.001);
-        assertEquals(93.50, fechamento.getSaldoFinal(), 0.001);
+        assertBigDecimalEquals(43.50, fechamento.getTotalVendas());
+        assertBigDecimalEquals(93.50, fechamento.getSaldoFinal());
         assertEquals(Caixa.Status.ENCERRADO, caixa.getStatus());
         assertThrows(IllegalStateException.class, () -> service.buscarCaixaAberto(4));
     }
@@ -126,5 +128,9 @@ class CaixaServiceTest {
     void buscarCaixaAberto_caixaInexistente_lancaIllegalState() {
         assertThrows(IllegalStateException.class,
                 () -> service.buscarCaixaAberto(999));
+    }
+
+    private void assertBigDecimalEquals(double esperado, BigDecimal atual) {
+        assertEquals(0, BigDecimal.valueOf(esperado).compareTo(atual));
     }
 }

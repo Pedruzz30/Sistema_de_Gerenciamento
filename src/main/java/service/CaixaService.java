@@ -1,5 +1,12 @@
 package service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
 import model.Caixa;
 import model.FechamentoCaixa;
 import model.LogAcao;
@@ -10,20 +17,8 @@ import model.Usuario;
 import repository.CaixaRepository;
 import repository.LogRepository;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
 /**
  * Gerencia o ciclo de vida dos caixas PDV.
- *
- * Fluxo diário:
- *   1. abrirCaixa()           → operador abre com saldo inicial
- *   2. registrarVenda()       → a cada venda realizada
- *   3. registrarSangria()     → quando precisa retirar dinheiro
- *   4. encerrarCaixa()        → fim do turno, gera FechamentoCaixa
- *   5. consolidarDia()        → soma todos os caixas do dia (mensal)
  */
 public class CaixaService {
 
@@ -37,15 +32,12 @@ public class CaixaService {
         this.logRepository = logRepository;
     }
 
-    // ── Abertura ───────────────────────────────────────────────
-
     public Caixa abrirCaixa(Usuario operador, int numeroCaixa, double saldoInicial) {
         validarPermissao(operador, Permissao.VER_VENDAS);
 
-        // Garante que não tem outro caixa aberto com o mesmo número
         caixaRepository.buscarAbertoporNumero(numeroCaixa).ifPresent(c -> {
             throw new IllegalStateException(
-                    "Caixa " + numeroCaixa + " já está aberto pelo operador: "
+                    "Caixa " + numeroCaixa + " ja esta aberto pelo operador: "
                             + c.getOperadorAtual().getNomeCompleto()
             );
         });
@@ -59,13 +51,11 @@ public class CaixaService {
                 0, operador.getRu(),
                 "CAIXA_ABERTO",
                 "Caixa " + numeroCaixa + " aberto com saldo inicial R$"
-                        + String.format("%.2f", saldoInicial)
+                        + formatarMoeda(BigDecimal.valueOf(saldoInicial))
         ));
 
         return caixa;
     }
-
-    // ── Movimentações ──────────────────────────────────────────
 
     public void registrarVenda(Usuario operador, int numeroCaixa,
                                double valor, String descricao) {
@@ -88,14 +78,17 @@ public class CaixaService {
                 TipoMovimentacaoCaixa.SUPRIMENTO, valor, descricao);
     }
 
-    // Método interno que faz o trabalho real de todas as movimentações
     private void registrarMovimentacao(Usuario operador, int numeroCaixa,
                                        TipoMovimentacaoCaixa tipo,
                                        double valor, String descricao) {
         Caixa caixa = buscarCaixaAbertoOuLancar(numeroCaixa);
 
         MovimentacaoCaixa mov = new MovimentacaoCaixa(
-                proximoIdMovimentacao.getAndIncrement(), tipo, valor, descricao, operador
+                proximoIdMovimentacao.getAndIncrement(),
+                tipo,
+                BigDecimal.valueOf(valor),
+                descricao,
+                operador
         );
         caixa.registrarMovimentacao(mov);
         caixaRepository.salvar(caixa);
@@ -105,16 +98,14 @@ public class CaixaService {
                 operador.getRu(),
                 "MOVIMENTACAO_CAIXA",
                 String.format(
-                        "Caixa %d: %s de R$%.2f (%s)",
+                        "Caixa %d: %s de R$%s (%s)",
                         numeroCaixa,
                         tipo.name(),
-                        valor,
-                        (descricao == null || descricao.isBlank()) ? "sem descrição" : descricao
+                        formatarMoeda(BigDecimal.valueOf(valor)),
+                        (descricao == null || descricao.isBlank()) ? "sem descricao" : descricao
                 )
         ));
     }
-
-    // ── Encerramento ───────────────────────────────────────────
 
     public FechamentoCaixa encerrarCaixa(Usuario operador, int numeroCaixa) {
         validarPermissao(operador, Permissao.VER_FINANCAS);
@@ -128,23 +119,15 @@ public class CaixaService {
         logRepository.salvar(new LogAcao(
                 0, operador.getRu(),
                 "CAIXA_ENCERRADO",
-                String.format("Caixa %d encerrado. Vendas: R$%.2f | Saldo final: R$%.2f",
+                String.format("Caixa %d encerrado. Vendas: R$%s | Saldo final: R$%s",
                         numeroCaixa,
-                        fechamento.getTotalVendas(),
-                        fechamento.getSaldoFinal())
+                        formatarMoeda(fechamento.getTotalVendas()),
+                        formatarMoeda(fechamento.getSaldoFinal()))
         ));
 
         return fechamento;
     }
 
-    // ── Consolidação mensal ────────────────────────────────────
-
-    /**
-     * Consolida todos os caixas encerrados em uma data.
-     *
-     * Retorna um resumo com a soma de vendas, entradas e saídas
-     * de todos os PDVs juntos — para o relatório mensal.
-     */
     public String consolidarDia(LocalDate data) {
         List<Caixa> encerrados = caixaRepository.buscarEncerradosPorData(data);
 
@@ -152,45 +135,45 @@ public class CaixaService {
             return "Nenhum caixa encerrado em " + data + ".";
         }
 
-        double totalVendas   = encerrados.stream().mapToDouble(Caixa::calcularTotalVendas).sum();
-        double totalEntradas = encerrados.stream().mapToDouble(Caixa::calcularTotalEntradas).sum();
-        double totalSaidas   = encerrados.stream().mapToDouble(Caixa::calcularTotalSaidas).sum();
-        double saldoTotal    = encerrados.stream().mapToDouble(Caixa::getSaldoAtual).sum();
+        BigDecimal totalVendas = somar(encerrados.stream().map(Caixa::calcularTotalVendas).toList());
+        BigDecimal totalEntradas = somar(encerrados.stream().map(Caixa::calcularTotalEntradas).toList());
+        BigDecimal totalSaidas = somar(encerrados.stream().map(Caixa::calcularTotalSaidas).toList());
+        BigDecimal saldoTotal = somar(encerrados.stream().map(Caixa::getSaldoAtual).toList());
 
         String detalhesCaixas = encerrados.stream()
-                .map(c -> String.format("  Caixa %d: vendas R$%.2f | saldo R$%.2f",
+                .map(c -> String.format("  Caixa %d: vendas R$%s | saldo R$%s",
                         c.getNumeroCaixa(),
-                        c.calcularTotalVendas(),
-                        c.getSaldoAtual()))
+                        formatarMoeda(c.calcularTotalVendas()),
+                        formatarMoeda(c.getSaldoAtual())))
                 .collect(Collectors.joining("\n"));
 
         return String.format("""
-                ══ CONSOLIDADO DO DIA %s ══
+                CONSOLIDADO DO DIA %s
                 %s
-                ──────────────────────────────
-                Total vendas:    R$%.2f
-                Total entradas:  R$%.2f
-                Total saídas:    R$%.2f
-                Saldo total:     R$%.2f
+                ------------------------------
+                Total vendas:    R$%s
+                Total entradas:  R$%s
+                Total saidas:    R$%s
+                Saldo total:     R$%s
                 Caixas fechados: %d
                 """,
-                data, detalhesCaixas,
-                totalVendas, totalEntradas, totalSaidas, saldoTotal,
+                data,
+                detalhesCaixas,
+                formatarMoeda(totalVendas),
+                formatarMoeda(totalEntradas),
+                formatarMoeda(totalSaidas),
+                formatarMoeda(saldoTotal),
                 encerrados.size());
     }
-
-    // ── Consultas ──────────────────────────────────────────────
 
     public Caixa buscarCaixaAberto(int numeroCaixa) {
         return buscarCaixaAbertoOuLancar(numeroCaixa);
     }
 
-    // ── Utilitários internos ───────────────────────────────────
-
     private Caixa buscarCaixaAbertoOuLancar(int numeroCaixa) {
         return caixaRepository.buscarAbertoporNumero(numeroCaixa)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Caixa " + numeroCaixa + " não está aberto."
+                        "Caixa " + numeroCaixa + " nao esta aberto."
                 ));
     }
 
@@ -199,8 +182,18 @@ public class CaixaService {
                 || usuario.getClasse() == null
                 || !usuario.getClasse().possuiPermissao(permissao)) {
             throw new SecurityException(
-                    "Você não tem permissão para esta operação."
+                    "Voce nao tem permissao para esta operacao."
             );
         }
+    }
+
+    private BigDecimal somar(List<BigDecimal> valores) {
+        return valores.stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String formatarMoeda(BigDecimal valor) {
+        return valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 }

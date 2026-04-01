@@ -1,6 +1,5 @@
 package service;
 
-import java.math.BigDecimal;
 import model.ClasseFuncionario;
 import model.Fornecedor;
 import model.NotaFiscal;
@@ -9,10 +8,13 @@ import model.Produto;
 import model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import repository.InMemoryFornecedorRepository;
 import repository.InMemoryLogRepository;
 import repository.InMemoryNotaFiscalRepository;
 import repository.InMemoryPedidoRepository;
 import repository.InMemoryProdutoRepository;
+
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,6 +22,7 @@ class NotaFiscalServiceTest {
 
     private NotaFiscalService service;
     private EstoqueService estoqueService;
+    private FornecedorService fornecedorService;
     private Usuario gerente;
     private Usuario semPermissao;
     private Fornecedor fornecedor;
@@ -29,24 +32,36 @@ class NotaFiscalServiceTest {
     @BeforeEach
     void setUp() {
         estoqueService = new EstoqueService(new InMemoryProdutoRepository(), new InMemoryPedidoRepository());
-        service = new NotaFiscalService(new InMemoryNotaFiscalRepository(), new InMemoryLogRepository(), estoqueService);
+        fornecedorService = new FornecedorService(new InMemoryFornecedorRepository(), new InMemoryLogRepository());
+        service = new NotaFiscalService(
+                new InMemoryNotaFiscalRepository(),
+                new InMemoryLogRepository(),
+                estoqueService,
+                fornecedorService
+        );
 
         ClasseFuncionario classe = new ClasseFuncionario(1, "GERENTE", "Gerente de estoque");
         classe.adicionarPermissao(Permissao.EDITAR_ESTOQUE);
         classe.adicionarPermissao(Permissao.VER_ESTOQUE);
-        gerente = new Usuario(1, "Carlos", "Silva", "111.111.111-11", "senha", classe, Usuario.Perfil.OPERADOR);
+        classe.adicionarPermissao(Permissao.GERENCIAR_FUNCIONARIOS);
+        gerente = new Usuario(1, "Carlos", "Silva", "529.982.247-25", "senha", classe, Usuario.Perfil.OPERADOR);
 
         ClasseFuncionario classeSemPermissao = new ClasseFuncionario(2, "CAIXA", "Caixa");
         classeSemPermissao.adicionarPermissao(Permissao.VER_VENDAS);
-        semPermissao = new Usuario(2, "Ana", "Costa", "222.222.222-22", "1234",
+        semPermissao = new Usuario(2, "Ana", "Costa", "111.444.777-35", "1234",
                 classeSemPermissao, Usuario.Perfil.OPERADOR);
 
         laranja = estoqueService.cadastrarProduto(gerente, "Laranja", 0, 10, 4.99);
-        alface  = estoqueService.cadastrarProduto(gerente, "Alface",  0, 5,  2.50);
+        alface = estoqueService.cadastrarProduto(gerente, "Alface", 0, 5, 2.50);
 
-        fornecedor = new Fornecedor(1, "Hortifruit Central", "12.345.678/0001-99", "(11) 99999-0000");
-        fornecedor.adicionarProduto(laranja);
-        fornecedor.adicionarProduto(alface);
+        fornecedor = fornecedorService.cadastrarFornecedor(
+                gerente,
+                "Hortifruit Central",
+                "12.345.678/0001-95",
+                "(11) 99999-0000"
+        );
+        fornecedorService.vincularProduto(gerente, fornecedor.getId(), laranja);
+        fornecedorService.vincularProduto(gerente, fornecedor.getId(), alface);
     }
 
     @Test
@@ -63,19 +78,55 @@ class NotaFiscalServiceTest {
     }
 
     @Test
-    void adicionarItem_produtoNaoVinculado_lancaIllegalArgument() {
+    void adicionarItem_produtoNaoVinculado_criaVinculoAutomaticamente() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
-        Produto outrosProduto = estoqueService.cadastrarProduto(gerente, "Manga", 0, 1, 3.0);
+        Produto manga = estoqueService.cadastrarProduto(gerente, "Manga", 0, 1, 3.0);
 
-        assertThrows(IllegalArgumentException.class,
-                () -> service.adicionarItem(gerente, nota, outrosProduto, 1, valor(3.0)));
+        service.adicionarItem(gerente, nota, manga, 1, valor(3.0));
+
+        assertTrue(fornecedor.possuiProduto(manga.getId()));
+        assertEquals(1, nota.getItens().size());
+        assertEquals(manga.getId(), nota.getItens().get(0).getProduto().getId());
+    }
+
+    @Test
+    void adicionarItem_novoProdutoInline_criaProdutoEVinculoSemDuplicar() {
+        NotaFiscal nota = service.abrirNota(gerente, fornecedor);
+
+        Produto criado = service.adicionarItem(
+                gerente,
+                nota,
+                new NotaFiscalService.NovoProdutoInput("Arroz Integral 5kg", 5, valor(25.90), "SECO"),
+                20,
+                valor(25.90)
+        );
+
+        assertNotNull(criado);
+        assertTrue(criado.getId() > 0);
+        assertEquals("Arroz Integral 5kg", criado.getNome());
+        assertTrue(fornecedor.possuiProduto(criado.getId()));
+        assertEquals(1, nota.getItens().size());
+        assertEquals(criado.getId(), nota.getItens().get(0).getProduto().getId());
+
+        Produto reaproveitado = service.adicionarItem(
+                gerente,
+                nota,
+                new NotaFiscalService.NovoProdutoInput("Arroz Integral 5kg", 5, valor(25.90), "SECO"),
+                5,
+                valor(25.90)
+        );
+
+        assertEquals(criado.getId(), reaproveitado.getId());
+        assertEquals(1, estoqueService.listarProdutos().stream()
+                .filter(produto -> produto.getNome().equalsIgnoreCase("Arroz Integral 5kg"))
+                .count());
     }
 
     @Test
     void fluxoCompleto_abrirAdicionarConfirmarPagar_atualizaEstoque() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
         service.adicionarItem(gerente, nota, laranja, 20, valor(4.99));
-        service.adicionarItem(gerente, nota, alface,  10, valor(2.50));
+        service.adicionarItem(gerente, nota, alface, 10, valor(2.50));
 
         assertEquals(0, laranja.getQuantidadeAtual());
         assertEquals(0, alface.getQuantidadeAtual());
@@ -171,14 +222,11 @@ class NotaFiscalServiceTest {
 
     @Test
     void confirmarNota_naoAlteraEstoqueSePreValidacaoFalhar() {
-        // Cria uma nota com um produto válido e confirma para colocar o produto no estoque
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
         service.adicionarItem(gerente, nota, laranja, 5, valor(4.99));
 
-        // Verifica que estoque está em 0 antes
         assertEquals(0, laranja.getQuantidadeAtual());
 
-        // Se confirmarNota for chamado em nota válida, deve funcionar normalmente
         service.confirmarNota(gerente, nota);
         assertEquals(5, laranja.getQuantidadeAtual());
     }
@@ -187,7 +235,7 @@ class NotaFiscalServiceTest {
     void calcularTotal_somaSubtotaisCorretamente() {
         NotaFiscal nota = service.abrirNota(gerente, fornecedor);
         service.adicionarItem(gerente, nota, laranja, 2, valor(4.99));
-        service.adicionarItem(gerente, nota, alface,  5, valor(2.50));
+        service.adicionarItem(gerente, nota, alface, 5, valor(2.50));
 
         BigDecimal esperado = valor(22.48);
         assertEquals(0, esperado.compareTo(nota.calcularTotal()));

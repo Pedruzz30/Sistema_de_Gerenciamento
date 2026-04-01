@@ -29,11 +29,11 @@ class EstoqueServiceTest {
         ClasseFuncionario classe = new ClasseFuncionario(1, "ESTOQUISTA", "Testes");
         classe.adicionarPermissao(Permissao.VER_ESTOQUE);
         classe.adicionarPermissao(Permissao.EDITAR_ESTOQUE);
-        operador = new Usuario(1, "Teste", "User", "999.999.999-99", "1234", classe, Usuario.Perfil.OPERADOR);
+        operador = new Usuario(1, "Teste", "User", "390.533.447-05", "1234", classe, Usuario.Perfil.OPERADOR);
 
         ClasseFuncionario classeSemPermissao = new ClasseFuncionario(2, "CAIXA", "Sem acesso ao estoque");
         classeSemPermissao.adicionarPermissao(Permissao.VER_VENDAS);
-        semPermissao = new Usuario(2, "Sem", "Permissao", "888.888.888-88", "1234",
+        semPermissao = new Usuario(2, "Sem", "Permissao", "111.444.777-35", "1234",
                 classeSemPermissao, Usuario.Perfil.OPERADOR);
     }
 

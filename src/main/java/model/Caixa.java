@@ -152,7 +152,7 @@ public class Caixa {
         validar(movimentacao != null, "Movimentação não pode ser nula.");
 
         // Converte na fronteira: double → BigDecimal (seguro via valueOf)
-        BigDecimal valor = bd(movimentacao.getValor());
+        BigDecimal valor = movimentacao.getValor();
 
         if (movimentacao.getTipo().isEntrada()) {
             this.saldoAtual = this.saldoAtual.add(valor);
@@ -194,7 +194,7 @@ public class Caixa {
     public BigDecimal calcularTotalEntradas() {
         return movimentacoes.stream()
                 .filter(m -> m.getTipo().isEntrada())
-                .map(m -> bd(m.getValor()))
+                .map(MovimentacaoCaixa::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
     }
@@ -206,7 +206,7 @@ public class Caixa {
     public BigDecimal calcularTotalSaidas() {
         return movimentacoes.stream()
                 .filter(m -> !m.getTipo().isEntrada())
-                .map(m -> bd(m.getValor()))
+                .map(MovimentacaoCaixa::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
     }
@@ -218,7 +218,7 @@ public class Caixa {
     public BigDecimal calcularTotalVendas() {
         return movimentacoes.stream()
                 .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
-                .map(m -> bd(m.getValor()))
+                .map(MovimentacaoCaixa::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
     }

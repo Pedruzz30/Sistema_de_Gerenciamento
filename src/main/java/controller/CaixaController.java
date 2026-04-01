@@ -1,5 +1,11 @@
 package controller;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+
 import model.Caixa;
 import model.FechamentoCaixa;
 import model.MovimentacaoCaixa;
@@ -8,12 +14,10 @@ import model.Usuario;
 import repository.CaixaRepository;
 import repository.UsuarioRepository;
 import service.CaixaService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/caixas")
@@ -31,7 +35,6 @@ public class CaixaController {
         this.usuarioRepository = usuarioRepository;
     }
 
-    // GET /api/caixas
     @GetMapping
     public ResponseEntity<List<CaixaResponse>> listarCaixas() {
         List<CaixaResponse> lista = caixaRepository.listarTodos().stream()
@@ -40,30 +43,34 @@ public class CaixaController {
         return ResponseEntity.ok(lista);
     }
 
-    // GET /api/caixas/metricas — correct average ticket formula (requires VER_VENDAS)
     @GetMapping("/metricas")
     public ResponseEntity<?> metricas(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
         if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_VENDAS)) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-                    .body(new ErroResponse("Você não tem permissão para visualizar métricas de caixa."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErroResponse("Voce nao tem permissao para visualizar metricas de caixa."));
         }
+
         List<Caixa> todos = caixaRepository.listarTodos();
-        double totalVendas = todos.stream().mapToDouble(Caixa::calcularTotalVendas).sum();
+        BigDecimal totalVendas = todos.stream()
+                .map(Caixa::calcularTotalVendas)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
         long caixasAbertos = todos.stream()
-                .filter(c -> c.getStatus() == Caixa.Status.ABERTO).count();
+                .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
+                .count();
         long totalMovimentacoesVenda = todos.stream()
                 .flatMap(c -> c.getMovimentacoes().stream())
                 .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
                 .count();
-        double ticketMedio = totalMovimentacoesVenda > 0
-                ? totalVendas / totalMovimentacoesVenda
-                : 0;
+        BigDecimal ticketMedio = totalMovimentacoesVenda > 0
+                ? totalVendas.divide(BigDecimal.valueOf(totalMovimentacoesVenda), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
         return ResponseEntity.ok(new MetricasResponse(totalVendas, caixasAbertos, totalMovimentacoesVenda, ticketMedio));
     }
 
-    // GET /api/caixas/{numero}
     @GetMapping("/{numero}")
     public ResponseEntity<?> buscarCaixaPorNumero(@PathVariable int numero) {
         try {
@@ -74,7 +81,6 @@ public class CaixaController {
         }
     }
 
-    // GET /api/caixas/{numero}/movimentacoes
     @GetMapping("/{numero}/movimentacoes")
     public ResponseEntity<?> listarMovimentacoesDoCaixa(@PathVariable int numero) {
         List<Caixa> historico = caixaRepository.buscarHistoricoPorNumero(numero);
@@ -91,15 +97,14 @@ public class CaixaController {
         return ResponseEntity.ok(movs);
     }
 
-    // POST /api/caixas/abrir
     @PostMapping("/abrir")
     public ResponseEntity<?> abrirCaixa(@RequestBody AbrirCaixaRequest request,
                                         @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.numeroCaixa() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Número do caixa inválido."));
+            return ResponseEntity.badRequest().body(new ErroResponse("Numero do caixa invalido."));
         }
         if (request.saldoInicial() < 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Saldo inicial não pode ser negativo."));
+            return ResponseEntity.badRequest().body(new ErroResponse("Saldo inicial nao pode ser negativo."));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -110,7 +115,6 @@ public class CaixaController {
         }
     }
 
-    // POST /api/caixas/venda
     @PostMapping("/venda")
     public ResponseEntity<?> registrarVenda(@RequestBody MovimentacaoRequest request,
                                             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
@@ -126,7 +130,6 @@ public class CaixaController {
         }
     }
 
-    // POST /api/caixas/sangria
     @PostMapping("/sangria")
     public ResponseEntity<?> registrarSangria(@RequestBody MovimentacaoRequest request,
                                               @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
@@ -142,7 +145,6 @@ public class CaixaController {
         }
     }
 
-    // POST /api/caixas/suprimento
     @PostMapping("/suprimento")
     public ResponseEntity<?> registrarSuprimento(@RequestBody MovimentacaoRequest request,
                                                  @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
@@ -158,12 +160,11 @@ public class CaixaController {
         }
     }
 
-    // POST /api/caixas/encerrar
     @PostMapping("/encerrar")
     public ResponseEntity<?> encerrarCaixa(@RequestBody EncerrarCaixaRequest request,
                                            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.numeroCaixa() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Número do caixa inválido."));
+            return ResponseEntity.badRequest().body(new ErroResponse("Numero do caixa invalido."));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -174,24 +175,21 @@ public class CaixaController {
         }
     }
 
-    // GET /api/caixas/consolidado — requires VER_FINANCAS
     @GetMapping("/consolidado")
     public ResponseEntity<?> consolidadoDia(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
         if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_FINANCAS)) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-                    .body(new ErroResponse("Você não tem permissão para acessar o consolidado diário."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErroResponse("Voce nao tem permissao para acessar o consolidado diario."));
         }
         String resumo = caixaService.consolidarDia(LocalDate.now());
         return ResponseEntity.ok(new ConsolidadoResponse(LocalDate.now().toString(), resumo));
     }
 
-    // ── Validação auxiliar ────────────────────────────────────────────────────
-
     private ResponseEntity<?> validarMovimentacao(MovimentacaoRequest request) {
         if (request.numeroCaixa() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Número do caixa inválido."));
+            return ResponseEntity.badRequest().body(new ErroResponse("Numero do caixa invalido."));
         }
         if (request.valor() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Valor deve ser maior que zero."));
@@ -199,25 +197,21 @@ public class CaixaController {
         return null;
     }
 
-    // ── Records de request ────────────────────────────────────────────────────
-
     public record AbrirCaixaRequest(int numeroCaixa, double saldoInicial) {}
 
     public record MovimentacaoRequest(int numeroCaixa, double valor, String descricao) {}
 
     public record EncerrarCaixaRequest(int numeroCaixa) {}
 
-    // ── Records de response ───────────────────────────────────────────────────
-
     public record CaixaResponse(
             long id,
             int numeroCaixa,
             String status,
-            double saldoInicial,
-            double saldoAtual,
-            double totalVendas,
-            double totalEntradas,
-            double totalSaidas,
+            BigDecimal saldoInicial,
+            BigDecimal saldoAtual,
+            BigDecimal totalVendas,
+            BigDecimal totalEntradas,
+            BigDecimal totalSaidas,
             String nomeOperador,
             String dataAbertura,
             String dataEncerramento
@@ -242,7 +236,7 @@ public class CaixaController {
     public record MovimentacaoCaixaResponse(
             long id,
             String tipo,
-            double valor,
+            BigDecimal valor,
             String descricao,
             String dataHora,
             String operador
@@ -262,11 +256,11 @@ public class CaixaController {
     public record FechamentoResponse(
             int numeroCaixa,
             String data,
-            double saldoInicial,
-            double totalEntradas,
-            double totalSaidas,
-            double totalVendas,
-            double saldoFinal,
+            BigDecimal saldoInicial,
+            BigDecimal totalEntradas,
+            BigDecimal totalSaidas,
+            BigDecimal totalVendas,
+            BigDecimal saldoFinal,
             int quantidadeMovimentacoes,
             String nomeOperador
     ) {
@@ -286,10 +280,10 @@ public class CaixaController {
     }
 
     public record MetricasResponse(
-            double totalVendas,
+            BigDecimal totalVendas,
             long caixasAbertos,
             long totalMovimentacoesVenda,
-            double ticketMedio
+            BigDecimal ticketMedio
     ) {}
 
     public record ConsolidadoResponse(String data, String resumo) {}

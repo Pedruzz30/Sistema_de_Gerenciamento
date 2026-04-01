@@ -131,6 +131,11 @@ public class Fornecedor {
         return Collections.unmodifiableList(produtos);
     }
 
+    /** Retorna {@code true} quando o fornecedor j&aacute; vende o produto informado. */
+    public boolean possuiProduto(int produtoId) {
+        return produtos.stream().anyMatch(produto -> produto.getId() == produtoId);
+    }
+
     // ── Ciclo de vida ativo/inativo ───────────────────────────────────────────
 
     /**

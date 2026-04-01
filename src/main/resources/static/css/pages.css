@@ -90,6 +90,53 @@
   font-weight: 600;
 }
 
+.nota-inline-card {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.nota-inline-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.nota-inline-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.nota-inline-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+.nota-inline-form {
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.nota-inline-form-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 10px;
+}
+
+.nota-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
 /* ── Info grid ── */
 .info-grid {
   display: grid;
@@ -317,6 +364,17 @@
 }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
+@media (max-width: 768px) {
+  .nota-inline-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nota-inline-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ── Loading spinner ── */
 .loading {

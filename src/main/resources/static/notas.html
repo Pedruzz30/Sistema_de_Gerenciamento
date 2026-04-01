@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockOS — Notas Fiscais</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/global.css">
-<link rel="stylesheet" href="/css/estoque.css">
-<link rel="stylesheet" href="/css/pages.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockOS - Notas Fiscais</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/estoque.css">
+  <link rel="stylesheet" href="/css/pages.css">
 </head>
 <body>
 
 <div class="app">
-
-  <!-- ── Sidebar ── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">📦</div>
@@ -35,58 +33,50 @@
     </div>
   </aside>
 
-  <!-- ── Header ── -->
   <header class="header">
     <div>
       <div class="header-title">Notas Fiscais</div>
-      <div class="header-sub">Fluxo de 4 etapas: abertura, itens, confirmação e pagamento</div>
+      <div class="header-sub">A nota fiscal agora resolve produto novo e vinculo com fornecedor no mesmo fluxo.</div>
     </div>
     <div class="header-right">
-      <button class="btn-primary" onclick="abrirAba('aba-nova')">+ Nova Nota</button>
+      <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">+ Nova Nota</button>
     </div>
   </header>
 
-  <!-- ── Main ── -->
   <main class="main">
-
-    <!-- Tabs -->
     <div class="tabs fade-up">
       <button class="tab-btn active" id="tab-lista" onclick="abrirAba('aba-lista')">Todas as Notas</button>
       <button class="tab-btn" id="tab-nova" onclick="abrirAba('aba-nova')">Nova Nota</button>
     </div>
 
-    <!-- Aba: Lista de notas -->
     <div class="tab-panel active" id="aba-lista">
       <div class="table-card">
         <div class="table-header">
           <span class="table-title">Notas Fiscais</span>
-          <span class="table-count" id="notas-count">—</span>
+          <span class="table-count" id="notas-count">-</span>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
-                <th>#</th>
-                <th>Fornecedor</th>
-                <th>Status</th>
-                <th>Itens</th>
-                <th>Total</th>
-                <th>Emissão</th>
-                <th>Ações</th>
-              </tr>
+            <tr>
+              <th>#</th>
+              <th>Fornecedor</th>
+              <th>Status</th>
+              <th>Itens</th>
+              <th>Total</th>
+              <th>Emissao</th>
+              <th>Acoes</th>
+            </tr>
             </thead>
             <tbody id="tabela-notas">
-              <tr><td colspan="7" class="empty">Carregando notas...</td></tr>
+            <tr><td colspan="7" class="empty">Carregando notas...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Aba: Nova nota (wizard 4 steps) -->
     <div class="tab-panel" id="aba-nova">
-
-      <!-- Wizard progress -->
       <div class="wizard-steps fade-up" id="wizard-steps">
         <div class="wizard-step active" id="step-1">
           <div class="wizard-step-num">1</div>
@@ -95,7 +85,7 @@
         <div class="wizard-connector" id="conn-1"></div>
         <div class="wizard-step" id="step-2">
           <div class="wizard-step-num">2</div>
-          <span class="wizard-step-label">Adicionar Itens</span>
+          <span class="wizard-step-label">Itens</span>
         </div>
         <div class="wizard-connector" id="conn-2"></div>
         <div class="wizard-step" id="step-3">
@@ -109,15 +99,14 @@
         </div>
       </div>
 
-      <!-- Step 1: Select supplier -->
       <div class="nota-panel fade-up fade-up-1" id="painel-step1">
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 1 — Selecionar Fornecedor</span>
+          <span class="nota-panel-title">Etapa 1 - Selecionar Fornecedor</span>
         </div>
         <div class="form-group" style="max-width:400px">
           <label>Fornecedor Ativo</label>
           <select id="s1-fornecedor">
-            <option value="">— carregando fornecedores —</option>
+            <option value="">- carregando fornecedores -</option>
           </select>
         </div>
         <div class="alert-modal" id="alert-s1"></div>
@@ -127,36 +116,85 @@
         </div>
       </div>
 
-      <!-- Step 2: Add items -->
       <div class="nota-panel fade-up fade-up-1" id="painel-step2" style="display:none">
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 2 — Adicionar Itens</span>
-          <span class="badge badge-purple" id="s2-fornecedor-badge">—</span>
+          <span class="nota-panel-title">Etapa 2 - Adicionar Itens</span>
+          <span class="badge badge-purple" id="s2-fornecedor-badge">-</span>
         </div>
-        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px">
-          <div class="form-group" style="flex:1; min-width:200px">
-            <label>Produto do Fornecedor</label>
-            <select id="s2-produto">
-              <option value="">— selecione um produto —</option>
-            </select>
+
+        <div class="nota-inline-card">
+          <div class="nota-inline-head">
+            <div>
+              <div class="nota-inline-title">Entrada autonoma da nota</div>
+              <div class="nota-inline-sub">Pesquise um produto existente ou crie um novo sem sair desta tela.</div>
+            </div>
+            <button class="btn-secondary" type="button" id="btn-toggle-novo-produto" onclick="toggleNovoProduto()">
+              + Novo Produto
+            </button>
           </div>
-          <div class="form-group" style="width:130px">
-            <label>Quantidade</label>
-            <input type="number" id="s2-qtd" placeholder="0" min="1">
+
+          <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px">
+            <div class="form-group" style="flex:1; min-width:280px">
+              <label>Buscar produto existente</label>
+              <input type="text" id="s2-produto-busca" list="s2-produtos-list"
+                     placeholder="Digite nome ou ID do produto"
+                     oninput="atualizarAvisoVinculo()">
+              <datalist id="s2-produtos-list"></datalist>
+            </div>
+            <div class="form-group" style="width:130px">
+              <label>Quantidade</label>
+              <input type="number" id="s2-qtd" placeholder="0" min="1">
+            </div>
+            <div class="form-group" style="width:150px">
+              <label>Preco Unit. (R$)</label>
+              <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
+            </div>
+            <button class="btn-primary" id="btn-adicionar-item" onclick="adicionarItem()" style="margin-bottom:1px">
+              + Adicionar Item
+            </button>
           </div>
-          <div class="form-group" style="width:150px">
-            <label>Preço Unit. (R$)</label>
-            <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
+
+          <div class="alert-modal" id="alert-s2-link"></div>
+
+          <div id="painel-novo-produto" class="nota-inline-form" style="display:none">
+            <div class="nota-inline-form-title">Novo produto nesta nota</div>
+            <div class="nota-inline-grid">
+              <div class="form-group" style="grid-column: span 2">
+                <label>Nome do produto</label>
+                <input type="text" id="s2-novo-nome" placeholder="Ex: Arroz Integral 5kg" oninput="atualizarAvisoVinculo()">
+              </div>
+              <div class="form-group">
+                <label>Categoria</label>
+                <select id="s2-novo-categoria">
+                  <option value="">Sem categoria</option>
+                  <option value="BEBIDAS">Bebidas</option>
+                  <option value="SECO">Seco</option>
+                  <option value="FRIO">Frio</option>
+                  <option value="CONGELADO">Congelado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Estoque minimo</label>
+                <input type="number" id="s2-novo-minimo" placeholder="0" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Preco base do cadastro (R$)</label>
+                <input type="number" id="s2-novo-preco-base" placeholder="Usar o preco do item" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="alert-modal" id="alert-s2-novo"></div>
           </div>
-          <button class="btn-primary" id="btn-adicionar-item" onclick="adicionarItem()" style="margin-bottom:1px">+ Adicionar</button>
+
+          <div class="alert-modal" id="alert-s2"></div>
         </div>
-        <div class="alert-modal" id="alert-s2"></div>
+
         <div class="itens-nota-list" id="itens-lista" style="margin-bottom:16px">
           <div class="empty" style="padding:20px;text-align:center;color:var(--text-3)">
             Nenhum item adicionado.
           </div>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
           <div style="display:flex; gap:10px; align-items:center">
             <span style="font-size:14px; color:var(--text-2)">Total: <strong id="s2-total" style="color:var(--green)">R$0,00</strong></span>
             <button class="btn-secondary" onclick="descartarRascunho()" style="font-size:12px; color:var(--text-3)">🗑 Descartar Rascunho</button>
@@ -165,14 +203,13 @@
         </div>
       </div>
 
-      <!-- Step 3: Confirm -->
       <div class="nota-panel fade-up fade-up-1" id="painel-step3" style="display:none">
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 3 — Confirmar Recebimento</span>
+          <span class="nota-panel-title">Etapa 3 - Confirmar Recebimento</span>
           <span class="badge badge-amber">Pendente</span>
         </div>
         <p style="color:var(--text-2); font-size:13px; margin-bottom:16px">
-          Ao confirmar, os produtos serão automaticamente adicionados ao estoque.
+          Ao confirmar, os produtos serao automaticamente adicionados ao estoque.
           Verifique os itens antes de prosseguir.
         </p>
         <div class="itens-nota-list" id="s3-itens-lista" style="margin-bottom:16px"></div>
@@ -183,10 +220,9 @@
         <div class="alert-modal" id="alert-s3" style="margin-top:12px"></div>
       </div>
 
-      <!-- Step 4: Payment -->
       <div class="nota-panel fade-up fade-up-1" id="painel-step4" style="display:none">
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 4 — Registrar Pagamento</span>
+          <span class="nota-panel-title">Etapa 4 - Registrar Pagamento</span>
           <span class="badge badge-cyan">Confirmada</span>
         </div>
         <div class="info-grid" id="s4-resumo" style="margin-bottom:16px"></div>
@@ -197,25 +233,21 @@
         <div class="alert-modal" id="alert-s4" style="margin-top:12px"></div>
       </div>
 
-      <!-- Done -->
       <div class="nota-panel fade-up fade-up-1" id="painel-done" style="display:none">
         <div style="text-align:center; padding:32px 20px">
           <div style="font-size:48px; margin-bottom:16px">✅</div>
-          <div class="nota-panel-title" style="font-size:18px; color:var(--green)">Nota Fiscal Concluída!</div>
+          <div class="nota-panel-title" style="font-size:18px; color:var(--green)">Nota Fiscal Concluida!</div>
           <p style="color:var(--text-2); font-size:13px; margin:12px 0 20px">
             Pagamento registrado. A nota foi encerrada com sucesso.
           </p>
-          <button class="btn-primary" onclick="iniciarNovaNota()">Criar Nova Nota</button>
+          <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">Criar Nova Nota</button>
           <button class="btn-secondary" onclick="abrirAba('aba-lista')" style="margin-left:8px">Ver Todas as Notas</button>
         </div>
       </div>
-
     </div>
-
   </main>
 </div>
 
-<!-- ── Modal: Detalhe da nota ── -->
 <div class="modal-overlay" id="modal-detalhe" onclick="fecharModalSeClicouFora(event,'modal-detalhe')">
   <div class="modal" style="max-width:580px">
     <div class="modal-header">

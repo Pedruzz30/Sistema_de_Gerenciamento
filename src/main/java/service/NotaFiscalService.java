@@ -1,7 +1,6 @@
 package service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import model.CategoriaEstoque;
 import model.Fornecedor;
 import model.ItemNotaFiscal;
 import model.LogAcao;
@@ -13,19 +12,20 @@ import model.Usuario;
 import repository.LogRepository;
 import repository.NotaFiscalRepository;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 /**
  * Gerencia o ciclo de vida completo de uma nota fiscal.
  *
- * O fluxo tem 3 etapas obrigatórias, nessa ordem:
+ * O fluxo tem 4 etapas obrigatorias, nessa ordem:
+ *   1. abrirNota()         -> cria a nota vinculada ao fornecedor
+ *   2. adicionarItem()     -> adiciona os produtos da nota
+ *   3. confirmarNota()     -> confirma os produtos recebidos
+ *   4. registrarPagamento()-> fecha o pagamento
  *
- *   1. abrirNota()         → cria a nota vinculada ao fornecedor
- *   2. adicionarItem()     → adiciona os produtos da nota
- *   3. confirmarNota()     → confirma os produtos recebidos
- *   4. registrarPagamento()→ fecha o pagamento
- *
- * O EstoqueService é chamado internamente em confirmarNota()
+ * O EstoqueService e chamado internamente em confirmarNota()
  * para dar entrada dos produtos no estoque automaticamente.
  */
 public class NotaFiscalService {
@@ -33,26 +33,23 @@ public class NotaFiscalService {
     private final NotaFiscalRepository notaFiscalRepository;
     private final LogRepository logRepository;
     private final EstoqueService estoqueService;
+    private final FornecedorService fornecedorService;
 
     public NotaFiscalService(NotaFiscalRepository notaFiscalRepository,
                              LogRepository logRepository,
-                             EstoqueService estoqueService) {
+                             EstoqueService estoqueService,
+                             FornecedorService fornecedorService) {
         this.notaFiscalRepository = notaFiscalRepository;
         this.logRepository = logRepository;
         this.estoqueService = estoqueService;
+        this.fornecedorService = fornecedorService;
     }
 
-    // ── Etapa 1: Abrir nota ────────────────────────────────────
-
-    /**
-     * Cria uma nota fiscal em aberto para um fornecedor.
-     * O usuário precisa ter permissão de EDITAR_ESTOQUE.
-     */
     public NotaFiscal abrirNota(Usuario usuarioLogado, Fornecedor fornecedor) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
         if (fornecedor == null || !fornecedor.isAtivo()) {
-            throw new IllegalArgumentException("Fornecedor inválido ou inativo.");
+            throw new IllegalArgumentException("Fornecedor invalido ou inativo.");
         }
 
         long novoId = notaFiscalRepository.proximoId();
@@ -69,61 +66,56 @@ public class NotaFiscalService {
         return nota;
     }
 
-    // ── Etapa 2: Adicionar itens ───────────────────────────────
-
-    /**
-     * Adiciona um produto à nota ainda aberta.
-     *
-     * Analogia: é como ir digitando cada linha da nota fiscal
-     * conforme você confere as caixas que chegaram.
-     */
     public void adicionarItem(Usuario usuarioLogado,
                               NotaFiscal nota,
                               Produto produto,
                               int quantidade,
                               BigDecimal precoUnitario) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
+        validarNotaEditavel(nota);
+        validarDadosItem(produto, quantidade, precoUnitario);
 
-        // Valida que o produto pertence ao fornecedor da nota
-        boolean produtoDoFornecedor = nota.getFornecedor().getProdutos().stream()
-                .anyMatch(p -> p.getId() == produto.getId());
-
-        if (!produtoDoFornecedor) {
-            throw new IllegalArgumentException(
-                    "Produto '" + produto.getNome() + "' não está vinculado ao fornecedor '"
-                            + nota.getFornecedor().getNome() + "'."
-            );
-        }
+        fornecedorService.garantirProdutoVinculadoDuranteNota(
+                nota.getFornecedor().getId(),
+                produto,
+                usuarioLogado != null ? usuarioLogado.getRu() : null
+        );
 
         ItemNotaFiscal item = new ItemNotaFiscal(produto, quantidade, precoUnitario);
         nota.adicionarItem(item);
         notaFiscalRepository.salvar(nota);
     }
 
-    // ── Etapa 3: Confirmar nota ────────────────────────────────
-
     /**
-     * Confirma os produtos da nota e dá entrada no estoque automaticamente.
-     *
-     * Esse é o momento em que o estoque é atualizado — não antes.
-     * Se algo der errado na entrada, a nota NÃO é confirmada.
+     * Adiciona um item criando ou reaproveitando um produto no proprio fluxo da nota.
      */
+    public Produto adicionarItem(Usuario usuarioLogado,
+                                 NotaFiscal nota,
+                                 NovoProdutoInput novoProduto,
+                                 int quantidade,
+                                 BigDecimal precoUnitario) {
+        validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
+        validarNotaEditavel(nota);
+        validarNovoProduto(novoProduto);
+        validarDadosItem(null, quantidade, precoUnitario);
+
+        Produto produto = resolverOuCriarProdutoInline(usuarioLogado, nota, novoProduto, precoUnitario);
+        adicionarItem(usuarioLogado, nota, produto, quantidade, precoUnitario);
+        return produto;
+    }
+
     public void confirmarNota(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
-        // Pré-validação: garante que todos os produtos existem no estoque antes de
-        // iniciar qualquer mutação. Evita entrada parcial de estoque em caso de erro
-        // no meio do loop.
         for (ItemNotaFiscal item : nota.getItens()) {
             estoqueService.buscarProdutoPorId(item.getProduto().getId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Produto '" + item.getProduto().getNome() +
-                            "' (ID: " + item.getProduto().getId() +
-                            ") não encontrado no estoque. Confirme o cadastro do produto antes de confirmar a nota."
+                                    "' (ID: " + item.getProduto().getId() +
+                                    ") nao encontrado no estoque. Confirme o cadastro do produto antes de confirmar a nota."
                     ));
         }
 
-        // Dá entrada no estoque para cada item da nota
         for (ItemNotaFiscal item : nota.getItens()) {
             estoqueService.registrarMovimentacao(
                     item.getProduto().getId(),
@@ -132,8 +124,6 @@ public class NotaFiscalService {
                     usuarioLogado
             );
 
-            // Garante trilha de auditoria explícita para cada entrada de estoque
-            // originada pela confirmação da nota fiscal.
             logRepository.salvar(new LogAcao(
                     0,
                     usuarioLogado.getRu(),
@@ -157,8 +147,6 @@ public class NotaFiscalService {
         ));
     }
 
-    // ── Etapa 4: Registrar pagamento ───────────────────────────
-
     public void registrarPagamento(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
@@ -170,16 +158,10 @@ public class NotaFiscalService {
                 usuarioLogado.getRu(),
                 "NOTA_PAGA",
                 "Pagamento registrado para nota #" + nota.getId() +
-                        " — R$" + formatarValorMonetario(nota.calcularTotal())
+                        " - R$" + formatarValorMonetario(nota.calcularTotal())
         ));
     }
 
-    // ── Etapa: Descartar rascunho ──────────────────────────────
-
-    /**
-     * Exclui permanentemente uma nota PENDENTE sem itens.
-     * Usado para limpar ghost invoices do wizard.
-     */
     public void descartarRascunho(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
         if (nota.getStatus() != NotaFiscal.Status.PENDENTE) {
@@ -190,42 +172,34 @@ public class NotaFiscalService {
         }
         notaFiscalRepository.deletar(nota.getId());
         logRepository.salvar(new LogAcao(
-                0, usuarioLogado.getRu(),
+                0,
+                usuarioLogado.getRu(),
                 "NOTA_DESCARTADA",
                 "Rascunho da nota #" + nota.getId() + " descartado."
         ));
     }
 
-    // ── Etapa: Cancelar nota ───────────────────────────────────
-
-    /**
-     * Cancela uma nota PENDENTE.
-     * CONFIRMADA e PAGA não podem ser canceladas.
-     */
     public void cancelarNota(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
         nota.cancelar();
         notaFiscalRepository.salvar(nota);
         logRepository.salvar(new LogAcao(
-                0, usuarioLogado.getRu(),
+                0,
+                usuarioLogado.getRu(),
                 "NOTA_CANCELADA",
                 "Nota #" + nota.getId() + " cancelada."
         ));
     }
 
-    // ── Consultas ──────────────────────────────────────────────
-
     public List<NotaFiscal> listarNotasPorFornecedor(long fornecedorId) {
         return notaFiscalRepository.buscarPorFornecedor(fornecedorId);
     }
 
-    /**
-     * Lista notas fiscais. Por padrão, oculta rascunhos vazios (PENDENTE sem itens).
-     * Use incluirVazias=true para incluí-las.
-     */
     public List<NotaFiscal> listarTodas(boolean incluirVazias) {
         List<NotaFiscal> todas = notaFiscalRepository.listarTodos();
-        if (incluirVazias) return todas;
+        if (incluirVazias) {
+            return todas;
+        }
         return todas.stream()
                 .filter(n -> !(n.getStatus() == NotaFiscal.Status.PENDENTE && n.getItens().isEmpty()))
                 .toList();
@@ -235,19 +209,113 @@ public class NotaFiscalService {
         return listarTodas(false);
     }
 
-    // ── Validação interna ──────────────────────────────────────
-
     private void validarPermissao(Usuario usuario, Permissao permissao) {
         if (usuario == null
                 || usuario.getClasse() == null
                 || !usuario.getClasse().possuiPermissao(permissao)) {
-            throw new SecurityException(
-                    "Você não tem permissão para executar esta ação."
-            );
+            throw new SecurityException("Voce nao tem permissao para executar esta acao.");
+        }
+    }
+
+    private void validarNotaEditavel(NotaFiscal nota) {
+        if (nota == null) {
+            throw new IllegalArgumentException("Nota fiscal e obrigatoria.");
+        }
+        if (nota.getStatus() != NotaFiscal.Status.PENDENTE) {
+            throw new IllegalStateException("Apenas notas pendentes podem receber novos itens.");
+        }
+        if (nota.getFornecedor() == null || !nota.getFornecedor().isAtivo()) {
+            throw new IllegalArgumentException("Fornecedor invalido ou inativo.");
+        }
+    }
+
+    private void validarDadosItem(Produto produto, int quantidade, BigDecimal precoUnitario) {
+        if (produto == null && quantidade < 0) {
+            // no-op to keep the method signature symmetric for both item paths
+        }
+        if (quantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
+        }
+        if (precoUnitario == null) {
+            throw new IllegalArgumentException("Preco unitario e obrigatorio.");
+        }
+        if (precoUnitario.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Preco unitario nao pode ser negativo.");
+        }
+    }
+
+    private void validarNovoProduto(NovoProdutoInput novoProduto) {
+        if (novoProduto == null) {
+            throw new IllegalArgumentException("Dados do novo produto sao obrigatorios.");
+        }
+        if (novoProduto.nome() == null || novoProduto.nome().isBlank()) {
+            throw new IllegalArgumentException("Nome do novo produto e obrigatorio.");
+        }
+        if (novoProduto.quantidadeMinima() != null && novoProduto.quantidadeMinima() < 0) {
+            throw new IllegalArgumentException("Quantidade minima do produto nao pode ser negativa.");
+        }
+        if (novoProduto.precoUnitarioBase() != null
+                && novoProduto.precoUnitarioBase().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Preco base do produto nao pode ser negativo.");
+        }
+        parseCategoriaEstoque(novoProduto.categoriaEstoque());
+    }
+
+    private Produto resolverOuCriarProdutoInline(Usuario usuarioLogado,
+                                                 NotaFiscal nota,
+                                                 NovoProdutoInput novoProduto,
+                                                 BigDecimal precoUnitarioNota) {
+        String nomeNormalizado = novoProduto.nome().trim();
+        Produto produtoExistente = estoqueService.buscarProdutoPorNome(nomeNormalizado).orElse(null);
+        if (produtoExistente != null) {
+            return produtoExistente;
+        }
+
+        BigDecimal precoBase = novoProduto.precoUnitarioBase() != null
+                ? novoProduto.precoUnitarioBase()
+                : precoUnitarioNota;
+        int quantidadeMinima = novoProduto.quantidadeMinima() != null
+                ? novoProduto.quantidadeMinima()
+                : 0;
+
+        Produto produtoCriado = estoqueService.cadastrarProduto(
+                usuarioLogado,
+                nomeNormalizado,
+                0,
+                quantidadeMinima,
+                precoBase,
+                parseCategoriaEstoque(novoProduto.categoriaEstoque())
+        );
+
+        logRepository.salvar(new LogAcao(
+                0,
+                usuarioLogado.getRu(),
+                "PRODUTO_CADASTRADO",
+                "Produto '" + produtoCriado.getNome() + "' criado no fluxo da nota #" + nota.getId()
+        ));
+
+        return produtoCriado;
+    }
+
+    private CategoriaEstoque parseCategoriaEstoque(String categoria) {
+        if (categoria == null || categoria.isBlank()) {
+            return null;
+        }
+        try {
+            return CategoriaEstoque.valueOf(categoria.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Categoria de estoque invalida.");
         }
     }
 
     private String formatarValorMonetario(BigDecimal valor) {
         return valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
+
+    public record NovoProdutoInput(
+            String nome,
+            Integer quantidadeMinima,
+            BigDecimal precoUnitarioBase,
+            String categoriaEstoque
+    ) {}
 }

@@ -185,7 +185,7 @@ public class ItemNotaFiscal {
      * @param produtoId ID do produto a verificar
      * @return {@code true} se o produto deste item tiver o ID fornecido
      */
-    public boolean pertenceAoProduto(int produtoId) {
+    public boolean pertenceAoProduto(long produtoId) {
         return produto.getId() == produtoId;
     }
 

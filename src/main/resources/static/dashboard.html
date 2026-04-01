@@ -6,6 +6,7 @@
     <title>StockOS — Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/global.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -52,67 +53,144 @@
     <!-- ── Main ── -->
     <main class="main">
 
-        <!-- Cards de resumo -->
+        <!-- Cards de resumo (sempre visíveis acima das abas) -->
         <div class="summary-grid" id="summary-grid"></div>
 
-        <!-- Grid principal -->
-        <div class="main-grid">
+        <!-- Abas -->
+        <div class="tabs fade-up" style="margin-top:8px;">
+            <button class="tab-btn active" id="tab-visao"    onclick="abrirTabDash('visao')">Visão Geral</button>
+            <button class="tab-btn"        id="tab-graficos" onclick="abrirTabDash('graficos')">📊 Análise Visual</button>
+        </div>
 
-            <!-- Coluna esquerda -->
-            <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- ── Aba: Visão Geral ─────────────────────────────────────── -->
+        <div id="tabpanel-visao" class="tab-panel active">
+            <div class="main-grid">
 
-                <!-- Movimentações recentes -->
-                <div class="perm-section card fade-up" id="section-movimentacoes">
-                    <div class="card-header">
-                        <span class="card-title">Movimentações Recentes</span>
-                        <span class="card-badge">Hoje</span>
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="perm-section card fade-up" id="section-movimentacoes">
+                        <div class="card-header">
+                            <span class="card-title">Movimentações Recentes</span>
+                            <span class="card-badge">Hoje</span>
+                        </div>
+                        <div class="mov-list" id="mov-list"></div>
                     </div>
-                    <div class="mov-list" id="mov-list"></div>
+
+                    <div class="perm-section card fade-up" id="section-financeiro">
+                        <div class="card-header">
+                            <span class="card-title">Resumo Financeiro</span>
+                            <span class="card-badge">Dia atual</span>
+                        </div>
+                        <div class="financial-grid">
+                            <div class="fin-card">
+                                <div class="fin-label">Total Vendas</div>
+                                <div class="fin-value green" id="fin-total-vendas">—</div>
+                            </div>
+                            <div class="fin-card">
+                                <div class="fin-label">Caixas Abertos</div>
+                                <div class="fin-value purple" id="fin-caixas-abertos">—</div>
+                            </div>
+                            <div class="fin-card">
+                                <div class="fin-label">Ticket Médio</div>
+                                <div class="fin-value" id="fin-ticket-medio">—</div>
+                            </div>
+                        </div>
+                        <div class="card-header" style="margin-top:8px;">
+                            <span class="card-title" style="font-size:13px;color:var(--text-2)">Status dos Caixas</span>
+                        </div>
+                        <div class="caixa-list" id="caixa-list"></div>
+                    </div>
                 </div>
 
-                <!-- Resumo financeiro -->
-                <div class="perm-section card fade-up" id="section-financeiro">
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="perm-section card fade-up" id="section-alertas">
+                        <div class="card-header">
+                            <span class="card-title">Alertas de Estoque</span>
+                            <span class="card-badge" id="alerta-count">—</span>
+                        </div>
+                        <div class="alert-list" id="alerta-list"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── Aba: Análise Visual ──────────────────────────────────── -->
+        <div id="tabpanel-graficos" class="tab-panel">
+
+            <!-- Linha 1: Nível de estoque (largo) + Movimentações (fixo) -->
+            <div style="display:grid; grid-template-columns:1fr 300px; gap:16px; margin-top:16px;">
+
+                <div class="card fade-up">
                     <div class="card-header">
-                        <span class="card-title">Resumo Financeiro</span>
-                        <span class="card-badge">Dia atual</span>
+                        <span class="card-title">Nível de Estoque por Produto</span>
+                        <span class="card-badge" id="badge-g-estoque">—</span>
                     </div>
-                    <div class="financial-grid">
-                        <div class="fin-card">
-                            <div class="fin-label">Total Vendas</div>
-                            <div class="fin-value green" id="fin-total-vendas">—</div>
-                        </div>
-                        <div class="fin-card">
-                            <div class="fin-label">Caixas Abertos</div>
-                            <div class="fin-value purple" id="fin-caixas-abertos">—</div>
-                        </div>
-                        <div class="fin-card">
-                            <div class="fin-label">Ticket Médio</div>
-                            <div class="fin-value" id="fin-ticket-medio">—</div>
-                        </div>
+                    <div id="wrap-g-estoque" style="position:relative; height:260px; padding-top:8px;">
+                        <canvas id="grafico-estoque"></canvas>
                     </div>
-                    <div class="card-header" style="margin-top:8px;">
-                        <span class="card-title" style="font-size:13px; color:var(--text-2);">Status dos Caixas</span>
+                    <div id="empty-g-estoque"
+                         style="display:none; padding:48px; text-align:center; color:var(--text-3); font-size:13px;">
+                        Nenhum produto cadastrado.
                     </div>
-                    <div class="caixa-list" id="caixa-list"></div>
+                </div>
+
+                <div class="card fade-up" style="display:flex; flex-direction:column;">
+                    <div class="card-header">
+                        <span class="card-title">Movimentações</span>
+                        <span class="card-badge">entradas vs saídas</span>
+                    </div>
+                    <div style="flex:1; position:relative; min-height:160px;
+                        display:flex; align-items:center; justify-content:center; padding-top:8px;">
+                        <canvas id="grafico-mov"></canvas>
+                    </div>
+                    <div id="legend-g-mov"
+                         style="display:flex; justify-content:center; gap:14px;
+                        margin:12px 0 4px; font-size:12px; color:var(--text-2);">
+                    </div>
+                    <div id="empty-g-mov"
+                         style="display:none; padding:24px; text-align:center; color:var(--text-3); font-size:13px;">
+                        Nenhuma movimentação.
+                    </div>
                 </div>
 
             </div>
 
-            <!-- Coluna direita -->
-            <div style="display:flex; flex-direction:column; gap:16px;">
+            <!-- Linha 2: Vendas por caixa (largo) + Distribuição de alertas -->
+            <div style="display:grid; grid-template-columns:1fr 300px; gap:16px; margin-top:16px;">
 
-                <!-- Alertas de estoque -->
-                <div class="perm-section card fade-up" id="section-alertas">
+                <div class="card fade-up">
                     <div class="card-header">
-                        <span class="card-title">Alertas de Estoque</span>
-                        <span class="card-badge" id="alerta-count">—</span>
+                        <span class="card-title">Vendas por Caixa</span>
+                        <span class="card-badge">dia atual</span>
                     </div>
-                    <div class="alert-list" id="alerta-list"></div>
+                    <div id="wrap-g-caixas" style="position:relative; height:220px; padding-top:8px;">
+                        <canvas id="grafico-caixas"></canvas>
+                    </div>
+                    <div id="empty-g-caixas"
+                         style="display:none; padding:48px; text-align:center; color:var(--text-3); font-size:13px;">
+                        Nenhum caixa com dados de venda ainda.
+                    </div>
+                </div>
+
+                <div class="card fade-up" style="display:flex; flex-direction:column;">
+                    <div class="card-header">
+                        <span class="card-title">Distribuição de Alertas</span>
+                        <span class="card-badge">por nível</span>
+                    </div>
+                    <div style="flex:1; position:relative; min-height:140px;
+                        display:flex; align-items:center; justify-content:center; padding-top:8px;">
+                        <canvas id="grafico-alertas"></canvas>
+                    </div>
+                    <div id="legend-g-alertas"
+                         style="display:flex; flex-direction:column; gap:5px;
+                        margin:10px 0 4px; padding:0 4px; font-size:11px; color:var(--text-2);">
+                    </div>
                 </div>
 
             </div>
 
         </div>
+
     </main>
 
 </div>

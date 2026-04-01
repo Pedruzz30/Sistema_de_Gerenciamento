@@ -84,11 +84,11 @@ public class FechamentoCaixa {
 
         // Conversão segura: BigDecimal.valueOf usa a representação decimal do double,
         // não a binária — evita que 49.99 vire 49.990000000000001 no relatório.
-        this.saldoInicial   = bd(caixa.getSaldoInicial());
-        this.totalEntradas  = bd(caixa.calcularTotalEntradas());
-        this.totalSaidas    = bd(caixa.calcularTotalSaidas());
-        this.totalVendas    = bd(caixa.calcularTotalVendas());
-        this.saldoFinal     = bd(caixa.getSaldoAtual());
+        this.saldoInicial   = caixa.getSaldoInicial();
+        this.totalEntradas  = caixa.calcularTotalEntradas();
+        this.totalSaidas    = caixa.calcularTotalSaidas();
+        this.totalVendas    = caixa.calcularTotalVendas();
+        this.saldoFinal     = caixa.getSaldoAtual();
     }
 
     // ── Métricas derivadas ────────────────────────────────────────────────────

@@ -65,6 +65,12 @@ public class AppConfig {
         return new InMemoryLogRepository();
     }
 
+    @Bean
+    public Usuario adminSuperior(UsuarioRepository usuarioRepository) {
+        return usuarioRepository.buscarPorRu(1)
+                .orElseThrow(() -> new IllegalStateException("Usuário admin padrão não encontrado no seed."));
+    }
+
     // ── Services ──────────────────────────────────────────────────────────────
 
     @Bean
@@ -94,8 +100,9 @@ public class AppConfig {
     @Bean
     public NotaFiscalService notaFiscalService(NotaFiscalRepository notaFiscalRepository,
                                                LogRepository logRepository,
-                                               EstoqueService estoqueService) {
-        return new NotaFiscalService(notaFiscalRepository, logRepository, estoqueService);
+                                               EstoqueService estoqueService,
+                                               FornecedorService fornecedorService) {
+        return new NotaFiscalService(notaFiscalRepository, logRepository, estoqueService, fornecedorService);
     }
 
     @Bean
@@ -133,9 +140,9 @@ public class AppConfig {
         classeCaixa.adicionarPermissao(Permissao.VER_VENDAS);
         classeCaixa.adicionarPermissao(Permissao.VER_ESTOQUE);
 
-        repo.salvar(new Usuario(0, "Admin",  "Superior", "000.000.000-00", "1234", classeSuperior,       Usuario.Perfil.ADMIN));
-        repo.salvar(new Usuario(0, "Maria",  "Gerente",  "111.111.111-11", "1234", classeGerenteEstoque, Usuario.Perfil.OPERADOR));
-        repo.salvar(new Usuario(0, "Joao",   "Silva",    "222.222.222-22", "1234", classeEstoquista,     Usuario.Perfil.OPERADOR));
-        repo.salvar(new Usuario(0, "Ana",    "Caixa",    "333.333.333-33", "1234", classeCaixa,          Usuario.Perfil.OPERADOR));
+        repo.salvar(new Usuario(0, "Admin",  "Superior", "529.982.247-25", "1234", classeSuperior,       Usuario.Perfil.ADMIN));
+        repo.salvar(new Usuario(0, "Maria",  "Gerente",  "111.444.777-35", "1234", classeGerenteEstoque, Usuario.Perfil.OPERADOR));
+        repo.salvar(new Usuario(0, "Joao",   "Silva",    "123.456.789-09", "1234", classeEstoquista,     Usuario.Perfil.OPERADOR));
+        repo.salvar(new Usuario(0, "Ana",    "Caixa",    "935.411.347-80", "1234", classeCaixa,          Usuario.Perfil.OPERADOR));
     }
 }

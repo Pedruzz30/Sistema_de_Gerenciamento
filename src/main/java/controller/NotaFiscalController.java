@@ -1,20 +1,20 @@
 package controller;
 
-import java.math.BigDecimal;
 import model.Fornecedor;
 import model.ItemNotaFiscal;
 import model.NotaFiscal;
 import model.Produto;
 import model.Usuario;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import repository.NotaFiscalRepository;
 import repository.UsuarioRepository;
 import service.EstoqueService;
 import service.FornecedorService;
 import service.NotaFiscalService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,11 +40,6 @@ public class NotaFiscalController {
         this.usuarioRepository = usuarioRepository;
     }
 
-    // ── GET ───────────────────────────────────────────────────────────────────
-
-    // GET /api/notas
-    // By default hides empty drafts (PENDENTE with 0 items).
-    // Pass ?includeEmpty=true to include them.
     @GetMapping
     public ResponseEntity<List<NotaResponse>> listarTodas(
             @RequestParam(value = "includeEmpty", defaultValue = "false") boolean includeEmpty) {
@@ -54,18 +49,16 @@ public class NotaFiscalController {
         return ResponseEntity.ok(notas.stream().map(NotaResponse::from).toList());
     }
 
-    // GET /api/notas/{id}
     @GetMapping("/{id}")
     public ResponseEntity<?> buscarPorId(@PathVariable long id) {
         Optional<NotaFiscal> nota = notaFiscalRepository.buscarPorId(id);
         if (nota.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+                    .body(new ErroResponse("Nota fiscal nao encontrada com id: " + id));
         }
         return ResponseEntity.ok(NotaResponse.from(nota.get()));
     }
 
-    // GET /api/notas/fornecedor/{fornecedorId}
     @GetMapping("/fornecedor/{fornecedorId}")
     public ResponseEntity<List<NotaResponse>> listarPorFornecedor(@PathVariable long fornecedorId) {
         return ResponseEntity.ok(
@@ -75,14 +68,11 @@ public class NotaFiscalController {
         );
     }
 
-    // ── ETAPA 1: Abrir nota ───────────────────────────────────────────────────
-
-    // POST /api/notas
     @PostMapping
     public ResponseEntity<?> abrirNota(@RequestBody AbrirNotaRequest request,
                                        @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         if (request.fornecedorId() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("ID do fornecedor inválido."));
+            return ResponseEntity.badRequest().body(new ErroResponse("ID do fornecedor invalido."));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -94,42 +84,66 @@ public class NotaFiscalController {
         }
     }
 
-    // ── ETAPA 2: Adicionar item ───────────────────────────────────────────────
-
-    // POST /api/notas/{id}/itens
     @PostMapping("/{id}/itens")
     public ResponseEntity<?> adicionarItem(@PathVariable long id,
                                            @RequestBody AdicionarItemRequest request,
                                            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        if (request.produtoId() <= 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("ID do produto inválido."));
-        }
         if (request.quantidade() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Quantidade deve ser maior que zero."));
         }
         if (request.precoUnitario() == null) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Preco e obrigatorio."));
+            return ResponseEntity.badRequest().body(new ErroResponse("Preco unitario e obrigatorio."));
         }
         if (request.precoUnitario().compareTo(BigDecimal.ZERO) < 0) {
-            return ResponseEntity.badRequest().body(new ErroResponse("Preço não pode ser negativo."));
+            return ResponseEntity.badRequest().body(new ErroResponse("Preco unitario nao pode ser negativo."));
+        }
+
+        boolean temProdutoExistente = request.produtoId() != null && request.produtoId() > 0;
+        boolean temNovoProduto = request.novoProduto() != null;
+        if (temProdutoExistente == temNovoProduto) {
+            return ResponseEntity.badRequest().body(new ErroResponse(
+                    "Cada item deve informar um produto existente ou um novo produto."
+            ));
         }
 
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
-        }
-
-        Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(request.produtoId());
-        if (produtoOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Produto não encontrado com id: " + request.produtoId()));
+                    .body(new ErroResponse("Nota fiscal nao encontrada com id: " + id));
         }
 
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            notaFiscalService.adicionarItem(ator, notaOpt.get(),
-                    produtoOpt.get(), request.quantidade(), request.precoUnitario());
+
+            if (temProdutoExistente) {
+                Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(request.produtoId());
+                if (produtoOpt.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(new ErroResponse("Produto nao encontrado com id: " + request.produtoId()));
+                }
+
+                notaFiscalService.adicionarItem(
+                        ator,
+                        notaOpt.get(),
+                        produtoOpt.get(),
+                        request.quantidade(),
+                        request.precoUnitario()
+                );
+            } else {
+                notaFiscalService.adicionarItem(
+                        ator,
+                        notaOpt.get(),
+                        new NotaFiscalService.NovoProdutoInput(
+                                request.novoProduto().nome(),
+                                request.novoProduto().quantidadeMinima(),
+                                request.novoProduto().precoUnitarioBase(),
+                                request.novoProduto().categoriaEstoque()
+                        ),
+                        request.quantidade(),
+                        request.precoUnitario()
+                );
+            }
+
             NotaFiscal notaAtualizada = notaFiscalRepository.buscarPorId(id).orElse(notaOpt.get());
             return ResponseEntity.ok(NotaResponse.from(notaAtualizada));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -137,16 +151,13 @@ public class NotaFiscalController {
         }
     }
 
-    // ── ETAPA 3: Confirmar nota ───────────────────────────────────────────────
-
-    // POST /api/notas/{id}/confirmar
     @PostMapping("/{id}/confirmar")
     public ResponseEntity<?> confirmarNota(@PathVariable long id,
                                            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+                    .body(new ErroResponse("Nota fiscal nao encontrada com id: " + id));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -158,16 +169,13 @@ public class NotaFiscalController {
         }
     }
 
-    // ── ETAPA 4: Registrar pagamento ──────────────────────────────────────────
-
-    // POST /api/notas/{id}/pagamento
     @PostMapping("/{id}/pagamento")
     public ResponseEntity<?> registrarPagamento(@PathVariable long id,
                                                 @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+                    .body(new ErroResponse("Nota fiscal nao encontrada com id: " + id));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -179,17 +187,13 @@ public class NotaFiscalController {
         }
     }
 
-    // ── Descartar rascunho (BUG 1) ────────────────────────────────────────────
-
-    // DELETE /api/notas/{id}
-    // Only allowed when status == PENDENTE and item count == 0
     @DeleteMapping("/{id}")
     public ResponseEntity<?> descartarRascunho(@PathVariable long id,
                                                @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+                    .body(new ErroResponse("Nota fiscal nao encontrada com id: " + id));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -200,17 +204,13 @@ public class NotaFiscalController {
         }
     }
 
-    // ── Cancelar nota (Improvement 4) ────────────────────────────────────────
-
-    // POST /api/notas/{id}/cancelar
-    // Only PENDENTE invoices can be cancelled
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<?> cancelarNota(@PathVariable long id,
                                           @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Optional<NotaFiscal> notaOpt = notaFiscalRepository.buscarPorId(id);
         if (notaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErroResponse("Nota fiscal não encontrada com id: " + id));
+                    .body(new ErroResponse("Nota fiscal nao encontrada com id: " + id));
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
@@ -222,11 +222,21 @@ public class NotaFiscalController {
         }
     }
 
-    // ── Records ───────────────────────────────────────────────────────────────
-
     public record AbrirNotaRequest(long fornecedorId) {}
 
-    public record AdicionarItemRequest(int produtoId, int quantidade, BigDecimal precoUnitario) {}
+    public record AdicionarItemRequest(
+            Integer produtoId,
+            NovoProdutoRequest novoProduto,
+            int quantidade,
+            BigDecimal precoUnitario
+    ) {}
+
+    public record NovoProdutoRequest(
+            String nome,
+            Integer quantidadeMinima,
+            BigDecimal precoUnitarioBase,
+            String categoriaEstoque
+    ) {}
 
     public record NotaResponse(
             long id,

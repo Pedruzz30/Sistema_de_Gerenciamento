@@ -102,6 +102,13 @@ public class EstoqueService {
         return produtoRepository.buscarPorId(id);
     }
 
+    public Optional<Produto> buscarProdutoPorNome(String nome) {
+        if (nome == null || nome.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        return produtoRepository.buscarPorNome(nome.trim());
+    }
+
     public Pedido registrarMovimentacao(int idProduto, int quantidade, TipoMovimentacao tipo, Usuario usuario) {
         validarPermissaoEdicaoEstoque(usuario);
 

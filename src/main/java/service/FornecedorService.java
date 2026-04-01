@@ -1,6 +1,5 @@
 package service;
 
-import model.ClasseFuncionario;
 import model.Fornecedor;
 import model.LogAcao;
 import model.Permissao;
@@ -15,19 +14,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Gerencia o ciclo de vida dos fornecedores.
- *
- * Responsabilidades:
- *  - Cadastrar novos fornecedores (sem duplicar CNPJ)
- *  - Vincular produtos a fornecedores
- *  - Desativar fornecedores (nunca deletar — histórico de notas depende deles)
- *  - Consultar fornecedores ativos e por ID
  */
 public class FornecedorService {
 
     private final FornecedorRepository fornecedorRepository;
     private final LogRepository logRepository;
-
-    // Sequência interna de IDs — AtomicLong garante segurança sob concorrência
     private final AtomicLong proximoId = new AtomicLong(1);
 
     public FornecedorService(FornecedorRepository fornecedorRepository,
@@ -36,26 +27,16 @@ public class FornecedorService {
         this.logRepository = logRepository;
     }
 
-    // ── Cadastro ───────────────────────────────────────────────
-
-    /**
-     * Cadastra um novo fornecedor no sistema.
-     *
-     * Valida que:
-     *  - O usuário tem permissão de GERENCIAR_FUNCIONARIOS (mesma permissão de gestão)
-     *  - Não existe outro fornecedor com o mesmo CNPJ
-     */
     public Fornecedor cadastrarFornecedor(Usuario usuarioLogado,
                                           String nome,
                                           String cnpj,
                                           String telefone) {
         validarPermissao(usuarioLogado);
 
-        // CNPJ duplicado = erro antes de salvar qualquer coisa
         Optional<Fornecedor> existente = fornecedorRepository.buscarPorCnpj(cnpj);
         if (existente.isPresent()) {
             throw new IllegalArgumentException(
-                    "Já existe um fornecedor cadastrado com o CNPJ: " + cnpj
+                    "Ja existe um fornecedor cadastrado com o CNPJ: " + cnpj
             );
         }
 
@@ -66,59 +47,50 @@ public class FornecedorService {
                 0,
                 usuarioLogado.getRu(),
                 "FORNECEDOR_CADASTRADO",
-                "Fornecedor cadastrado: " + novoFornecedor.getNome() +
-                        " (CNPJ: " + cnpj + ")"
+                "Fornecedor cadastrado: " + novoFornecedor.getNome() + " (CNPJ: " + cnpj + ")"
         ));
 
         return novoFornecedor;
     }
 
-    // ── Vinculação de produtos ─────────────────────────────────
-
-    /**
-     * Vincula um produto a um fornecedor.
-     *
-     * Isso representa: "esse fornecedor vende esse produto".
-     * Na hora de criar uma nota fiscal, só produtos vinculados
-     * podem ser adicionados.
-     */
     public void vincularProduto(Usuario usuarioLogado,
                                 long fornecedorId,
                                 Produto produto) {
         validarPermissao(usuarioLogado);
-
-        Fornecedor fornecedor = buscarOuLancarExcecao(fornecedorId);
-
-        fornecedor.adicionarProduto(produto);
-        fornecedorRepository.salvar(fornecedor);
-
-        logRepository.salvar(new LogAcao(
-                0,
-                usuarioLogado.getRu(),
-                "PRODUTO_VINCULADO",
-                "Produto '" + produto.getNome() + "' vinculado ao fornecedor '"
-                        + fornecedor.getNome() + "'"
-        ));
+        garantirProdutoVinculadoInterno(fornecedorId, produto, usuarioLogado.getRu());
     }
 
-    // ── Desativação ────────────────────────────────────────────
+    /**
+     * Garante que o produto esteja vinculado ao fornecedor.
+     *
+     * Mantem a mesma permissao do fluxo administrativo.
+     */
+    public boolean garantirProdutoVinculado(Usuario usuarioLogado,
+                                            long fornecedorId,
+                                            Produto produto) {
+        validarPermissao(usuarioLogado);
+        return garantirProdutoVinculadoInterno(fornecedorId, produto, usuarioLogado.getRu());
+    }
 
     /**
-     * Desativa um fornecedor.
+     * Variante interna usada pelo fluxo de nota fiscal.
      *
-     * Por que desativar em vez de deletar?
-     * Porque as notas fiscais antigas guardam referência ao fornecedor.
-     * Se você deletasse, o histórico financeiro ficaria inconsistente.
-     * Desativar mantém o histórico intacto e impede novas notas.
+     * Nao exige a permissao administrativa de gerenciar fornecedores porque o
+     * vinculo e apenas um efeito colateral do recebimento da mercadoria.
      */
+    public boolean garantirProdutoVinculadoDuranteNota(long fornecedorId,
+                                                       Produto produto,
+                                                       Long usuarioRu) {
+        return garantirProdutoVinculadoInterno(fornecedorId, produto, usuarioRu);
+    }
+
     public void desativarFornecedor(Usuario usuarioLogado, long fornecedorId) {
         validarPermissao(usuarioLogado);
 
         Fornecedor fornecedor = buscarOuLancarExcecao(fornecedorId);
-
         if (!fornecedor.isAtivo()) {
             throw new IllegalStateException(
-                    "Fornecedor '" + fornecedor.getNome() + "' já está inativo."
+                    "Fornecedor '" + fornecedor.getNome() + "' ja esta inativo."
             );
         }
 
@@ -129,27 +101,17 @@ public class FornecedorService {
                 0,
                 usuarioLogado.getRu(),
                 "FORNECEDOR_DESATIVADO",
-                "Fornecedor desativado: " + fornecedor.getNome() +
-                        " (ID: " + fornecedorId + ")"
+                "Fornecedor desativado: " + fornecedor.getNome() + " (ID: " + fornecedorId + ")"
         ));
     }
 
-    // ── Reativação ─────────────────────────────────────────────
-
-    /**
-     * Reativa um fornecedor previamente desativado.
-     *
-     * Útil quando uma parceria é retomada — você não precisa
-     * recadastrar tudo do zero, só reativa.
-     */
     public void reativarFornecedor(Usuario usuarioLogado, long fornecedorId) {
         validarPermissao(usuarioLogado);
 
         Fornecedor fornecedor = buscarOuLancarExcecao(fornecedorId);
-
         if (fornecedor.isAtivo()) {
             throw new IllegalStateException(
-                    "Fornecedor '" + fornecedor.getNome() + "' já está ativo."
+                    "Fornecedor '" + fornecedor.getNome() + "' ja esta ativo."
             );
         }
 
@@ -164,8 +126,6 @@ public class FornecedorService {
         ));
     }
 
-    // ── Consultas ──────────────────────────────────────────────
-
     public Fornecedor buscarPorId(long id) {
         return buscarOuLancarExcecao(id);
     }
@@ -178,18 +138,10 @@ public class FornecedorService {
         return fornecedorRepository.listarTodos();
     }
 
-    // ── Utilitários internos ───────────────────────────────────
-
-    /**
-     * Busca o fornecedor ou lança exceção clara se não existir.
-     *
-     * Esse padrão — buscar e já lançar se não achar — evita repetir
-     * o mesmo bloco if/orElseThrow em cada método do service.
-     */
     private Fornecedor buscarOuLancarExcecao(long id) {
         return fornecedorRepository.buscarPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Fornecedor não encontrado com ID: " + id
+                        "Fornecedor nao encontrado com ID: " + id
                 ));
     }
 
@@ -197,9 +149,32 @@ public class FornecedorService {
         if (usuario == null
                 || usuario.getClasse() == null
                 || !usuario.getClasse().possuiPermissao(Permissao.GERENCIAR_FUNCIONARIOS)) {
-            throw new SecurityException(
-                    "Você não tem permissão para gerenciar fornecedores."
-            );
+            throw new SecurityException("Voce nao tem permissao para gerenciar fornecedores.");
         }
+    }
+
+    private boolean garantirProdutoVinculadoInterno(long fornecedorId,
+                                                    Produto produto,
+                                                    Long usuarioRu) {
+        if (produto == null) {
+            throw new IllegalArgumentException("Produto nao pode ser nulo.");
+        }
+
+        Fornecedor fornecedor = buscarOuLancarExcecao(fornecedorId);
+        if (fornecedor.possuiProduto(produto.getId())) {
+            return false;
+        }
+
+        fornecedor.adicionarProduto(produto);
+        fornecedorRepository.salvar(fornecedor);
+
+        logRepository.salvar(new LogAcao(
+                0,
+                usuarioRu,
+                "PRODUTO_VINCULADO",
+                "Produto '" + produto.getNome() + "' vinculado ao fornecedor '" + fornecedor.getNome() + "'"
+        ));
+
+        return true;
     }
 }

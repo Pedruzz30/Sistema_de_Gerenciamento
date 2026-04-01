@@ -34,7 +34,7 @@ public class SistemaGerenciamentoEstoque {
         FornecedorService           fornecedorService
                 = new FornecedorService(fornecedorRepo, logRepository);
         NotaFiscalService           notaFiscalService
-                = new NotaFiscalService(notaFiscalRepo, logRepository, estoqueService);
+                = new NotaFiscalService(notaFiscalRepo, logRepository, estoqueService, fornecedorService);
         CotacaoService              cotacaoService
                 = new CotacaoService(cotacaoRepo, logRepository);
         CaixaService                caixaService
@@ -510,7 +510,7 @@ public class SistemaGerenciamentoEstoque {
                     double preco = lerDouble(scanner);
                     System.out.print("Quantidade comprada no mês: ");
                     int qtd = lerInteiro(scanner);
-                    cotacaoService.registrarCotacao(usuarioLogado, produto, mes, preco, qtd);
+                    cotacaoService.registrarCotacao(usuarioLogado, produto, mes, BigDecimal.valueOf(preco), qtd);
                     System.out.println("Cotação registrada.");
                 }
                 case 2 -> {
@@ -732,13 +732,13 @@ public class SistemaGerenciamentoEstoque {
                                             ClasseFuncionario classeEstoquista,
                                             ClasseFuncionario classeCaixa) {
         usuarioRepository.salvar(new Usuario(0, "Admin", "Superior",
-                "000.000.000-00", "1234", classeSuperior, Usuario.Perfil.ADMIN));
+                "529.982.247-25", "1234", classeSuperior, Usuario.Perfil.ADMIN));
         usuarioRepository.salvar(new Usuario(0, "Maria", "Gerente",
-                "111.111.111-11", "1234", classeGerenteEstoque, Usuario.Perfil.OPERADOR));
+                "111.444.777-35", "1234", classeGerenteEstoque, Usuario.Perfil.OPERADOR));
         usuarioRepository.salvar(new Usuario(0, "Joao", "Silva",
-                "222.222.222-22", "1234", classeEstoquista, Usuario.Perfil.OPERADOR));
+                "123.456.789-09", "1234", classeEstoquista, Usuario.Perfil.OPERADOR));
         usuarioRepository.salvar(new Usuario(0, "Ana", "Caixa",
-                "333.333.333-33", "1234", classeCaixa, Usuario.Perfil.OPERADOR));
+                "935.411.347-80", "1234", classeCaixa, Usuario.Perfil.OPERADOR));
 
         System.out.println("Usuários padrão criados:");
         System.out.println("  Admin Superior  / senha: 1234  (acesso total)");
