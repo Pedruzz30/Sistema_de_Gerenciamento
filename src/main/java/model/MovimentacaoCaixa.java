@@ -1,5 +1,15 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -33,6 +43,8 @@ import java.util.Objects;
  * {@link #comId}, exatamente como em {@link Pedido} e {@link LogAcao} —
  * prevenindo o desvio de timestamp ao persistir.
  */
+@Entity
+@Table(name = "movimentacoes_caixa")
 public class MovimentacaoCaixa {
 
     // ── Constantes ────────────────────────────────────────────────────────────
@@ -42,14 +54,31 @@ public class MovimentacaoCaixa {
 
     // ── Campos — todos imutáveis ──────────────────────────────────────────────
 
-    private final long                  id;
-    private final TipoMovimentacaoCaixa tipo;
-    private final BigDecimal            valor;
-    private final String                descricao;
-    private final LocalDateTime         dataHora;
-    private final Usuario               operador;
+    @Id
+    private long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TipoMovimentacaoCaixa tipo;
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal valor;
+
+    @Column(length = 255)
+    private String descricao;
+
+    @Column(name = "data_hora", nullable = false)
+    private LocalDateTime dataHora;
+
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "operador_ru", nullable = false)
+    private Usuario operador;
 
     // ── Construtor público ────────────────────────────────────────────────────
+
+    protected MovimentacaoCaixa() {
+        // Construtor exigido pelo JPA.
+    }
 
     /**
      * Cria uma nova transação de caixa, capturando o timestamp atual.

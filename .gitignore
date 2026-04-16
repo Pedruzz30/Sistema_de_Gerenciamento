@@ -6,6 +6,16 @@ target/
 
 # Logs
 *.log
+*.out
+*.err
+
+# Local environment and Spring overrides
+.env
+src/main/resources/application-local.properties
+
+# Claude / configs locais
+.claude/
+.Json/
 
 # IDEs
 .idea/

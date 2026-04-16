@@ -12,12 +12,14 @@ import model.Permissao;
 import model.Produto;
 import model.ResultadoComparacao;
 import model.Usuario;
+import org.springframework.transaction.annotation.Transactional;
 import repository.CotacaoRepository;
 import repository.LogRepository;
 
 /**
  * Registra e analisa a variacao de precos de produtos mes a mes.
  */
+@Transactional(readOnly = true)
 public class CotacaoService {
 
     private final CotacaoRepository cotacaoRepository;
@@ -29,6 +31,7 @@ public class CotacaoService {
         this.logRepository = logRepository;
     }
 
+    @Transactional
     public CotacaoMensal registrarCotacao(Usuario usuarioLogado,
                                           Produto produto,
                                           YearMonth mes,
@@ -36,11 +39,16 @@ public class CotacaoService {
                                           int quantidadeComprada) {
         validarPermissao(usuarioLogado);
 
-        long id = cotacaoRepository.proximoId();
-        CotacaoMensal cotacao = new CotacaoMensal(
-                id, produto, mes, precoUnitario, quantidadeComprada
-        );
-        cotacaoRepository.salvar(cotacao);
+        long idExistente = cotacaoRepository.buscarPorProdutoEMes(produto.getId(), mes)
+                .map(CotacaoMensal::getId)
+                .orElse(0L);
+        CotacaoMensal cotacao = cotacaoRepository.salvar(new CotacaoMensal(
+                idExistente,
+                produto,
+                mes,
+                precoUnitario,
+                quantidadeComprada
+        ));
 
         logRepository.salvar(new LogAcao(
                 0,

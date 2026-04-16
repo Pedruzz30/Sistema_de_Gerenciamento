@@ -9,11 +9,13 @@ import java.util.List;
 import model.Caixa;
 import model.FechamentoCaixa;
 import model.MovimentacaoCaixa;
+import model.Permissao;
 import model.TipoMovimentacaoCaixa;
 import model.Usuario;
 import repository.CaixaRepository;
 import repository.UsuarioRepository;
 import service.CaixaService;
+import service.VendaItemInput;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +38,15 @@ public class CaixaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CaixaResponse>> listarCaixas() {
+    public ResponseEntity<List<CaixaResponse>> listarCaixas(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar caixas.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
         List<CaixaResponse> lista = caixaRepository.listarTodos().stream()
                 .map(CaixaResponse::from)
                 .toList();
@@ -46,11 +56,13 @@ public class CaixaController {
     @GetMapping("/metricas")
     public ResponseEntity<?> metricas(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-        if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_VENDAS)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErroResponse("Voce nao tem permissao para visualizar metricas de caixa."));
-        }
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar metricas de caixa.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
 
         List<Caixa> todos = caixaRepository.listarTodos();
         BigDecimal totalVendas = todos.stream()
@@ -72,7 +84,15 @@ public class CaixaController {
     }
 
     @GetMapping("/{numero}")
-    public ResponseEntity<?> buscarCaixaPorNumero(@PathVariable int numero) {
+    public ResponseEntity<?> buscarCaixaPorNumero(@PathVariable int numero,
+                                                  @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar caixas.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
         try {
             Caixa caixa = caixaService.buscarCaixaAberto(numero);
             return ResponseEntity.ok(CaixaResponse.from(caixa));
@@ -82,7 +102,15 @@ public class CaixaController {
     }
 
     @GetMapping("/{numero}/movimentacoes")
-    public ResponseEntity<?> listarMovimentacoesDoCaixa(@PathVariable int numero) {
+    public ResponseEntity<?> listarMovimentacoesDoCaixa(@PathVariable int numero,
+                                                        @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar movimentacoes de caixa.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
         List<Caixa> historico = caixaRepository.buscarHistoricoPorNumero(numero);
         if (historico.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -122,7 +150,18 @@ public class CaixaController {
         if (erro != null) return erro;
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            caixaService.registrarVenda(ator, request.numeroCaixa(), request.valor(), request.descricao());
+            List<VendaItemInput> itens = request.itens() == null
+                    ? List.of()
+                    : request.itens().stream()
+                    .map(item -> new VendaItemInput(item.produtoId(), item.cardapioItemId(), item.quantidade()))
+                    .toList();
+            caixaService.registrarVenda(
+                    ator,
+                    request.numeroCaixa(),
+                    BigDecimal.valueOf(request.valor()),
+                    request.descricao(),
+                    itens
+            );
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -178,11 +217,12 @@ public class CaixaController {
     @GetMapping("/consolidado")
     public ResponseEntity<?> consolidadoDia(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-        if (ator.getClasse() == null || !ator.getClasse().possuiPermissao(model.Permissao.VER_FINANCAS)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErroResponse("Voce nao tem permissao para acessar o consolidado diario."));
-        }
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_FINANCAS,
+                "Voce nao tem permissao para acessar o consolidado diario."
+        );
         String resumo = caixaService.consolidarDia(LocalDate.now());
         return ResponseEntity.ok(new ConsolidadoResponse(LocalDate.now().toString(), resumo));
     }
@@ -191,15 +231,38 @@ public class CaixaController {
         if (request.numeroCaixa() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Numero do caixa invalido."));
         }
-        if (request.valor() <= 0) {
+        boolean possuiItens = request.itens() != null && !request.itens().isEmpty();
+        if (!possuiItens && request.valor() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Valor deve ser maior que zero."));
+        }
+        if (possuiItens) {
+            boolean itemInvalido = request.itens().stream()
+                    .anyMatch(item -> item == null || !item.possuiReferenciaValida());
+            if (itemInvalido) {
+                return ResponseEntity.badRequest().body(new ErroResponse(
+                        "Itens da venda devem informar produtoId ou cardapioItemId com quantidade positiva."
+                ));
+            }
         }
         return null;
     }
 
     public record AbrirCaixaRequest(int numeroCaixa, double saldoInicial) {}
 
-    public record MovimentacaoRequest(int numeroCaixa, double valor, String descricao) {}
+    public record MovimentacaoRequest(
+            int numeroCaixa,
+            double valor,
+            String descricao,
+            List<ItemVendaRequest> itens
+    ) {}
+
+    public record ItemVendaRequest(Integer produtoId, String cardapioItemId, int quantidade) {
+        boolean possuiReferenciaValida() {
+            boolean possuiProduto = produtoId != null && produtoId > 0;
+            boolean possuiItemCardapio = cardapioItemId != null && !cardapioItemId.isBlank();
+            return quantidade > 0 && possuiProduto != possuiItemCardapio;
+        }
+    }
 
     public record EncerrarCaixaRequest(int numeroCaixa) {}
 

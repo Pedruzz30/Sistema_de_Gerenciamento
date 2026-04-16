@@ -17,12 +17,10 @@ public class InMemoryLogRepository implements LogRepository {
             throw new IllegalArgumentException("Log não pode ser nulo.");
         }
 
-        LogAcao persistido = new LogAcao(
-                sequenceId.getAndIncrement(),
-                log.getUsuarioRu(),
-                log.getAcao(),
-                log.getDescricao()
-        );
+        LogAcao persistido = log.getId() > 0
+                ? log
+                : log.comId(sequenceId.getAndIncrement());
+        sequenceId.updateAndGet(atual -> Math.max(atual, persistido.getId() + 1));
         logs.add(persistido);
         return persistido;
     }

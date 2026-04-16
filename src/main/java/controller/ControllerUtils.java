@@ -1,9 +1,13 @@
 package controller;
 
+import model.Permissao;
 import model.Usuario;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import repository.UsuarioRepository;
+
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Utility methods shared across REST controllers.
@@ -47,28 +51,44 @@ public final class ControllerUtils {
         return usuario;
     }
 
-    /**
-     * Resolves the acting user with a fallback actor used by some legacy controllers.
-     *
-     * When the header is absent or invalid, the fallback user is returned if active.
-     */
-    public static Usuario resolveUser(String ruHeader, UsuarioRepository repo, Usuario fallbackUser) {
-        if (fallbackUser == null) {
-            return resolveUser(ruHeader, repo);
-        }
+    public static Usuario resolveUserAndRequirePermission(String ruHeader,
+                                                          UsuarioRepository repo,
+                                                          Permissao permissao,
+                                                          String mensagemErro) {
+        Usuario usuario = resolveUser(ruHeader, repo);
+        requirePermission(usuario, permissao, mensagemErro);
+        return usuario;
+    }
 
-        if (!fallbackUser.isAtivo()) {
-            throw new SecurityException("Usuario fallback inativo.");
-        }
+    public static Usuario resolveUserAndRequireAnyPermission(String ruHeader,
+                                                             UsuarioRepository repo,
+                                                             String mensagemErro,
+                                                             Permissao... permissoes) {
+        Usuario usuario = resolveUser(ruHeader, repo);
+        requireAnyPermission(usuario, mensagemErro, permissoes);
+        return usuario;
+    }
 
-        if (ruHeader == null || ruHeader.isBlank()) {
-            return fallbackUser;
+    public static void requirePermission(Usuario usuario,
+                                         Permissao permissao,
+                                         String mensagemErro) {
+        if (usuario == null
+                || usuario.getClasse() == null
+                || !usuario.getClasse().possuiPermissao(permissao)) {
+            throw new SecurityException(mensagemErro);
         }
+    }
 
-        try {
-            return resolveUser(ruHeader, repo);
-        } catch (SecurityException ignored) {
-            return fallbackUser;
+    public static void requireAnyPermission(Usuario usuario,
+                                            String mensagemErro,
+                                            Permissao... permissoes) {
+        boolean possuiAlgumaPermissao = usuario != null
+                && usuario.getClasse() != null
+                && Arrays.stream(permissoes)
+                .filter(Objects::nonNull)
+                .anyMatch(usuario.getClasse()::possuiPermissao);
+        if (!possuiAlgumaPermissao) {
+            throw new SecurityException(mensagemErro);
         }
     }
 }

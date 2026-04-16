@@ -36,7 +36,7 @@ async function carregarFornecedores() {
     }
 
     select.innerHTML =
-      '<option value="">- Selecione um fornecedor -</option>' +
+      '<option value="">— Selecione um fornecedor —</option>' +
       fornecedoresAtivos.map((fornecedor) =>
         `<option value="${fornecedor.id}">${escapeHtml(fornecedor.nome)} (${fornecedor.produtos.length} produto(s))</option>`
       ).join('');
@@ -70,15 +70,13 @@ function renderTabelaNotas(notas) {
 
   if (notas.length === 0) {
     tbody.innerHTML = `
-      <tr><td colspan="7">
-        <div style="padding:40px;text-align:center">
-          <div style="font-size:40px;margin-bottom:12px">🧾</div>
-          <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhuma nota fiscal registrada</div>
-          <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">
-            Crie uma nova nota para registrar compras de fornecedores.
-          </div>
-          <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">+ Nova Nota</button>
-        </div>
+      <tr><td colspan="7" class="table-empty-cell">
+        ${emptyStateMarkup({
+          icon: 'receipt',
+          title: 'Nenhuma nota fiscal registrada',
+          copy: 'Crie uma nova nota para registrar compras de fornecedores e entrada de estoque.',
+          actions: '<button class="btn-primary" onclick="iniciarNovaNota(); abrirAba(\'aba-nova\')">Nova Nota</button>'
+        })}
       </td></tr>`;
     return;
   }
@@ -112,8 +110,8 @@ function renderTabelaNotas(notas) {
         <td>${escapeHtml(nota.fornecedorNome)}</td>
         <td><span class="badge ${statusBadge[nota.status] || 'badge-gray'}">${statusLabel[nota.status] || nota.status}</span></td>
         <td>${nota.itens.length} item(ns)</td>
-        <td style="color:var(--green);font-weight:600">R$${Number(nota.total).toFixed(2)}</td>
-        <td style="color:var(--text-2);font-size:12px">${data}</td>
+        <td class="table-cell-success">R$${Number(nota.total).toFixed(2)}</td>
+        <td class="table-cell-subtle">${data}</td>
         <td>
           <div class="acoes">
             <button class="btn-acao" onclick="verDetalhe(${nota.id})">Ver</button>
@@ -199,8 +197,8 @@ function atualizarAutocompleteProdutos() {
   datalist.innerHTML = produtosOrdenados.map((produto) => {
     const valor = escapeHtml(formatarProdutoBusca(produto));
     const label = vinculados.has(produto.id)
-      ? 'Ja vinculado a este fornecedor'
-      : 'Vinculo automatico ao salvar a nota';
+      ? 'Já vinculado a este fornecedor'
+      : 'Vínculo automático ao salvar a nota';
     return `<option value="${valor}" label="${escapeHtml(label)}"></option>`;
   }).join('');
 }
@@ -228,9 +226,9 @@ function toggleNovoProduto(forceOpen) {
   const botao = document.getElementById('btn-toggle-novo-produto');
   const abrir = typeof forceOpen === 'boolean'
     ? forceOpen
-    : painel.style.display === 'none';
+    : painel.hidden;
 
-  painel.style.display = abrir ? 'block' : 'none';
+  painel.hidden = !abrir;
   botao.textContent = abrir ? 'Usar Produto Existente' : '+ Novo Produto';
 
   if (abrir) {
@@ -248,33 +246,32 @@ function atualizarAvisoVinculo() {
 
   if (!notaAtual) return;
 
-  const painelNovoProduto = document.getElementById('painel-novo-produto').style.display !== 'none';
+  const painelNovoProduto = !document.getElementById('painel-novo-produto').hidden;
   const nomeNovoProduto = document.getElementById('s2-novo-nome').value.trim();
 
   if (painelNovoProduto && nomeNovoProduto) {
-    mostrarAlert(
-      'alert-s2-link',
-      'Este produto sera criado dentro da nota e vinculado automaticamente ao fornecedor quando o item for salvo.',
-      'info'
-    );
+      mostrarAlert(
+        'alert-s2-link',
+        'Este produto será criado dentro da nota e vinculado automaticamente ao fornecedor quando o item for salvo.',
+        'info'
+      );
     return;
   }
 
   const produto = resolveProdutoSelecionado();
   if (produto && !produtoVinculadoAoFornecedor(produto.id)) {
-    mostrarAlert(
-      'alert-s2-link',
-      'Este produto ainda nao esta vinculado a este fornecedor. O vinculo sera criado automaticamente ao salvar a nota.',
-      'info'
-    );
+      mostrarAlert(
+        'alert-s2-link',
+        'Este produto ainda não está vinculado a este fornecedor. O vínculo será criado automaticamente ao salvar a nota.',
+        'info'
+      );
   }
 }
 
 function renderItensStep2() {
   const lista = document.getElementById('itens-lista');
   if (!notaAtual || notaAtual.itens.length === 0) {
-    lista.innerHTML =
-      '<div class="empty" style="padding:20px;text-align:center;color:var(--text-3)">Nenhum item adicionado.</div>';
+    lista.innerHTML = '<div class="empty">Nenhum item adicionado.</div>';
     document.getElementById('s2-total').textContent = 'R$0,00';
     document.getElementById('btn-step2-avancar').disabled = true;
     return;
@@ -330,7 +327,7 @@ async function adicionarItem() {
   const btn = document.getElementById('btn-adicionar-item');
   const quantidade = parseInt(document.getElementById('s2-qtd').value, 10);
   const preco = parseFloat(document.getElementById('s2-preco').value);
-  const usandoNovoProduto = document.getElementById('painel-novo-produto').style.display !== 'none'
+  const usandoNovoProduto = !document.getElementById('painel-novo-produto').hidden
     && document.getElementById('s2-novo-nome').value.trim() !== '';
   const produtoExistente = resolveProdutoSelecionado();
 
@@ -340,7 +337,7 @@ async function adicionarItem() {
   }
 
   if (Number.isNaN(preco) || preco < 0) {
-    mostrarAlert('alert-s2', 'Informe um preco unitario valido.', 'error');
+    mostrarAlert('alert-s2', 'Informe um preço unitário válido.', 'error');
     return;
   }
 
@@ -356,7 +353,7 @@ async function adicionarItem() {
 
   const novoProduto = usandoNovoProduto ? construirNovoProdutoPayload() : null;
   if (usandoNovoProduto && !novoProduto?.nome) {
-    mostrarAlert('alert-s2-novo', 'Nome do novo produto e obrigatorio.', 'error');
+    mostrarAlert('alert-s2-novo', 'Nome do novo produto é obrigatório.', 'error');
     return;
   }
 
@@ -393,9 +390,9 @@ async function adicionarItem() {
     limparFormularioItem();
 
     if (usandoNovoProduto) {
-      showToast('Produto criado e item adicionado a nota.', 'success');
+      showToast('Produto criado e item adicionado à nota.', 'success');
     } else if (produtoPrecisavaVinculo) {
-      showToast('Item adicionado. O vinculo com o fornecedor foi criado automaticamente.', 'success');
+      showToast('Item adicionado. O vínculo com o fornecedor foi criado automaticamente.', 'success');
     }
   } finally {
     setLoading(btn, false);
@@ -417,7 +414,7 @@ async function descartarRascunho() {
     return;
   }
 
-  if (!confirm('Descartar este rascunho? A nota sera excluida permanentemente.')) return;
+  if (!confirm('Descartar este rascunho? A nota será excluída permanentemente.')) return;
 
   try {
     const resp = await fetch(`/api/notas/${notaAtual.id}`, { method: 'DELETE' });
@@ -476,7 +473,7 @@ function renderStep4() {
   document.getElementById('s4-resumo').innerHTML = `
     <div class="info-card">
       <div class="info-label">Fornecedor</div>
-      <div style="font-size:14px;font-weight:600;margin-top:4px">${escapeHtml(notaAtual.fornecedorNome)}</div>
+      <div class="table-cell-strong">${escapeHtml(notaAtual.fornecedorNome)}</div>
     </div>
     <div class="info-card">
       <div class="info-label">Itens na Nota</div>
@@ -517,8 +514,8 @@ function irParaStep(step) {
 
   ['painel-step1', 'painel-step2', 'painel-step3', 'painel-step4', 'painel-done']
     .forEach((id, index) => {
-      document.getElementById(id).style.display =
-        (index + 1 === step || (step === 5 && id === 'painel-done')) ? 'block' : 'none';
+      document.getElementById(id).hidden =
+        !(index + 1 === step || (step === 5 && id === 'painel-done'));
     });
 }
 
@@ -539,7 +536,7 @@ function iniciarNovaNota() {
 }
 
 async function confirmarCancelarNota(id) {
-  if (!confirm('Cancelar esta nota fiscal? Esta acao nao pode ser desfeita.')) return;
+  if (!confirm('Cancelar esta nota fiscal? Esta ação não pode ser desfeita.')) return;
   try {
     const resp = await fetch(`/api/notas/${id}/cancelar`, { method: 'POST' });
     if (!resp.ok) {
@@ -572,12 +569,18 @@ async function verDetalhe(id) {
 
     document.getElementById('modal-detalhe-titulo').textContent = `Nota #${nota.id}`;
     document.getElementById('detalhe-info').innerHTML = `
-      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
-        <div><span style="font-size:11px;color:var(--text-3)">FORNECEDOR</span><br><strong>${escapeHtml(nota.fornecedorNome)}</strong></div>
-        <div><span style="font-size:11px;color:var(--text-3)">STATUS</span><br>
+      <div class="detail-meta">
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Fornecedor</span>
+          <strong class="detail-meta-value">${escapeHtml(nota.fornecedorNome)}</strong>
+        </div>
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Status</span>
           <span class="badge ${statusBadge[nota.status]}">${statusLabel[nota.status]}</span></div>
-        <div><span style="font-size:11px;color:var(--text-3)">TOTAL</span><br>
-          <strong style="color:var(--green)">R$${Number(nota.total).toFixed(2)}</strong></div>
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Total</span>
+          <strong class="detail-meta-value detail-meta-value--success">R$${Number(nota.total).toFixed(2)}</strong>
+        </div>
       </div>`;
 
     document.getElementById('detalhe-itens').innerHTML = nota.itens.length === 0

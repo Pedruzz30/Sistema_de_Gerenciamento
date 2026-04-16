@@ -1,5 +1,14 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
@@ -27,6 +36,8 @@ import java.util.Objects;
  * Use {@link #comId(int)} quando o repositório precisar retornar uma cópia
  * do produto com o ID atribuído após a persistência, sem expor um setter de ID.
  */
+@Entity
+@Table(name = "produtos")
 public class Produto {
 
     // ── Constantes ────────────────────────────────────────────────────────────
@@ -35,17 +46,36 @@ public class Produto {
 
     // ── Campos imutáveis ──────────────────────────────────────────────────────
 
-    private final int              id;
-    private final String           nome;
-    private final int              quantidadeMinima;
-    private final BigDecimal       precoUnitario;
-    private final CategoriaEstoque categoriaEstoque; // opcional — pode ser null
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    @Column(nullable = false)
+    private String nome;
+
+    @Column(name = "quantidade_minima", nullable = false)
+    private int quantidadeMinima;
+
+    @Column(name = "preco_unitario", nullable = false, precision = 19, scale = 2)
+    private BigDecimal precoUnitario;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "categoria_estoque")
+    private CategoriaEstoque categoriaEstoque; // opcional — pode ser null
+
+    @Column(name = "controlado_por_estoque")
+    private Boolean controladoPorEstoque = Boolean.TRUE;
 
     // ── Campo mutável controlado ──────────────────────────────────────────────
 
+    @Column(name = "quantidade_atual", nullable = false)
     private int quantidadeAtual;
 
     // ── Construtores ──────────────────────────────────────────────────────────
+
+    protected Produto() {
+        // Construtor exigido pelo JPA.
+    }
 
     /**
      * Cria um produto sem categoria de estoque.
@@ -69,6 +99,11 @@ public class Produto {
      */
     public Produto(int id, String nome, int quantidadeAtual, int quantidadeMinima,
                    BigDecimal precoUnitario, CategoriaEstoque categoriaEstoque) {
+        this(id, nome, quantidadeAtual, quantidadeMinima, precoUnitario, categoriaEstoque, Boolean.TRUE);
+    }
+
+    public Produto(int id, String nome, int quantidadeAtual, int quantidadeMinima,
+                   BigDecimal precoUnitario, CategoriaEstoque categoriaEstoque, Boolean controladoPorEstoque) {
 
         validar(id >= 0,                            "ID do produto não pode ser negativo.");
         validar(nome != null && !nome.isBlank(),    "Nome do produto é obrigatório.");
@@ -84,6 +119,7 @@ public class Produto {
         this.quantidadeMinima = quantidadeMinima;
         this.precoUnitario    = precoUnitario.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
         this.categoriaEstoque = categoriaEstoque;
+        this.controladoPorEstoque = controladoPorEstoque;
     }
 
     // ── Fábrica para repositório ──────────────────────────────────────────────
@@ -107,7 +143,7 @@ public class Produto {
      */
     public Produto comId(int novoId) {
         validar(novoId > 0, "Novo ID deve ser maior que zero.");
-        return new Produto(novoId, nome, quantidadeAtual, quantidadeMinima, precoUnitario, categoriaEstoque);
+        return new Produto(novoId, nome, quantidadeAtual, quantidadeMinima, precoUnitario, categoriaEstoque, controladoPorEstoque);
     }
 
     // ── Operações de estoque ──────────────────────────────────────────────────
@@ -152,6 +188,10 @@ public class Produto {
     public void atualizarQuantidade(int novaQuantidade) {
         validar(novaQuantidade >= 0, "Quantidade em estoque não pode ser negativa.");
         this.quantidadeAtual = novaQuantidade;
+    }
+
+    public void desativarControleDeEstoque() {
+        this.controladoPorEstoque = Boolean.FALSE;
     }
 
     // ── Métricas e diagnóstico de estoque ─────────────────────────────────────
@@ -224,6 +264,7 @@ public class Produto {
     public int              getQuantidadeMinima() { return quantidadeMinima; }
     public BigDecimal       getPrecoUnitario()    { return precoUnitario;    }
     public CategoriaEstoque getCategoriaEstoque() { return categoriaEstoque; }
+    public boolean          isControladoPorEstoque() { return controladoPorEstoque == null || controladoPorEstoque; }
 
     /** @return {@code true} se uma categoria de estoque foi definida */
     public boolean possuiCategoriaEstoque() {
@@ -241,14 +282,15 @@ public class Produto {
     @Override
     public String toString() {
         return String.format(
-                "Produto{id=%d, nome='%s', qtd=%d/%d, preco=R$%s, nivel=%s, categoria=%s}",
+                "Produto{id=%d, nome='%s', qtd=%d/%d, preco=R$%s, nivel=%s, categoria=%s, estoque=%s}",
                 id,
                 nome,
                 quantidadeAtual,
                 quantidadeMinima,
                 precoUnitario.toPlainString(),
                 calcularNivel(),
-                categoriaEstoque != null ? categoriaEstoque : "N/A"
+                categoriaEstoque != null ? categoriaEstoque : "N/A",
+                isControladoPorEstoque()
         );
     }
 

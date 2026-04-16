@@ -49,6 +49,8 @@
   <!-- ── Main ── -->
   <main class="main">
 
+    <div class="page-summary-grid fade-up" id="fornecedor-summary"></div>
+
     <!-- Filtros -->
     <div class="toolbar fade-up">
       <div class="search-wrap">
@@ -148,7 +150,7 @@
 
 <!-- ── Modal: Produtos Vinculados ── -->
 <div class="modal-overlay" id="modal-produtos" onclick="fecharModalSeClicouFora(event,'modal-produtos')">
-  <div class="modal" style="max-width:520px">
+  <div class="modal modal--narrow">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-produtos-titulo">Produtos Vinculados</h3>
       <button class="modal-close" onclick="fecharModal('modal-produtos')">✕</button>

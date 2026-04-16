@@ -1,5 +1,12 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
@@ -32,6 +39,8 @@ import java.util.Objects;
  * compilação — refatoração simples e de alto impacto quando o sistema estiver
  * estável.
  */
+@Entity
+@Table(name = "logs_auditoria")
 public class LogAcao {
 
     // ── Constante ─────────────────────────────────────────────────────────────
@@ -40,13 +49,27 @@ public class LogAcao {
 
     // ── Campos — todos imutáveis ──────────────────────────────────────────────
 
-    private final long          id;
-    private final Long          usuarioRu;   // nullable: null = ação do sistema
-    private final String        acao;
-    private final String        descricao;
-    private final LocalDateTime dataHora;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @Column(name = "usuario_ru")
+    private Long usuarioRu;   // nullable: null = ação do sistema
+
+    @Column(nullable = false, length = 80)
+    private String acao;
+
+    @Column(nullable = false, length = 500)
+    private String descricao;
+
+    @Column(name = "data_hora", nullable = false)
+    private LocalDateTime dataHora;
 
     // ── Construtor público ────────────────────────────────────────────────────
+
+    protected LogAcao() {
+        // Construtor exigido pelo JPA.
+    }
 
     /**
      * Cria um novo registro de auditoria capturando o timestamp atual.

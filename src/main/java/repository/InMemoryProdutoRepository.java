@@ -26,7 +26,8 @@ public class InMemoryProdutoRepository implements ProdutoRepository {
                     produto.getQuantidadeAtual(),
                     produto.getQuantidadeMinima(),
                     produto.getPrecoUnitario(),
-                    produto.getCategoriaEstoque()
+                    produto.getCategoriaEstoque(),
+                    produto.isControladoPorEstoque()
             );
         } else {
             sequenceId.updateAndGet(atual -> Math.max(atual, produto.getId() + 1));

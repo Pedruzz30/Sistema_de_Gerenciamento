@@ -2,10 +2,8 @@ package controller;
 
 import model.LogAcao;
 import model.Permissao;
-import model.Usuario;
 import repository.LogRepository;
 import repository.UsuarioRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,14 +52,11 @@ public class LogController {
 
     private final LogRepository     logRepository;
     private final UsuarioRepository usuarioRepository;
-    private final Usuario           adminSuperior;
 
     public LogController(LogRepository logRepository,
-                         UsuarioRepository usuarioRepository,
-                         Usuario adminSuperior) {
+                         UsuarioRepository usuarioRepository) {
         this.logRepository     = logRepository;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior     = adminSuperior;
     }
 
     // ── GET /api/logs ─────────────────────────────────────────────────────────
@@ -88,12 +83,12 @@ public class LogController {
             @RequestParam(required = false) Integer limit) {
 
         // ── Autorização ───────────────────────────────────────────────────
-        Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
-        if (ator.getClasse() == null
-                || !ator.getClasse().possuiPermissao(Permissao.VER_LOGS)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ErroResponse("Você não tem permissão para visualizar os logs."));
-        }
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_LOGS,
+                "Voce nao tem permissao para visualizar os logs."
+        );
 
         // ── Limite sanitizado ─────────────────────────────────────────────
         int tamanho = Optional.ofNullable(limit)

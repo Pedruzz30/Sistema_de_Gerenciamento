@@ -1,5 +1,20 @@
 package model;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -33,6 +48,8 @@ import java.util.Set;
  * {@link RoundingMode#HALF_UP}, seguindo o padrão contábil brasileiro (NBR 6023).
  * Nunca use {@code double} para dinheiro.
  */
+@Entity
+@Table(name = "notas_fiscais")
 public class NotaFiscal {
 
     // ── Constantes ────────────────────────────────────────────────────────────
@@ -92,20 +109,46 @@ public class NotaFiscal {
 
     // ── Campos imutáveis (definidos na criação, nunca mudam) ─────────────────
 
-    private final long            id;
-    private final Fornecedor      fornecedor;
-    private final Usuario         usuarioResponsavel;
-    private final LocalDateTime   dataEmissao;
-    private final List<ItemNotaFiscal> itens;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "fornecedor_id", nullable = false)
+    private Fornecedor fornecedor;
+
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "usuario_responsavel_ru", nullable = false)
+    private Usuario usuarioResponsavel;
+
+    @Column(name = "data_emissao", nullable = false)
+    private LocalDateTime dataEmissao;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "nota_fiscal_id", nullable = false)
+    @OrderBy("id ASC")
+    private List<ItemNotaFiscal> itens;
 
     // ── Campos mutáveis (evoluem com o ciclo de vida) ────────────────────────
 
-    private Status        status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status;
+
+    @Column(name = "data_confirmacao")
     private LocalDateTime dataConfirmacao;
+
+    @Column(name = "data_pagamento")
     private LocalDateTime dataPagamento;
+
+    @Column(name = "data_cancelamento")
     private LocalDateTime dataCancelamento;
 
     // ── Construtor ────────────────────────────────────────────────────────────
+
+    protected NotaFiscal() {
+        this.itens = new ArrayList<>();
+    }
 
     /**
      * Cria uma nova nota fiscal no estado {@code PENDENTE}.
@@ -130,6 +173,41 @@ public class NotaFiscal {
         this.itens               = new ArrayList<>();
         this.dataEmissao         = LocalDateTime.now();
         this.status              = Status.PENDENTE;
+    }
+
+    private NotaFiscal(long id,
+                       Fornecedor fornecedor,
+                       Usuario usuarioResponsavel,
+                       LocalDateTime dataEmissao,
+                       List<ItemNotaFiscal> itens,
+                       Status status,
+                       LocalDateTime dataConfirmacao,
+                       LocalDateTime dataPagamento,
+                       LocalDateTime dataCancelamento) {
+        this.id = id;
+        this.fornecedor = fornecedor;
+        this.usuarioResponsavel = usuarioResponsavel;
+        this.dataEmissao = dataEmissao;
+        this.itens = new ArrayList<>(itens);
+        this.status = status;
+        this.dataConfirmacao = dataConfirmacao;
+        this.dataPagamento = dataPagamento;
+        this.dataCancelamento = dataCancelamento;
+    }
+
+    public NotaFiscal comId(long novoId) {
+        validar(novoId > 0, "Novo ID da nota deve ser maior que zero.");
+        return new NotaFiscal(
+                novoId,
+                fornecedor,
+                usuarioResponsavel,
+                dataEmissao,
+                itens,
+                status,
+                dataConfirmacao,
+                dataPagamento,
+                dataCancelamento
+        );
     }
 
     // ── Gerenciamento de itens ────────────────────────────────────────────────

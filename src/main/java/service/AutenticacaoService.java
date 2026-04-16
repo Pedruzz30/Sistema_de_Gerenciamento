@@ -2,11 +2,13 @@ package service;
 
 import model.LogAcao;
 import model.Usuario;
+import org.springframework.transaction.annotation.Transactional;
 import repository.LogRepository;
 import repository.UsuarioRepository;
 
 import java.util.Optional;
 
+@Transactional(readOnly = true)
 public class AutenticacaoService {
 
     private final UsuarioRepository usuarioRepository;
@@ -17,6 +19,7 @@ public class AutenticacaoService {
         this.logRepository = logRepository;
     }
 
+    @Transactional
     public Usuario autenticar(String nome, String sobrenome, String senha) {
         Optional<Usuario> usuarioOpt = usuarioRepository.buscarPorNomeSobrenomeESenha(nome, sobrenome, senha);
 

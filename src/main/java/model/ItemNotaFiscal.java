@@ -1,5 +1,15 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
@@ -31,6 +41,8 @@ import java.util.Objects;
  * A normalização ocorre uma única vez, no momento da atribuição — não
  * repetidamente nos cálculos intermediários.
  */
+@Entity
+@Table(name = "nota_fiscal_itens")
 public class ItemNotaFiscal {
 
     // ── Constantes ────────────────────────────────────────────────────────────
@@ -39,14 +51,27 @@ public class ItemNotaFiscal {
 
     // ── Campos imutáveis ──────────────────────────────────────────────────────
 
-    private final Produto produto;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "produto_id", nullable = false)
+    private Produto produto;
 
     // ── Campos mutáveis controlados ───────────────────────────────────────────
 
-    private int        quantidade;
+    @Column(nullable = false)
+    private int quantidade;
+
+    @Column(name = "preco_unitario_nota", nullable = false, precision = 19, scale = 2)
     private BigDecimal precoUnitarioNota;
 
     // ── Construtor ────────────────────────────────────────────────────────────
+
+    protected ItemNotaFiscal() {
+        // Construtor exigido pelo JPA.
+    }
 
     /**
      * Cria um novo item de nota fiscal.
@@ -213,6 +238,7 @@ public class ItemNotaFiscal {
 
     // ── Getters ───────────────────────────────────────────────────────────────
 
+    public long       getId()                { return id;                }
     public Produto    getProduto()           { return produto;           }
     public int        getQuantidade()        { return quantidade;        }
     public BigDecimal getPrecoUnitarioNota() { return precoUnitarioNota; }

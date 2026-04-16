@@ -1,5 +1,20 @@
 package model;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -32,6 +47,8 @@ import java.util.Set;
  * {@code id == 0} indica que o caixa ainda não foi persistido.
  * IDs negativos são rejeitados.
  */
+@Entity
+@Table(name = "caixas")
 public class Caixa {
 
     // ── Constantes ────────────────────────────────────────────────────────────
@@ -78,20 +95,48 @@ public class Caixa {
 
     // ── Campos imutáveis ──────────────────────────────────────────────────────
 
-    private final long                    id;
-    private final int                     numeroCaixa;
-    private final List<MovimentacaoCaixa> movimentacoes;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @Column(name = "numero_caixa", nullable = false)
+    private int numeroCaixa;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "caixa_id", nullable = false)
+    @OrderBy("id ASC")
+    private List<MovimentacaoCaixa> movimentacoes;
 
     // ── Campos mutáveis — evoluem com o ciclo de vida ─────────────────────────
 
-    private BigDecimal    saldoInicial;
-    private BigDecimal    saldoAtual;
-    private Status        status;
-    private Usuario       operadorAtual;
+    @Column(name = "saldo_inicial", nullable = false, precision = 19, scale = 2)
+    private BigDecimal saldoInicial;
+
+    @Column(name = "saldo_atual", nullable = false, precision = 19, scale = 2)
+    private BigDecimal saldoAtual;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "operador_atual_ru")
+    private Usuario operadorAtual;
+
+    @Column(name = "data_abertura")
     private LocalDateTime dataAbertura;
+
+    @Column(name = "data_encerramento")
     private LocalDateTime dataEncerramento;
 
     // ── Construtor ────────────────────────────────────────────────────────────
+
+    protected Caixa() {
+        this.status = Status.FECHADO;
+        this.saldoInicial = BigDecimal.ZERO;
+        this.saldoAtual = BigDecimal.ZERO;
+        this.movimentacoes = new ArrayList<>();
+    }
 
     /**
      * Cria um caixa PDV no estado {@code FECHADO}.
@@ -110,6 +155,41 @@ public class Caixa {
         this.saldoInicial  = BigDecimal.ZERO;
         this.saldoAtual    = BigDecimal.ZERO;
         this.movimentacoes = new ArrayList<>();
+    }
+
+    private Caixa(long id,
+                  int numeroCaixa,
+                  List<MovimentacaoCaixa> movimentacoes,
+                  BigDecimal saldoInicial,
+                  BigDecimal saldoAtual,
+                  Status status,
+                  Usuario operadorAtual,
+                  LocalDateTime dataAbertura,
+                  LocalDateTime dataEncerramento) {
+        this.id = id;
+        this.numeroCaixa = numeroCaixa;
+        this.movimentacoes = new ArrayList<>(movimentacoes);
+        this.saldoInicial = saldoInicial;
+        this.saldoAtual = saldoAtual;
+        this.status = status;
+        this.operadorAtual = operadorAtual;
+        this.dataAbertura = dataAbertura;
+        this.dataEncerramento = dataEncerramento;
+    }
+
+    public Caixa comPersistencia(long novoId, List<MovimentacaoCaixa> movimentacoesPersistidas) {
+        validar(novoId > 0, "Novo ID do caixa deve ser maior que zero.");
+        return new Caixa(
+                novoId,
+                numeroCaixa,
+                movimentacoesPersistidas,
+                saldoInicial,
+                saldoAtual,
+                status,
+                operadorAtual,
+                dataAbertura,
+                dataEncerramento
+        );
     }
 
     // ── Abertura ──────────────────────────────────────────────────────────────

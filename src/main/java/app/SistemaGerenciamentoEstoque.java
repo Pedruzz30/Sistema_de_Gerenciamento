@@ -38,7 +38,7 @@ public class SistemaGerenciamentoEstoque {
         CotacaoService              cotacaoService
                 = new CotacaoService(cotacaoRepo, logRepository);
         CaixaService                caixaService
-                = new CaixaService(caixaRepo, logRepository);
+                = new CaixaService(caixaRepo, logRepository, estoqueService, new PizzaMenuCatalogService());
 
         // ── Classes de funcionário ─────────────────────────────
         ClasseFuncionario classeSuperior       = criarClasseSuperior();

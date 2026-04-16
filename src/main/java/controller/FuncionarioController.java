@@ -121,7 +121,14 @@ public class FuncionarioController {
 
     // GET /api/funcionarios/classes — lists available employee classes
     @GetMapping("/classes")
-    public ResponseEntity<List<ClasseResponse>> listarClasses() {
+    public ResponseEntity<List<ClasseResponse>> listarClasses(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.GERENCIAR_FUNCIONARIOS,
+                "Voce nao tem permissao para visualizar classes de funcionarios."
+        );
         return ResponseEntity.ok(List.of(
                 new ClasseResponse("SUPERIOR",       "Acesso total ao sistema"),
                 new ClasseResponse("GERENTE_ESTOQUE","Gerencia estoque e compras"),

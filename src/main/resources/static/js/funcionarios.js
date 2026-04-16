@@ -41,6 +41,38 @@ async function carregarFuncionarios() {
 
 // ── Render ────────────────────────────────────────────────────────────────
 
+function renderResumo(listaVisivel) {
+  const container = document.getElementById('funcionario-summary');
+  if (!container) return;
+
+  const ativos = todosFuncionarios.filter(f => f.ativo).length;
+  const gestores = todosFuncionarios.filter(f => ['SUPERIOR', 'GERENTE_ESTOQUE'].includes(f.nomeClasse)).length;
+
+  container.innerHTML = [
+    {
+      label: 'Total de funcionários',
+      value: todosFuncionarios.length,
+      sub: 'Cadastros com acesso potencial ao sistema.'
+    },
+    {
+      label: 'Equipe ativa',
+      value: ativos,
+      sub: 'Usuários atualmente habilitados.'
+    },
+    {
+      label: 'Perfis de gestão',
+      value: gestores,
+      sub: `${listaVisivel.length} resultado(s) visível(is) no filtro atual.`
+    }
+  ].map(card => `
+    <div class="page-summary-card">
+      <div class="page-summary-label">${card.label}</div>
+      <div class="page-summary-value">${card.value}</div>
+      <div class="page-summary-sub">${card.sub}</div>
+    </div>
+  `).join('');
+}
+
 function renderTabela() {
   const busca = document.getElementById('busca').value.toLowerCase();
   let lista = todosFuncionarios.filter(f => {
@@ -54,18 +86,19 @@ function renderTabela() {
   });
 
   document.getElementById('table-count').textContent = `${lista.length} funcionário(s)`;
+  renderResumo(lista);
 
   const tbody = document.getElementById('tabela-funcionarios');
   if (lista.length === 0) {
     if (todosFuncionarios.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="6">
-          <div style="padding:40px;text-align:center">
-            <div style="font-size:40px;margin-bottom:12px">👥</div>
-            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum funcionário cadastrado</div>
-            <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Adicione funcionários para gerenciar os acessos ao sistema.</div>
-            <button class="btn-primary" onclick="abrirModalCadastro()">+ Adicionar Funcionário</button>
-          </div>
+        <tr><td colspan="6" class="table-empty-cell">
+          ${emptyStateMarkup({
+            icon: 'users',
+            title: 'Nenhum funcionário cadastrado',
+            copy: 'Adicione funcionários para distribuir classes, permissões e acesso operacional.',
+            actions: '<button class="btn-primary" onclick="abrirModalCadastro()">Novo Funcionário</button>'
+          })}
         </td></tr>`;
     } else {
       tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
@@ -77,16 +110,18 @@ function renderTabela() {
     const classeLabel = CLASSE_LABEL[f.nomeClasse] || f.nomeClasse || '—';
     const classeBadge = CLASSE_BADGE[f.nomeClasse] || 'badge-gray';
     const perms = Array.isArray(f.permissoes) ? f.permissoes.length : 0;
+    const nomeCompletoJs = JSON.stringify(`${f.nome || ''} ${f.sobrenome || ''}`.trim());
+    const nomeClasseJs = JSON.stringify(f.nomeClasse || '');
 
     return `
       <tr>
-        <td style="color:var(--text-3); font-size:12px; font-weight:600">#${f.ru}</td>
+        <td class="table-cell-subtle table-cell-strong">#${f.ru}</td>
         <td>
-          <div class="produto-nome">${f.nome} ${f.sobrenome}</div>
-          <div class="produto-id">${f.perfil || 'OPERADOR'}</div>
+          <div class="produto-nome">${escapeHtml(f.nome)} ${escapeHtml(f.sobrenome)}</div>
+          <div class="produto-id">${escapeHtml(f.perfil || 'OPERADOR')}</div>
         </td>
         <td><span class="badge ${classeBadge}">${classeLabel}</span></td>
-        <td style="color:var(--text-2); font-size:12px">${perms} permissão(ões)</td>
+        <td class="table-cell-muted table-cell-subtle">${perms} permissão(ões)</td>
         <td>
           <span class="badge ${f.ativo ? 'badge-green' : 'badge-gray'}">
             ${f.ativo ? 'Ativo' : 'Inativo'}
@@ -95,10 +130,10 @@ function renderTabela() {
         <td>
           <div class="acoes">
             ${f.ativo ? `
-              <button class="btn-acao" onclick="abrirModalClasse(${f.ru}, '${f.nome} ${f.sobrenome}', '${f.nomeClasse || ''}')">Classe</button>
+              <button class="btn-acao" onclick="abrirModalClasse(${f.ru}, ${nomeCompletoJs}, ${nomeClasseJs})">Classe</button>
               <button class="btn-acao saida" onclick="desativar(${f.ru})">Desativar</button>
             ` : `
-              <span style="color:var(--text-3); font-size:12px">Inativo</span>
+              <span class="status-placeholder">Inativo</span>
             `}
           </div>
         </td>

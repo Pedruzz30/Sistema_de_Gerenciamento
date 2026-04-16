@@ -1,5 +1,16 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
 import java.util.Objects;
 
 /**
@@ -31,6 +42,11 @@ import java.util.Objects;
  * pelo {@link Perfil}. O perfil ({@code ADMIN} / {@code OPERADOR}) é um rótulo
  * de exibição, não uma fonte de autorização.
  */
+@Entity
+@Table(
+        name = "usuarios",
+        uniqueConstraints = @UniqueConstraint(name = "uk_usuarios_cpf", columnNames = "cpf")
+)
 public class Usuario {
 
     // ── Enum de perfil ────────────────────────────────────────────────────────
@@ -50,19 +66,39 @@ public class Usuario {
 
     // ── Campos imutáveis ──────────────────────────────────────────────────────
 
-    private final long   ru;
-    private final String nome;
-    private final String sobrenome;
-    private final String cpf;      // 11 dígitos sem formatação, validado
-    private final String senha;    // ⚠ texto simples — hash em produção
-    private final Perfil perfil;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long ru;
+
+    @Column(nullable = false, length = 80)
+    private String nome;
+
+    @Column(nullable = false, length = 120)
+    private String sobrenome;
+
+    @Column(nullable = false, length = 11, unique = true)
+    private String cpf;      // 11 dígitos sem formatação, validado
+
+    @Column(nullable = false, length = 120)
+    private String senha;    // ⚠ texto simples — hash em produção
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Perfil perfil;
 
     // ── Campos mutáveis ───────────────────────────────────────────────────────
 
+    @Embedded
     private ClasseFuncionario classe;
-    private boolean           ativo;
+
+    @Column(nullable = false)
+    private boolean ativo;
 
     // ── Construtor ────────────────────────────────────────────────────────────
+
+    protected Usuario() {
+        // Construtor exigido pelo JPA.
+    }
 
     /**
      * Cria um novo usuário no estado ativo.
@@ -178,7 +214,7 @@ public class Usuario {
      * @throws IllegalStateException se o usuário já estiver inativo
      */
     public void desativar() {
-        validarTransicaoAtivo(true, "Usuário '" + getNomeCompleto() + "' já está inativo.");
+        validarTransicaoAtivo(false, "Usuário '" + getNomeCompleto() + "' já está inativo.");
         this.ativo = false;
     }
 
@@ -188,7 +224,7 @@ public class Usuario {
      * @throws IllegalStateException se o usuário já estiver ativo
      */
     public void reativar() {
-        validarTransicaoAtivo(false, "Usuário '" + getNomeCompleto() + "' já está ativo.");
+        validarTransicaoAtivo(true, "Usuário '" + getNomeCompleto() + "' já está ativo.");
         this.ativo = true;
     }
 

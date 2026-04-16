@@ -1,41 +1,55 @@
 // ── Inicialização ──────────────────────────────────────────
+const PODE_VER_ESTOQUE_DASH = temPermissao(PERMISSOES.VER_ESTOQUE);
+const PODE_VER_FINANCEIRO_DASH = temAlgumaPermissao([
+  PERMISSOES.VER_VENDAS,
+  PERMISSOES.VER_FINANCAS,
+]);
+
 async function carregarDados() {
   let produtos = [];
   let caixas = [];
   let movimentacoes = [];
   let metricas = null;
 
-  try {
-    const resp = await fetch('/api/produtos');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    produtos = await resp.json();
-  } catch (err) {
-    console.error('Erro ao carregar produtos:', err);
+  if (PODE_VER_ESTOQUE_DASH) {
+    try {
+      const resp = await fetch('/api/produtos');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      produtos = await resp.json();
+    } catch (err) {
+      console.error('Erro ao carregar produtos:', err);
+    }
   }
 
-  try {
-    const resp = await fetch('/api/caixas');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    caixas = await resp.json();
-  } catch (err) {
-    console.error('Erro ao carregar caixas:', err);
+  if (PODE_VER_FINANCEIRO_DASH) {
+    try {
+      const resp = await fetch('/api/caixas');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      caixas = await resp.json();
+    } catch (err) {
+      console.error('Erro ao carregar caixas:', err);
+    }
   }
 
-  try {
-    const resp = await fetch('/api/movimentacoes');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    movimentacoes = await resp.json();
-  } catch (err) {
-    console.error('Erro ao carregar movimentações:', err);
+  if (PODE_VER_ESTOQUE_DASH) {
+    try {
+      const resp = await fetch('/api/movimentacoes');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      movimentacoes = await resp.json();
+    } catch (err) {
+      console.error('Erro ao carregar movimentações:', err);
+    }
   }
 
-  // BUG 2 fix: use dedicated metrics endpoint for correct ticket médio
-  try {
-    const resp = await fetch('/api/caixas/metricas');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    metricas = await resp.json();
-  } catch (err) {
-    console.error('Erro ao carregar métricas:', err);
+  if (PODE_VER_FINANCEIRO_DASH) {
+    // BUG 2 fix: use dedicated metrics endpoint for correct ticket médio
+    try {
+      const resp = await fetch('/api/caixas/metricas');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      metricas = await resp.json();
+    } catch (err) {
+      console.error('Erro ao carregar métricas:', err);
+    }
   }
 
   renderSummaryCards(produtos, caixas);
@@ -81,8 +95,8 @@ function renderSummaryCards(produtos, caixas) {
     {
       label: 'Total de Produtos',
       value: totalProdutos,
-      icon: '📦',
-      color: 'rgba(124,58,237,.15)',
+      icon: 'box',
+      tone: 'purple',
       trend: 'neutral',
       trendText: 'cadastrados',
       perm: PERMISSOES.VER_ESTOQUE,
@@ -91,8 +105,8 @@ function renderSummaryCards(produtos, caixas) {
     {
       label: 'Alertas de Estoque',
       value: alertas,
-      icon: '⚠️',
-      color: 'rgba(244,63,94,.12)',
+      icon: 'alertTriangle',
+      tone: 'red',
       trend: alertas > 0 ? 'down' : 'up',
       trendText: alertas > 0 ? 'precisam de atenção' : 'tudo em ordem',
       perm: PERMISSOES.VER_ESTOQUE,
@@ -101,55 +115,51 @@ function renderSummaryCards(produtos, caixas) {
     {
       label: 'Vendas do Dia',
       value: 'R$' + vendasDia.toFixed(2),
-      icon: '💰',
-      color: 'rgba(16,185,129,.12)',
+      icon: 'wallet',
+      tone: 'green',
       trend: 'up',
       trendText: 'hoje',
-      perm: PERMISSOES.VER_VENDAS,
+      permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS],
       href: '/caixas.html',
     },
     {
       label: 'Caixas Abertos',
       value: caixasAbertos + '/' + totalCaixas,
-      icon: '🖥️',
-      color: 'rgba(6,182,212,.12)',
+      icon: 'chart',
+      tone: 'cyan',
       trend: 'neutral',
       trendText: 'em operação',
-      perm: PERMISSOES.VER_VENDAS,
+      permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS],
       href: '/caixas.html',
     },
   ];
 
   var grid = document.getElementById('summary-grid');
   grid.innerHTML = cards
-    .filter(function (c) { return !c.perm || temPermissao(c.perm); })
+    .filter(function (c) { return !c.permsAny || temAlgumaPermissao(c.permsAny); })
     .map(function (c, i) {
       var trendIcon = c.trend === 'up' ? '↑' : c.trend === 'down' ? '↓' : '—';
-      return '<div class="summary-card fade-up fade-up-' + (i + 1) + '" ' +
-             'style="cursor:pointer;position:relative" ' +
-             'onclick="window.location.href=\'' + c.href + '\'" ' +
-             'onmouseover="this.style.transform=\'translateY(-2px)\'" ' +
-             'onmouseout="this.style.transform=\'\'">' +
-             '<div style="position:absolute;top:10px;right:10px;color:var(--text-3);font-size:11px">→</div>' +
+      return '<a class="summary-card summary-card--link fade-up fade-up-' + (i + 1) + '" href="' + c.href + '">' +
+             '<span class="summary-card__arrow" aria-hidden="true">' + iconMarkup('arrowRight') + '</span>' +
              '<div class="summary-card-top">' +
              '<span class="summary-label">' + c.label + '</span>' +
-             '<div class="summary-icon" style="background:' + c.color + '">' + c.icon + '</div>' +
+             '<div class="summary-icon summary-icon--' + c.tone + '" aria-hidden="true">' + iconMarkup(c.icon) + '</div>' +
              '</div>' +
              '<div class="summary-value">' + c.value + '</div>' +
              '<div class="summary-trend trend-' + c.trend + '">' +
              trendIcon + ' ' + c.trendText +
              '</div>' +
-             '</div>';
+             '</a>';
     }).join('');
 }
 
 // ── Seções por permissão ───────────────────────────────────
 function renderPermissionSections() {
-  if (temPermissao(PERMISSOES.VER_ESTOQUE)) {
+  if (PODE_VER_ESTOQUE_DASH) {
     document.getElementById('section-alertas').classList.add('visible');
     document.getElementById('section-movimentacoes').classList.add('visible');
   }
-  if (temPermissao(PERMISSOES.VER_FINANCAS) || temPermissao(PERMISSOES.VER_VENDAS)) {
+  if (PODE_VER_FINANCEIRO_DASH) {
     document.getElementById('section-financeiro').classList.add('visible');
   }
 }
@@ -181,11 +191,12 @@ function renderAlertas(produtos) {
 function renderMovimentacoes(movimentacoes) {
   var list = document.getElementById('mov-list');
   if (!movimentacoes || movimentacoes.length === 0) {
-    list.innerHTML =
-      '<div style="padding:24px;text-align:center">' +
-      '<div style="font-size:28px;margin-bottom:8px">📦</div>' +
-      '<div style="color:var(--text-3);font-size:13px">Nenhuma movimentação registrada ainda.</div>' +
-      '</div>';
+    list.innerHTML = emptyStateMarkup({
+      icon: 'box',
+      title: 'Nenhuma movimentação registrada',
+      copy: 'As entradas e saídas recentes aparecerão aqui ao longo do dia.',
+      compact: true
+    });
     return;
   }
 
@@ -222,10 +233,12 @@ function renderFinanceiro(caixas, metricas) {
 
   var caixaList = document.getElementById('caixa-list');
   if (caixas.length === 0) {
-    caixaList.innerHTML =
-      '<div style="padding:16px;text-align:center">' +
-      '<div style="color:var(--text-3);font-size:13px">Nenhum caixa registrado.</div>' +
-      '</div>';
+    caixaList.innerHTML = emptyStateMarkup({
+      icon: 'wallet',
+      title: 'Nenhum caixa registrado',
+      copy: 'Os caixas operacionais do dia serão listados aqui.',
+      compact: true
+    });
     return;
   }
   caixaList.innerHTML = caixas.map(function (c) {
@@ -268,6 +281,7 @@ let chartEstoque = null;
 let chartMov     = null;
 let chartCaixas  = null;
 let chartAlertas = null;
+let chartLucratividade = null;
 
 // ── Paleta de cores (valores fixos — CSS vars não funcionam em <canvas>) ──
 
@@ -294,9 +308,433 @@ const TOOLTIP_BASE = {
   padding:         10,
 };
 
+const CAMPOS_PRECO_VENDA = ['precoUnitario', 'precoVenda', 'valorVenda', 'preco', 'precoAtual'];
+const CAMPOS_PRECO_CUSTO = [
+  'custoUnitario',
+  'precoCusto',
+  'valorCusto',
+  'precoCompra',
+  'precoUnitarioBase',
+  'custoMedio',
+  'ultimoCusto',
+  'custo'
+];
+
+const FORMATO_MOEDA_BR = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
+
+function parseNumeroSeguro(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+
+  var texto = String(valor).trim();
+  if (!texto) return null;
+  texto = texto.replace(/R\$\s?/g, '');
+
+  if (texto.includes(',') && texto.includes('.')) {
+    texto = texto.replace(/\./g, '').replace(',', '.');
+  } else {
+    texto = texto.replace(',', '.');
+  }
+
+  var numero = Number(texto);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function resolverCampoNumerico(obj, campos) {
+  var encontrado = { key: null, raw: null, value: null };
+  if (!obj) return encontrado;
+
+  for (var i = 0; i < campos.length; i++) {
+    var chave = campos[i];
+    if (!Object.prototype.hasOwnProperty.call(obj, chave)) continue;
+
+    var raw = obj[chave];
+    var value = parseNumeroSeguro(raw);
+    if (encontrado.key === null) {
+      encontrado = { key: chave, raw: raw, value: value };
+    }
+    if (value !== null) {
+      return { key: chave, raw: raw, value: value };
+    }
+  }
+
+  return encontrado;
+}
+
+function formatarMoedaBR(valor) {
+  return Number.isFinite(valor) ? FORMATO_MOEDA_BR.format(valor) : '—';
+}
+
+function formatarPercentual(valor) {
+  if (!Number.isFinite(valor)) return '—';
+  return valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }) + '%';
+}
+
+function resumirTexto(texto, limite) {
+  var base = String(texto || '');
+  if (base.length <= limite) return base;
+  return base.slice(0, Math.max(0, limite - 1)).trimEnd() + '…';
+}
+
+function obterClassificacaoMargem(margem) {
+  if (margem >= 50) {
+    return {
+      chart: COR.verde,
+      chartSoft: COR.verdeSoft,
+      table: 'good',
+      status: 'high',
+      label: 'Alta margem',
+    };
+  }
+  if (margem >= 25) {
+    return {
+      chart: COR.ambar,
+      chartSoft: COR.ambarSoft,
+      table: 'medium',
+      status: 'medium',
+      label: 'Margem saudável',
+    };
+  }
+  return {
+    chart: COR.vermelho,
+    chartSoft: COR.vermelhoSoft,
+    table: 'low',
+    status: 'low',
+    label: margem < 0 ? 'Margem negativa' : 'Baixa margem',
+  };
+}
+
+function normalizarProdutoLucratividade(produto, indice) {
+  var produtoBase = produto || {};
+  var vendaInfo = resolverCampoNumerico(produtoBase, CAMPOS_PRECO_VENDA);
+  var custoInfo = resolverCampoNumerico(produtoBase, CAMPOS_PRECO_CUSTO);
+  var precoVenda = vendaInfo.value;
+  var precoCusto = custoInfo.value;
+  var custoZeroAssumidoComoPendente = precoCusto === 0
+    && !(produtoBase.custoDefinido === true || produtoBase.temCusto === true || produtoBase.possuiCusto === true);
+  var vendaValida = Number.isFinite(precoVenda) && precoVenda > 0;
+  var custoValido = Number.isFinite(precoCusto) && precoCusto >= 0 && !custoZeroAssumidoComoPendente;
+  var temMargemValida = vendaValida && custoValido;
+  var lucroUnitario = temMargemValida ? precoVenda - precoCusto : null;
+  var margem = temMargemValida && precoVenda > 0 ? (lucroUnitario / precoVenda) * 100 : null;
+  var classificacao = temMargemValida
+    ? obterClassificacaoMargem(margem)
+    : {
+        chart: '#94a3b8',
+        chartSoft: 'rgba(148,163,184,.18)',
+        table: 'pending',
+        status: 'pending',
+        label: !custoValido ? '⚠ pendente' : 'Preço inválido',
+      };
+
+  return {
+    id: produtoBase.id !== undefined ? produtoBase.id : (indice + 1),
+    nome: String(produtoBase.nome || ('Produto ' + (indice + 1))).trim(),
+    precoVenda: precoVenda,
+    precoCusto: precoCusto,
+    lucroUnitario: lucroUnitario,
+    margem: margem,
+    vendaValida: vendaValida,
+    custoValido: custoValido,
+    temMargemValida: temMargemValida,
+    classificacao: classificacao,
+    produtoOriginal: produtoBase,
+    vendaCampo: vendaInfo.key,
+    custoCampo: custoInfo.key,
+  };
+}
+
+function gerarAnaliseLucratividade(produtos) {
+  var itens = (produtos || []).map(normalizarProdutoLucratividade);
+  var ordenados = itens.slice().sort(function (a, b) {
+    if (a.temMargemValida && b.temMargemValida) {
+      if (b.margem !== a.margem) return b.margem - a.margem;
+      if (b.lucroUnitario !== a.lucroUnitario) return b.lucroUnitario - a.lucroUnitario;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    }
+    if (a.temMargemValida) return -1;
+    if (b.temMargemValida) return 1;
+
+    var prioridadeA = a.custoValido ? 1 : 0;
+    var prioridadeB = b.custoValido ? 1 : 0;
+    if (prioridadeA !== prioridadeB) return prioridadeA - prioridadeB;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+
+  var ranking = 0;
+  ordenados.forEach(function (item) {
+    item.posicao = item.temMargemValida ? ++ranking : null;
+  });
+
+  var validos = ordenados.filter(function (item) { return item.temMargemValida; });
+  var pendentesCusto = ordenados.filter(function (item) { return !item.custoValido; });
+  var mediaMargem = validos.length
+    ? validos.reduce(function (soma, item) { return soma + item.margem; }, 0) / validos.length
+    : null;
+
+  return {
+    itens: ordenados,
+    validos: validos,
+    pendentesCusto: pendentesCusto,
+    mediaMargem: mediaMargem,
+    maisLucrativo: validos.length ? validos[0] : null,
+    menorMargem: validos.length ? validos[validos.length - 1] : null,
+  };
+}
+
+function atualizarResumoLucratividade(analise) {
+  var grid = document.getElementById('profit-summary-grid');
+  if (!grid) return;
+
+  var mediaValor = analise.mediaMargem !== null
+    ? '<div class="profit-summary-value">' + formatarPercentual(analise.mediaMargem) + '</div>'
+    : '<div class="profit-summary-value">—</div>';
+
+  var maisValor = analise.maisLucrativo
+    ? '<div class="profit-summary-value profit-summary-value--compact">' +
+        escapeHtml(resumirTexto(analise.maisLucrativo.nome, 28)) + '</div>'
+    : '<div class="profit-summary-value">—</div>';
+
+  var menorValor = analise.menorMargem
+    ? '<div class="profit-summary-value profit-summary-value--compact">' +
+        escapeHtml(resumirTexto(analise.menorMargem.nome, 28)) + '</div>'
+    : '<div class="profit-summary-value">—</div>';
+
+  var cards = [
+    {
+      label: 'Margem Média',
+      icon: 'chart',
+      tone: 'green',
+      valueHtml: mediaValor,
+      meta: analise.validos.length
+        ? analise.validos.length + ' produto(s) com margem válida.'
+        : 'Sem base suficiente para média.',
+    },
+    {
+      label: 'Mais Lucrativo',
+      icon: 'checkCircle',
+      tone: 'amber',
+      valueHtml: maisValor,
+      meta: analise.maisLucrativo
+        ? formatarPercentual(analise.maisLucrativo.margem) + ' de margem · lucro/un. ' +
+          formatarMoedaBR(analise.maisLucrativo.lucroUnitario)
+        : 'Nenhum produto elegível para ranking.',
+    },
+    {
+      label: 'Menor Margem',
+      icon: 'alertTriangle',
+      tone: 'red',
+      valueHtml: menorValor,
+      meta: analise.menorMargem
+        ? formatarPercentual(analise.menorMargem.margem) + ' de margem · lucro/un. ' +
+          formatarMoedaBR(analise.menorMargem.lucroUnitario)
+        : 'Ainda não há margem válida para comparar.',
+    },
+    {
+      label: 'Sem Custo Definido',
+      icon: 'info',
+      tone: 'slate',
+      valueHtml: '<div class="profit-summary-value">' + analise.pendentesCusto.length + '</div>',
+      meta: analise.itens.length
+        ? analise.pendentesCusto.length + ' de ' + analise.itens.length + ' produto(s) aguardam custo.'
+        : 'Nenhum produto cadastrado.',
+    },
+  ];
+
+  grid.innerHTML = cards.map(function (card) {
+    return '<div class="profit-summary-card">' +
+             '<div class="profit-summary-top">' +
+                '<span class="profit-summary-label">' + card.label + '</span>' +
+                '<span class="profit-summary-icon ' + card.tone + '" aria-hidden="true">' + iconMarkup(card.icon) + '</span>' +
+              '</div>' +
+              card.valueHtml +
+              '<div class="profit-summary-meta">' + card.meta + '</div>' +
+           '</div>';
+  }).join('');
+
+  var badge = document.getElementById('profitability-badge');
+  if (badge) {
+    if (!analise.itens.length) {
+      badge.textContent = 'sem produtos';
+    } else if (!analise.validos.length) {
+      badge.textContent = analise.pendentesCusto.length + ' custo(s) pendentes';
+    } else {
+      badge.textContent = analise.validos.length + ' produto(s) analisados';
+    }
+  }
+}
+
+function renderGraficoLucratividade(analise) {
+  var canvas = document.getElementById('grafico-lucratividade');
+  var empty = document.getElementById('profit-chart-empty');
+  var scroll = document.getElementById('profit-chart-scroll');
+  var wrap = document.getElementById('profit-chart-wrap');
+  var badge = document.getElementById('profit-chart-badge');
+
+  if (!canvas) return;
+  if (chartLucratividade) { chartLucratividade.destroy(); chartLucratividade = null; }
+
+  if (badge) {
+    badge.textContent = analise.validos.length + ' produto(s) elegíveis';
+  }
+
+  if (!analise.validos.length || typeof Chart === 'undefined') {
+    canvas.hidden = true;
+    if (scroll) scroll.hidden = true;
+    if (empty) {
+      empty.hidden = false;
+      if (typeof Chart === 'undefined') {
+        empty.textContent = 'Chart.js não está disponível para renderizar o gráfico de margem.';
+      }
+    }
+    return;
+  }
+
+  canvas.hidden = false;
+  if (scroll) scroll.hidden = false;
+  if (empty) empty.hidden = true;
+
+  var minimo = Math.min.apply(null, analise.validos.map(function (item) { return item.margem; }));
+  var maximo = Math.max.apply(null, analise.validos.map(function (item) { return item.margem; }));
+  var eixoMin = Math.min(0, Math.floor(minimo / 10) * 10);
+  var eixoMax = Math.max(10, Math.ceil(maximo / 10) * 10);
+
+  if (wrap) {
+    wrap.style.height = Math.max(280, analise.validos.length * 42) + 'px';
+  }
+
+  chartLucratividade = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: analise.validos.map(function (item) { return resumirTexto(item.nome, 28); }),
+      datasets: [{
+        label: 'Margem',
+        data: analise.validos.map(function (item) {
+          return Number(item.margem.toFixed(2));
+        }),
+        backgroundColor: analise.validos.map(function (item) { return item.classificacao.chartSoft; }),
+        borderColor: analise.validos.map(function (item) { return item.classificacao.chart; }),
+        borderWidth: 1.5,
+        borderRadius: 4,
+        maxBarThickness: 22,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...TOOLTIP_BASE,
+          callbacks: {
+            title: function (items) {
+              return items.length ? analise.validos[items[0].dataIndex].nome : '';
+            },
+            label: function (ctx) {
+              var item = analise.validos[ctx.dataIndex];
+              return [
+                'Margem: ' + formatarPercentual(item.margem),
+                'Preço de venda: ' + formatarMoedaBR(item.precoVenda),
+                'Preço de custo: ' + formatarMoedaBR(item.precoCusto),
+                'Lucro por unidade: ' + formatarMoedaBR(item.lucroUnitario),
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          min: eixoMin,
+          max: eixoMax,
+          grid: { color: COR.borda + '55' },
+          ticks: {
+            color: COR.texto,
+            font: { size: 11 },
+            callback: function (valor) {
+              return valor.toLocaleString('pt-BR') + '%';
+            },
+          },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: COR.texto, font: { size: 11 } },
+        },
+      },
+    },
+  });
+}
+
+function renderTabelaLucratividade(analise) {
+  var tbody = document.getElementById('profit-ranking-body');
+  var empty = document.getElementById('profit-table-empty');
+  var wrap = document.getElementById('profit-table-wrap');
+  var badge = document.getElementById('profit-table-badge');
+
+  if (!tbody) return;
+  if (badge) {
+    badge.textContent = analise.validos.length + ' ranqueados · ' + analise.pendentesCusto.length + ' pendentes';
+  }
+
+  if (!analise.itens.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.hidden = false;
+    if (wrap) wrap.hidden = true;
+    return;
+  }
+
+  if (empty) empty.hidden = true;
+  if (wrap) wrap.hidden = false;
+
+  tbody.innerHTML = analise.itens.map(function (item) {
+    var produto = item.produtoOriginal || {};
+    var meta = [];
+    if (produto.quantidadeAtual !== undefined) meta.push('Estoque: ' + produto.quantidadeAtual + ' un.');
+    if (produto.quantidadeMinima !== undefined) meta.push('Mínimo: ' + produto.quantidadeMinima + ' un.');
+    if (!meta.length && item.vendaCampo) meta.push('Venda via campo "' + escapeHtml(item.vendaCampo) + '".');
+
+    var lucroClasse = item.temMargemValida
+      ? (item.lucroUnitario >= 0 ? 'positive' : 'negative')
+      : '';
+
+    return '<tr class="' + (item.temMargemValida ? '' : 'is-pending') + '">' +
+             '<td class="profit-rank">' + (item.posicao ? item.posicao + 'º' : '—') + '</td>' +
+             '<td>' +
+               '<div class="profit-product-name">' + escapeHtml(item.nome) + '</div>' +
+               '<div class="profit-product-meta">' + escapeHtml(meta.join(' · ') || 'Sem informações adicionais.') + '</div>' +
+             '</td>' +
+             '<td>' + (item.vendaValida ? formatarMoedaBR(item.precoVenda) : '—') + '</td>' +
+             '<td>' + (item.custoValido ? formatarMoedaBR(item.precoCusto) : '—') + '</td>' +
+             '<td class="profit-money ' + lucroClasse + '">' +
+               (item.temMargemValida ? formatarMoedaBR(item.lucroUnitario) : '—') +
+             '</td>' +
+             '<td class="profit-margin ' + item.classificacao.table + '">' +
+               (item.temMargemValida ? formatarPercentual(item.margem) : '—') +
+             '</td>' +
+             '<td><span class="profit-status ' + item.classificacao.status + '">' +
+               item.classificacao.label +
+             '</span></td>' +
+           '</tr>';
+  }).join('');
+}
+
+function renderAnaliseLucratividade(produtos) {
+  var analise = gerarAnaliseLucratividade(produtos);
+  atualizarResumoLucratividade(analise);
+  renderGraficoLucratividade(analise);
+  renderTabelaLucratividade(analise);
+}
+
 // ── Ponto de entrada ──────────────────────────────────────────────────────
 
 function renderGraficos(produtos, movimentacoes, caixas) {
+  renderAnaliseLucratividade(produtos);
   if (typeof Chart === 'undefined') {
     console.warn('Chart.js não carregou — gráficos indisponíveis.');
     return;
@@ -336,13 +774,14 @@ function renderGraficoEstoque(produtos) {
     .slice(0, 14);
 
   if (lista.length === 0) {
-    if (wrap)  wrap.style.display  = 'none';
-    if (empty) empty.style.display = 'block';
+    if (wrap) wrap.hidden = true;
+    if (empty) empty.hidden = false;
     return;
   }
 
   if (wrap)  wrap.style.height  = Math.max(180, lista.length * 34) + 'px';
-  if (empty) empty.style.display = 'none';
+  if (wrap) wrap.hidden = false;
+  if (empty) empty.hidden = true;
 
   chartEstoque = new Chart(canvas, {
     type: 'bar',
@@ -423,13 +862,13 @@ function renderGraficoMovimentacoes(movimentacoes) {
   const total    = entradas + saidas;
 
   if (total === 0) {
-    canvas.style.display = 'none';
-    if (empty)  empty.style.display  = 'block';
+    canvas.hidden = true;
+    if (empty) empty.hidden = false;
     if (legend) legend.innerHTML = '';
     return;
   }
-  canvas.style.display = 'block';
-  if (empty) empty.style.display = 'none';
+  canvas.hidden = false;
+  if (empty) empty.hidden = true;
 
   chartMov = new Chart(canvas, {
     type: 'doughnut',
@@ -460,14 +899,8 @@ function renderGraficoMovimentacoes(movimentacoes) {
 
   if (legend) {
     legend.innerHTML =
-      `<span style="display:flex;align-items:center;gap:5px">
-         <span style="width:9px;height:9px;border-radius:50%;background:${COR.verde};flex-shrink:0"></span>
-         Entradas: <strong style="color:${COR.verde}">${entradas}</strong>
-       </span>` +
-      `<span style="display:flex;align-items:center;gap:5px">
-         <span style="width:9px;height:9px;border-radius:50%;background:${COR.vermelho};flex-shrink:0"></span>
-         Saídas: <strong style="color:${COR.vermelho}">${saidas}</strong>
-       </span>`;
+      legendItemMarkup({ tone: 'green', label: 'Entradas', value: entradas }) +
+      legendItemMarkup({ tone: 'red', label: 'Saídas', value: saidas });
   }
 }
 
@@ -482,12 +915,12 @@ function renderGraficoCaixas(caixas) {
   const comDados = caixas.filter(c => (parseFloat(c.totalVendas) || 0) > 0 || c.status === 'ABERTO');
 
   if (comDados.length === 0) {
-    canvas.style.display = 'none';
-    if (empty) empty.style.display = 'block';
+    canvas.hidden = true;
+    if (empty) empty.hidden = false;
     return;
   }
-  canvas.style.display = 'block';
-  if (empty) empty.style.display = 'none';
+  canvas.hidden = false;
+  if (empty) empty.hidden = true;
 
   chartCaixas = new Chart(canvas, {
     type: 'bar',
@@ -550,11 +983,11 @@ function renderGraficoAlertas(produtos) {
   if (chartAlertas) { chartAlertas.destroy(); chartAlertas = null; }
 
   const NIVEIS = [
-    { chave: 'SEM_ESTOQUE', label: 'Sem estoque', cor: COR.vermelho },
-    { chave: 'CRITICO',     label: 'Crítico',     cor: '#ff6b35'    },
-    { chave: 'BAIXO',       label: 'Baixo',       cor: COR.ambar    },
-    { chave: 'MODERADO',    label: 'Moderado',     cor: COR.cyan     },
-    { chave: 'ADEQUADO',    label: 'Adequado',     cor: COR.verde    },
+    { chave: 'SEM_ESTOQUE', label: 'Sem estoque', cor: COR.vermelho, tone: 'red' },
+    { chave: 'CRITICO',     label: 'Crítico', cor: '#ff6b35', tone: 'orange' },
+    { chave: 'BAIXO',       label: 'Baixo', cor: COR.ambar, tone: 'amber' },
+    { chave: 'MODERADO',    label: 'Moderado', cor: COR.cyan, tone: 'cyan' },
+    { chave: 'ADEQUADO',    label: 'Adequado', cor: COR.verde, tone: 'green' },
   ];
 
   const contagem = {};
@@ -590,10 +1023,13 @@ function renderGraficoAlertas(produtos) {
   });
 
   if (legend) {
-    legend.innerHTML = ativos.map(n => `
-      <span style="display:flex;align-items:center;gap:6px">
-        <span style="width:8px;height:8px;border-radius:2px;background:${n.cor};flex-shrink:0"></span>
-        ${n.label}: <strong style="color:${n.cor}">${contagem[n.chave]}</strong>
-      </span>`).join('');
+    legend.innerHTML = ativos.map(function (n) {
+      return legendItemMarkup({
+        tone: n.tone,
+        label: n.label,
+        value: contagem[n.chave],
+        square: true
+      });
+    }).join('');
   }
 }

@@ -42,6 +42,38 @@ async function carregarProdutos() {
 
 // ── Render ────────────────────────────────────────────────────────────────
 
+function renderResumo(listaVisivel) {
+  const container = document.getElementById('fornecedor-summary');
+  if (!container) return;
+
+  const ativos = todosFornecedores.filter(f => f.ativo).length;
+  const vinculados = todosFornecedores.filter(f => f.produtos.length > 0).length;
+
+  container.innerHTML = [
+    {
+      label: 'Total de fornecedores',
+      value: todosFornecedores.length,
+      sub: 'Base geral cadastrada no sistema.'
+    },
+    {
+      label: 'Fornecedores ativos',
+      value: ativos,
+      sub: 'Disponíveis para novas notas e vínculos.'
+    },
+    {
+      label: 'Com produtos vinculados',
+      value: vinculados,
+      sub: `${listaVisivel.length} resultado(s) visível(is) no filtro atual.`
+    }
+  ].map(card => `
+    <div class="page-summary-card">
+      <div class="page-summary-label">${card.label}</div>
+      <div class="page-summary-value">${card.value}</div>
+      <div class="page-summary-sub">${card.sub}</div>
+    </div>
+  `).join('');
+}
+
 function renderTabela() {
   const busca = document.getElementById('busca').value.toLowerCase();
   let lista = todosFornecedores.filter(f => {
@@ -56,18 +88,19 @@ function renderTabela() {
   });
 
   document.getElementById('table-count').textContent = `${lista.length} fornecedor(es)`;
+  renderResumo(lista);
 
   const tbody = document.getElementById('tabela-fornecedores');
   if (lista.length === 0) {
     if (todosFornecedores.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="6">
-          <div style="padding:40px;text-align:center">
-            <div style="font-size:40px;margin-bottom:12px">🚚</div>
-            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum fornecedor cadastrado</div>
-            <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Adicione fornecedores para vincular a notas fiscais.</div>
-            <button class="btn-primary" onclick="abrirModalCadastro()">+ Adicionar Fornecedor</button>
-          </div>
+        <tr><td colspan="6" class="table-empty-cell">
+          ${emptyStateMarkup({
+            icon: 'truck',
+            title: 'Nenhum fornecedor cadastrado',
+            copy: 'Adicione fornecedores para vincular produtos e centralizar o fluxo de compras.',
+            actions: '<button class="btn-primary" onclick="abrirModalCadastro()">Novo Fornecedor</button>'
+          })}
         </td></tr>`;
     } else {
       tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum fornecedor encontrado para os filtros aplicados.</td></tr>';
@@ -78,15 +111,15 @@ function renderTabela() {
   tbody.innerHTML = lista.map(f => `
     <tr>
       <td>
-        <div class="produto-nome">${f.nome}</div>
+        <div class="produto-nome">${escapeHtml(f.nome)}</div>
         <div class="produto-id">#${f.id}</div>
       </td>
-      <td style="color:var(--text-2)">${f.cnpj}</td>
-      <td style="color:var(--text-2)">${f.telefone || '—'}</td>
+      <td class="table-cell-muted">${escapeHtml(f.cnpj)}</td>
+      <td class="table-cell-muted">${escapeHtml(f.telefone || '—')}</td>
       <td>
         ${f.produtos.length > 0
           ? `<button class="btn-acao" onclick="verProdutos(${f.id})">${f.produtos.length} produto(s)</button>`
-          : '<span style="color:var(--text-3);font-size:12px">Nenhum</span>'
+          : '<span class="status-placeholder">Nenhum</span>'
         }
       </td>
       <td>
@@ -187,7 +220,7 @@ function abrirModalVincular(id) {
     select.innerHTML = '<option value="">Todos os produtos já estão vinculados</option>';
   } else {
     select.innerHTML = `<option value="">— Selecione um produto —</option>` +
-      disponiveis.map(p => `<option value="${p.id}">${p.nome} (R$${p.precoUnitario.toFixed(2)})</option>`).join('');
+      disponiveis.map(p => `<option value="${p.id}">${escapeHtml(p.nome)} (R$${p.precoUnitario.toFixed(2)})</option>`).join('');
   }
   abrirModal('modal-vincular');
 }
@@ -221,7 +254,7 @@ function verProdutos(id) {
       <div class="itens-nota-list">
         ${fornecedor.produtos.map(p => `
           <div class="item-nota-row">
-            <span class="item-nota-nome">${p.nome}</span>
+            <span class="item-nota-nome">${escapeHtml(p.nome)}</span>
             <span class="item-nota-preco">R$${p.precoUnitario.toFixed(2)}</span>
           </div>
         `).join('')}

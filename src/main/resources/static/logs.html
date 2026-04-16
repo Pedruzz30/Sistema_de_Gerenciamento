@@ -42,12 +42,17 @@
       <div class="header-sub">Auditoria de ações realizadas no sistema</div>
     </div>
     <div class="header-right">
-      <button class="btn-secondary" onclick="carregarLogs()" style="padding:8px 16px;font-size:12.5px">↻ Atualizar</button>
+      <button class="btn-secondary btn-secondary--compact" onclick="carregarLogs()">
+        <span class="btn-inline-icon" data-icon="refresh"></span>
+        Atualizar
+      </button>
     </div>
   </header>
 
   <!-- ── Main ── -->
   <main class="main">
+
+    <div class="page-summary-grid fade-up" id="logs-summary"></div>
 
     <!-- Filtro de busca -->
     <div class="toolbar fade-up">

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StockOS - Notas Fiscais</title>
+  <title>StockOS — Notas Fiscais</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/global.css">
   <link rel="stylesheet" href="/css/estoque.css">
@@ -36,7 +36,7 @@
   <header class="header">
     <div>
       <div class="header-title">Notas Fiscais</div>
-      <div class="header-sub">A nota fiscal agora resolve produto novo e vinculo com fornecedor no mesmo fluxo.</div>
+      <div class="header-sub">A nota fiscal agora resolve produto novo e vínculo com fornecedor no mesmo fluxo.</div>
     </div>
     <div class="header-right">
       <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">+ Nova Nota</button>
@@ -65,7 +65,7 @@
               <th>Itens</th>
               <th>Total</th>
               <th>Emissao</th>
-              <th>Acoes</th>
+              <th>Ações</th>
             </tr>
             </thead>
             <tbody id="tabela-notas">
@@ -103,29 +103,29 @@
         <div class="nota-panel-header">
           <span class="nota-panel-title">Etapa 1 - Selecionar Fornecedor</span>
         </div>
-        <div class="form-group" style="max-width:400px">
+        <div class="form-group notes-step-field">
           <label>Fornecedor Ativo</label>
           <select id="s1-fornecedor">
-            <option value="">- carregando fornecedores -</option>
+            <option value="">— carregando fornecedores —</option>
           </select>
         </div>
         <div class="alert-modal" id="alert-s1"></div>
-        <div style="margin-top:16px; display:flex; gap:10px; align-items:center">
+        <div class="actions-inline">
           <button class="btn-primary" id="btn-step1-avancar" onclick="avancarStep1()">Abrir Nota →</button>
-          <button class="btn-secondary" onclick="abrirAba('aba-lista')" style="font-size:13px">Cancelar</button>
+          <button class="btn-secondary" onclick="abrirAba('aba-lista')">Cancelar</button>
         </div>
       </div>
 
-      <div class="nota-panel fade-up fade-up-1" id="painel-step2" style="display:none">
+      <div class="nota-panel fade-up fade-up-1" id="painel-step2" hidden>
         <div class="nota-panel-header">
           <span class="nota-panel-title">Etapa 2 - Adicionar Itens</span>
-          <span class="badge badge-purple" id="s2-fornecedor-badge">-</span>
+          <span class="badge badge-purple" id="s2-fornecedor-badge">—</span>
         </div>
 
         <div class="nota-inline-card">
           <div class="nota-inline-head">
             <div>
-              <div class="nota-inline-title">Entrada autonoma da nota</div>
+              <div class="nota-inline-title">Entrada autônoma da nota</div>
               <div class="nota-inline-sub">Pesquise um produto existente ou crie um novo sem sair desta tela.</div>
             </div>
             <button class="btn-secondary" type="button" id="btn-toggle-novo-produto" onclick="toggleNovoProduto()">
@@ -133,33 +133,33 @@
             </button>
           </div>
 
-          <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px">
-            <div class="form-group" style="flex:1; min-width:280px">
+          <div class="actions-inline notes-item-composer">
+            <div class="form-group notes-item-composer__search">
               <label>Buscar produto existente</label>
               <input type="text" id="s2-produto-busca" list="s2-produtos-list"
-                     placeholder="Digite nome ou ID do produto"
-                     oninput="atualizarAvisoVinculo()">
+                      placeholder="Digite nome ou ID do produto"
+                      oninput="atualizarAvisoVinculo()">
               <datalist id="s2-produtos-list"></datalist>
             </div>
-            <div class="form-group" style="width:130px">
+            <div class="form-group notes-item-composer__qty">
               <label>Quantidade</label>
               <input type="number" id="s2-qtd" placeholder="0" min="1">
             </div>
-            <div class="form-group" style="width:150px">
-              <label>Preco Unit. (R$)</label>
+            <div class="form-group notes-item-composer__price">
+              <label>Preço Unit. (R$)</label>
               <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
             </div>
-            <button class="btn-primary" id="btn-adicionar-item" onclick="adicionarItem()" style="margin-bottom:1px">
+            <button class="btn-primary notes-item-composer__submit" id="btn-adicionar-item" onclick="adicionarItem()">
               + Adicionar Item
             </button>
           </div>
 
           <div class="alert-modal" id="alert-s2-link"></div>
 
-          <div id="painel-novo-produto" class="nota-inline-form" style="display:none">
+          <div id="painel-novo-produto" class="nota-inline-form" hidden>
             <div class="nota-inline-form-title">Novo produto nesta nota</div>
             <div class="nota-inline-grid">
-              <div class="form-group" style="grid-column: span 2">
+              <div class="form-group notes-item-composer__full">
                 <label>Nome do produto</label>
                 <input type="text" id="s2-novo-nome" placeholder="Ex: Arroz Integral 5kg" oninput="atualizarAvisoVinculo()">
               </div>
@@ -174,13 +174,13 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Estoque minimo</label>
-                <input type="number" id="s2-novo-minimo" placeholder="0" min="0" value="0">
-              </div>
-              <div class="form-group">
-                <label>Preco base do cadastro (R$)</label>
-                <input type="number" id="s2-novo-preco-base" placeholder="Usar o preco do item" step="0.01" min="0">
-              </div>
+                 <label>Estoque mínimo</label>
+                 <input type="number" id="s2-novo-minimo" placeholder="0" min="0" value="0">
+               </div>
+               <div class="form-group">
+                 <label>Preço base do cadastro (R$)</label>
+                  <input type="number" id="s2-novo-preco-base" placeholder="Usar o preço do item" step="0.01" min="0">
+               </div>
             </div>
             <div class="alert-modal" id="alert-s2-novo"></div>
           </div>
@@ -188,60 +188,62 @@
           <div class="alert-modal" id="alert-s2"></div>
         </div>
 
-        <div class="itens-nota-list" id="itens-lista" style="margin-bottom:16px">
-          <div class="empty" style="padding:20px;text-align:center;color:var(--text-3)">
+        <div class="itens-nota-list notes-items-list" id="itens-lista">
+          <div class="empty">
             Nenhum item adicionado.
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
-          <div style="display:flex; gap:10px; align-items:center">
-            <span style="font-size:14px; color:var(--text-2)">Total: <strong id="s2-total" style="color:var(--green)">R$0,00</strong></span>
-            <button class="btn-secondary" onclick="descartarRascunho()" style="font-size:12px; color:var(--text-3)">🗑 Descartar Rascunho</button>
+        <div class="actions-inline actions-inline--between notes-footer-actions">
+          <div class="actions-inline">
+            <span class="notes-total-label">Total: <strong id="s2-total" class="notes-total-value">R$0,00</strong></span>
+            <button class="btn-secondary btn-secondary--compact" onclick="descartarRascunho()">Descartar Rascunho</button>
           </div>
           <button class="btn-primary" onclick="avancarStep2()" id="btn-step2-avancar" disabled>Confirmar Nota →</button>
         </div>
       </div>
 
-      <div class="nota-panel fade-up fade-up-1" id="painel-step3" style="display:none">
+      <div class="nota-panel fade-up fade-up-1" id="painel-step3" hidden>
         <div class="nota-panel-header">
           <span class="nota-panel-title">Etapa 3 - Confirmar Recebimento</span>
           <span class="badge badge-amber">Pendente</span>
         </div>
-        <p style="color:var(--text-2); font-size:13px; margin-bottom:16px">
-          Ao confirmar, os produtos serao automaticamente adicionados ao estoque.
+        <p class="inline-note">
+          Ao confirmar, os produtos serão automaticamente adicionados ao estoque.
           Verifique os itens antes de prosseguir.
         </p>
-        <div class="itens-nota-list" id="s3-itens-lista" style="margin-bottom:16px"></div>
-        <div style="display:flex; justify-content:space-between; align-items:center">
-          <span style="font-size:14px; color:var(--text-2)">Total: <strong id="s3-total" style="color:var(--green)">R$0,00</strong></span>
-          <button class="btn-primary" id="btn-step3-avancar" onclick="avancarStep3()">✓ Confirmar e Dar Entrada no Estoque →</button>
+        <div class="itens-nota-list notes-items-list" id="s3-itens-lista"></div>
+        <div class="actions-inline actions-inline--between">
+          <span class="notes-total-label">Total: <strong id="s3-total" class="notes-total-value">R$0,00</strong></span>
+          <button class="btn-primary" id="btn-step3-avancar" onclick="avancarStep3()">Confirmar entrada no estoque</button>
         </div>
-        <div class="alert-modal" id="alert-s3" style="margin-top:12px"></div>
+        <div class="alert-modal notes-alert-spacing" id="alert-s3"></div>
       </div>
 
-      <div class="nota-panel fade-up fade-up-1" id="painel-step4" style="display:none">
+      <div class="nota-panel fade-up fade-up-1" id="painel-step4" hidden>
         <div class="nota-panel-header">
           <span class="nota-panel-title">Etapa 4 - Registrar Pagamento</span>
           <span class="badge badge-cyan">Confirmada</span>
         </div>
-        <div class="info-grid" id="s4-resumo" style="margin-bottom:16px"></div>
-        <p style="color:var(--text-2); font-size:13px; margin-bottom:16px">
+        <div class="info-grid notes-step-summary" id="s4-resumo"></div>
+        <p class="inline-note">
           Clique abaixo para registrar o pagamento e encerrar o ciclo desta nota fiscal.
         </p>
-        <button class="btn-primary" id="btn-step4-avancar" onclick="avancarStep4()">💳 Registrar Pagamento →</button>
-        <div class="alert-modal" id="alert-s4" style="margin-top:12px"></div>
+        <button class="btn-primary" id="btn-step4-avancar" onclick="avancarStep4()">Registrar pagamento</button>
+        <div class="alert-modal notes-alert-spacing" id="alert-s4"></div>
       </div>
 
-      <div class="nota-panel fade-up fade-up-1" id="painel-done" style="display:none">
-        <div style="text-align:center; padding:32px 20px">
-          <div style="font-size:48px; margin-bottom:16px">✅</div>
-          <div class="nota-panel-title" style="font-size:18px; color:var(--green)">Nota Fiscal Concluida!</div>
-          <p style="color:var(--text-2); font-size:13px; margin:12px 0 20px">
+      <div class="nota-panel fade-up fade-up-1" id="painel-done" hidden>
+        <div class="notes-done-state">
+          <div class="notes-done-icon" data-icon="checkCircle"></div>
+          <div class="nota-panel-title notes-done-title">Nota Fiscal Concluída!</div>
+          <p class="inline-note notes-done-copy">
             Pagamento registrado. A nota foi encerrada com sucesso.
           </p>
-          <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">Criar Nova Nota</button>
-          <button class="btn-secondary" onclick="abrirAba('aba-lista')" style="margin-left:8px">Ver Todas as Notas</button>
+          <div class="actions-inline">
+            <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">Criar Nova Nota</button>
+            <button class="btn-secondary" onclick="abrirAba('aba-lista')">Ver Todas as Notas</button>
+          </div>
         </div>
       </div>
     </div>
@@ -249,15 +251,15 @@
 </div>
 
 <div class="modal-overlay" id="modal-detalhe" onclick="fecharModalSeClicouFora(event,'modal-detalhe')">
-  <div class="modal" style="max-width:580px">
+  <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-detalhe-titulo">Nota Fiscal</h3>
       <button class="modal-close" onclick="fecharModal('modal-detalhe')">✕</button>
     </div>
     <div class="modal-body">
-      <div id="detalhe-info" style="margin-bottom:12px"></div>
+      <div id="detalhe-info" class="detail-block"></div>
       <div class="itens-nota-list" id="detalhe-itens"></div>
-      <div class="alert-modal" id="alert-detalhe" style="margin-top:12px"></div>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-detalhe"></div>
     </div>
     <div class="modal-footer" id="detalhe-acoes">
       <button class="btn-secondary" onclick="fecharModal('modal-detalhe')">Fechar</button>

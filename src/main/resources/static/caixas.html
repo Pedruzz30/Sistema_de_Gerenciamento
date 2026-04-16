@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockOS — Caixas</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/global.css">
-<link rel="stylesheet" href="/css/estoque.css">
-<link rel="stylesheet" href="/css/pages.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockOS — Caixas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/estoque.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/pdv.css">
 </head>
 <body>
 
@@ -50,7 +51,7 @@
   <main class="main">
 
     <!-- Resumo do dia -->
-    <div class="info-grid fade-up" id="resumo-dia" style="display:none">
+    <div class="info-grid fade-up" id="resumo-dia" hidden>
       <div class="info-card">
         <div class="info-label">Total Vendas (dia)</div>
         <div class="info-value green" id="total-vendas-dia">R$0,00</div>
@@ -71,15 +72,15 @@
     </div>
 
     <!-- Fechamento card -->
-    <div id="fechamento-container" style="display:none" class="fade-up fade-up-2"></div>
+    <div id="fechamento-container" class="fade-up fade-up-2" hidden></div>
 
     <!-- Consolidado do dia -->
-    <div class="card fade-up fade-up-3" id="consolidado-card" style="display:none">
+    <div class="card fade-up fade-up-3" id="consolidado-card" hidden>
       <div class="card-header">
         <span class="card-title">Consolidado do Dia</span>
-        <button class="btn-secondary" onclick="carregarConsolidado()" style="padding:5px 14px;font-size:12px;">Atualizar</button>
+        <button class="btn-secondary btn-secondary--compact" onclick="carregarConsolidado()">Atualizar</button>
       </div>
-      <pre id="consolidado-texto" style="font-size:12.5px; color:var(--text-2); white-space:pre-wrap; font-family:'DM Sans',sans-serif;"></pre>
+      <pre id="consolidado-texto" class="consolidado-texto"></pre>
     </div>
 
   </main>
@@ -141,12 +142,12 @@
 
 <!-- ── Modal: Movimentações do Caixa ── -->
 <div class="modal-overlay" id="modal-movs-lista" onclick="fecharModalSeClicouFora(event,'modal-movs-lista')">
-  <div class="modal" style="max-width:580px">
+  <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-movs-titulo">Movimentações</h3>
       <button class="modal-close" onclick="fecharModal('modal-movs-lista')">✕</button>
     </div>
-    <div class="modal-body" style="max-height:400px; overflow-y:auto;">
+    <div class="modal-body modal-body--scroll">
       <div class="mov-caixa-list" id="movs-lista"></div>
     </div>
     <div class="modal-footer">
@@ -163,21 +164,102 @@
       <button class="modal-close" onclick="fecharModal('modal-encerrar')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alert-modal error" id="alert-encerrar-warn" style="display:block">
+      <div class="alert-modal error alert-modal--static" id="alert-encerrar-warn">
         ⚠ Tem certeza? Após encerrar, o caixa não poderá receber mais movimentações.
       </div>
-      <p style="font-size:13px; color:var(--text-2);">
+      <p class="inline-note">
         Caixa: <strong id="encerrar-caixa-num">—</strong>
       </p>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="fecharModal('modal-encerrar')">Cancelar</button>
-      <button class="btn-primary" id="btn-confirmar-encerrar" onclick="confirmarEncerrar()" style="background:linear-gradient(135deg,var(--red),#dc2626)">Encerrar</button>
+      <button class="btn-primary btn-primary--danger" id="btn-confirmar-encerrar" onclick="confirmarEncerrar()">Encerrar</button>
     </div>
   </div>
 </div>
 
+<!-- ── Modal PDV: Terminal de Venda ────────────────────────────────────────
+     Layout split: esquerda = menu de produtos | direita = carrinho
+     O modal ocupa quase toda a tela para dar espaço ao grid de produtos.
+──────────────────────────────────────────────────────────────────────────-->
+<div class="modal-overlay" id="modal-pdv" onclick="fecharModalSeClicouFora(event,'modal-pdv')">
+  <div id="pdv-shell" class="pdv-shell">
+    <div class="pdv-shell__header">
+      <div class="pdv-shell__intro">
+        <span class="pdv-shell__icon" aria-hidden="true" data-icon="cart"></span>
+        <div>
+          <div class="pdv-shell__title">Terminal de Vendas</div>
+          <div class="pdv-shell__meta" id="pdv-caixa-label">Caixa —</div>
+        </div>
+      </div>
+      <button class="pdv-shell__close" type="button" onclick="fecharModal('modal-pdv')" aria-label="Fechar terminal">
+        <span data-icon="close"></span>
+      </button>
+    </div>
+
+    <div class="pdv-shell__body">
+      <section class="pdv-catalog-panel">
+        <div class="pdv-catalog-toolbar">
+          <label class="visually-hidden" for="pdv-busca">Buscar produto</label>
+          <input id="pdv-busca" class="pdv-search-input" type="text" placeholder="Buscar produto..." oninput="filtrarProdutosPDV()">
+          <div id="pdv-categorias" class="pdv-category-tabs"></div>
+        </div>
+
+        <div id="pdv-produtos-grid" class="pdv-catalog-grid">
+          <div class="empty-state empty-state--compact">
+            <div class="empty-state__icon" aria-hidden="true">
+              <span data-icon="cart"></span>
+            </div>
+            <div class="empty-state__title">Carregando cardápio</div>
+            <div class="empty-state__copy">Buscando os produtos disponíveis para este caixa.</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="pdv-cart-panel">
+        <div class="pdv-cart-header">
+          <div class="pdv-cart-title-wrap">
+            <span class="pdv-cart-title">Pedido</span>
+            <span id="pdv-carrinho-qtd" class="pdv-cart-count"></span>
+          </div>
+          <button type="button" class="pdv-clear-btn" onclick="limparCarrinho()">Limpar</button>
+        </div>
+
+        <div id="pdv-carrinho-itens" class="pdv-cart-items">
+          <div id="pdv-carrinho-empty" class="empty-state empty-state--compact pdv-cart-empty">
+            <div class="empty-state__icon" aria-hidden="true">
+              <span data-icon="cart"></span>
+            </div>
+            <div class="empty-state__title">Carrinho vazio</div>
+            <div class="empty-state__copy">Selecione os itens do cardápio para montar a venda.</div>
+          </div>
+        </div>
+
+        <div class="pdv-cart-footer">
+          <div class="pdv-summary-row">
+            <span class="pdv-summary-label">Subtotal</span>
+            <span class="pdv-summary-value pdv-summary-value--muted" id="pdv-subtotal">R$ 0,00</span>
+          </div>
+          <div class="pdv-summary-row pdv-summary-row--total">
+            <span class="pdv-summary-label pdv-summary-label--total">Total</span>
+            <span class="pdv-summary-value pdv-summary-value--total" id="pdv-total">R$ 0,00</span>
+          </div>
+
+          <button id="btn-pdv-finalizar" class="pdv-submit" onclick="finalizarVendaPDV()" disabled>
+            Finalizar Venda
+          </button>
+
+          <div class="alert-modal" id="alert-pdv"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+
 <script src="/js/shared.js"></script>
 <script src="/js/caixas.js"></script>
+<script src="/js/pdv-catalog.js"></script>
+<script src="/js/pdv.js"></script>
 </body>
 </html>

@@ -1,5 +1,18 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,21 +39,53 @@ import java.util.Objects;
  * IDs negativos são rejeitados. Use {@link #comId(long)} para que o
  * repositório retorne uma cópia com o ID definitivo após a persistência.
  */
+@Entity
+@Table(
+        name = "fornecedores",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fornecedores_cnpj", columnNames = "cnpj")
+)
 public class Fornecedor {
 
     // ── Campos imutáveis ──────────────────────────────────────────────────────
 
-    private final long   id;
-    private final String nome;
-    private final String cnpj;      // sempre 14 dígitos, sem formatação
-    private final String telefone;  // opcional; string vazia se ausente
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @Column(nullable = false, length = 160)
+    private String nome;
+
+    @Column(nullable = false, length = 14, unique = true)
+    private String cnpj;      // sempre 14 dígitos, sem formatação
+
+    @Column(length = 40)
+    private String telefone;  // opcional; string vazia se ausente
 
     // ── Campos mutáveis controlados ───────────────────────────────────────────
 
-    private boolean        ativo;
-    private final List<Produto> produtos;
+    @Column(nullable = false)
+    private boolean ativo;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "fornecedor_produtos",
+            joinColumns = @JoinColumn(name = "fornecedor_id", nullable = false),
+            inverseJoinColumns = @JoinColumn(name = "produto_id", nullable = false),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uk_fornecedor_produtos_fornecedor_produto",
+                    columnNames = {"fornecedor_id", "produto_id"}
+            )
+    )
+    @OrderBy("id ASC")
+    private List<Produto> produtos;
 
     // ── Construtor ────────────────────────────────────────────────────────────
+
+    protected Fornecedor() {
+        this.produtos = new ArrayList<>();
+        this.telefone = "";
+        this.ativo = true;
+    }
 
     /**
      * Cria um fornecedor no estado ativo.
@@ -86,8 +131,8 @@ public class Fornecedor {
     public Fornecedor comId(long novoId) {
         validar(novoId > 0, "Novo ID deve ser maior que zero.");
         Fornecedor copia = new Fornecedor(novoId, nome, cnpj, telefone);
-        if (!ativo) copia.desativar();
         produtos.forEach(copia::adicionarProduto);
+        if (!ativo) copia.desativar();
         return copia;
     }
 

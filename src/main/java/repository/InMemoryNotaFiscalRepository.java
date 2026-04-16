@@ -15,7 +15,7 @@ public class InMemoryNotaFiscalRepository implements NotaFiscalRepository {
 
     @Override
     public long proximoId() {
-        return sequenceId.getAndIncrement();
+        return sequenceId.get();
     }
 
     @Override
@@ -23,9 +23,17 @@ public class InMemoryNotaFiscalRepository implements NotaFiscalRepository {
         if (nota == null) {
             throw new IllegalArgumentException("Nota fiscal nao pode ser nula.");
         }
-        notas.removeIf(n -> n.getId() == nota.getId());
-        notas.add(nota);
-        return nota;
+        NotaFiscal persistida = nota;
+        if (nota.getId() <= 0) {
+            persistida = nota.comId(sequenceId.getAndIncrement());
+        } else {
+            sequenceId.updateAndGet(atual -> Math.max(atual, nota.getId() + 1));
+        }
+
+        final NotaFiscal notaPersistida = persistida;
+        notas.removeIf(n -> n.getId() == notaPersistida.getId());
+        notas.add(notaPersistida);
+        return notaPersistida;
     }
 
     @Override

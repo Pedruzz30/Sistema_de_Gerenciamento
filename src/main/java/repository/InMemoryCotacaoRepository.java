@@ -17,7 +17,7 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
 
     @Override
     public long proximoId() {
-        return sequenceId.getAndIncrement();
+        return sequenceId.get();
     }
 
     @Override
@@ -25,13 +25,20 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
         if (cotacao == null) {
             throw new IllegalArgumentException("Cotação não pode ser nula.");
         }
+        CotacaoMensal persistida = cotacao;
+        if (cotacao.getId() <= 0) {
+            persistida = cotacao.comId(sequenceId.getAndIncrement());
+        } else {
+            sequenceId.updateAndGet(atual -> Math.max(atual, cotacao.getId() + 1));
+        }
+        final CotacaoMensal cotacaoPersistida = persistida;
         // Se já existe cotação para esse produto+mês, substitui
         cotacoes.removeIf(c ->
-                c.getProduto().getId() == cotacao.getProduto().getId()
-                        && c.getMesReferencia().equals(cotacao.getMesReferencia())
+                c.getProduto().getId() == cotacaoPersistida.getProduto().getId()
+                        && c.getMesReferencia().equals(cotacaoPersistida.getMesReferencia())
         );
-        cotacoes.add(cotacao);
-        return cotacao;
+        cotacoes.add(cotacaoPersistida);
+        return cotacaoPersistida;
     }
 
     @Override

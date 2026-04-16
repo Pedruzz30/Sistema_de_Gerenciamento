@@ -20,13 +20,7 @@ public class InMemoryPedidoRepository implements PedidoRepository {
 
         Pedido persistido = pedido;
         if (pedido.getId() <= 0) {
-            persistido = new Pedido(
-                    sequenceId.getAndIncrement(),
-                    pedido.getProduto(),
-                    pedido.getQuantidade(),
-                    pedido.getTipo(),
-                    pedido.getUsuario()
-            );
+            persistido = pedido.comId(sequenceId.getAndIncrement());
         } else {
             sequenceId.updateAndGet(atual -> Math.max(atual, pedido.getId() + 1));
         }

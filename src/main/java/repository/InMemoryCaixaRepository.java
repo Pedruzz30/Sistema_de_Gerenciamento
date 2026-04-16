@@ -13,10 +13,11 @@ public class InMemoryCaixaRepository implements CaixaRepository {
 
     private final List<Caixa> caixas = new ArrayList<>();
     private final AtomicLong sequenceId = new AtomicLong(1);
+    private final AtomicLong sequenceMovimentacaoId = new AtomicLong(1);
 
     @Override
     public long proximoId() {
-        return sequenceId.getAndIncrement();
+        return sequenceId.get();
     }
 
     @Override
@@ -24,9 +25,37 @@ public class InMemoryCaixaRepository implements CaixaRepository {
         if (caixa == null) {
             throw new IllegalArgumentException("Caixa não pode ser nulo.");
         }
-        caixas.removeIf(c -> c.getId() == caixa.getId());
-        caixas.add(caixa);
-        return caixa;
+        boolean movimentacoesJaPersistidas = caixa.getMovimentacoes().stream()
+                .allMatch(movimentacao -> movimentacao.getId() > 0);
+        long idPersistido = caixa.getId();
+        if (idPersistido <= 0) {
+            idPersistido = sequenceId.getAndIncrement();
+        } else {
+            long caixaIdPersistido = idPersistido;
+            sequenceId.updateAndGet(atual -> Math.max(atual, caixaIdPersistido + 1));
+        }
+
+        if (caixa.getId() > 0 && movimentacoesJaPersistidas) {
+            caixas.removeIf(c -> c.getId() == caixa.getId());
+            caixas.add(caixa);
+            return caixa;
+        }
+
+        List<model.MovimentacaoCaixa> movimentacoesPersistidas = caixa.getMovimentacoes().stream()
+                .map(movimentacao -> {
+                    if (movimentacao.getId() > 0) {
+                        sequenceMovimentacaoId.updateAndGet(atual -> Math.max(atual, movimentacao.getId() + 1));
+                        return movimentacao;
+                    }
+                    return movimentacao.comId(sequenceMovimentacaoId.getAndIncrement());
+                })
+                .collect(Collectors.toList());
+
+        Caixa persistido = caixa.comPersistencia(idPersistido, movimentacoesPersistidas);
+        final Caixa caixaPersistido = persistido;
+        caixas.removeIf(c -> c.getId() == caixaPersistido.getId());
+        caixas.add(caixaPersistido);
+        return caixaPersistido;
     }
 
     @Override

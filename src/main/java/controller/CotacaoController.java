@@ -1,6 +1,7 @@
 package controller;
 
 import model.CotacaoMensal;
+import model.Permissao;
 import model.Produto;
 import model.ResultadoComparacao;
 import model.Usuario;
@@ -29,8 +30,8 @@ import java.util.Optional;
  * </pre>
  *
  * <h2>Autenticação</h2>
- * Todas as operações de escrita exigem o header {@code X-User-RU}.
- * Ausência do header resulta em fallback para {@code adminSuperior}.
+ * Todas as operações exigem o header {@code X-User-RU} e a permissão
+ * {@link Permissao#VER_FINANCAS}.
  *
  * <h2>Formato de mês</h2>
  * O parâmetro {@code mes} segue o padrão ISO 8601: {@code YYYY-MM}
@@ -43,16 +44,13 @@ public class CotacaoController {
     private final CotacaoService     cotacaoService;
     private final EstoqueService     estoqueService;
     private final UsuarioRepository  usuarioRepository;
-    private final Usuario            adminSuperior;
 
     public CotacaoController(CotacaoService cotacaoService,
                              EstoqueService estoqueService,
-                             UsuarioRepository usuarioRepository,
-                             Usuario adminSuperior) {
+                             UsuarioRepository usuarioRepository) {
         this.cotacaoService    = cotacaoService;
         this.estoqueService    = estoqueService;
         this.usuarioRepository = usuarioRepository;
-        this.adminSuperior     = adminSuperior;
     }
 
     // ── POST /api/cotacoes ────────────────────────────────────────────────────
@@ -121,7 +119,9 @@ public class CotacaoController {
      * @return lista de cotações ou {@code 404} se o produto não existir
      */
     @GetMapping("/produto/{produtoId}/historico")
-    public ResponseEntity<?> historico(@PathVariable int produtoId) {
+    public ResponseEntity<?> historico(@PathVariable int produtoId,
+                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        resolveUser(ruHeader);
         Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(produtoId);
         if (produtoOpt.isEmpty()) {
             return notFound("Produto não encontrado com id: " + produtoId);
@@ -152,7 +152,9 @@ public class CotacaoController {
     @GetMapping("/produto/{produtoId}/comparar")
     public ResponseEntity<?> comparar(
             @PathVariable int produtoId,
-            @RequestParam(required = false) String mes) {
+            @RequestParam(required = false) String mes,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        resolveUser(ruHeader);
 
         Optional<Produto> produtoOpt = estoqueService.buscarProdutoPorId(produtoId);
         if (produtoOpt.isEmpty()) {
@@ -188,7 +190,9 @@ public class CotacaoController {
      */
     @GetMapping("/relatorio")
     public ResponseEntity<?> relatorioMensal(
-            @RequestParam(required = false) String mes) {
+            @RequestParam(required = false) String mes,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        resolveUser(ruHeader);
 
         YearMonth mesAlvo = parseMes(mes).orElse(YearMonth.now());
 
@@ -301,10 +305,14 @@ public class CotacaoController {
 
     /**
      * Resolve o usuário ator a partir do header {@code X-User-RU}.
-     * Fallback para {@code adminSuperior} quando ausente ou inválido.
      */
     private Usuario resolveUser(String ruHeader) {
-        return ControllerUtils.resolveUser(ruHeader, usuarioRepository, adminSuperior);
+        return ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_FINANCAS,
+                "Voce nao tem permissao para acessar cotacoes."
+        );
     }
 
     /**

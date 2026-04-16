@@ -1,5 +1,9 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Embeddable;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -51,14 +55,23 @@ import java.util.Set;
  * enums: operações {@code contains}, {@code add} e iteração são O(1) com
  * representação interna como bitmask — mais eficiente que {@link java.util.HashSet}.
  */
+@Embeddable
 public class ClasseFuncionario {
 
     // ── Campos ────────────────────────────────────────────────────────────────
 
-    private final long            id;
-    private final String          nome;
-    private final String          descricao;
-    private final Set<Permissao>  permissoes; // EnumSet internamente
+    @Column(name = "classe_id")
+    private long id;
+
+    @Column(name = "classe_nome", length = 80)
+    private String nome;
+
+    @Column(name = "classe_descricao", length = 180)
+    private String descricao;
+
+    @Convert(converter = PermissoesStringConverter.class)
+    @Column(name = "classe_permissoes", length = 250)
+    private Set<Permissao> permissoes; // EnumSet internamente
 
     // ── Construtor privado — use o Builder ────────────────────────────────────
 
@@ -68,6 +81,10 @@ public class ClasseFuncionario {
         this.nome       = nome;
         this.descricao  = descricao;
         this.permissoes = permissoes; // EnumSet mutável internamente, exposto como imutável
+    }
+
+    protected ClasseFuncionario() {
+        this.permissoes = EnumSet.noneOf(Permissao.class);
     }
 
     // ── Construtor público (compatibilidade) ──────────────────────────────────

@@ -9,6 +9,7 @@ import model.Permissao;
 import model.Produto;
 import model.TipoMovimentacao;
 import model.Usuario;
+import org.springframework.transaction.annotation.Transactional;
 import repository.LogRepository;
 import repository.NotaFiscalRepository;
 
@@ -28,6 +29,7 @@ import java.util.List;
  * O EstoqueService e chamado internamente em confirmarNota()
  * para dar entrada dos produtos no estoque automaticamente.
  */
+@Transactional(readOnly = true)
 public class NotaFiscalService {
 
     private final NotaFiscalRepository notaFiscalRepository;
@@ -45,6 +47,7 @@ public class NotaFiscalService {
         this.fornecedorService = fornecedorService;
     }
 
+    @Transactional
     public NotaFiscal abrirNota(Usuario usuarioLogado, Fornecedor fornecedor) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
@@ -52,20 +55,19 @@ public class NotaFiscalService {
             throw new IllegalArgumentException("Fornecedor invalido ou inativo.");
         }
 
-        long novoId = notaFiscalRepository.proximoId();
-        NotaFiscal nota = new NotaFiscal(novoId, fornecedor, usuarioLogado);
-        notaFiscalRepository.salvar(nota);
+        NotaFiscal nota = notaFiscalRepository.salvar(new NotaFiscal(0, fornecedor, usuarioLogado));
 
         logRepository.salvar(new LogAcao(
                 0,
                 usuarioLogado.getRu(),
                 "NOTA_ABERTA",
-                "Nota #" + novoId + " aberta para fornecedor: " + fornecedor.getNome()
+                "Nota #" + nota.getId() + " aberta para fornecedor: " + fornecedor.getNome()
         ));
 
         return nota;
     }
 
+    @Transactional
     public void adicionarItem(Usuario usuarioLogado,
                               NotaFiscal nota,
                               Produto produto,
@@ -89,6 +91,7 @@ public class NotaFiscalService {
     /**
      * Adiciona um item criando ou reaproveitando um produto no proprio fluxo da nota.
      */
+    @Transactional
     public Produto adicionarItem(Usuario usuarioLogado,
                                  NotaFiscal nota,
                                  NovoProdutoInput novoProduto,
@@ -104,6 +107,7 @@ public class NotaFiscalService {
         return produto;
     }
 
+    @Transactional
     public void confirmarNota(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
@@ -121,7 +125,8 @@ public class NotaFiscalService {
                     item.getProduto().getId(),
                     item.getQuantidade(),
                     TipoMovimentacao.ENTRADA,
-                    usuarioLogado
+                    usuarioLogado,
+                    "Entrada via nota fiscal #" + nota.getId()
             );
 
             logRepository.salvar(new LogAcao(
@@ -147,6 +152,7 @@ public class NotaFiscalService {
         ));
     }
 
+    @Transactional
     public void registrarPagamento(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
 
@@ -162,6 +168,7 @@ public class NotaFiscalService {
         ));
     }
 
+    @Transactional
     public void descartarRascunho(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
         if (nota.getStatus() != NotaFiscal.Status.PENDENTE) {
@@ -179,6 +186,7 @@ public class NotaFiscalService {
         ));
     }
 
+    @Transactional
     public void cancelarNota(Usuario usuarioLogado, NotaFiscal nota) {
         validarPermissao(usuarioLogado, Permissao.EDITAR_ESTOQUE);
         nota.cancelar();
@@ -224,7 +232,11 @@ public class NotaFiscalService {
         if (nota.getStatus() != NotaFiscal.Status.PENDENTE) {
             throw new IllegalStateException("Apenas notas pendentes podem receber novos itens.");
         }
-        if (nota.getFornecedor() == null || !nota.getFornecedor().isAtivo()) {
+        if (nota.getFornecedor() == null) {
+            throw new IllegalArgumentException("Fornecedor invalido ou inativo.");
+        }
+        Fornecedor fornecedorAtual = fornecedorService.buscarPorId(nota.getFornecedor().getId());
+        if (!fornecedorAtual.isAtivo()) {
             throw new IllegalArgumentException("Fornecedor invalido ou inativo.");
         }
     }

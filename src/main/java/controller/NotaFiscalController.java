@@ -3,6 +3,7 @@ package controller;
 import model.Fornecedor;
 import model.ItemNotaFiscal;
 import model.NotaFiscal;
+import model.Permissao;
 import model.Produto;
 import model.Usuario;
 import org.springframework.http.HttpStatus;
@@ -42,7 +43,14 @@ public class NotaFiscalController {
 
     @GetMapping
     public ResponseEntity<List<NotaResponse>> listarTodas(
-            @RequestParam(value = "includeEmpty", defaultValue = "false") boolean includeEmpty) {
+            @RequestParam(value = "includeEmpty", defaultValue = "false") boolean includeEmpty,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_COMPRAS,
+                "Voce nao tem permissao para visualizar notas fiscais."
+        );
         List<NotaFiscal> notas = includeEmpty
                 ? notaFiscalService.listarTodas(true)
                 : notaFiscalService.listarTodas();
@@ -50,7 +58,14 @@ public class NotaFiscalController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> buscarPorId(@PathVariable long id) {
+    public ResponseEntity<?> buscarPorId(@PathVariable long id,
+                                         @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_COMPRAS,
+                "Voce nao tem permissao para visualizar notas fiscais."
+        );
         Optional<NotaFiscal> nota = notaFiscalRepository.buscarPorId(id);
         if (nota.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -60,7 +75,14 @@ public class NotaFiscalController {
     }
 
     @GetMapping("/fornecedor/{fornecedorId}")
-    public ResponseEntity<List<NotaResponse>> listarPorFornecedor(@PathVariable long fornecedorId) {
+    public ResponseEntity<List<NotaResponse>> listarPorFornecedor(@PathVariable long fornecedorId,
+                                                                  @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_COMPRAS,
+                "Voce nao tem permissao para visualizar notas fiscais."
+        );
         return ResponseEntity.ok(
                 notaFiscalService.listarNotasPorFornecedor(fornecedorId).stream()
                         .map(NotaResponse::from)

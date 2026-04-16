@@ -5,21 +5,21 @@ import model.LogAcao;
 import model.Permissao;
 import model.Produto;
 import model.Usuario;
+import org.springframework.transaction.annotation.Transactional;
 import repository.FornecedorRepository;
 import repository.LogRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Gerencia o ciclo de vida dos fornecedores.
  */
+@Transactional(readOnly = true)
 public class FornecedorService {
 
     private final FornecedorRepository fornecedorRepository;
     private final LogRepository logRepository;
-    private final AtomicLong proximoId = new AtomicLong(1);
 
     public FornecedorService(FornecedorRepository fornecedorRepository,
                              LogRepository logRepository) {
@@ -27,6 +27,7 @@ public class FornecedorService {
         this.logRepository = logRepository;
     }
 
+    @Transactional
     public Fornecedor cadastrarFornecedor(Usuario usuarioLogado,
                                           String nome,
                                           String cnpj,
@@ -40,8 +41,9 @@ public class FornecedorService {
             );
         }
 
-        Fornecedor novoFornecedor = new Fornecedor(proximoId.getAndIncrement(), nome, cnpj, telefone);
-        fornecedorRepository.salvar(novoFornecedor);
+        Fornecedor novoFornecedor = fornecedorRepository.salvar(
+                new Fornecedor(0, nome, cnpj, telefone)
+        );
 
         logRepository.salvar(new LogAcao(
                 0,
@@ -53,6 +55,7 @@ public class FornecedorService {
         return novoFornecedor;
     }
 
+    @Transactional
     public void vincularProduto(Usuario usuarioLogado,
                                 long fornecedorId,
                                 Produto produto) {
@@ -65,6 +68,7 @@ public class FornecedorService {
      *
      * Mantem a mesma permissao do fluxo administrativo.
      */
+    @Transactional
     public boolean garantirProdutoVinculado(Usuario usuarioLogado,
                                             long fornecedorId,
                                             Produto produto) {
@@ -78,12 +82,14 @@ public class FornecedorService {
      * Nao exige a permissao administrativa de gerenciar fornecedores porque o
      * vinculo e apenas um efeito colateral do recebimento da mercadoria.
      */
+    @Transactional
     public boolean garantirProdutoVinculadoDuranteNota(long fornecedorId,
                                                        Produto produto,
                                                        Long usuarioRu) {
         return garantirProdutoVinculadoInterno(fornecedorId, produto, usuarioRu);
     }
 
+    @Transactional
     public void desativarFornecedor(Usuario usuarioLogado, long fornecedorId) {
         validarPermissao(usuarioLogado);
 
@@ -105,6 +111,7 @@ public class FornecedorService {
         ));
     }
 
+    @Transactional
     public void reativarFornecedor(Usuario usuarioLogado, long fornecedorId) {
         validarPermissao(usuarioLogado);
 

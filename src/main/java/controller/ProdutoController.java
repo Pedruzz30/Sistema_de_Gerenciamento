@@ -37,7 +37,14 @@ public class ProdutoController {
 
     // GET /api/produtos
     @GetMapping("/produtos")
-    public ResponseEntity<List<ProdutoResponse>> listarProdutos() {
+    public ResponseEntity<List<ProdutoResponse>> listarProdutos(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_ESTOQUE,
+                "Voce nao tem permissao para visualizar produtos."
+        );
         List<ProdutoResponse> resposta = estoqueService.listarProdutos().stream()
                 .map(p -> ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)))
                 .toList();
@@ -46,7 +53,14 @@ public class ProdutoController {
 
     // GET /api/produtos/{id}
     @GetMapping("/produtos/{id}")
-    public ResponseEntity<ProdutoResponse> buscarProduto(@PathVariable int id) {
+    public ResponseEntity<ProdutoResponse> buscarProduto(@PathVariable int id,
+                                                         @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_ESTOQUE,
+                "Voce nao tem permissao para visualizar produtos."
+        );
         Optional<Produto> produto = estoqueService.buscarProdutoPorId(id);
         if (produto.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -132,7 +146,8 @@ public class ProdutoController {
                     request.idProduto(),
                     request.quantidade(),
                     tipo,
-                    ator
+                    ator,
+                    request.descricao()
             );
             Produto p = pedido.getProduto();
 
@@ -152,7 +167,14 @@ public class ProdutoController {
 
     // GET /api/movimentacoes — used by dashboard and history views
     @GetMapping("/movimentacoes")
-    public ResponseEntity<List<PedidoResponse>> listarMovimentacoes() {
+    public ResponseEntity<List<PedidoResponse>> listarMovimentacoes(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_ESTOQUE,
+                "Voce nao tem permissao para visualizar movimentacoes de estoque."
+        );
         List<PedidoResponse> resp = estoqueService.listarPedidos().stream()
                 .sorted(Comparator.comparing(Pedido::getDataHora).reversed())
                 .limit(100)
@@ -181,7 +203,8 @@ public class ProdutoController {
     public record MovimentacaoRequest(
             int idProduto,
             int quantidade,
-            String tipo
+            String tipo,
+            String descricao
     ) {}
 
     public record ProdutoResponse(
@@ -191,7 +214,8 @@ public class ProdutoController {
             int quantidadeMinima,
             BigDecimal precoUnitario,
             String nivelEstoque,
-            String categoriaEstoque
+            String categoriaEstoque,
+            boolean controladoPorEstoque
     ) {
         public static ProdutoResponse from(Produto p, NivelEstoque nivel) {
             return new ProdutoResponse(
@@ -201,7 +225,8 @@ public class ProdutoController {
                     p.getQuantidadeMinima(),
                     p.getPrecoUnitario(),
                     nivel.name(),
-                    p.getCategoriaEstoque() != null ? p.getCategoriaEstoque().name() : null
+                    p.getCategoriaEstoque() != null ? p.getCategoriaEstoque().name() : null,
+                    p.isControladoPorEstoque()
             );
         }
     }
@@ -211,7 +236,12 @@ public class ProdutoController {
             String tipo,
             String produto,
             int quantidade,
-            String dataHora
+            String dataHora,
+            int saldoAnterior,
+            int saldoPosterior,
+            Long usuarioResponsavelRu,
+            String usuarioResponsavelNome,
+            String descricao
     ) {
         public static PedidoResponse from(Pedido p) {
             return new PedidoResponse(
@@ -219,7 +249,12 @@ public class ProdutoController {
                     p.getTipo().name(),
                     p.getProduto().getNome(),
                     p.getQuantidade(),
-                    p.getDataHora().toString()
+                    p.getDataHora().toString(),
+                    p.getSaldoAnterior(),
+                    p.getSaldoPosterior(),
+                    p.getUsuarioResponsavelRu(),
+                    p.getUsuarioResponsavelNome(),
+                    p.getDescricao()
             );
         }
     }

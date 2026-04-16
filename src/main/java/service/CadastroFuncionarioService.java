@@ -4,11 +4,13 @@ import model.ClasseFuncionario;
 import model.LogAcao;
 import model.Permissao;
 import model.Usuario;
+import org.springframework.transaction.annotation.Transactional;
 import repository.LogRepository;
 import repository.UsuarioRepository;
 
 import java.util.List;
 
+@Transactional(readOnly = true)
 public class CadastroFuncionarioService {
 
     private final UsuarioRepository usuarioRepository;
@@ -19,6 +21,7 @@ public class CadastroFuncionarioService {
         this.logRepository = logRepository;
     }
 
+    @Transactional
     public Usuario cadastrarFuncionario(Usuario superiorLogado,
                                         String nome,
                                         String sobrenome,
@@ -37,6 +40,11 @@ public class CadastroFuncionarioService {
                 classeDestino,
                 Usuario.Perfil.OPERADOR
         );
+        boolean cpfJaCadastrado = usuarioRepository.listarTodos().stream()
+                .anyMatch(usuario -> usuario.getCpfBruto().equals(novoUsuario.getCpfBruto()));
+        if (cpfJaCadastrado) {
+            throw new IllegalArgumentException("Já existe um funcionário cadastrado com este CPF.");
+        }
         Usuario salvo = usuarioRepository.salvar(novoUsuario);
 
         // Registro de log para auditoria de cadastro de funcionário.
@@ -55,6 +63,7 @@ public class CadastroFuncionarioService {
         return usuarioRepository.listarTodos();
     }
 
+    @Transactional
     public Usuario mudarClasse(Usuario superiorLogado, long ruFuncionario, ClasseFuncionario novaClasse) {
         validarPermissaoGerenciamento(superiorLogado);
 
@@ -75,6 +84,7 @@ public class CadastroFuncionarioService {
         return salvo;
     }
 
+    @Transactional
     public void desativarFuncionario(Usuario superiorLogado, long ruFuncionario) {
         validarPermissaoGerenciamento(superiorLogado);
 

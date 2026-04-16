@@ -29,6 +29,40 @@ async function carregarLogs() {
 
 // ── Render ────────────────────────────────────────────────────────────────
 
+function renderResumo(listaVisivel) {
+  const container = document.getElementById('logs-summary');
+  if (!container) return;
+
+  const usuariosUnicos = new Set(todosLogs.map(log => String(log.usuarioRu || 'sem-ru'))).size;
+  const maisRecente = todosLogs.length > 0
+    ? new Date(todosLogs[0].dataHora)
+    : null;
+
+  container.innerHTML = [
+    {
+      label: 'Registros totais',
+      value: todosLogs.length,
+      sub: 'Histórico carregado nesta sessão.'
+    },
+    {
+      label: 'Usuários distintos',
+      value: usuariosUnicos,
+      sub: 'RUs diferentes presentes na auditoria.'
+    },
+    {
+      label: 'Última atualização',
+      value: maisRecente ? maisRecente.toLocaleDateString('pt-BR') : '—',
+      sub: `${listaVisivel.length} registro(s) visível(is) com o filtro atual.`
+    }
+  ].map(card => `
+    <div class="page-summary-card">
+      <div class="page-summary-label">${card.label}</div>
+      <div class="page-summary-value">${card.value}</div>
+      <div class="page-summary-sub">${card.sub}</div>
+    </div>
+  `).join('');
+}
+
 function renderTabela() {
   const busca = document.getElementById('busca').value.toLowerCase();
   const lista = busca
@@ -40,17 +74,18 @@ function renderTabela() {
     : todosLogs;
 
   document.getElementById('table-count').textContent = `${lista.length} registro(s)`;
+  renderResumo(lista);
 
   const tbody = document.getElementById('tabela-logs');
   if (lista.length === 0) {
     if (todosLogs.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="5">
-          <div style="padding:40px;text-align:center">
-            <div style="font-size:40px;margin-bottom:12px">📋</div>
-            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhuma ação registrada</div>
-            <div style="color:var(--text-3);font-size:13px">Os logs de auditoria aparecerão aqui conforme o sistema for utilizado.</div>
-          </div>
+        <tr><td colspan="5" class="table-empty-cell">
+          ${emptyStateMarkup({
+            icon: 'clipboard',
+            title: 'Nenhuma ação registrada',
+            copy: 'Os logs de auditoria aparecerão aqui conforme o sistema for utilizado.'
+          })}
         </td></tr>`;
     } else {
       tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum log encontrado para a busca aplicada.</td></tr>';
@@ -65,16 +100,18 @@ function renderTabela() {
 
     return `
       <tr>
-        <td style="color:var(--text-3); font-size:12px">${l.id}</td>
+        <td class="table-cell-subtle">${l.id}</td>
         <td>
-          <div style="font-weight:500; font-size:13px">${data}</div>
-          <div style="color:var(--text-3); font-size:11px">${hora}</div>
+          <div class="table-cell-stack">
+            <span class="table-cell-strong">${data}</span>
+            <span class="table-cell-caption">${hora}</span>
+          </div>
         </td>
-        <td style="color:var(--text-2); font-size:12px">
+        <td class="table-cell-muted table-cell-subtle">
           ${l.usuarioRu != null ? `RU ${l.usuarioRu}` : '—'}
         </td>
         <td><span class="log-acao">${l.acao || '—'}</span></td>
-        <td style="color:var(--text-2); font-size:13px">${l.descricao || '—'}</td>
+        <td class="table-cell-muted">${escapeHtml(l.descricao || '—')}</td>
       </tr>
     `;
   }).join('');

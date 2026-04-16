@@ -21,54 +21,24 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AppConfig {
 
+    private static final String CPF_ADMIN_SUPERIOR = "52998224725";
+
     // ── Repositories ──────────────────────────────────────────────────────────
 
     @Bean
-    public ProdutoRepository produtoRepository() {
-        return new InMemoryProdutoRepository();
-    }
-
-    @Bean
-    public PedidoRepository pedidoRepository() {
-        return new InMemoryPedidoRepository();
-    }
-
-    @Bean
-    public UsuarioRepository usuarioRepository() {
-        InMemoryUsuarioRepository repo = new InMemoryUsuarioRepository();
-        popularUsuariosPadrao(repo);
-        return repo;
-    }
-
-    @Bean
-    public CaixaRepository caixaRepository() {
-        return new InMemoryCaixaRepository();
-    }
-
-    @Bean
-    public FornecedorRepository fornecedorRepository() {
-        return new InMemoryFornecedorRepository();
-    }
-
-    @Bean
-    public NotaFiscalRepository notaFiscalRepository() {
-        return new InMemoryNotaFiscalRepository();
-    }
-
-    @Bean
-    public CotacaoRepository cotacaoRepository() {
-        return new InMemoryCotacaoRepository();
-    }
-
-    @Bean
-    public LogRepository logRepository() {
-        return new InMemoryLogRepository();
-    }
-
-    @Bean
     public Usuario adminSuperior(UsuarioRepository usuarioRepository) {
-        return usuarioRepository.buscarPorRu(1)
+        popularUsuariosPadrao(usuarioRepository);
+        Usuario admin = usuarioRepository.listarTodos().stream()
+                .filter(usuario -> CPF_ADMIN_SUPERIOR.equals(usuario.getCpfBruto()))
+                .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Usuário admin padrão não encontrado no seed."));
+
+        if (!admin.isAtivo()) {
+            admin.reativar();
+            admin = usuarioRepository.salvar(admin);
+        }
+
+        return admin;
     }
 
     // ── Services ──────────────────────────────────────────────────────────────
@@ -87,8 +57,15 @@ public class AppConfig {
 
     @Bean
     public CaixaService caixaService(CaixaRepository caixaRepository,
-                                     LogRepository logRepository) {
-        return new CaixaService(caixaRepository, logRepository);
+                                     LogRepository logRepository,
+                                     EstoqueService estoqueService,
+                                     PizzaMenuCatalogService pizzaMenuCatalogService) {
+        return new CaixaService(caixaRepository, logRepository, estoqueService, pizzaMenuCatalogService);
+    }
+
+    @Bean
+    public PizzaMenuCatalogService pizzaMenuCatalogService() {
+        return new PizzaMenuCatalogService();
     }
 
     @Bean
@@ -140,9 +117,29 @@ public class AppConfig {
         classeCaixa.adicionarPermissao(Permissao.VER_VENDAS);
         classeCaixa.adicionarPermissao(Permissao.VER_ESTOQUE);
 
-        repo.salvar(new Usuario(0, "Admin",  "Superior", "529.982.247-25", "1234", classeSuperior,       Usuario.Perfil.ADMIN));
-        repo.salvar(new Usuario(0, "Maria",  "Gerente",  "111.444.777-35", "1234", classeGerenteEstoque, Usuario.Perfil.OPERADOR));
-        repo.salvar(new Usuario(0, "Joao",   "Silva",    "123.456.789-09", "1234", classeEstoquista,     Usuario.Perfil.OPERADOR));
-        repo.salvar(new Usuario(0, "Ana",    "Caixa",    "935.411.347-80", "1234", classeCaixa,          Usuario.Perfil.OPERADOR));
+        garantirUsuarioPadrao(
+                repo,
+                new Usuario(0, "Admin", "Superior", "529.982.247-25", "1234", classeSuperior, Usuario.Perfil.ADMIN)
+        );
+        garantirUsuarioPadrao(
+                repo,
+                new Usuario(0, "Maria", "Gerente", "111.444.777-35", "1234", classeGerenteEstoque, Usuario.Perfil.OPERADOR)
+        );
+        garantirUsuarioPadrao(
+                repo,
+                new Usuario(0, "Joao", "Silva", "123.456.789-09", "1234", classeEstoquista, Usuario.Perfil.OPERADOR)
+        );
+        garantirUsuarioPadrao(
+                repo,
+                new Usuario(0, "Ana", "Caixa", "935.411.347-80", "1234", classeCaixa, Usuario.Perfil.OPERADOR)
+        );
+    }
+
+    private static void garantirUsuarioPadrao(UsuarioRepository repo, Usuario usuarioPadrao) {
+        boolean jaExiste = repo.listarTodos().stream()
+                .anyMatch(usuario -> usuario.getCpfBruto().equals(usuarioPadrao.getCpfBruto()));
+        if (!jaExiste) {
+            repo.salvar(usuarioPadrao);
+        }
     }
 }

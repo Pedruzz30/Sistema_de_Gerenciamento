@@ -1,5 +1,17 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
@@ -32,6 +44,14 @@ import java.util.Objects;
  * e {@link RoundingMode#HALF_UP}, eliminando o erro de ponto flutuante que
  * acumulava em {@link #calcularGastoTotal()} com {@code double}.
  */
+@Entity
+@Table(
+        name = "cotacoes_mensais",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_cotacoes_mensais_produto_mes",
+                columnNames = {"produto_id", "mes_referencia"}
+        )
+)
 public class CotacaoMensal {
 
     // ── Constantes ────────────────────────────────────────────────────────────
@@ -41,13 +61,29 @@ public class CotacaoMensal {
 
     // ── Campos — todos imutáveis ──────────────────────────────────────────────
 
-    private final long       id;
-    private final Produto    produto;
-    private final YearMonth  mesReferencia;
-    private final BigDecimal precoUnitario;
-    private final int        quantidadeComprada;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "produto_id", nullable = false)
+    private Produto produto;
+
+    @Convert(converter = YearMonthStringConverter.class)
+    @Column(name = "mes_referencia", nullable = false, length = 7)
+    private YearMonth mesReferencia;
+
+    @Column(name = "preco_unitario", nullable = false, precision = 19, scale = 2)
+    private BigDecimal precoUnitario;
+
+    @Column(name = "quantidade_comprada", nullable = false)
+    private int quantidadeComprada;
 
     // ── Construtor ────────────────────────────────────────────────────────────
+
+    protected CotacaoMensal() {
+        // Construtor exigido pelo JPA.
+    }
 
     /**
      * Cria um registro de cotação mensal.

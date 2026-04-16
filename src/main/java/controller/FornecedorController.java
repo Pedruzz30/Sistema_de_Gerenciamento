@@ -2,6 +2,7 @@ package controller;
 
 import java.math.BigDecimal;
 import model.Fornecedor;
+import model.Permissao;
 import model.Produto;
 import model.Usuario;
 import repository.UsuarioRepository;
@@ -32,7 +33,14 @@ public class FornecedorController {
 
     // GET /api/fornecedores
     @GetMapping
-    public ResponseEntity<List<FornecedorResponse>> listarTodos() {
+    public ResponseEntity<List<FornecedorResponse>> listarTodos(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_COMPRAS,
+                "Voce nao tem permissao para visualizar fornecedores."
+        );
         return ResponseEntity.ok(
                 fornecedorService.listarTodos().stream()
                         .map(FornecedorResponse::from)
@@ -42,7 +50,14 @@ public class FornecedorController {
 
     // GET /api/fornecedores/ativos
     @GetMapping("/ativos")
-    public ResponseEntity<List<FornecedorResponse>> listarAtivos() {
+    public ResponseEntity<List<FornecedorResponse>> listarAtivos(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_COMPRAS,
+                "Voce nao tem permissao para visualizar fornecedores."
+        );
         return ResponseEntity.ok(
                 fornecedorService.listarAtivos().stream()
                         .map(FornecedorResponse::from)
@@ -52,7 +67,14 @@ public class FornecedorController {
 
     // GET /api/fornecedores/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<?> buscarPorId(@PathVariable long id) {
+    public ResponseEntity<?> buscarPorId(@PathVariable long id,
+                                         @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_COMPRAS,
+                "Voce nao tem permissao para visualizar fornecedores."
+        );
         try {
             Fornecedor f = fornecedorService.buscarPorId(id);
             return ResponseEntity.ok(FornecedorResponse.from(f));

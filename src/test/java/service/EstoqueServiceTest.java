@@ -19,12 +19,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class EstoqueServiceTest {
 
     private EstoqueService service;
+    private InMemoryProdutoRepository produtoRepository;
     private Usuario operador;
     private Usuario semPermissao;
 
     @BeforeEach
     void setUp() {
-        service = new EstoqueService(new InMemoryProdutoRepository(), new InMemoryPedidoRepository());
+        produtoRepository = new InMemoryProdutoRepository();
+        service = new EstoqueService(produtoRepository, new InMemoryPedidoRepository());
 
         ClasseFuncionario classe = new ClasseFuncionario(1, "ESTOQUISTA", "Testes");
         classe.adicionarPermissao(Permissao.VER_ESTOQUE);
@@ -68,6 +70,25 @@ class EstoqueServiceTest {
         assertEquals(15, p.getQuantidadeAtual());
         assertEquals(TipoMovimentacao.ENTRADA, pedido.getTipo());
         assertEquals(5, pedido.getQuantidade());
+    }
+
+    @Test
+    void registrarMovimentacao_preencheHistoricoComSaldosDescricaoEResponsavel() {
+        Produto p = service.cadastrarProduto(operador, "Cadeira", 10, 2, 120.0);
+
+        Pedido pedido = service.registrarMovimentacao(
+                p.getId(),
+                3,
+                TipoMovimentacao.ENTRADA,
+                operador,
+                "Reposicao do almoxarifado"
+        );
+
+        assertEquals(10, pedido.getSaldoAnterior());
+        assertEquals(13, pedido.getSaldoPosterior());
+        assertEquals("Reposicao do almoxarifado", pedido.getDescricao());
+        assertEquals(operador.getRu(), pedido.getUsuarioResponsavelRu());
+        assertEquals(operador.getNomeCompleto(), pedido.getUsuarioResponsavelNome());
     }
 
     @Test
@@ -125,6 +146,14 @@ class EstoqueServiceTest {
     }
 
     @Test
+    void cadastrarProduto_dePizzaSobDemanda_lancaIllegalArgument() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.cadastrarProduto(operador, "Pizza Calabresa Broto", 10, 1, 29.90));
+
+        assertTrue(ex.getMessage().contains("sob demanda"));
+    }
+
+    @Test
     void cadastrarProduto_semCategoria_permaneceCompativel() {
         Produto p = service.cadastrarProduto(operador, "Legado", 2, 1, 4.0);
 
@@ -157,5 +186,29 @@ class EstoqueServiceTest {
         assertEquals(3, atualizado.getQuantidadeMinima());
         assertEquals(0, BigDecimal.valueOf(7.5).compareTo(atualizado.getPrecoUnitario()));
         assertEquals(CategoriaEstoque.FRIO, atualizado.getCategoriaEstoque());
+    }
+
+    @Test
+    void listarProdutos_eMovimentacao_ignoramItensSobDemanda() {
+        Produto bebida = service.cadastrarProduto(operador, "Suco", 10, 2, 6.0, CategoriaEstoque.BEBIDAS);
+        Produto pizzaLegada = produtoRepository.salvar(
+                new Produto(
+                        0,
+                        "Pizza Portuguesa Broto",
+                        40,
+                        5,
+                        BigDecimal.valueOf(32.0),
+                        CategoriaEstoque.CONGELADO,
+                        Boolean.FALSE
+                )
+        );
+
+        assertEquals(1, service.listarProdutos().size());
+        assertTrue(service.buscarProdutoPorId(pizzaLegada.getId()).isEmpty());
+        assertEquals(bebida.getId(), service.listarProdutos().get(0).getId());
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.registrarMovimentacao(pizzaLegada.getId(), 1, TipoMovimentacao.SAIDA, operador));
+        assertTrue(ex.getMessage().contains("nao e controlado por estoque"));
     }
 }

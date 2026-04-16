@@ -21,18 +21,7 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
         // Quando RU é <= 0, gera um RU automático preservando os demais dados.
         Usuario persistido = usuario;
         if (usuario.getRu() <= 0) {
-            persistido = new Usuario(
-                    sequenceRu.getAndIncrement(),
-                    usuario.getNome(),
-                    usuario.getSobrenome(),
-                    usuario.getCpf(),
-                    usuario.getSenhaInterna(),
-                    usuario.getClasse(),
-                    usuario.getPerfil()
-            );
-            if (!usuario.isAtivo()) {
-                persistido.desativar();
-            }
+            persistido = usuario.comRu(sequenceRu.getAndIncrement());
         } else {
             sequenceRu.updateAndGet(atual -> Math.max(atual, usuario.getRu() + 1));
         }

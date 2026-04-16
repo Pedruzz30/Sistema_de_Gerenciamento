@@ -16,22 +16,38 @@ import model.TipoMovimentacaoCaixa;
 import model.Usuario;
 import repository.CaixaRepository;
 import repository.LogRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Gerencia o ciclo de vida dos caixas PDV.
  */
+@Transactional(readOnly = true)
 public class CaixaService {
 
     private final CaixaRepository caixaRepository;
     private final LogRepository logRepository;
-    private final AtomicLong proximoIdMovimentacao = new AtomicLong(1);
+    private final EstoqueService estoqueService;
+    private final PizzaMenuCatalogService pizzaMenuCatalogService;
+    private final AtomicLong proximoIdMovimentacao;
 
     public CaixaService(CaixaRepository caixaRepository,
-                        LogRepository logRepository) {
+                        LogRepository logRepository,
+                        EstoqueService estoqueService,
+                        PizzaMenuCatalogService pizzaMenuCatalogService) {
         this.caixaRepository = caixaRepository;
         this.logRepository = logRepository;
+        this.estoqueService = estoqueService;
+        this.pizzaMenuCatalogService = pizzaMenuCatalogService;
+        this.proximoIdMovimentacao = new AtomicLong(
+                caixaRepository.listarTodos().stream()
+                        .flatMap(caixa -> caixa.getMovimentacoes().stream())
+                        .mapToLong(MovimentacaoCaixa::getId)
+                        .max()
+                        .orElse(0L) + 1
+        );
     }
 
+    @Transactional
     public Caixa abrirCaixa(Usuario operador, int numeroCaixa, double saldoInicial) {
         validarPermissao(operador, Permissao.VER_VENDAS);
 
@@ -42,10 +58,9 @@ public class CaixaService {
             );
         });
 
-        long id = caixaRepository.proximoId();
-        Caixa caixa = new Caixa(id, numeroCaixa);
+        Caixa caixa = new Caixa(0, numeroCaixa);
         caixa.abrir(operador, saldoInicial);
-        caixaRepository.salvar(caixa);
+        caixa = caixaRepository.salvar(caixa);
 
         logRepository.salvar(new LogAcao(
                 0, operador.getRu(),
@@ -57,13 +72,26 @@ public class CaixaService {
         return caixa;
     }
 
+    @Transactional
     public void registrarVenda(Usuario operador, int numeroCaixa,
                                double valor, String descricao) {
-        validarPermissao(operador, Permissao.VER_VENDAS);
-        registrarMovimentacao(operador, numeroCaixa,
-                TipoMovimentacaoCaixa.VENDA, valor, descricao);
+        registrarVenda(operador, numeroCaixa, BigDecimal.valueOf(valor), descricao, List.of());
     }
 
+    @Transactional
+    public void registrarVenda(Usuario operador,
+                               int numeroCaixa,
+                               BigDecimal valorInformado,
+                               String descricao,
+                               List<VendaItemInput> itensVendidos) {
+        validarPermissao(operador, Permissao.VER_VENDAS);
+
+        BigDecimal valorVenda = normalizarValorVenda(valorInformado, itensVendidos, operador, numeroCaixa, descricao);
+        registrarMovimentacao(operador, numeroCaixa,
+                TipoMovimentacaoCaixa.VENDA, valorVenda.doubleValue(), descricao);
+    }
+
+    @Transactional
     public void registrarSangria(Usuario operador, int numeroCaixa,
                                  double valor, String descricao) {
         validarPermissao(operador, Permissao.VER_FINANCAS);
@@ -71,6 +99,7 @@ public class CaixaService {
                 TipoMovimentacaoCaixa.SANGRIA, valor, descricao);
     }
 
+    @Transactional
     public void registrarSuprimento(Usuario operador, int numeroCaixa,
                                     double valor, String descricao) {
         validarPermissao(operador, Permissao.VER_FINANCAS);
@@ -107,6 +136,7 @@ public class CaixaService {
         ));
     }
 
+    @Transactional
     public FechamentoCaixa encerrarCaixa(Usuario operador, int numeroCaixa) {
         validarPermissao(operador, Permissao.VER_FINANCAS);
 
@@ -195,5 +225,68 @@ public class CaixaService {
 
     private String formatarMoeda(BigDecimal valor) {
         return valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private BigDecimal normalizarValorVenda(BigDecimal valorInformado,
+                                            List<VendaItemInput> itensVendidos,
+                                            Usuario operador,
+                                            int numeroCaixa,
+                                            String descricao) {
+        List<VendaItemInput> itens = itensVendidos == null ? List.of() : itensVendidos;
+        if (!itens.isEmpty()) {
+            return processarVendaComItens(operador, numeroCaixa, descricao, itens);
+        }
+
+        if (valorInformado == null || valorInformado.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor deve ser maior que zero.");
+        }
+        return valorInformado.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String formatarDescricao(String descricao) {
+        if (descricao == null || descricao.isBlank()) {
+            return ".";
+        }
+        return ": " + descricao.trim();
+    }
+
+    private BigDecimal processarVendaComItens(Usuario operador,
+                                              int numeroCaixa,
+                                              String descricao,
+                                              List<VendaItemInput> itensVendidos) {
+        List<VendaItemInput> itens = itensVendidos == null ? List.of() : itensVendidos;
+        if (itens.isEmpty()) {
+            throw new IllegalArgumentException("A venda deve informar ao menos um item.");
+        }
+
+        String descricaoOrigem = "Saida via venda no caixa " + numeroCaixa + formatarDescricao(descricao);
+        List<VendaItemInput> itensEstoque = itens.stream()
+                .peek(item -> {
+                    if (item == null || !item.possuiReferenciaValida()) {
+                        throw new IllegalArgumentException(
+                                "Itens da venda devem informar produtoId ou cardapioItemId, nunca ambos."
+                        );
+                    }
+                })
+                .filter(VendaItemInput::possuiProdutoEmEstoque)
+                .toList();
+
+        BigDecimal total = BigDecimal.ZERO;
+        if (!itensEstoque.isEmpty()) {
+            total = total.add(estoqueService.registrarSaidasPorVenda(operador, itensEstoque, descricaoOrigem));
+        }
+
+        for (VendaItemInput item : itens) {
+            if (!item.possuiItemSobDemanda()) {
+                continue;
+            }
+
+            // Pizza ainda entra no caixa/PDV, mas a baixa de insumos fica para a futura
+            // implementação de ficha técnica. Aqui a venda é apenas financeira.
+            PizzaMenuCatalogService.PizzaMenuItem pizza = pizzaMenuCatalogService.buscarPizzaPorCodigo(item.cardapioItemId());
+            total = total.add(pizza.precoUnitario().multiply(BigDecimal.valueOf(item.quantidade())));
+        }
+
+        return total.setScale(2, RoundingMode.HALF_UP);
     }
 }

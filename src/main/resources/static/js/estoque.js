@@ -9,7 +9,7 @@ let produtoEmEdicao = null;
 let tipoMovAtual = 'ENTRADA';
 
 const CATEGORIAS_ESTOQUE = [
-  { value: '', label: 'Nao definida' },
+  { value: '', label: 'Não definida' },
   { value: 'BEBIDAS', label: 'Bebidas' },
   { value: 'SECO', label: 'Estoque seco' },
   { value: 'FRIO', label: 'Estoque frio' },
@@ -19,7 +19,7 @@ const CATEGORIAS_ESTOQUE = [
 document.addEventListener('DOMContentLoaded', async () => {
   if (!temPermissao(PERMISSOES.EDITAR_ESTOQUE)) {
     const btn = document.getElementById('btn-novo-produto');
-    if (btn) btn.style.display = 'none';
+    if (btn) btn.hidden = true;
   }
 
   preencherSelectCategorias('c-categoria');
@@ -35,7 +35,7 @@ async function carregarProdutos() {
     renderTabela();
   } catch (e) {
     document.getElementById('tabela-produtos').innerHTML =
-      '<tr><td colspan="7" class="empty">Erro ao carregar produtos. Verifique a conexao.</td></tr>';
+      '<tr><td colspan="7" class="empty">Erro ao carregar produtos. Verifique a conexão.</td></tr>';
   }
 }
 
@@ -47,10 +47,10 @@ async function cadastrarProduto() {
   const categoriaEstoque = document.getElementById('c-categoria').value || null;
   const alertEl = document.getElementById('alert-cadastro');
 
-  if (!nome) return mostrarAlertaModal(alertEl, 'error', 'Nome do produto e obrigatorio.');
-  if (isNaN(qtdInicial) || qtdInicial < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade inicial invalida.');
-  if (isNaN(qtdMinima) || qtdMinima < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade minima invalida.');
-  if (isNaN(preco) || preco < 0) return mostrarAlertaModal(alertEl, 'error', 'Preco invalido.');
+  if (!nome) return mostrarAlertaModal(alertEl, 'error', 'Nome do produto é obrigatório.');
+  if (isNaN(qtdInicial) || qtdInicial < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade inicial inválida.');
+  if (isNaN(qtdMinima) || qtdMinima < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade mínima inválida.');
+  if (isNaN(preco) || preco < 0) return mostrarAlertaModal(alertEl, 'error', 'Preço inválido.');
 
   try {
     const res = await fetch('/api/produtos', {
@@ -88,9 +88,9 @@ async function atualizarProduto() {
   const categoriaEstoque = document.getElementById('e-categoria').value || null;
   const alertEl = document.getElementById('alert-edicao');
 
-  if (!nome) return mostrarAlertaModal(alertEl, 'error', 'Nome do produto e obrigatorio.');
-  if (isNaN(qtdMinima) || qtdMinima < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade minima invalida.');
-  if (isNaN(preco) || preco < 0) return mostrarAlertaModal(alertEl, 'error', 'Preco invalido.');
+  if (!nome) return mostrarAlertaModal(alertEl, 'error', 'Nome do produto é obrigatório.');
+  if (isNaN(qtdMinima) || qtdMinima < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade mínima inválida.');
+  if (isNaN(preco) || preco < 0) return mostrarAlertaModal(alertEl, 'error', 'Preço inválido.');
 
   try {
     const res = await fetch(`/api/produtos/${produtoEmEdicao.id}`, {
@@ -125,11 +125,11 @@ async function confirmarMovimentacao() {
   if (isNaN(qtd) || qtd <= 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade deve ser maior que zero.');
 
   if (tipoMovAtual === 'SAIDA' && qtd > produtoSelecionado.quantidadeAtual) {
-    return mostrarAlertaModal(
-      alertEl,
-      'error',
-      `Estoque insuficiente. Disponivel: ${produtoSelecionado.quantidadeAtual} unidades.`
-    );
+      return mostrarAlertaModal(
+        alertEl,
+        'error',
+        `Estoque insuficiente. Disponível: ${produtoSelecionado.quantidadeAtual} unidades.`
+      );
   }
 
   try {
@@ -144,7 +144,7 @@ async function confirmarMovimentacao() {
     });
 
     if (!res.ok) {
-      const err = await safeReadErrorMessage(res, 'Erro ao registrar movimentacao.');
+      const err = await safeReadErrorMessage(res, 'Erro ao registrar movimentação.');
       throw new Error(err);
     }
 
@@ -173,13 +173,13 @@ function renderTabela() {
   if (produtos.length === 0) {
     if (todosOsProdutos.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="7">
-          <div style="padding:40px;text-align:center">
-            <div style="font-size:40px;margin-bottom:12px">[ ]</div>
-            <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhum produto cadastrado</div>
-            <div style="color:var(--text-3);font-size:13px;margin-bottom:16px">Cadastre produtos para comecar a gerenciar seu estoque.</div>
-            ${podeEditar ? '<button class="btn-primary" onclick="abrirModalCadastro()">+ Cadastrar Produto</button>' : ''}
-          </div>
+        <tr><td colspan="7" class="table-empty-cell">
+          ${emptyStateMarkup({
+            icon: 'box',
+            title: 'Nenhum produto cadastrado',
+            copy: 'Cadastre produtos para começar a gerenciar o estoque.',
+            actions: podeEditar ? '<button class="btn-primary" onclick="abrirModalCadastro()">Novo Produto</button>' : ''
+          })}
         </td></tr>`;
     } else {
       tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum produto encontrado para os filtros aplicados.</td></tr>';
@@ -206,21 +206,21 @@ function renderTabela() {
       </td>
       <td>R$ ${p.precoUnitario.toFixed(2)}</td>
       <td>
-        <div class="acoes">
-          ${podeEditar ? `<button class="btn-acao editar" onclick="abrirModalEdicao(${p.id})">Editar</button>` : ''}
-          ${podeEditar ? `<button class="btn-acao entrada" onclick="abrirModalMov(${p.id}, 'ENTRADA')">Entrada</button>` : ''}
-          ${podeEditar ? `<button class="btn-acao saida" onclick="abrirModalMov(${p.id}, 'SAIDA')">Saida</button>` : ''}
-          ${!podeEditar ? '<span style="color:var(--text-3);font-size:12px">Sem permissao</span>' : ''}
-        </div>
-      </td>
-    </tr>
+          <div class="acoes">
+            ${podeEditar ? `<button class="btn-acao editar" onclick="abrirModalEdicao(${p.id})">Editar</button>` : ''}
+            ${podeEditar ? `<button class="btn-acao entrada" onclick="abrirModalMov(${p.id}, 'ENTRADA')">Entrada</button>` : ''}
+            ${podeEditar ? `<button class="btn-acao saida" onclick="abrirModalMov(${p.id}, 'SAIDA')">Saída</button>` : ''}
+            ${!podeEditar ? '<span class="status-placeholder">Sem permissão</span>' : ''}
+          </div>
+        </td>
+      </tr>
   `).join('');
 }
 
 function nivelLabel(nivel) {
   const labels = {
     SEM_ESTOQUE: 'Sem Estoque',
-    CRITICO: 'Critico',
+    CRITICO: 'Crítico',
     BAIXO: 'Baixo',
     MODERADO: 'Moderado',
     ADEQUADO: 'Adequado'
@@ -294,7 +294,7 @@ function renderResumoCategorias(produtos) {
     <div class="categoria-summary-card">
       <div class="categoria-summary-label">${card.label}</div>
       <div class="categoria-summary-value">${metricas[card.key]}</div>
-      <div class="categoria-summary-sub">produto(s) visiveis</div>
+      <div class="categoria-summary-sub">produto(s) visíveis</div>
     </div>
   `).join('');
 }
@@ -312,17 +312,21 @@ function renderGraficoCategorias(produtos) {
 
   container.innerHTML = categorias.map(cat => {
     const valor = metricas[cat.key];
-    const largura = `${(valor / maximo) * 100}%`;
+    const largura = ((valor / maximo) * 100).toFixed(2);
     return `
       <div class="categoria-chart-row">
         <div class="categoria-chart-label">${cat.label}</div>
         <div class="categoria-chart-bar">
-          <div class="categoria-chart-fill categoria-${cat.key}" style="width:${largura}"></div>
+          <div class="categoria-chart-fill categoria-${cat.key}" data-width="${largura}"></div>
         </div>
         <div class="categoria-chart-value">${valor}</div>
       </div>
     `;
   }).join('');
+
+  container.querySelectorAll('.categoria-chart-fill').forEach((item) => {
+    item.style.width = `${item.dataset.width}%`;
+  });
 }
 
 function atualizarEstadoExportacao() {
@@ -333,12 +337,12 @@ function atualizarEstadoExportacao() {
 
 function exportarCsvProdutos() {
   if (!produtosVisiveis.length) {
-    showToast('Nao ha linhas visiveis para exportar.', 'info');
+    showToast('Não há linhas visíveis para exportar.', 'info');
     return;
   }
 
   const linhas = [
-    ['Produto', 'Categoria', 'Quantidade', 'Nivel do estoque'],
+    ['Produto', 'Categoria', 'Quantidade', 'Nível do estoque'],
     ...produtosVisiveis.map(p => [
       p.nome || '',
       categoriaLabel(p.categoriaEstoque),
@@ -419,7 +423,7 @@ function abrirModalMov(idProduto, tipo) {
 
   setTipo(tipo);
   document.getElementById('modal-mov-titulo').textContent =
-    tipo === 'ENTRADA' ? 'Registrar Entrada' : 'Registrar Saida';
+    tipo === 'ENTRADA' ? 'Registrar Entrada' : 'Registrar Saída';
   document.getElementById('modal-mov').classList.add('open');
 }
 

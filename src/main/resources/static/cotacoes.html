@@ -49,6 +49,8 @@
   <!-- ── Main ── -->
   <main class="main">
 
+    <div class="page-summary-grid fade-up" id="cotacao-summary"></div>
+
     <!-- Tabs -->
     <div class="tabs fade-up">
       <button class="tab-btn active" id="tab-relatorio" onclick="abrirAba('aba-relatorio')">Relatório Mensal</button>
@@ -60,10 +62,9 @@
       <div class="card fade-up">
         <div class="card-header">
           <span class="card-title">Comparação com Mês Anterior</span>
-          <div style="display:flex; gap:8px; align-items:center">
-            <input type="month" id="relatorio-mes"
-              style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-1);font-size:12.5px;outline:none">
-            <button class="btn-secondary" onclick="carregarRelatorio()" style="padding:6px 14px;font-size:12px">Buscar</button>
+          <div class="card-tools">
+            <input type="month" id="relatorio-mes" class="compact-control">
+            <button class="btn-secondary btn-secondary--compact" onclick="carregarRelatorio()">Buscar</button>
           </div>
         </div>
         <div id="relatorio-container">
@@ -77,12 +78,11 @@
       <div class="card fade-up">
         <div class="card-header">
           <span class="card-title">Histórico de Preços</span>
-          <div style="display:flex; gap:8px; align-items:center">
-            <select id="historico-produto"
-              style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-1);font-size:12.5px;outline:none;min-width:200px">
+          <div class="card-tools">
+            <select id="historico-produto" class="compact-control compact-control--select">
               <option value="">— carregando produtos —</option>
             </select>
-            <button class="btn-secondary" onclick="carregarHistorico()" style="padding:6px 14px;font-size:12px">Buscar</button>
+            <button class="btn-secondary btn-secondary--compact" onclick="carregarHistorico()">Buscar</button>
           </div>
         </div>
         <div id="historico-container">

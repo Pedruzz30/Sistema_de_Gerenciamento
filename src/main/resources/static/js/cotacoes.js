@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const agora = new Date();
   const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('relatorio-mes').value = mesAtual;
+  renderResumo();
   carregarProdutos();
 });
 
@@ -25,6 +26,7 @@ async function carregarProdutos() {
       todosProdutos.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
     selectCotacao.innerHTML = options;
     selectHistorico.innerHTML = options;
+    renderResumo();
   } catch {
     document.getElementById('c-produto').innerHTML = '<option value="">Erro ao carregar</option>';
   }
@@ -38,6 +40,40 @@ function abrirAba(abaId) {
   document.getElementById(abaId).classList.add('active');
   if (abaId === 'aba-relatorio') document.getElementById('tab-relatorio').classList.add('active');
   if (abaId === 'aba-historico') document.getElementById('tab-historico').classList.add('active');
+  renderResumo();
+}
+
+function renderResumo(meta) {
+  const info = meta || {};
+  const container = document.getElementById('cotacao-summary');
+  if (!container) return;
+
+  const mesReferencia = document.getElementById('relatorio-mes')?.value || '';
+  const produtoHistorico = document.getElementById('historico-produto')?.selectedOptions?.[0]?.textContent || '';
+
+  container.innerHTML = [
+    {
+      label: 'Produtos disponíveis',
+      value: todosProdutos.length,
+      sub: 'Base de produtos aptos a receber cotação.'
+    },
+    {
+      label: 'Mês em análise',
+      value: mesReferencia ? formatarMes(mesReferencia) : '—',
+      sub: 'Usado no relatório comparativo mensal.'
+    },
+    {
+      label: 'Histórico em foco',
+      value: produtoHistorico && !produtoHistorico.includes('carregando') ? produtoHistorico : 'Nenhum',
+      sub: info.sub || 'Selecione um produto para consultar o histórico detalhado.'
+    }
+  ].map(card => `
+    <div class="page-summary-card">
+      <div class="page-summary-label">${card.label}</div>
+      <div class="page-summary-value">${escapeHtml(String(card.value))}</div>
+      <div class="page-summary-sub">${escapeHtml(card.sub)}</div>
+    </div>
+  `).join('');
 }
 
 // ── Relatório mensal ──────────────────────────────────────────────────────
@@ -60,20 +96,22 @@ async function carregarRelatorio() {
     const comparacoes = data.comparacoes || [];
     if (comparacoes.length === 0) {
       container.innerHTML = `
-        <div class="alert-modal" style="display:block; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); color:#fbbf24; padding:14px; border-radius:8px;">
-          ⚠ Sem dados suficientes para comparar ${formatarMes(mes)} com o mês anterior.
+        <div class="alert-inline">
+          Sem dados suficientes para comparar ${formatarMes(mes)} com o mês anterior.
           Registre cotações para pelo menos dois meses consecutivos.
         </div>`;
+      renderResumo({ sub: 'Ainda não há comparação suficiente para o mês selecionado.' });
       return;
     }
 
     container.innerHTML = `
-      <p style="font-size:12px; color:var(--text-3); margin-bottom:12px">
+      <p class="inline-note">
         Comparando <strong>${formatarMes(mes)}</strong> com mês anterior — ${comparacoes.length} produto(s) com dados
       </p>
       <div>
         ${comparacoes.map(c => renderComparacao(c)).join('')}
       </div>`;
+    renderResumo({ sub: `${comparacoes.length} produto(s) comparado(s) no relatório atual.` });
   } catch {
     container.innerHTML = '<div class="empty">Erro ao carregar relatório.</div>';
   }
@@ -113,17 +151,18 @@ async function carregarHistorico() {
 
     if (historico.length === 0) {
       container.innerHTML = `
-        <div style="padding:32px;text-align:center">
-          <div style="font-size:32px;margin-bottom:10px">📈</div>
-          <div style="color:var(--text-2);font-weight:500;margin-bottom:6px">Nenhuma cotação registrada</div>
-          <div style="color:var(--text-3);font-size:13px">Registre cotações mensais para acompanhar o histórico de preços.</div>
-        </div>`;
+        ${emptyStateMarkup({
+          icon: 'chart',
+          title: 'Nenhuma cotação registrada',
+          copy: 'Registre cotações mensais para acompanhar o histórico de preços.'
+        })}`;
+      renderResumo({ sub: 'O produto selecionado ainda não possui histórico de cotações.' });
       return;
     }
 
     const produto = todosProdutos.find(p => p.id === parseInt(produtoId));
     container.innerHTML = `
-      <p style="font-size:12px; color:var(--text-3); margin-bottom:14px">
+      <p class="inline-note inline-note--spaced">
         Histórico de <strong>${produto ? produto.nome : 'produto'}</strong> — ${historico.length} registro(s)
       </p>
       <div class="table-wrap">
@@ -136,17 +175,18 @@ async function carregarHistorico() {
               <th>Gasto Total</th>
             </tr>
           </thead>
-          <tbody>
-            ${historico.map(c => `
-              <tr>
-                <td>${formatarMes(c.mes)}</td>
-                <td style="color:var(--text-1); font-weight:500">R$${c.precoUnitario.toFixed(2)}</td>
-                <td style="color:var(--text-2)">${c.quantidadeComprada} un.</td>
-                <td style="color:var(--green); font-weight:600">R$${c.gastoTotal.toFixed(2)}</td>
-              </tr>`).join('')}
+            <tbody>
+              ${historico.map(c => `
+                <tr>
+                  <td>${formatarMes(c.mes)}</td>
+                  <td class="table-cell-strong">R$${c.precoUnitario.toFixed(2)}</td>
+                  <td class="table-cell-muted">${c.quantidadeComprada} un.</td>
+                  <td class="table-cell-success">R$${c.gastoTotal.toFixed(2)}</td>
+                </tr>`).join('')}
           </tbody>
         </table>
       </div>`;
+    renderResumo({ sub: `Histórico ativo para ${produto ? produto.nome : 'produto'}.` });
   } catch {
     container.innerHTML = '<div class="empty">Erro ao carregar histórico.</div>';
   }

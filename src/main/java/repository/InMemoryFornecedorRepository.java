@@ -20,17 +20,25 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
         }
 
         // Verifica CNPJ duplicado antes de salvar
-        Optional<Fornecedor> cnpjExistente = buscarPorCnpj(fornecedor.getCnpj());
+        Optional<Fornecedor> cnpjExistente = buscarPorCnpj(fornecedor.getCnpjBruto());
         if (cnpjExistente.isPresent() && cnpjExistente.get().getId() != fornecedor.getId()) {
             throw new IllegalArgumentException(
                     "Já existe um fornecedor cadastrado com o CNPJ: " + fornecedor.getCnpj()
             );
         }
 
+        Fornecedor persistido = fornecedor;
+        if (fornecedor.getId() <= 0) {
+            persistido = fornecedor.comId(sequenceId.getAndIncrement());
+        } else {
+            sequenceId.updateAndGet(atual -> Math.max(atual, fornecedor.getId() + 1));
+        }
+
         // Se já existe com mesmo ID, substitui (comportamento de update)
-        fornecedores.removeIf(f -> f.getId() == fornecedor.getId());
-        fornecedores.add(fornecedor);
-        return fornecedor;
+        final long idPersistido = persistido.getId();
+        fornecedores.removeIf(f -> f.getId() == idPersistido);
+        fornecedores.add(persistido);
+        return persistido;
     }
 
     @Override
@@ -43,8 +51,9 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     @Override
     public synchronized Optional<Fornecedor> buscarPorCnpj(String cnpj) {
         if (cnpj == null) return Optional.empty();
+        String cnpjNormalizado = cnpj.replaceAll("\\D", "");
         return fornecedores.stream()
-                .filter(f -> f.getCnpj().equals(cnpj.trim()))
+                .filter(f -> f.getCnpjBruto().equals(cnpjNormalizado))
                 .findFirst();
     }
 

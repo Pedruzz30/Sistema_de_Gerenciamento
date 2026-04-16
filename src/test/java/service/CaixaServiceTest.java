@@ -6,27 +6,38 @@ import model.Caixa;
 import model.ClasseFuncionario;
 import model.FechamentoCaixa;
 import model.Permissao;
+import model.Produto;
 import model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import repository.InMemoryCaixaRepository;
 import repository.InMemoryLogRepository;
+import repository.InMemoryPedidoRepository;
+import repository.InMemoryProdutoRepository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class CaixaServiceTest {
 
     private CaixaService service;
+    private EstoqueService estoqueService;
     private Usuario operadorFinancas;
     private Usuario operadorSemPermissao;
 
     @BeforeEach
     void setUp() {
-        service = new CaixaService(new InMemoryCaixaRepository(), new InMemoryLogRepository());
+        estoqueService = new EstoqueService(new InMemoryProdutoRepository(), new InMemoryPedidoRepository());
+        service = new CaixaService(
+                new InMemoryCaixaRepository(),
+                new InMemoryLogRepository(),
+                estoqueService,
+                new PizzaMenuCatalogService()
+        );
 
         ClasseFuncionario classeCompleta = new ClasseFuncionario(1, "CAIXA", "PDV");
         classeCompleta.adicionarPermissao(Permissao.VER_VENDAS);
         classeCompleta.adicionarPermissao(Permissao.VER_FINANCAS);
+        classeCompleta.adicionarPermissao(Permissao.EDITAR_ESTOQUE);
         operadorFinancas = new Usuario(1, "João", "Silva", "529.982.247-25", "1234",
                 classeCompleta, Usuario.Perfil.OPERADOR);
 
@@ -75,6 +86,43 @@ class CaixaServiceTest {
 
         assertThrows(SecurityException.class,
                 () -> service.registrarVenda(operadorSemPermissao, 6, 30.00, "Venda bloqueada"));
+    }
+
+    @Test
+    void registrarVendaComItens_diminuiEstoqueEUsaTotalCalculadoNoServidor() {
+        Produto produto = estoqueService.cadastrarProduto(operadorFinancas, "Refrigerante", 10, 1, 8.00);
+        Caixa caixa = service.abrirCaixa(operadorFinancas, 9, 100.00);
+
+        service.registrarVenda(
+                operadorFinancas,
+                9,
+                BigDecimal.ZERO,
+                "2x Refrigerante",
+                java.util.List.of(new VendaItemInput(produto.getId(), 2))
+        );
+
+        assertBigDecimalEquals(116.00, caixa.getSaldoAtual());
+        assertEquals(8, estoqueService.buscarProdutoPorId(produto.getId()).orElseThrow().getQuantidadeAtual());
+    }
+
+    @Test
+    void registrarVendaComPizzaSobDemandaESemBaixaDeEstoqueDaPizza() {
+        Produto bebida = estoqueService.cadastrarProduto(operadorFinancas, "Refrigerante", 10, 1, 8.00);
+        Caixa caixa = service.abrirCaixa(operadorFinancas, 10, 100.00);
+
+        service.registrarVenda(
+                operadorFinancas,
+                10,
+                BigDecimal.ZERO,
+                "1x Pizza Calabresa Broto, 2x Refrigerante",
+                java.util.List.of(
+                        new VendaItemInput("pizza_calabresa_broto", 1),
+                        new VendaItemInput(bebida.getId(), 2)
+                )
+        );
+
+        assertBigDecimalEquals(145.90, caixa.getSaldoAtual());
+        assertEquals(8, estoqueService.buscarProdutoPorId(bebida.getId()).orElseThrow().getQuantidadeAtual());
     }
 
     @Test
