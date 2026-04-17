@@ -170,6 +170,18 @@
       <p class="inline-note">
         Caixa: <strong id="encerrar-caixa-num">—</strong>
       </p>
+      <p class="inline-note">
+        Valor no sistema: <strong id="encerrar-valor-sistema">R$0,00</strong>
+      </p>
+      <div class="form-group">
+        <label>Valor contado (R$)</label>
+        <input type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Observação (opcional)</label>
+        <input type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
+      </div>
+      <div class="alert-modal" id="alert-encerrar"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="fecharModal('modal-encerrar')">Cancelar</button>
@@ -200,8 +212,8 @@
     <div class="pdv-shell__body">
       <section class="pdv-catalog-panel">
         <div class="pdv-catalog-toolbar">
-          <label class="visually-hidden" for="pdv-busca">Buscar produto</label>
-          <input id="pdv-busca" class="pdv-search-input" type="text" placeholder="Buscar produto..." oninput="filtrarProdutosPDV()">
+          <label class="visually-hidden" for="pdv-busca">Buscar item do cardapio</label>
+          <input id="pdv-busca" class="pdv-search-input" type="text" placeholder="Buscar item do cardapio..." oninput="filtrarProdutosPDV()">
           <div id="pdv-categorias" class="pdv-category-tabs"></div>
         </div>
 
@@ -211,7 +223,7 @@
               <span data-icon="cart"></span>
             </div>
             <div class="empty-state__title">Carregando cardápio</div>
-            <div class="empty-state__copy">Buscando os produtos disponíveis para este caixa.</div>
+            <div class="empty-state__copy">Buscando os itens disponiveis para este caixa.</div>
           </div>
         </div>
       </section>
@@ -259,7 +271,6 @@
 
 <script src="/js/shared.js"></script>
 <script src="/js/caixas.js"></script>
-<script src="/js/pdv-catalog.js"></script>
 <script src="/js/pdv.js"></script>
 </body>
 </html>

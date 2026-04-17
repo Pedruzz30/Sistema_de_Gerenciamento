@@ -67,10 +67,19 @@ public class InMemoryCaixaRepository implements CaixaRepository {
 
     @Override
     public synchronized Optional<Caixa> buscarAbertoporNumero(int numeroCaixa) {
-        return caixas.stream()
+        List<Caixa> abertos = caixas.stream()
                 .filter(c -> c.getNumeroCaixa() == numeroCaixa)
                 .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
-                .findFirst();
+                .collect(Collectors.toList());
+        if (abertos.isEmpty()) {
+            return Optional.empty();
+        }
+        if (abertos.size() > 1) {
+            throw new IllegalStateException(
+                    "Existe mais de uma sessao de caixa aberta para o numero " + numeroCaixa + "."
+            );
+        }
+        return Optional.of(abertos.get(0));
     }
 
     @Override

@@ -36,7 +36,16 @@ public class CaixaRepositoryAdapter implements CaixaRepository {
 
     @Override
     public Optional<Caixa> buscarAbertoporNumero(int numeroCaixa) {
-        return delegate.findFirstByNumeroCaixaAndStatusOrderByIdDesc(numeroCaixa, Caixa.Status.ABERTO);
+        List<Caixa> abertos = delegate.findAllByNumeroCaixaAndStatusOrderByIdAsc(numeroCaixa, Caixa.Status.ABERTO);
+        if (abertos.isEmpty()) {
+            return Optional.empty();
+        }
+        if (abertos.size() > 1) {
+            throw new IllegalStateException(
+                    "Existe mais de uma sessao de caixa aberta para o numero " + numeroCaixa + "."
+            );
+        }
+        return Optional.of(abertos.get(0));
     }
 
     @Override

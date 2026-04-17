@@ -3,20 +3,23 @@ package service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import model.Caixa;
 import model.FechamentoCaixa;
+import model.ItemCardapio;
 import model.LogAcao;
 import model.MovimentacaoCaixa;
 import model.Permissao;
 import model.TipoMovimentacaoCaixa;
 import model.Usuario;
-import repository.CaixaRepository;
-import repository.LogRepository;
 import org.springframework.transaction.annotation.Transactional;
+import repository.CaixaRepository;
+import repository.FechamentoCaixaRepository;
+import repository.LogRepository;
 
 /**
  * Gerencia o ciclo de vida dos caixas PDV.
@@ -25,19 +28,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class CaixaService {
 
     private final CaixaRepository caixaRepository;
+    private final FechamentoCaixaRepository fechamentoCaixaRepository;
     private final LogRepository logRepository;
     private final EstoqueService estoqueService;
-    private final PizzaMenuCatalogService pizzaMenuCatalogService;
+    private final CardapioService cardapioService;
     private final AtomicLong proximoIdMovimentacao;
 
     public CaixaService(CaixaRepository caixaRepository,
+                        FechamentoCaixaRepository fechamentoCaixaRepository,
                         LogRepository logRepository,
                         EstoqueService estoqueService,
-                        PizzaMenuCatalogService pizzaMenuCatalogService) {
+                        CardapioService cardapioService) {
         this.caixaRepository = caixaRepository;
+        this.fechamentoCaixaRepository = fechamentoCaixaRepository;
         this.logRepository = logRepository;
         this.estoqueService = estoqueService;
-        this.pizzaMenuCatalogService = pizzaMenuCatalogService;
+        this.cardapioService = cardapioService;
         this.proximoIdMovimentacao = new AtomicLong(
                 caixaRepository.listarTodos().stream()
                         .flatMap(caixa -> caixa.getMovimentacoes().stream())
@@ -139,23 +145,65 @@ public class CaixaService {
     @Transactional
     public FechamentoCaixa encerrarCaixa(Usuario operador, int numeroCaixa) {
         validarPermissao(operador, Permissao.VER_FINANCAS);
-
         Caixa caixa = buscarCaixaAbertoOuLancar(numeroCaixa);
-        caixa.encerrar();
-        caixaRepository.salvar(caixa);
+        return encerrarCaixaInterno(operador, caixa, caixa.getSaldoAtual(), "");
+    }
 
-        FechamentoCaixa fechamento = new FechamentoCaixa(caixa);
+    @Transactional
+    public FechamentoCaixa encerrarCaixa(Usuario operador,
+                                         int numeroCaixa,
+                                         BigDecimal valorContado,
+                                         String observacao) {
+        validarPermissao(operador, Permissao.VER_FINANCAS);
+        Caixa caixa = buscarCaixaAbertoOuLancar(numeroCaixa);
+        return encerrarCaixaInterno(operador, caixa, valorContado, observacao);
+    }
+
+    private FechamentoCaixa encerrarCaixaInterno(Usuario operador,
+                                                 Caixa caixa,
+                                                 BigDecimal valorContado,
+                                                 String observacao) {
+        BigDecimal valorSistema = caixa.getSaldoAtual().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal valorContadoNormalizado = normalizarValorMonetario(valorContado, "Valor contado e obrigatorio.");
+        if (valorContadoNormalizado.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Valor contado nao pode ser negativo.");
+        }
+        BigDecimal divergencia = valorContadoNormalizado
+                .subtract(valorSistema)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        caixa.encerrar();
+        caixa = caixaRepository.salvar(caixa);
+
+        FechamentoCaixa fechamento = FechamentoCaixa.gerar(
+                caixa,
+                operador,
+                valorSistema,
+                valorContadoNormalizado,
+                divergencia,
+                observacao
+        );
+        fechamento = fechamentoCaixaRepository.salvar(fechamento);
 
         logRepository.salvar(new LogAcao(
                 0, operador.getRu(),
                 "CAIXA_ENCERRADO",
-                String.format("Caixa %d encerrado. Vendas: R$%s | Saldo final: R$%s",
-                        numeroCaixa,
-                        formatarMoeda(fechamento.getTotalVendas()),
-                        formatarMoeda(fechamento.getSaldoFinal()))
+                String.format("Caixa %d encerrado por %s. Valor sistema: R$%s | Valor contado: R$%s | Divergencia: R$%s",
+                        caixa.getNumeroCaixa(),
+                        operador.getNomeCompleto(),
+                        formatarMoeda(fechamento.getValorSistema()),
+                        formatarMoeda(fechamento.getValorContado()),
+                        formatarMoeda(fechamento.getDivergencia()))
         ));
 
         return fechamento;
+    }
+
+    private BigDecimal normalizarValorMonetario(BigDecimal valor, String mensagemQuandoNulo) {
+        if (valor == null) {
+            throw new IllegalArgumentException(mensagemQuandoNulo);
+        }
+        return valor.setScale(2, RoundingMode.HALF_UP);
     }
 
     public String consolidarDia(LocalDate data) {
@@ -200,10 +248,30 @@ public class CaixaService {
         return buscarCaixaAbertoOuLancar(numeroCaixa);
     }
 
+    public Caixa buscarCaixaPorId(long caixaId) {
+        return buscarCaixaPorIdOuLancar(caixaId);
+    }
+
+    public List<MovimentacaoCaixa> listarMovimentacoesPorCaixaId(long caixaId) {
+        return buscarCaixaPorIdOuLancar(caixaId).getMovimentacoes();
+    }
+
+    public List<Caixa> buscarHistoricoPorCaixaId(long caixaId) {
+        Caixa caixa = buscarCaixaPorIdOuLancar(caixaId);
+        return caixaRepository.buscarHistoricoPorNumero(caixa.getNumeroCaixa());
+    }
+
     private Caixa buscarCaixaAbertoOuLancar(int numeroCaixa) {
         return caixaRepository.buscarAbertoporNumero(numeroCaixa)
                 .orElseThrow(() -> new IllegalStateException(
                         "Caixa " + numeroCaixa + " nao esta aberto."
+                ));
+    }
+
+    private Caixa buscarCaixaPorIdOuLancar(long caixaId) {
+        return caixaRepository.buscarPorId(caixaId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Sessao de caixa " + caixaId + " nao encontrada."
                 ));
     }
 
@@ -260,31 +328,45 @@ public class CaixaService {
         }
 
         String descricaoOrigem = "Saida via venda no caixa " + numeroCaixa + formatarDescricao(descricao);
-        List<VendaItemInput> itensEstoque = itens.stream()
-                .peek(item -> {
-                    if (item == null || !item.possuiReferenciaValida()) {
-                        throw new IllegalArgumentException(
-                                "Itens da venda devem informar produtoId ou cardapioItemId, nunca ambos."
-                        );
-                    }
-                })
-                .filter(VendaItemInput::possuiProdutoEmEstoque)
-                .toList();
-
+        List<VendaItemInput> itensEstoqueLegados = new ArrayList<>();
+        List<VendaItemInput> itensEstoqueViaCardapio = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
-        if (!itensEstoque.isEmpty()) {
-            total = total.add(estoqueService.registrarSaidasPorVenda(operador, itensEstoque, descricaoOrigem));
-        }
 
         for (VendaItemInput item : itens) {
-            if (!item.possuiItemSobDemanda()) {
+            if (item == null || !item.possuiReferenciaValida()) {
+                throw new IllegalArgumentException(
+                        "Itens da venda devem informar produtoId ou itemCardapioId, nunca ambos."
+                );
+            }
+
+            if (item.possuiProdutoEmEstoque()) {
+                itensEstoqueLegados.add(item);
                 continue;
             }
 
-            // Pizza ainda entra no caixa/PDV, mas a baixa de insumos fica para a futura
-            // implementação de ficha técnica. Aqui a venda é apenas financeira.
-            PizzaMenuCatalogService.PizzaMenuItem pizza = pizzaMenuCatalogService.buscarPizzaPorCodigo(item.cardapioItemId());
-            total = total.add(pizza.precoUnitario().multiply(BigDecimal.valueOf(item.quantidade())));
+            ItemCardapio itemCardapio = cardapioService.buscarItemAtivoPorId(item.itemCardapioId());
+            total = total.add(itemCardapio.getPrecoVenda().multiply(BigDecimal.valueOf(item.quantidade())));
+
+            if (!itemCardapio.isEstoqueDireto()) {
+                continue;
+            }
+            if (!itemCardapio.possuiProdutoVinculado()) {
+                continue;
+            }
+            if (!itemCardapio.getProdutoVinculado().isControladoPorEstoque()) {
+                throw new IllegalArgumentException(
+                        "Produto vinculado ao item de cardapio nao esta controlado por estoque: " + itemCardapio.getNome()
+                );
+            }
+
+            itensEstoqueViaCardapio.add(new VendaItemInput(itemCardapio.getProdutoVinculado().getId(), item.quantidade()));
+        }
+
+        if (!itensEstoqueLegados.isEmpty()) {
+            total = total.add(estoqueService.registrarSaidasPorVenda(operador, itensEstoqueLegados, descricaoOrigem));
+        }
+        if (!itensEstoqueViaCardapio.isEmpty()) {
+            estoqueService.registrarSaidasPorVenda(operador, itensEstoqueViaCardapio, descricaoOrigem);
         }
 
         return total.setScale(2, RoundingMode.HALF_UP);

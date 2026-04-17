@@ -26,13 +26,14 @@ public class InMemoryCategoriaCardapioRepository implements CategoriaCardapioRep
             sequenceId.updateAndGet(atual -> Math.max(atual, categoriaCardapio.getId() + 1));
         }
 
-        categorias.removeIf(categoria -> categoria.getId() == persistida.getId());
-        categorias.add(persistida);
+        final CategoriaCardapio categoriaPersistida = persistida;
+        categorias.removeIf(categoria -> categoria.getId() == categoriaPersistida.getId());
+        categorias.add(categoriaPersistida);
         categorias.sort(Comparator
                 .comparingInt(CategoriaCardapio::getOrdemExibicao)
                 .thenComparing(CategoriaCardapio::getNomeExibicao, String.CASE_INSENSITIVE_ORDER)
                 .thenComparingInt(CategoriaCardapio::getId));
-        return persistida;
+        return categoriaPersistida;
     }
 
     @Override

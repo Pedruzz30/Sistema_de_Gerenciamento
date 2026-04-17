@@ -1,6 +1,7 @@
 package controller;
 
 import java.math.BigDecimal;
+import model.CotacaoMensal;
 import model.NivelEstoque;
 import model.Pedido;
 import model.Permissao;
@@ -9,6 +10,7 @@ import model.Produto;
 import model.TipoMovimentacao;
 import model.Usuario;
 import model.LogAcao;
+import repository.CotacaoRepository;
 import repository.LogRepository;
 import repository.UsuarioRepository;
 import service.EstoqueService;
@@ -16,7 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -26,13 +30,16 @@ public class ProdutoController {
     private final EstoqueService estoqueService;
     private final UsuarioRepository usuarioRepository;
     private final LogRepository logRepository;
+    private final CotacaoRepository cotacaoRepository;
 
     public ProdutoController(EstoqueService estoqueService,
                              UsuarioRepository usuarioRepository,
-                             LogRepository logRepository) {
+                             LogRepository logRepository,
+                             CotacaoRepository cotacaoRepository) {
         this.estoqueService = estoqueService;
         this.usuarioRepository = usuarioRepository;
         this.logRepository = logRepository;
+        this.cotacaoRepository = cotacaoRepository;
     }
 
     // GET /api/produtos
@@ -45,8 +52,9 @@ public class ProdutoController {
                 Permissao.VER_ESTOQUE,
                 "Voce nao tem permissao para visualizar produtos."
         );
+        Map<Integer, BigDecimal> custos = custoMaisRecentePorProduto();
         List<ProdutoResponse> resposta = estoqueService.listarProdutos().stream()
-                .map(p -> ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)))
+                .map(p -> ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p), custos.get(p.getId())))
                 .toList();
         return ResponseEntity.ok(resposta);
     }
@@ -66,7 +74,7 @@ public class ProdutoController {
             return ResponseEntity.notFound().build();
         }
         Produto p = produto.get();
-        return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)));
+        return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p), ultimoCustoOuNulo(p.getId())));
     }
 
     // POST /api/produtos
@@ -92,7 +100,7 @@ public class ProdutoController {
                     "Produto cadastrado: " + produto.getNome() + " (ID: " + produto.getId() + ")"
             ));
 
-            return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto)));
+            return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto), ultimoCustoOuNulo(produto.getId())));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
@@ -122,7 +130,7 @@ public class ProdutoController {
                     "Produto atualizado: " + produto.getNome() + " (ID: " + produto.getId() + ")"
             ));
 
-            return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto)));
+            return ResponseEntity.ok(ProdutoResponse.from(produto, estoqueService.calcularNivelEstoque(produto), ultimoCustoOuNulo(produto.getId())));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
@@ -159,7 +167,7 @@ public class ProdutoController {
                             "' (ID: " + p.getId() + "), quantidade: " + request.quantidade()
             ));
 
-            return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p)));
+            return ResponseEntity.ok(ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p), ultimoCustoOuNulo(p.getId())));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
@@ -213,17 +221,19 @@ public class ProdutoController {
             int quantidadeAtual,
             int quantidadeMinima,
             BigDecimal precoUnitario,
+            BigDecimal precoCusto,
             String nivelEstoque,
             String categoriaEstoque,
             boolean controladoPorEstoque
     ) {
-        public static ProdutoResponse from(Produto p, NivelEstoque nivel) {
+        public static ProdutoResponse from(Produto p, NivelEstoque nivel, BigDecimal precoCusto) {
             return new ProdutoResponse(
                     p.getId(),
                     p.getNome(),
                     p.getQuantidadeAtual(),
                     p.getQuantidadeMinima(),
                     p.getPrecoUnitario(),
+                    precoCusto,
                     nivel.name(),
                     p.getCategoriaEstoque() != null ? p.getCategoriaEstoque().name() : null,
                     p.isControladoPorEstoque()
@@ -279,4 +289,19 @@ public class ProdutoController {
     }
 
     public record ErroResponse(String erro) {}
+
+    private Map<Integer, BigDecimal> custoMaisRecentePorProduto() {
+        Map<Integer, BigDecimal> custos = new LinkedHashMap<>();
+        // listarTodas() retorna ordenado por mesReferencia DESC — primeira ocorrência por produto é a mais recente
+        for (CotacaoMensal c : cotacaoRepository.listarTodas()) {
+            custos.putIfAbsent(c.getProduto().getId(), c.getPrecoUnitario());
+        }
+        return custos;
+    }
+
+    private BigDecimal ultimoCustoOuNulo(int produtoId) {
+        List<CotacaoMensal> historico = cotacaoRepository.buscarHistoricoPorProduto(produtoId);
+        if (historico.isEmpty()) return null;
+        return historico.get(historico.size() - 1).getPrecoUnitario();
+    }
 }

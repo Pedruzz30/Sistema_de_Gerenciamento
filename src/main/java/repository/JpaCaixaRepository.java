@@ -15,7 +15,7 @@ public interface JpaCaixaRepository extends JpaRepository<Caixa, Long> {
     Optional<Caixa> findById(Long id);
 
     @EntityGraph(attributePaths = {"operadorAtual", "movimentacoes", "movimentacoes.operador"})
-    Optional<Caixa> findFirstByNumeroCaixaAndStatusOrderByIdDesc(int numeroCaixa, Caixa.Status status);
+    List<Caixa> findAllByNumeroCaixaAndStatusOrderByIdAsc(int numeroCaixa, Caixa.Status status);
 
     @EntityGraph(attributePaths = {"operadorAtual", "movimentacoes", "movimentacoes.operador"})
     List<Caixa> findAllByNumeroCaixaOrderByIdAsc(int numeroCaixa);

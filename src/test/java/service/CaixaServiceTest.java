@@ -1,44 +1,77 @@
 package service;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import model.Caixa;
+import model.CategoriaCardapio;
 import model.ClasseFuncionario;
 import model.FechamentoCaixa;
+import model.ItemCardapio;
 import model.Permissao;
 import model.Produto;
+import model.TipoItemCardapio;
 import model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import repository.InMemoryCaixaRepository;
+import repository.InMemoryCategoriaCardapioRepository;
+import repository.InMemoryFechamentoCaixaRepository;
+import repository.InMemoryItemCardapioRepository;
 import repository.InMemoryLogRepository;
 import repository.InMemoryPedidoRepository;
 import repository.InMemoryProdutoRepository;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CaixaServiceTest {
 
     private CaixaService service;
     private EstoqueService estoqueService;
+    private InMemoryItemCardapioRepository itemCardapioRepository;
+    private InMemoryFechamentoCaixaRepository fechamentoCaixaRepository;
+    private CategoriaCardapio categoriaPizzas;
+    private CategoriaCardapio categoriaBebidas;
     private Usuario operadorFinancas;
+    private Usuario operadorFechamento;
     private Usuario operadorSemPermissao;
 
     @BeforeEach
     void setUp() {
-        estoqueService = new EstoqueService(new InMemoryProdutoRepository(), new InMemoryPedidoRepository());
+        InMemoryProdutoRepository produtoRepository = new InMemoryProdutoRepository();
+        estoqueService = new EstoqueService(produtoRepository, new InMemoryPedidoRepository());
+        InMemoryCategoriaCardapioRepository categoriaCardapioRepository = new InMemoryCategoriaCardapioRepository();
+        itemCardapioRepository = new InMemoryItemCardapioRepository();
+        CardapioService cardapioService = new CardapioService(
+                categoriaCardapioRepository,
+                itemCardapioRepository,
+                produtoRepository
+        );
+
+        fechamentoCaixaRepository = new InMemoryFechamentoCaixaRepository();
         service = new CaixaService(
                 new InMemoryCaixaRepository(),
+                fechamentoCaixaRepository,
                 new InMemoryLogRepository(),
                 estoqueService,
-                new PizzaMenuCatalogService()
+                cardapioService
+        );
+
+        categoriaPizzas = categoriaCardapioRepository.salvar(
+                new CategoriaCardapio(0, "pizzas_artesanais", "Pizzas artesanais", 10, Boolean.TRUE)
+        );
+        categoriaBebidas = categoriaCardapioRepository.salvar(
+                new CategoriaCardapio(0, "bebidas", "Bebidas", 20, Boolean.TRUE)
         );
 
         ClasseFuncionario classeCompleta = new ClasseFuncionario(1, "CAIXA", "PDV");
         classeCompleta.adicionarPermissao(Permissao.VER_VENDAS);
         classeCompleta.adicionarPermissao(Permissao.VER_FINANCAS);
         classeCompleta.adicionarPermissao(Permissao.EDITAR_ESTOQUE);
-        operadorFinancas = new Usuario(1, "João", "Silva", "529.982.247-25", "1234",
+        operadorFinancas = new Usuario(1, "Joao", "Silva", "529.982.247-25", "1234",
+                classeCompleta, Usuario.Perfil.OPERADOR);
+        operadorFechamento = new Usuario(3, "Carlos", "Fechamento", "390.533.447-05", "1234",
                 classeCompleta, Usuario.Perfil.OPERADOR);
 
         ClasseFuncionario classeSemPermissao = new ClasseFuncionario(2, "ESTOQUISTA", "Estoque");
@@ -106,8 +139,34 @@ class CaixaServiceTest {
     }
 
     @Test
-    void registrarVendaComPizzaSobDemandaESemBaixaDeEstoqueDaPizza() {
+    void registrarVendaComItemCardapioSobDemandaEItemVinculadoAoEstoque() {
         Produto bebida = estoqueService.cadastrarProduto(operadorFinancas, "Refrigerante", 10, 1, 8.00);
+        ItemCardapio pizza = itemCardapioRepository.salvar(new ItemCardapio(
+                0,
+                "pizza_calabresa_broto",
+                "Pizza Calabresa Broto",
+                "Pizza artesanal sob demanda.",
+                BigDecimal.valueOf(29.90),
+                categoriaPizzas,
+                TipoItemCardapio.PREPARADO_SOB_DEMANDA,
+                Boolean.TRUE,
+                Boolean.TRUE,
+                10,
+                null
+        ));
+        ItemCardapio bebidaCardapio = itemCardapioRepository.salvar(new ItemCardapio(
+                0,
+                "bebida_refrigerante",
+                "Refrigerante",
+                "Bebida com baixa automatica de estoque.",
+                BigDecimal.valueOf(8.00),
+                categoriaBebidas,
+                TipoItemCardapio.ESTOQUE_DIRETO,
+                Boolean.TRUE,
+                Boolean.TRUE,
+                20,
+                bebida
+        ));
         Caixa caixa = service.abrirCaixa(operadorFinancas, 10, 100.00);
 
         service.registrarVenda(
@@ -116,8 +175,8 @@ class CaixaServiceTest {
                 BigDecimal.ZERO,
                 "1x Pizza Calabresa Broto, 2x Refrigerante",
                 java.util.List.of(
-                        new VendaItemInput("pizza_calabresa_broto", 1),
-                        new VendaItemInput(bebida.getId(), 2)
+                        VendaItemInput.itemCardapio(pizza.getId(), 1),
+                        VendaItemInput.itemCardapio(bebidaCardapio.getId(), 2)
                 )
         );
 
@@ -130,7 +189,7 @@ class CaixaServiceTest {
         service.abrirCaixa(operadorFinancas, 3, 50.00);
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.registrarSangria(operadorFinancas, 3, 200.00, "Sangria inválida"));
+                () -> service.registrarSangria(operadorFinancas, 3, 200.00, "Sangria invalida"));
     }
 
     @Test
@@ -156,10 +215,22 @@ class CaixaServiceTest {
         service.registrarVenda(operadorFinancas, 4, 18.50, "Venda B");
         service.registrarSangria(operadorFinancas, 4, 50.00, "Envio ao cofre");
 
-        FechamentoCaixa fechamento = service.encerrarCaixa(operadorFinancas, 4);
+        FechamentoCaixa fechamento = service.encerrarCaixa(
+                operadorFechamento,
+                4,
+                BigDecimal.valueOf(91.00),
+                "Quebra de caixa"
+        );
 
         assertBigDecimalEquals(43.50, fechamento.getTotalVendas());
         assertBigDecimalEquals(93.50, fechamento.getSaldoFinal());
+        assertBigDecimalEquals(91.00, fechamento.getValorContado());
+        assertBigDecimalEquals(-2.50, fechamento.getDivergencia());
+        assertEquals("Joao Silva", fechamento.getAbertoPor());
+        assertEquals("Carlos Fechamento", fechamento.getFechadoPor());
+        assertEquals("Quebra de caixa", fechamento.getObservacao());
+        assertEquals(1, fechamentoCaixaRepository.listarTodos().size());
+        assertEquals(fechamento, fechamentoCaixaRepository.buscarPorId(fechamento.getId()).orElseThrow());
         assertEquals(Caixa.Status.ENCERRADO, caixa.getStatus());
         assertThrows(IllegalStateException.class, () -> service.buscarCaixaAberto(4));
     }
@@ -173,12 +244,41 @@ class CaixaServiceTest {
     }
 
     @Test
+    void caixaIdIdentificaSessaoMesmoComReaberturaDoMesmoNumero() {
+        Caixa primeiraSessao = service.abrirCaixa(operadorFinancas, 11, 100.00);
+        service.registrarVenda(operadorFinancas, 11, 15.00, "Venda sessao 1");
+        service.encerrarCaixa(
+                operadorFechamento,
+                11,
+                BigDecimal.valueOf(115.00),
+                "Fechamento sessao 1"
+        );
+
+        Caixa segundaSessao = service.abrirCaixa(operadorFinancas, 11, 80.00);
+        service.registrarVenda(operadorFinancas, 11, 20.00, "Venda sessao 2");
+
+        Caixa sessaoRecuperadaPorId = service.buscarCaixaPorId(primeiraSessao.getId());
+        List<Long> historicoIds = service.buscarHistoricoPorCaixaId(primeiraSessao.getId()).stream()
+                .map(Caixa::getId)
+                .toList();
+
+        assertEquals(primeiraSessao.getId(), sessaoRecuperadaPorId.getId());
+        assertEquals(Caixa.Status.ENCERRADO, sessaoRecuperadaPorId.getStatus());
+        assertEquals(1, service.listarMovimentacoesPorCaixaId(primeiraSessao.getId()).size());
+        assertBigDecimalEquals(15.00, service.listarMovimentacoesPorCaixaId(primeiraSessao.getId()).get(0).getValor());
+        assertEquals(1, service.listarMovimentacoesPorCaixaId(segundaSessao.getId()).size());
+        assertBigDecimalEquals(20.00, service.listarMovimentacoesPorCaixaId(segundaSessao.getId()).get(0).getValor());
+        assertEquals(List.of(primeiraSessao.getId(), segundaSessao.getId()), historicoIds);
+        assertEquals(segundaSessao.getId(), service.buscarCaixaAberto(11).getId());
+    }
+
+    @Test
     void buscarCaixaAberto_caixaInexistente_lancaIllegalState() {
         assertThrows(IllegalStateException.class,
                 () -> service.buscarCaixaAberto(999));
     }
 
-    private void assertBigDecimalEquals(double esperado, BigDecimal atual) {
+    private static void assertBigDecimalEquals(double esperado, BigDecimal atual) {
         assertEquals(0, BigDecimal.valueOf(esperado).compareTo(atual));
     }
 }

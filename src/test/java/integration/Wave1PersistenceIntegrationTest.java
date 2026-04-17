@@ -47,7 +47,8 @@ class Wave1PersistenceIntegrationTest {
                 "cotacoes_mensais",
                 "logs_auditoria",
                 "caixas",
-                "movimentacoes_caixa"
+                "movimentacoes_caixa",
+                "fechamentos_caixa"
         )));
     }
 
@@ -78,6 +79,18 @@ class Wave1PersistenceIntegrationTest {
                 "valor",
                 "operador_ru",
                 "data_hora"
+        )));
+        assertTrue(colunasDaTabela("fechamentos_caixa").containsAll(Set.of(
+                "id",
+                "caixa_id",
+                "numero_caixa",
+                "aberto_por",
+                "fechado_por",
+                "valor_sistema",
+                "valor_contado",
+                "divergencia",
+                "observacao",
+                "timestamp_fechamento"
         )));
     }
 

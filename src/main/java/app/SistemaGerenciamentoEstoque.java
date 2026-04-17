@@ -22,8 +22,11 @@ public class SistemaGerenciamentoEstoque {
         NotaFiscalRepository notaFiscalRepo      = new InMemoryNotaFiscalRepository();
         CotacaoRepository    cotacaoRepo         = new InMemoryCotacaoRepository();
         CaixaRepository      caixaRepo           = new InMemoryCaixaRepository();
+        FechamentoCaixaRepository fechamentoCaixaRepo = new InMemoryFechamentoCaixaRepository();
         ProdutoRepository    produtoRepo         = new InMemoryProdutoRepository();
         PedidoRepository     pedidoRepo          = new InMemoryPedidoRepository();
+        CategoriaCardapioRepository categoriaCardapioRepository = new InMemoryCategoriaCardapioRepository();
+        ItemCardapioRepository itemCardapioRepository = new InMemoryItemCardapioRepository();
 
         // ── Services ───────────────────────────────────────────
         EstoqueService              estoqueService    = new EstoqueService(produtoRepo, pedidoRepo);
@@ -37,8 +40,10 @@ public class SistemaGerenciamentoEstoque {
                 = new NotaFiscalService(notaFiscalRepo, logRepository, estoqueService, fornecedorService);
         CotacaoService              cotacaoService
                 = new CotacaoService(cotacaoRepo, logRepository);
+        CardapioService             cardapioService
+                = new CardapioService(categoriaCardapioRepository, itemCardapioRepository, produtoRepo);
         CaixaService                caixaService
-                = new CaixaService(caixaRepo, logRepository, estoqueService, new PizzaMenuCatalogService());
+                = new CaixaService(caixaRepo, fechamentoCaixaRepo, logRepository, estoqueService, cardapioService);
 
         // ── Classes de funcionário ─────────────────────────────
         ClasseFuncionario classeSuperior       = criarClasseSuperior();

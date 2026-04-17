@@ -57,15 +57,18 @@ public class AppConfig {
 
     @Bean
     public CaixaService caixaService(CaixaRepository caixaRepository,
+                                     FechamentoCaixaRepository fechamentoCaixaRepository,
                                      LogRepository logRepository,
                                      EstoqueService estoqueService,
-                                     PizzaMenuCatalogService pizzaMenuCatalogService) {
-        return new CaixaService(caixaRepository, logRepository, estoqueService, pizzaMenuCatalogService);
+                                     CardapioService cardapioService) {
+        return new CaixaService(caixaRepository, fechamentoCaixaRepository, logRepository, estoqueService, cardapioService);
     }
 
     @Bean
-    public PizzaMenuCatalogService pizzaMenuCatalogService() {
-        return new PizzaMenuCatalogService();
+    public CardapioService cardapioService(CategoriaCardapioRepository categoriaCardapioRepository,
+                                           ItemCardapioRepository itemCardapioRepository,
+                                           ProdutoRepository produtoRepository) {
+        return new CardapioService(categoriaCardapioRepository, itemCardapioRepository, produtoRepository);
     }
 
     @Bean

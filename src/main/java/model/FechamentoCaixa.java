@@ -1,106 +1,180 @@
 package model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 /**
- * Snapshot imutável do estado financeiro de um caixa PDV ao ser encerrado.
+ * Evento auditável de encerramento de caixa.
  *
- * <h2>Papel no domínio</h2>
- * {@code FechamentoCaixa} é um <strong>relatório de encerramento</strong> —
- * um registro histórico gerado uma única vez a partir de um {@link Caixa}
- * encerrado. Pense nele como o "extrato impresso" que o operador assina
- * ao fechar o turno: imutável, auditável, nunca alterado após a geração.
- *
- * <h2>Convenções monetárias</h2>
- * Os valores são capturados de {@link Caixa} (que ainda usa {@code double})
- * e imediatamente convertidos para {@link BigDecimal} via
- * {@link BigDecimal#valueOf(double)} — o único método seguro para essa
- * conversão, pois respeita a representação decimal do {@code double} em vez
- * de usar a representação binária de ponto flutuante.
- *
- * <p>Assim o relatório exibe valores corretos mesmo que o {@link Caixa}
- * ainda não tenha sido migrado para {@link BigDecimal}.
- *
- * <h2>Verificação de consistência</h2>
- * Use {@link #calcularDivergencia()} para detectar discrepâncias entre o
- * saldo final informado pelo caixa e o saldo calculado pela fórmula:
- * <pre>
- *   saldoEsperado = saldoInicial + totalEntradas − totalSaidas
- * </pre>
- * Qualquer divergência diferente de zero indica erro de contagem ou bug.
+ * <p>Ao contrário do snapshot em memória anterior, este registro é persistido
+ * com todos os dados relevantes do fechamento: quem abriu, quem fechou,
+ * valor calculado pelo sistema, valor contado fisicamente e eventual
+ * divergência.
  */
+@Entity
+@Table(name = "fechamentos_caixa")
 public class FechamentoCaixa {
 
-    // ── Constantes ────────────────────────────────────────────────────────────
-
-    private static final int    ESCALA_MONETARIA = 2;
-    private static final String FORMATO_DATA     = "dd/MM/yyyy";
-
-    /** Largura máxima do nome do operador no relatório. Nomes maiores são truncados. */
+    private static final int ESCALA_MONETARIA = 2;
+    private static final int LIMITE_NOME = 120;
+    private static final int LIMITE_OBSERVACAO = 500;
+    private static final String FORMATO_DATA = "dd/MM/yyyy HH:mm";
     private static final int LARGURA_NOME = 18;
 
-    // ── Campos — todos imutáveis ──────────────────────────────────────────────
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
 
-    private final int        numeroCaixa;
-    private final LocalDate  data;
-    private final String     nomeOperador;
-    private final int        quantidadeMovimentacoes;
+    @Column(name = "caixa_id", nullable = false)
+    private long caixaId;
 
-    private final BigDecimal saldoInicial;
-    private final BigDecimal totalEntradas;
-    private final BigDecimal totalSaidas;
-    private final BigDecimal totalVendas;
-    private final BigDecimal saldoFinal;
+    @Column(name = "numero_caixa", nullable = false)
+    private int numeroCaixa;
 
-    // ── Construtor ────────────────────────────────────────────────────────────
+    @Column(name = "aberto_por", nullable = false, length = LIMITE_NOME)
+    private String abertoPor;
 
-    /**
-     * Gera o fechamento a partir de um {@link Caixa} encerrado.
-     *
-     * <p>Captura o estado completo do caixa no momento do fechamento.
-     * Alterações posteriores no objeto {@code Caixa} não afetam este snapshot.
-     *
-     * @param caixa caixa encerrado a partir do qual o relatório será gerado
-     * @throws IllegalArgumentException se o caixa não estiver no status {@code ENCERRADO}
-     *                                  ou se {@code dataEncerramento} for nula
-     */
-    public FechamentoCaixa(Caixa caixa) {
-        validar(caixa != null,
-                "Caixa não pode ser nulo.");
-        validar(caixa.getStatus() == Caixa.Status.ENCERRADO,
-                "Só é possível gerar fechamento de caixa ENCERRADO. Status atual: "
-                        + caixa.getStatus());
-        validar(caixa.getDataEncerramento() != null,
-                "Data de encerramento ausente — o caixa pode não ter sido encerrado corretamente.");
+    @Column(name = "fechado_por", nullable = false, length = LIMITE_NOME)
+    private String fechadoPor;
 
-        this.numeroCaixa             = caixa.getNumeroCaixa();
-        this.data                    = caixa.getDataEncerramento().toLocalDate();
-        this.nomeOperador            = caixa.getOperadorAtual().getNomeCompleto();
-        this.quantidadeMovimentacoes = caixa.getMovimentacoes().size();
+    @Column(name = "quantidade_movimentacoes", nullable = false)
+    private int quantidadeMovimentacoes;
 
-        // Conversão segura: BigDecimal.valueOf usa a representação decimal do double,
-        // não a binária — evita que 49.99 vire 49.990000000000001 no relatório.
-        this.saldoInicial   = caixa.getSaldoInicial();
-        this.totalEntradas  = caixa.calcularTotalEntradas();
-        this.totalSaidas    = caixa.calcularTotalSaidas();
-        this.totalVendas    = caixa.calcularTotalVendas();
-        this.saldoFinal     = caixa.getSaldoAtual();
+    @Column(name = "saldo_inicial", nullable = false, precision = 19, scale = 2)
+    private BigDecimal saldoInicial;
+
+    @Column(name = "total_entradas", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalEntradas;
+
+    @Column(name = "total_saidas", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalSaidas;
+
+    @Column(name = "total_vendas", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalVendas;
+
+    @Column(name = "valor_sistema", nullable = false, precision = 19, scale = 2)
+    private BigDecimal valorSistema;
+
+    @Column(name = "valor_contado", nullable = false, precision = 19, scale = 2)
+    private BigDecimal valorContado;
+
+    @Column(name = "divergencia", nullable = false, precision = 19, scale = 2)
+    private BigDecimal divergencia;
+
+    @Column(name = "observacao", length = LIMITE_OBSERVACAO)
+    private String observacao;
+
+    @Column(name = "timestamp_fechamento", nullable = false)
+    private LocalDateTime timestamp;
+
+    protected FechamentoCaixa() {
+        // Construtor exigido pelo JPA.
     }
 
-    // ── Métricas derivadas ────────────────────────────────────────────────────
+    private FechamentoCaixa(long id,
+                            long caixaId,
+                            int numeroCaixa,
+                            String abertoPor,
+                            String fechadoPor,
+                            int quantidadeMovimentacoes,
+                            BigDecimal saldoInicial,
+                            BigDecimal totalEntradas,
+                            BigDecimal totalSaidas,
+                            BigDecimal totalVendas,
+                            BigDecimal valorSistema,
+                            BigDecimal valorContado,
+                            BigDecimal divergencia,
+                            String observacao,
+                            LocalDateTime timestamp) {
+        validar(id >= 0, "ID do fechamento nao pode ser negativo.");
+        validar(caixaId > 0, "Fechamento deve referenciar um caixa persistido.");
+        validar(numeroCaixa > 0, "Numero do caixa deve ser maior que zero.");
+        validar(quantidadeMovimentacoes >= 0, "Quantidade de movimentacoes nao pode ser negativa.");
+        validar(timestamp != null, "Timestamp do fechamento e obrigatorio.");
 
-    /**
-     * Calcula o saldo esperado com base na fórmula contábil:
-     * <pre>
-     *   saldoEsperado = saldoInicial + totalEntradas − totalSaidas
-     * </pre>
-     *
-     * @return saldo esperado com precisão monetária
-     */
+        this.id = id;
+        this.caixaId = caixaId;
+        this.numeroCaixa = numeroCaixa;
+        this.abertoPor = normalizarTextoObrigatorio(abertoPor, LIMITE_NOME, "Operador de abertura e obrigatorio.");
+        this.fechadoPor = normalizarTextoObrigatorio(fechadoPor, LIMITE_NOME, "Operador de fechamento e obrigatorio.");
+        this.quantidadeMovimentacoes = quantidadeMovimentacoes;
+        this.saldoInicial = normalizarValor(saldoInicial);
+        this.totalEntradas = normalizarValor(totalEntradas);
+        this.totalSaidas = normalizarValor(totalSaidas);
+        this.totalVendas = normalizarValor(totalVendas);
+        this.valorSistema = normalizarValor(valorSistema);
+        this.valorContado = normalizarValor(valorContado);
+        this.divergencia = normalizarValor(divergencia);
+        this.observacao = normalizarTextoOpcional(observacao, LIMITE_OBSERVACAO);
+        this.timestamp = timestamp;
+    }
+
+    public static FechamentoCaixa gerar(Caixa caixa,
+                                        Usuario atorFechamento,
+                                        BigDecimal valorSistema,
+                                        BigDecimal valorContado,
+                                        BigDecimal divergencia,
+                                        String observacao) {
+        validar(caixa != null, "Caixa nao pode ser nulo.");
+        validar(caixa.getStatus() == Caixa.Status.ENCERRADO,
+                "So e possivel gerar fechamento de caixa ENCERRADO. Status atual: " + caixa.getStatus());
+        validar(caixa.getDataEncerramento() != null,
+                "Data de encerramento ausente; o caixa pode nao ter sido encerrado corretamente.");
+        validar(caixa.getOperadorAtual() != null,
+                "Operador de abertura ausente no caixa encerrado.");
+        validar(atorFechamento != null, "Operador de fechamento e obrigatorio.");
+
+        return new FechamentoCaixa(
+                0,
+                caixa.getId(),
+                caixa.getNumeroCaixa(),
+                caixa.getOperadorAtual().getNomeCompleto(),
+                atorFechamento.getNomeCompleto(),
+                caixa.getMovimentacoes().size(),
+                caixa.getSaldoInicial(),
+                caixa.calcularTotalEntradas(),
+                caixa.calcularTotalSaidas(),
+                caixa.calcularTotalVendas(),
+                valorSistema,
+                valorContado,
+                divergencia,
+                observacao,
+                caixa.getDataEncerramento()
+        );
+    }
+
+    public FechamentoCaixa comId(long novoId) {
+        validar(novoId > 0, "Novo ID do fechamento deve ser maior que zero.");
+        return new FechamentoCaixa(
+                novoId,
+                caixaId,
+                numeroCaixa,
+                abertoPor,
+                fechadoPor,
+                quantidadeMovimentacoes,
+                saldoInicial,
+                totalEntradas,
+                totalSaidas,
+                totalVendas,
+                valorSistema,
+                valorContado,
+                divergencia,
+                observacao,
+                timestamp
+        );
+    }
+
     public BigDecimal calcularSaldoEsperado() {
         return saldoInicial
                 .add(totalEntradas)
@@ -108,157 +182,180 @@ public class FechamentoCaixa {
                 .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
     }
 
-    /**
-     * Calcula a divergência entre o saldo final registrado e o saldo esperado.
-     *
-     * <pre>
-     *   divergência = saldoFinal − saldoEsperado
-     * </pre>
-     *
-     * <ul>
-     *   <li>{@code ZERO} — caixa fechou corretamente, sem diferença.</li>
-     *   <li>Positivo — sobrou dinheiro (mais do que deveria).</li>
-     *   <li>Negativo — faltou dinheiro (menos do que deveria).</li>
-     * </ul>
-     *
-     * @return diferença com sinal; {@code ZERO} indica fechamento sem divergência
-     */
     public BigDecimal calcularDivergencia() {
-        return saldoFinal
-                .subtract(calcularSaldoEsperado())
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+        return divergencia;
     }
 
-    /** @return {@code true} se o saldo final bate exatamente com o esperado */
     public boolean estaBalanceado() {
-        return calcularDivergencia().compareTo(BigDecimal.ZERO) == 0;
+        return divergencia.compareTo(BigDecimal.ZERO) == 0;
     }
 
-    // ── Exibição ──────────────────────────────────────────────────────────────
-
-    /**
-     * Gera o relatório de fechamento formatado para exibição em terminal ou logs.
-     *
-     * <p>O nome do operador é truncado a {@value #LARGURA_NOME} caracteres para
-     * preservar o alinhamento da caixa, independentemente do tamanho real do nome.
-     *
-     * <p>Inclui linha de divergência apenas quando o caixa não está balanceado,
-     * chamando atenção para o problema sem poluir relatórios corretos.
-     */
     public String gerarResumo() {
-        DateTimeFormatter fmt   = DateTimeFormatter.ofPattern(FORMATO_DATA);
-        String nomeExibido      = truncar(nomeOperador, LARGURA_NOME);
-        BigDecimal divergencia  = calcularDivergencia();
-        String statusBalanco    = estaBalanceado() ? "✓ Balanceado" : "⚠ DIVERGÊNCIA";
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern(FORMATO_DATA);
+        String abertoPorExibido = truncar(abertoPor, LARGURA_NOME);
+        String fechadoPorExibido = truncar(fechadoPor, LARGURA_NOME);
+        String statusBalanco = estaBalanceado() ? "Balanceado" : "Divergencia";
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format(
-                "┌──────────────────────────────────────────┐%n"  +
-                        "│  FECHAMENTO CAIXA %-2d  ─  %-16s│%n"          +
-                        "├──────────────────────────────────────────┤%n"  +
-                        "│  Operador       %-26s│%n"                      +
-                        "│  Data           %-26s│%n"                      +
-                        "│  Movimentações  %-26d│%n"                      +
-                        "├──────────────────────────────────────────┤%n"  +
-                        "│  Saldo inicial  %26s│%n"                       +
-                        "│  Total entradas %26s│%n"                       +
-                        "│  Total saídas   %26s│%n"                       +
-                        "│  Total vendas   %26s│%n"                       +
-                        "├──────────────────────────────────────────┤%n"  +
-                        "│  Saldo final    %26s│%n"                       +
-                        "│  Status         %-26s│%n",
+        return String.format(
+                "┌──────────────────────────────────────────┐%n" +
+                        "│  FECHAMENTO CAIXA %-2d  %-17s│%n" +
+                        "├──────────────────────────────────────────┤%n" +
+                        "│  Aberto por     %-26s│%n" +
+                        "│  Fechado por    %-26s│%n" +
+                        "│  Data/Hora      %-26s│%n" +
+                        "│  Movimentacoes  %-26d│%n" +
+                        "├──────────────────────────────────────────┤%n" +
+                        "│  Saldo inicial  %26s│%n" +
+                        "│  Total entradas %26s│%n" +
+                        "│  Total saidas   %26s│%n" +
+                        "│  Total vendas   %26s│%n" +
+                        "├──────────────────────────────────────────┤%n" +
+                        "│  Valor sistema  %26s│%n" +
+                        "│  Valor contado  %26s│%n" +
+                        "│  Divergencia    %26s│%n" +
+                        "│  Status         %-26s│%n" +
+                        "└──────────────────────────────────────────┘",
                 numeroCaixa,
-                data.format(fmt),
-                nomeExibido,
-                data.format(fmt),
+                timestamp.format(fmt),
+                abertoPorExibido,
+                fechadoPorExibido,
+                timestamp.format(fmt),
                 quantidadeMovimentacoes,
                 formatarMoeda(saldoInicial),
                 formatarMoeda(totalEntradas),
                 formatarMoeda(totalSaidas),
                 formatarMoeda(totalVendas),
-                formatarMoeda(saldoFinal),
+                formatarMoeda(valorSistema),
+                formatarMoeda(valorContado),
+                formatarMoeda(divergencia),
                 statusBalanco
-        ));
-
-        if (!estaBalanceado()) {
-            sb.append(String.format(
-                    "│  Divergência    %26s│%n",
-                    formatarMoeda(divergencia)
-            ));
-        }
-
-        sb.append("└──────────────────────────────────────────┘");
-        return sb.toString();
+        );
     }
 
-    // ── Getters ───────────────────────────────────────────────────────────────
+    public long getId() {
+        return id;
+    }
 
-    public int        getNumeroCaixa()             { return numeroCaixa;             }
-    public LocalDate  getData()                    { return data;                    }
-    public String     getNomeOperador()            { return nomeOperador;            }
-    public int        getQuantidadeMovimentacoes() { return quantidadeMovimentacoes; }
-    public BigDecimal getSaldoInicial()            { return saldoInicial;            }
-    public BigDecimal getTotalEntradas()           { return totalEntradas;           }
-    public BigDecimal getTotalSaidas()             { return totalSaidas;             }
-    public BigDecimal getTotalVendas()             { return totalVendas;             }
-    public BigDecimal getSaldoFinal()              { return saldoFinal;              }
+    public long getCaixaId() {
+        return caixaId;
+    }
 
-    // ── Infraestrutura de objeto ──────────────────────────────────────────────
+    public int getNumeroCaixa() {
+        return numeroCaixa;
+    }
 
-    /**
-     * Dois fechamentos são iguais se referem ao mesmo caixa na mesma data.
-     * Não deve existir mais de um fechamento por (numeroCaixa, data).
-     */
+    public LocalDate getData() {
+        return timestamp.toLocalDate();
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public String getNomeOperador() {
+        return abertoPor;
+    }
+
+    public String getAbertoPor() {
+        return abertoPor;
+    }
+
+    public String getFechadoPor() {
+        return fechadoPor;
+    }
+
+    public int getQuantidadeMovimentacoes() {
+        return quantidadeMovimentacoes;
+    }
+
+    public BigDecimal getSaldoInicial() {
+        return saldoInicial;
+    }
+
+    public BigDecimal getTotalEntradas() {
+        return totalEntradas;
+    }
+
+    public BigDecimal getTotalSaidas() {
+        return totalSaidas;
+    }
+
+    public BigDecimal getTotalVendas() {
+        return totalVendas;
+    }
+
+    public BigDecimal getSaldoFinal() {
+        return valorSistema;
+    }
+
+    public BigDecimal getValorSistema() {
+        return valorSistema;
+    }
+
+    public BigDecimal getValorContado() {
+        return valorContado;
+    }
+
+    public BigDecimal getDivergencia() {
+        return divergencia;
+    }
+
+    public String getObservacao() {
+        return observacao;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof FechamentoCaixa other)) return false;
-        return numeroCaixa == other.numeroCaixa
-                && Objects.equals(data, other.data);
+        return id != 0 && id == other.id;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(numeroCaixa, data);
+        return Objects.hash(id);
     }
 
-    /** Delega para {@link #gerarResumo()} — saída rica para logs e debug. */
     @Override
     public String toString() {
         return gerarResumo();
     }
 
-    // ── Auxiliares privados ───────────────────────────────────────────────────
-
-    /**
-     * Converte {@code double} para {@link BigDecimal} com escala 2 de forma segura.
-     *
-     * <p>{@code BigDecimal.valueOf(double)} usa a representação String do double,
-     * evitando o erro de ponto flutuante de {@code new BigDecimal(double)}.
-     */
-    private static BigDecimal bd(double valor) {
-        return BigDecimal.valueOf(valor).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+    private static BigDecimal normalizarValor(BigDecimal valor) {
+        validar(valor != null, "Valor monetario nao pode ser nulo.");
+        return valor.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
     }
 
-    /** Formata um {@link BigDecimal} como {@code R$ 1.234,56} para o relatório. */
+    private static String normalizarTextoObrigatorio(String texto, int limite, String mensagem) {
+        validar(texto != null && !texto.isBlank(), mensagem);
+        String textoNormalizado = texto.trim();
+        validar(textoNormalizado.length() <= limite,
+                "Texto excede o limite de " + limite + " caracteres.");
+        return textoNormalizado;
+    }
+
+    private static String normalizarTextoOpcional(String texto, int limite) {
+        if (texto == null || texto.isBlank()) {
+            return "";
+        }
+        String textoNormalizado = texto.trim();
+        validar(textoNormalizado.length() <= limite,
+                "Texto excede o limite de " + limite + " caracteres.");
+        return textoNormalizado;
+    }
+
     private static String formatarMoeda(BigDecimal valor) {
-        // Sinal explícito para divergências negativas.
         String sinal = valor.signum() < 0 ? "-" : " ";
         BigDecimal abs = valor.abs().setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
         return sinal + "R$ " + abs.toPlainString();
     }
 
-    /**
-     * Trunca uma string para no máximo {@code limite} caracteres,
-     * adicionando {@code "…"} se o corte ocorrer.
-     */
     private static String truncar(String texto, int limite) {
-        if (texto == null)              return "";
-        if (texto.length() <= limite)   return texto;
-        return texto.substring(0, limite - 1) + "…";
+        if (texto == null) return "";
+        if (texto.length() <= limite) return texto;
+        return texto.substring(0, limite - 1) + "...";
     }
 
-    /** Lança {@link IllegalArgumentException} se a condição for falsa. */
     private static void validar(boolean condicao, String mensagem) {
         if (!condicao) throw new IllegalArgumentException(mensagem);
     }

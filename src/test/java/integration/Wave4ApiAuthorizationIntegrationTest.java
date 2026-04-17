@@ -49,7 +49,10 @@ class Wave4ApiAuthorizationIntegrationTest {
     void endpointsDeLeituraExigemHeaderDeIdentidade() {
         List<String> paths = List.of(
                 "/api/produtos",
-                "/api/cardapio/pizzas",
+                "/api/cardapio/categorias",
+                "/api/cardapio/itens",
+                "/api/cardapio/admin/categorias",
+                "/api/cardapio/admin/itens",
                 "/api/movimentacoes",
                 "/api/fornecedores",
                 "/api/fornecedores/ativos",
@@ -58,6 +61,9 @@ class Wave4ApiAuthorizationIntegrationTest {
                 "/api/logs",
                 "/api/caixas",
                 "/api/caixas/metricas",
+                "/api/caixas/sessoes/1",
+                "/api/caixas/sessoes/1/movimentacoes",
+                "/api/caixas/sessoes/1/historico",
                 "/api/funcionarios/classes"
         );
 
@@ -71,7 +77,10 @@ class Wave4ApiAuthorizationIntegrationTest {
     @Test
     void permissoesDosPerfisSaoRespeitadasNosEndpointsProtegidos() {
         assertEquals(HttpStatus.OK, get("/api/produtos", gerenteEstoque.getRu()).getStatusCode());
-        assertEquals(HttpStatus.OK, get("/api/cardapio/pizzas", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/cardapio/categorias", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/cardapio/itens", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/cardapio/admin/categorias", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/cardapio/admin/itens", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/movimentacoes", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/fornecedores", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/notas", gerenteEstoque.getRu()).getStatusCode());
@@ -82,10 +91,13 @@ class Wave4ApiAuthorizationIntegrationTest {
         assertEquals(HttpStatus.OK, get("/api/funcionarios/classes", gerenteEstoque.getRu()).getStatusCode());
 
         assertEquals(HttpStatus.OK, get("/api/produtos", caixa.getRu()).getStatusCode());
-        assertEquals(HttpStatus.OK, get("/api/cardapio/pizzas", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/cardapio/categorias", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/cardapio/itens", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/caixas", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/caixas/metricas", caixa.getRu()).getStatusCode());
 
+        assertEquals(HttpStatus.FORBIDDEN, get("/api/cardapio/admin/categorias", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, get("/api/cardapio/admin/itens", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/fornecedores", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/notas", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/cotacoes/relatorio?mes=2026-04", caixa.getRu()).getStatusCode());

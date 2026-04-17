@@ -77,11 +77,11 @@ async function registrarMovimentacao(tipo, numero, valor, descricao) {
   });
 }
 
-async function encerrarCaixa(numero) {
+async function encerrarCaixa(numero, valorContado, observacao) {
   return fetch('/api/caixas/encerrar', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ numeroCaixa: numero })
+    body: JSON.stringify({ numeroCaixa: numero, valorContado, observacao: observacao || '' })
   });
 }
 
@@ -117,6 +117,7 @@ function renderCaixas() {
   }
 
   grid.innerHTML = caixas.map(c => {
+    const caixaId = Number(c.caixaId ?? c.id ?? 0);
     const statusClass = c.status.toLowerCase();
     const statusLabel = { ABERTO: 'Aberto', FECHADO: 'Fechado', ENCERRADO: 'Encerrado' }[c.status] || c.status;
     const badgeClass  = c.status === 'ABERTO' ? 'badge-green' : c.status === 'ENCERRADO' ? 'badge-gray' : 'badge-amber';
@@ -136,7 +137,7 @@ function renderCaixas() {
       PODE_GERIR_FINANCAS_CAIXA
         ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.saldoAtual})">📥 Suprimento</button>`
         : '',
-      `<button class="btn-sm" onclick="abrirModalMovsLista(${c.numeroCaixa})">📋 Ver movs</button>`,
+      `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">📋 Ver movs</button>`,
       PODE_GERIR_FINANCAS_CAIXA
         ? `<button class="btn-sm danger" onclick="abrirModalEncerrar(${c.numeroCaixa})">🔒 Encerrar</button>`
         : '',
@@ -175,7 +176,7 @@ function renderCaixas() {
         <div class="caixa-actions">
           ${c.status === 'ABERTO'
             ? botoesAbertos
-            : `<button class="btn-sm" onclick="abrirModalMovsLista(${c.numeroCaixa})">📋 Ver movs</button>`}
+            : `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">📋 Ver movs</button>`}
         </div>
       </div>`;
   }).join('');
@@ -264,8 +265,14 @@ async function confirmarMovimentacao() {
 
 function abrirModalEncerrar(numero) {
   if (!PODE_GERIR_FINANCAS_CAIXA) { showToast(mensagemSemPermissao('encerrar'), 'error'); return; }
+  const caixa = caixas.find(c => c.numeroCaixa === numero && c.status === 'ABERTO');
+  const valorSistema = Number(caixa?.saldoAtual || 0);
   numeroCaixaEncerrar = numero;
+  limparAlert('alert-encerrar');
   document.getElementById('encerrar-caixa-num').textContent = `Caixa ${numero}`;
+  document.getElementById('encerrar-valor-sistema').textContent = `R$${valorSistema.toFixed(2)}`;
+  document.getElementById('encerrar-valor-contado').value = valorSistema.toFixed(2);
+  document.getElementById('encerrar-observacao').value = '';
   abrirModal('modal-encerrar');
 }
 
@@ -273,7 +280,13 @@ async function confirmarEncerrar() {
   if (!PODE_GERIR_FINANCAS_CAIXA) {
     mostrarFechamento(null, mensagemSemPermissao('encerrar')); return;
   }
-  const resp = await encerrarCaixa(numeroCaixaEncerrar);
+  const valorContado = parseFloat(document.getElementById('encerrar-valor-contado').value);
+  const observacao = document.getElementById('encerrar-observacao').value.trim();
+  if (Number.isNaN(valorContado) || valorContado < 0) {
+    mostrarAlert('alert-encerrar', 'Informe um valor contado valido.', 'error');
+    return;
+  }
+  const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao);
   fecharModal('modal-encerrar');
   if (!resp.ok) {
     mostrarFechamento(null, await safeReadErrorMessage(resp, 'Erro ao encerrar caixa.'));
@@ -285,12 +298,13 @@ async function confirmarEncerrar() {
 
 // ── Modal: Movimentações do caixa ─────────────────────────────────────────
 
-async function abrirModalMovsLista(numero) {
-  document.getElementById('modal-movs-titulo').textContent = `Movimentações — Caixa ${numero}`;
+async function abrirModalMovsLista(caixaId, numeroCaixa) {
+  document.getElementById('modal-movs-titulo').textContent =
+    `Movimentações — Caixa ${numeroCaixa} (Sessao ${caixaId})`;
   document.getElementById('movs-lista').innerHTML = '<div class="loading">Carregando</div>';
   abrirModal('modal-movs-lista');
   try {
-    const resp = await fetch(`/api/caixas/${numero}/movimentacoes`);
+    const resp = await fetch(`/api/caixas/sessoes/${caixaId}/movimentacoes`);
     if (!resp.ok) throw new Error();
     const movs      = await resp.json();
     const container = document.getElementById('movs-lista');
@@ -327,12 +341,26 @@ function mostrarFechamento(data, erroMsg) {
         ⚠ ${escapeHtml(erroMsg)}
       </div>`;
   } else {
+    const abertoPor = escapeHtml(data.abertoPor || data.nomeOperador || '—');
+    const fechadoPor = escapeHtml(data.fechadoPor || '—');
+    const observacao = escapeHtml(data.observacao || '—');
+    const timestamp = data.timestamp
+      ? new Date(data.timestamp).toLocaleString('pt-BR')
+      : escapeHtml(data.data || '—');
+    const valorSistema = Number(data.valorSistema ?? data.saldoFinal ?? 0);
+    const valorContado = Number(data.valorContado ?? 0);
+    const divergencia = Number(data.divergencia ?? 0);
+    const divergenciaClass = divergencia === 0 ? '' : (divergencia > 0 ? 'text-success' : 'text-danger');
     container.innerHTML = `
       <div class="fechamento-card">
         <div class="fechamento-title">✓ Caixa ${data.numeroCaixa} Encerrado</div>
         <div class="fechamento-rows">
-          <div class="fechamento-row"><span class="label">Operador</span>
-            <span class="value">${escapeHtml(data.nomeOperador||'—')}</span></div>
+          <div class="fechamento-row"><span class="label">Aberto por</span>
+            <span class="value">${abertoPor}</span></div>
+          <div class="fechamento-row"><span class="label">Fechado por</span>
+            <span class="value">${fechadoPor}</span></div>
+          <div class="fechamento-row"><span class="label">Data/Hora</span>
+            <span class="value">${timestamp}</span></div>
           <div class="fechamento-row"><span class="label">Saldo Inicial</span>
             <span class="value">R$${(data.saldoInicial||0).toFixed(2)}</span></div>
           <div class="fechamento-row"><span class="label">Total Vendas</span>
@@ -343,8 +371,14 @@ function mostrarFechamento(data, erroMsg) {
             <span class="value text-danger">R$${(data.totalSaidas||0).toFixed(2)}</span></div>
           <div class="fechamento-row"><span class="label">Movimentações</span>
             <span class="value">${data.quantidadeMovimentacoes??'—'}</span></div>
-          <div class="fechamento-row total"><span class="label">Saldo Final</span>
-            <span class="value">R$${(data.saldoFinal||0).toFixed(2)}</span></div>
+          <div class="fechamento-row"><span class="label">Valor Sistema</span>
+            <span class="value">R$${valorSistema.toFixed(2)}</span></div>
+          <div class="fechamento-row"><span class="label">Valor Contado</span>
+            <span class="value">R$${valorContado.toFixed(2)}</span></div>
+          <div class="fechamento-row"><span class="label">Divergência</span>
+            <span class="value ${divergenciaClass}">R$${divergencia.toFixed(2)}</span></div>
+          <div class="fechamento-row total"><span class="label">Observação</span>
+            <span class="value">${observacao}</span></div>
         </div>
       </div>`;
   }
@@ -359,6 +393,7 @@ function fecharModal(id) {
   document.getElementById(id).classList.remove('open');
   if (id === 'modal-abrir') limparAlert('alert-abrir');
   if (id === 'modal-mov')   limparAlert('alert-mov');
+  if (id === 'modal-encerrar') limparAlert('alert-encerrar');
 }
 function fecharModalSeClicouFora(e, id) { if (e.target.id === id) fecharModal(id); }
 

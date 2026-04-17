@@ -3,7 +3,6 @@ package controller;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 
 import model.Caixa;
@@ -111,18 +110,74 @@ public class CaixaController {
                 Permissao.VER_VENDAS,
                 Permissao.VER_FINANCAS
         );
-        List<Caixa> historico = caixaRepository.buscarHistoricoPorNumero(numero);
-        if (historico.isEmpty()) {
+        try {
+            Caixa caixa = caixaService.buscarCaixaAberto(numero);
+            List<MovimentacaoCaixaResponse> movs = caixa.getMovimentacoes().stream()
+                    .map(movimentacao -> MovimentacaoCaixaResponse.from(caixa.getId(), caixa.getNumeroCaixa(), movimentacao))
+                    .toList();
+            return ResponseEntity.ok(movs);
+        } catch (IllegalStateException e) {
             return ResponseEntity.notFound().build();
         }
-        Caixa maisRecente = historico.stream()
-                .max(Comparator.comparingLong(Caixa::getId))
-                .orElse(historico.get(0));
+    }
 
-        List<MovimentacaoCaixaResponse> movs = maisRecente.getMovimentacoes().stream()
-                .map(MovimentacaoCaixaResponse::from)
-                .toList();
-        return ResponseEntity.ok(movs);
+    @GetMapping("/sessoes/{caixaId}")
+    public ResponseEntity<?> buscarCaixaPorId(@PathVariable long caixaId,
+                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar caixas.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
+        try {
+            Caixa caixa = caixaService.buscarCaixaPorId(caixaId);
+            return ResponseEntity.ok(CaixaResponse.from(caixa));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/sessoes/{caixaId}/movimentacoes")
+    public ResponseEntity<?> listarMovimentacoesDoCaixaPorId(@PathVariable long caixaId,
+                                                             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar movimentacoes de caixa.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
+        try {
+            Caixa caixa = caixaService.buscarCaixaPorId(caixaId);
+            List<MovimentacaoCaixaResponse> movs = caixaService.listarMovimentacoesPorCaixaId(caixaId).stream()
+                    .map(movimentacao -> MovimentacaoCaixaResponse.from(caixa.getId(), caixa.getNumeroCaixa(), movimentacao))
+                    .toList();
+            return ResponseEntity.ok(movs);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/sessoes/{caixaId}/historico")
+    public ResponseEntity<?> listarHistoricoPorCaixaId(@PathVariable long caixaId,
+                                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar historico de caixas.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
+        try {
+            List<CaixaResponse> historico = caixaService.buscarHistoricoPorCaixaId(caixaId).stream()
+                    .map(CaixaResponse::from)
+                    .toList();
+            return ResponseEntity.ok(historico);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping("/abrir")
@@ -153,7 +208,7 @@ public class CaixaController {
             List<VendaItemInput> itens = request.itens() == null
                     ? List.of()
                     : request.itens().stream()
-                    .map(item -> new VendaItemInput(item.produtoId(), item.cardapioItemId(), item.quantidade()))
+                    .map(item -> new VendaItemInput(item.produtoId(), item.itemCardapioId(), item.quantidade()))
                     .toList();
             caixaService.registrarVenda(
                     ator,
@@ -205,9 +260,20 @@ public class CaixaController {
         if (request.numeroCaixa() <= 0) {
             return ResponseEntity.badRequest().body(new ErroResponse("Numero do caixa invalido."));
         }
+        if (request.valorContado() == null) {
+            return ResponseEntity.badRequest().body(new ErroResponse("Valor contado e obrigatorio."));
+        }
+        if (request.valorContado().compareTo(BigDecimal.ZERO) < 0) {
+            return ResponseEntity.badRequest().body(new ErroResponse("Valor contado nao pode ser negativo."));
+        }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            FechamentoCaixa fechamento = caixaService.encerrarCaixa(ator, request.numeroCaixa());
+            FechamentoCaixa fechamento = caixaService.encerrarCaixa(
+                    ator,
+                    request.numeroCaixa(),
+                    request.valorContado(),
+                    request.observacao()
+            );
             return ResponseEntity.ok(FechamentoResponse.from(fechamento));
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
@@ -240,7 +306,7 @@ public class CaixaController {
                     .anyMatch(item -> item == null || !item.possuiReferenciaValida());
             if (itemInvalido) {
                 return ResponseEntity.badRequest().body(new ErroResponse(
-                        "Itens da venda devem informar produtoId ou cardapioItemId com quantidade positiva."
+                        "Itens da venda devem informar produtoId ou itemCardapioId com quantidade positiva."
                 ));
             }
         }
@@ -256,17 +322,22 @@ public class CaixaController {
             List<ItemVendaRequest> itens
     ) {}
 
-    public record ItemVendaRequest(Integer produtoId, String cardapioItemId, int quantidade) {
+    public record ItemVendaRequest(Integer produtoId, Integer itemCardapioId, int quantidade) {
         boolean possuiReferenciaValida() {
             boolean possuiProduto = produtoId != null && produtoId > 0;
-            boolean possuiItemCardapio = cardapioItemId != null && !cardapioItemId.isBlank();
+            boolean possuiItemCardapio = itemCardapioId != null && itemCardapioId > 0;
             return quantidade > 0 && possuiProduto != possuiItemCardapio;
         }
     }
 
-    public record EncerrarCaixaRequest(int numeroCaixa) {}
+    public record EncerrarCaixaRequest(
+            int numeroCaixa,
+            BigDecimal valorContado,
+            String observacao
+    ) {}
 
     public record CaixaResponse(
+            long caixaId,
             long id,
             int numeroCaixa,
             String status,
@@ -281,6 +352,7 @@ public class CaixaController {
     ) {
         public static CaixaResponse from(Caixa c) {
             return new CaixaResponse(
+                    c.getId(),
                     c.getId(),
                     c.getNumeroCaixa(),
                     c.getStatus().name(),
@@ -297,6 +369,8 @@ public class CaixaController {
     }
 
     public record MovimentacaoCaixaResponse(
+            long caixaId,
+            int numeroCaixa,
             long id,
             String tipo,
             BigDecimal valor,
@@ -304,8 +378,10 @@ public class CaixaController {
             String dataHora,
             String operador
     ) {
-        public static MovimentacaoCaixaResponse from(MovimentacaoCaixa m) {
+        public static MovimentacaoCaixaResponse from(long caixaId, int numeroCaixa, MovimentacaoCaixa m) {
             return new MovimentacaoCaixaResponse(
+                    caixaId,
+                    numeroCaixa,
                     m.getId(),
                     m.getTipo().name(),
                     m.getValor(),
@@ -317,27 +393,43 @@ public class CaixaController {
     }
 
     public record FechamentoResponse(
+            long caixaId,
             int numeroCaixa,
             String data,
+            String timestamp,
             BigDecimal saldoInicial,
             BigDecimal totalEntradas,
             BigDecimal totalSaidas,
             BigDecimal totalVendas,
             BigDecimal saldoFinal,
+            BigDecimal valorSistema,
+            BigDecimal valorContado,
+            BigDecimal divergencia,
             int quantidadeMovimentacoes,
-            String nomeOperador
+            String nomeOperador,
+            String abertoPor,
+            String fechadoPor,
+            String observacao
     ) {
         public static FechamentoResponse from(FechamentoCaixa f) {
             return new FechamentoResponse(
+                    f.getCaixaId(),
                     f.getNumeroCaixa(),
                     f.getData().toString(),
+                    f.getTimestamp().toString(),
                     f.getSaldoInicial(),
                     f.getTotalEntradas(),
                     f.getTotalSaidas(),
                     f.getTotalVendas(),
                     f.getSaldoFinal(),
+                    f.getValorSistema(),
+                    f.getValorContado(),
+                    f.getDivergencia(),
                     f.getQuantidadeMovimentacoes(),
-                    f.getNomeOperador()
+                    f.getNomeOperador(),
+                    f.getAbertoPor(),
+                    f.getFechadoPor(),
+                    f.getObservacao()
             );
         }
     }

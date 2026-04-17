@@ -26,15 +26,16 @@ public class InMemoryItemCardapioRepository implements ItemCardapioRepository {
             sequenceId.updateAndGet(atual -> Math.max(atual, itemCardapio.getId() + 1));
         }
 
-        itens.removeIf(item -> item.getId() == persistido.getId());
-        itens.add(persistido);
+        final ItemCardapio itemPersistido = persistido;
+        itens.removeIf(item -> item.getId() == itemPersistido.getId());
+        itens.add(itemPersistido);
         itens.sort(Comparator
                 .comparingInt((ItemCardapio item) -> item.getCategoriaCardapio().getOrdemExibicao())
                 .thenComparing(item -> item.getCategoriaCardapio().getNomeExibicao(), String.CASE_INSENSITIVE_ORDER)
                 .thenComparingInt(ItemCardapio::getOrdemExibicao)
                 .thenComparing(ItemCardapio::getNome, String.CASE_INSENSITIVE_ORDER)
                 .thenComparingInt(ItemCardapio::getId));
-        return persistido;
+        return itemPersistido;
     }
 
     @Override

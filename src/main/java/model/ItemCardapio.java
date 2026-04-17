@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,7 +52,12 @@ public class ItemCardapio {
     private TipoItemCardapio tipoItem;
 
     @Column(nullable = false)
+    @ColumnDefault("true")
     private Boolean ativo = Boolean.TRUE;
+
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    private Boolean disponivel = Boolean.TRUE;
 
     @Column(name = "ordem_exibicao", nullable = false)
     private int ordemExibicao;
@@ -72,6 +78,7 @@ public class ItemCardapio {
                         CategoriaCardapio categoriaCardapio,
                         TipoItemCardapio tipoItem,
                         Boolean ativo,
+                        Boolean disponivel,
                         int ordemExibicao,
                         Produto produtoVinculado) {
         validar(id >= 0, "ID do item de cardapio nao pode ser negativo.");
@@ -82,6 +89,10 @@ public class ItemCardapio {
         validar(categoriaCardapio != null, "Categoria do item de cardapio e obrigatoria.");
         validar(tipoItem != null, "Tipo do item de cardapio e obrigatorio.");
         validar(ordemExibicao >= 0, "Ordem de exibicao do item de cardapio nao pode ser negativa.");
+        validar(tipoItem != TipoItemCardapio.PREPARADO_SOB_DEMANDA || produtoVinculado == null,
+                "Itens preparados sob demanda nao devem vincular produto de estoque.");
+        validar(produtoVinculado == null || produtoVinculado.isControladoPorEstoque(),
+                "Produto vinculado precisa estar controlado por estoque.");
 
         this.id = id;
         this.codigo = codigo.trim();
@@ -91,6 +102,7 @@ public class ItemCardapio {
         this.categoriaCardapio = categoriaCardapio;
         this.tipoItem = tipoItem;
         this.ativo = ativo == null ? Boolean.TRUE : ativo;
+        this.disponivel = disponivel == null ? Boolean.TRUE : disponivel;
         this.ordemExibicao = ordemExibicao;
         this.produtoVinculado = produtoVinculado;
     }
@@ -106,6 +118,7 @@ public class ItemCardapio {
                 categoriaCardapio,
                 tipoItem,
                 ativo,
+                disponivel,
                 ordemExibicao,
                 produtoVinculado
         );
@@ -113,6 +126,10 @@ public class ItemCardapio {
 
     public boolean isAtivo() {
         return ativo == null || ativo;
+    }
+
+    public boolean isDisponivel() {
+        return disponivel == null || disponivel;
     }
 
     public boolean isEstoqueDireto() {

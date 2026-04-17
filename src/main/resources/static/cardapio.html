@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockOS - Gestao de Cardapio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/estoque.css">
+  <link rel="stylesheet" href="/css/cardapio.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📦</div>
+      StockOS
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Menu</div>
+      <div id="nav-items"></div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">--</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Carregando...</div>
+          <div class="user-role" id="user-role">--</div>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="Sair">x</button>
+      </div>
+    </div>
+  </aside>
+
+  <header class="header">
+    <div>
+      <div class="header-title">Gestao de Cardapio</div>
+      <div class="header-sub">Categorias e itens vendidos no PDV sem depender apenas do seed.</div>
+    </div>
+    <div class="header-right header-right--cardapio">
+      <button class="btn-secondary" type="button" onclick="abrirModalCategoria()">Nova Categoria</button>
+      <button class="btn-primary" type="button" onclick="abrirModalItem()">Novo Item</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="cardapio-page-alert"></div>
+    <div class="page-summary-grid fade-up" id="cardapio-summary"></div>
+
+    <div class="cardapio-layout">
+      <section class="table-card fade-up cardapio-panel cardapio-panel--categories">
+        <div class="table-header">
+          <div>
+            <span class="table-title">Categorias</span>
+            <div class="inline-note inline-note--spaced">Ative, edite e ordene grupos exibidos no cardapio.</div>
+          </div>
+          <span class="table-count" id="categorias-count">-</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+            <tr>
+              <th>Ordem</th>
+              <th>Categoria</th>
+              <th>Status</th>
+              <th>Acoes</th>
+            </tr>
+            </thead>
+            <tbody id="tabela-categorias">
+            <tr><td colspan="4" class="empty">Carregando categorias...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="table-card fade-up cardapio-panel">
+        <div class="table-header table-header--stack">
+          <div class="table-header-row">
+            <div>
+              <span class="table-title">Itens de Cardapio</span>
+              <div class="inline-note inline-note--spaced">Filtre por categoria, busque por nome e ajuste disponibilidade sem impactar o dominio de produtos.</div>
+            </div>
+            <span class="table-count" id="itens-count">-</span>
+          </div>
+          <div class="toolbar toolbar--cardapio">
+            <div class="search-wrap">
+              <input type="text" id="item-search" placeholder="Buscar por nome, codigo ou texto..." oninput="aplicarFiltrosItens()">
+              <span class="search-icon">🔎</span>
+            </div>
+            <select class="compact-control compact-control--select" id="item-category-filter" onchange="aplicarFiltrosItens()">
+              <option value="">Todas as categorias</option>
+            </select>
+          </div>
+          <div class="cardapio-legend">
+            <span class="cardapio-legend__item">
+              <span class="badge badge-cyan">Estoque direto</span>
+              <span>Item que pode operar manualmente ou vinculado a um Produto.</span>
+            </span>
+            <span class="cardapio-legend__item">
+              <span class="badge badge-purple">Sob demanda</span>
+              <span>Item vendido sem quantidade pronta em estoque.</span>
+            </span>
+            <span class="cardapio-legend__item">
+              <span class="badge badge-amber">Pausa manual</span>
+              <span>Estado bruto definido no admin; a disponibilidade efetiva continua sendo calculada pelo backend.</span>
+            </span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+            <tr>
+              <th>Item</th>
+              <th>Categoria</th>
+              <th>Tipo</th>
+              <th>Disponibilidade</th>
+              <th>Ordem</th>
+              <th>Acoes</th>
+            </tr>
+            </thead>
+            <tbody id="tabela-itens">
+            <tr><td colspan="6" class="empty">Carregando itens...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-categoria" onclick="fecharModalSeClicouFora(event, 'modal-categoria')">
+  <div class="modal modal--narrow">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-categoria-titulo">Nova Categoria</h3>
+      <button class="modal-close" onclick="fecharModal('modal-categoria')">x</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="categoria-id">
+      <div class="form-group">
+        <label>Nome exibido</label>
+        <input type="text" id="categoria-nome" placeholder="Ex: Sobremesas especiais">
+      </div>
+      <div class="form-group">
+        <label>Codigo tecnico</label>
+        <input type="text" id="categoria-codigo" placeholder="Opcional. Se vazio, sera gerado pelo nome.">
+      </div>
+      <div class="form-group">
+        <label>Ordem de exibicao</label>
+        <input type="number" id="categoria-ordem" min="0" step="1" placeholder="0">
+      </div>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-categoria"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-categoria')">Cancelar</button>
+      <button class="btn-primary" type="button" id="btn-salvar-categoria" onclick="salvarCategoria()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-item" onclick="fecharModalSeClicouFora(event, 'modal-item')">
+  <div class="modal modal--wide">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-item-titulo">Novo Item</h3>
+      <button class="modal-close" onclick="fecharModal('modal-item')">x</button>
+    </div>
+    <div class="modal-body modal-body--scroll">
+      <input type="hidden" id="item-id">
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" id="item-nome" placeholder="Ex: Ravioli de funghi">
+        </div>
+        <div class="form-group">
+          <label>Codigo tecnico</label>
+          <input type="text" id="item-codigo" placeholder="Opcional. Se vazio, sera gerado pelo nome.">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Descricao curta</label>
+        <input type="text" id="item-descricao" placeholder="Texto curto exibido no PDV.">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="item-categoria"></select>
+        </div>
+        <div class="form-group">
+          <label>Tipo do item</label>
+          <select id="item-tipo" onchange="aplicarRegrasTipoItem()">
+            <option value="PREPARADO_SOB_DEMANDA">PREPARADO_SOB_DEMANDA</option>
+            <option value="ESTOQUE_DIRETO">ESTOQUE_DIRETO</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Preco de venda (R$)</label>
+          <input type="number" id="item-preco" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Ordem de exibicao</label>
+          <input type="number" id="item-ordem" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Produto vinculado</label>
+        <select id="item-produto"></select>
+        <div class="field-help" id="item-produto-hint">Itens sob demanda nao exigem produto vinculado. Itens de estoque podem usar controle manual ou vincular um produto.</div>
+      </div>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-item"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-item')">Cancelar</button>
+      <button class="btn-primary" type="button" id="btn-salvar-item" onclick="salvarItem()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/shared.js"></script>
+<script src="/js/cardapio.js"></script>
+</body>
+</html>

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * <pre>
  *   GET /                  → dashboard
  *   GET /dashboard         → dashboard
+ *   GET /cardapio          → cardapio
  *   GET /estoque           → estoque
  *   GET /fornecedores      → fornecedores
  *   GET /notas             → notas
@@ -61,6 +62,11 @@ public class EstoquePageController {
     }
 
     // ── Módulos principais ────────────────────────────────────────────────────
+
+    @GetMapping("/cardapio")
+    public String cardapio() {
+        return "redirect:/cardapio.html";
+    }
 
     @GetMapping("/estoque")
     public String estoque() {

@@ -45,20 +45,43 @@ class PdvMenuCatalogIntegrationTest {
     }
 
     @Test
-    void pdvCarregaBebidasDoEstoqueEPizzasDoCatalogoSobDemanda() {
+    void pdvCarregaCategoriasEItensDoCardapioUnificado() {
         ResponseEntity<String> produtos = get("/api/produtos");
-        ResponseEntity<String> pizzas = get("/api/cardapio/pizzas");
+        ResponseEntity<String> categorias = get("/api/cardapio/categorias");
+        ResponseEntity<String> itens = get("/api/cardapio/itens");
+        ResponseEntity<String> pizzas = get("/api/cardapio/itens?categoria=pizzas_artesanais");
+        ResponseEntity<String> massasClassicas = get("/api/cardapio/itens?categoria=massas_classicas");
 
         assertEquals(HttpStatus.OK, produtos.getStatusCode());
         assertTrue(produtos.getBody() != null && produtos.getBody().contains("Coca-Cola Lata 350ml"));
-        assertTrue(produtos.getBody() != null && produtos.getBody().contains("\"categoriaEstoque\":\"BEBIDAS\""));
         assertTrue(produtos.getBody() != null && !produtos.getBody().contains("\"nome\":\"Pizza Calabresa Broto\""));
 
+        assertEquals(HttpStatus.OK, categorias.getStatusCode());
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"entradas\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"massas_classicas\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"massas_especiais\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"pizzas_artesanais\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"pratos_executivos\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"sobremesas\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"bebidas\""));
+
+        assertEquals(HttpStatus.OK, itens.getStatusCode());
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Spaghetti a Carbonara\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Nhoque da Casa\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Tiramisu tradicional\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Pizza Calabresa Broto\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"codigo\":\"pizza_calabresa_broto\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"tipoItem\":\"PREPARADO_SOB_DEMANDA\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
+
         assertEquals(HttpStatus.OK, pizzas.getStatusCode());
-        assertTrue(pizzas.getBody() != null && pizzas.getBody().contains("\"nome\":\"Pizza Calabresa Broto\""));
-        assertTrue(pizzas.getBody() != null && pizzas.getBody().contains("\"cardapioItemId\":\"pizza_calabresa_broto\""));
-        assertTrue(pizzas.getBody() != null && pizzas.getBody().contains("\"controladoPorEstoque\":false"));
-        assertTrue(pizzas.getBody() != null && pizzas.getBody().contains("\"disponivel\":true"));
+        assertTrue(pizzas.getBody() != null && pizzas.getBody().contains("\"categoriaCodigo\":\"pizzas_artesanais\""));
+        assertTrue(pizzas.getBody() != null && !pizzas.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
+
+        assertEquals(HttpStatus.OK, massasClassicas.getStatusCode());
+        assertTrue(massasClassicas.getBody() != null && massasClassicas.getBody().contains("\"categoriaCodigo\":\"massas_classicas\""));
+        assertTrue(massasClassicas.getBody() != null && massasClassicas.getBody().contains("\"nome\":\"Spaghetti a Carbonara\""));
+        assertTrue(massasClassicas.getBody() != null && !massasClassicas.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
     }
 
     private ResponseEntity<String> get(String path) {

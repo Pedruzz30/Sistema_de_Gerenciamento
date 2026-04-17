@@ -29,17 +29,18 @@ class Wave5FrontendShellIntegrationTest {
 
     @Test
     void rotasPrincipaisContinuamServindoAsViewsDaAplicacao() {
-        Map<String, String> rotas = Map.of(
-                "/", "StockOS",
-                "/dashboard", "Dashboard",
-                "/estoque", "Estoque",
-                "/fornecedores", "Fornecedores",
-                "/notas", "Notas",
-                "/caixas", "Caixas",
-                "/cotacoes", "Cot",
-                "/funcionarios", "Funcion",
-                "/logs", "Logs",
-                "/login", "Login"
+        Map<String, String> rotas = Map.ofEntries(
+                Map.entry("/", "StockOS"),
+                Map.entry("/dashboard", "Dashboard"),
+                Map.entry("/cardapio", "Cardapio"),
+                Map.entry("/estoque", "Estoque"),
+                Map.entry("/fornecedores", "Fornecedores"),
+                Map.entry("/notas", "Notas"),
+                Map.entry("/caixas", "Caixas"),
+                Map.entry("/cotacoes", "Cot"),
+                Map.entry("/funcionarios", "Funcion"),
+                Map.entry("/logs", "Logs"),
+                Map.entry("/login", "Login")
         );
 
         rotas.forEach(this::assertPage);
@@ -49,6 +50,7 @@ class Wave5FrontendShellIntegrationTest {
     void paginasHtmlEstaoDisponiveisComShellCompartilhado() {
         Map<String, String> paginas = Map.of(
                 "/dashboard.html", "/js/shared.js",
+                "/cardapio.html", "/js/shared.js",
                 "/caixas.html", "/js/shared.js",
                 "/cotacoes.html", "/js/shared.js",
                 "/funcionarios.html", "/js/shared.js",
@@ -57,6 +59,20 @@ class Wave5FrontendShellIntegrationTest {
         );
 
         paginas.forEach(this::assertPage);
+    }
+
+    @Test
+    void telaDeGestaoDeCardapioExposeAsSecoesAdministrativasPrincipais() {
+        ResponseEntity<String> response = restTemplate.getForEntity(
+                "http://localhost:" + port + "/cardapio.html",
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody() != null && response.getBody().contains("Gestao de Cardapio"));
+        assertTrue(response.getBody() != null && response.getBody().contains("tabela-categorias"));
+        assertTrue(response.getBody() != null && response.getBody().contains("tabela-itens"));
+        assertTrue(response.getBody() != null && response.getBody().contains("/js/cardapio.js"));
     }
 
     private void assertPage(String path, String trechoEsperado) {

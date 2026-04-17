@@ -256,6 +256,7 @@ async function safeReadErrorMessage(response, fallbackMessage) {
 // ── Page detection ───────────────────────────────────────────────────────────
 function paginaAtual() {
   const path = window.location.pathname;
+  if (path.includes('cardapio')) return 'cardapio';
   if (path.includes('estoque')) return 'estoque';
   if (path.includes('fornecedores')) return 'fornecedores';
   if (path.includes('notas')) return 'notas';
@@ -270,6 +271,7 @@ function paginaAtual() {
 const NAV_ITENS = [
   { icon: 'grid', label: 'Dashboard', permsAny: null, href: '/dashboard.html', id: 'dashboard' },
   { icon: 'box', label: 'Estoque', permsAny: [PERMISSOES.VER_ESTOQUE], href: '/estoque', id: 'estoque' },
+  { icon: 'cart', label: 'Cardapio', permsAny: [PERMISSOES.EDITAR_ESTOQUE], href: '/cardapio.html', id: 'cardapio' },
   { icon: 'truck', label: 'Fornecedores', permsAny: [PERMISSOES.VER_COMPRAS], href: '/fornecedores.html', id: 'fornecedores' },
   { icon: 'receipt', label: 'Notas Fiscais', permsAny: [PERMISSOES.VER_COMPRAS], href: '/notas.html', id: 'notas' },
   { icon: 'wallet', label: 'Caixas', permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS], href: '/caixas.html', id: 'caixas' },
@@ -294,6 +296,7 @@ function renderSidebar() {
 }
 
 const PERMISSOES_POR_PAGINA = {
+  cardapio: [PERMISSOES.EDITAR_ESTOQUE],
   estoque: [PERMISSOES.VER_ESTOQUE],
   fornecedores: [PERMISSOES.VER_COMPRAS],
   notas: [PERMISSOES.VER_COMPRAS],
