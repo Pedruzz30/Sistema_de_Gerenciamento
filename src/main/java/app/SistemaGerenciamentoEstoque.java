@@ -70,7 +70,7 @@ public class SistemaGerenciamentoEstoque {
         System.out.print("Senha: ");
         String senha = scanner.nextLine();
 
-        Usuario usuarioLogado = autenticacaoService.autenticar(nome, sobrenome, senha);
+        Usuario usuarioLogado = autenticacaoService.autenticar(nome, sobrenome, senha).orElse(null);
         if (usuarioLogado == null) {
             System.out.println("Credenciais inválidas ou usuário inativo. Encerrando...");
             scanner.close();

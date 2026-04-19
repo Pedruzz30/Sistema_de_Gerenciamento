@@ -67,7 +67,8 @@ class EstoqueServiceTest {
 
         Pedido pedido = service.registrarMovimentacao(p.getId(), 5, TipoMovimentacao.ENTRADA, operador);
 
-        assertEquals(15, p.getQuantidadeAtual());
+        Produto atualizado = service.buscarProdutoPorId(p.getId()).orElseThrow();
+        assertEquals(15, atualizado.getQuantidadeAtual());
         assertEquals(TipoMovimentacao.ENTRADA, pedido.getTipo());
         assertEquals(5, pedido.getQuantidade());
     }
@@ -97,7 +98,8 @@ class EstoqueServiceTest {
 
         service.registrarMovimentacao(p.getId(), 8, TipoMovimentacao.SAIDA, operador);
 
-        assertEquals(12, p.getQuantidadeAtual());
+        Produto atualizado = service.buscarProdutoPorId(p.getId()).orElseThrow();
+        assertEquals(12, atualizado.getQuantidadeAtual());
     }
 
     @Test

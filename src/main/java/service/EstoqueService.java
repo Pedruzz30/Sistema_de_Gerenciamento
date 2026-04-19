@@ -100,7 +100,8 @@ public class EstoqueService {
                         produtoAtual.getQuantidadeAtual(),
                         quantidadeMinima,
                         preco,
-                        categoriaEstoque
+                        categoriaEstoque,
+                        produtoAtual.isControladoPorEstoque()
                 )
         );
         return produtoAtualizado;

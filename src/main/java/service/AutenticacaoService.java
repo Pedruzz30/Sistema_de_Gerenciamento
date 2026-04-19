@@ -20,7 +20,7 @@ public class AutenticacaoService {
     }
 
     @Transactional
-    public Usuario autenticar(String nome, String sobrenome, String senha) {
+    public Optional<Usuario> autenticar(String nome, String sobrenome, String senha) {
         Optional<Usuario> usuarioOpt = usuarioRepository.buscarPorNomeSobrenomeESenha(nome, sobrenome, senha);
 
         if (usuarioOpt.isPresent()) {
@@ -31,7 +31,7 @@ public class AutenticacaoService {
                     "LOGIN_SUCESSO",
                     "Login efetuado por " + usuario.getNomeCompleto()
             ));
-            return usuario;
+            return usuarioOpt;
         }
 
         logRepository.salvar(new LogAcao(
@@ -40,6 +40,6 @@ public class AutenticacaoService {
                 "LOGIN_FALHA",
                 "Falha de login para nome=" + nome + " sobrenome=" + sobrenome
         ));
-        return null;
+        return Optional.empty();
     }
 }

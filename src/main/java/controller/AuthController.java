@@ -22,17 +22,13 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<UsuarioResponse> login(@RequestBody LoginRequest request) {
-        Usuario usuario = autenticacaoService.autenticar(
-                request.nome(),
-                request.sobrenome(),
-                request.senha()
-        );
-
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        return ResponseEntity.ok(UsuarioResponse.from(usuario));
+        return autenticacaoService.autenticar(
+                        request.nome(),
+                        request.sobrenome(),
+                        request.senha()
+                )
+                .map(u -> ResponseEntity.ok(UsuarioResponse.from(u)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
     public record LoginRequest(String nome, String sobrenome, String senha) {}
