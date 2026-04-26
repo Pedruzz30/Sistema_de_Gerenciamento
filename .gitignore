@@ -14,7 +14,7 @@ target/
 src/main/resources/application-local.properties
 
 # Claude / configs locais
-.claude/
+Json/
 .Json/
 
 # IDEs

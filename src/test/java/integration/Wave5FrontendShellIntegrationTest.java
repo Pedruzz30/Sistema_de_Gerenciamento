@@ -62,6 +62,24 @@ class Wave5FrontendShellIntegrationTest {
     }
 
     @Test
+    void autenticacaoFrontendPersisteUsuarioParaReabrirEmOutraAba() {
+        ResponseEntity<String> sharedResponse = restTemplate.getForEntity(
+                "http://localhost:" + port + "/js/shared.js",
+                String.class
+        );
+        ResponseEntity<String> loginResponse = restTemplate.getForEntity(
+                "http://localhost:" + port + "/login.html",
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, sharedResponse.getStatusCode());
+        assertEquals(HttpStatus.OK, loginResponse.getStatusCode());
+        assertTrue(sharedResponse.getBody() != null && sharedResponse.getBody().contains("window.localStorage"));
+        assertTrue(sharedResponse.getBody() != null && sharedResponse.getBody().contains("persistirUsuario(localUsuario)"));
+        assertTrue(loginResponse.getBody() != null && loginResponse.getBody().contains("window.localStorage"));
+    }
+
+    @Test
     void telaDeGestaoDeCardapioExposeAsSecoesAdministrativasPrincipais() {
         ResponseEntity<String> response = restTemplate.getForEntity(
                 "http://localhost:" + port + "/cardapio.html",

@@ -1,0 +1,15 @@
+/* Topbar */
+.topbar {
+  display: flex; align-items: center;
+  padding: 0 var(--sp-6);
+  gap: var(--sp-4);
+}
+.crumbs {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-12); color: var(--ink-4);
+}
+.crumbs .sep { color: var(--ink-4); opacity: .5; }
+.crumbs .cur { color: var(--ink-2); font-weight: 500; }
+
+.topbar .grow { flex: 1; }
+.topbar .top-actions { display: flex; align-items: center; gap: var(--sp-2); }

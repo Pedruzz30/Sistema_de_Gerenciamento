@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StockOS — Ponte do Sistema</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/estoque.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 20px;
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.15), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(34,211,238,.1), transparent 30%),
+        var(--bg-base);
+      overflow: hidden;
+    }
+
+    .bridge-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,.8), transparent 92%);
+      pointer-events: none;
+    }
+
+    .bridge-shell {
+      width: min(840px, 100%);
+      position: relative;
+      z-index: 1;
+    }
+
+    .bridge-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 36px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        var(--bg-card);
+      box-shadow: 0 30px 70px rgba(0,0,0,.36);
+    }
+
+    .bridge-panel::before {
+      content: "";
+      position: absolute;
+      inset: -80px auto auto -120px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,58,237,.26), transparent 72%);
+      pointer-events: none;
+    }
+
+    .bridge-panel::after {
+      content: "";
+      position: absolute;
+      inset: auto -70px -110px auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(6,182,212,.18), transparent 72%);
+      pointer-events: none;
+    }
+
+    .bridge-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 24px;
+    }
+
+    .bridge-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(124,58,237,.28);
+      background: rgba(124,58,237,.14);
+      color: var(--purple-light);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .bridge-eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 6px rgba(124,58,237,.14);
+    }
+
+    .bridge-copy {
+      display: grid;
+      gap: 14px;
+      max-width: 700px;
+    }
+
+    .bridge-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1.02;
+      letter-spacing: -1.4px;
+      color: var(--text-1);
+    }
+
+    .bridge-title span {
+      color: var(--purple-light);
+    }
+
+    .bridge-copy p {
+      color: var(--text-2);
+      font-size: 15px;
+      line-height: 1.7;
+      max-width: 58ch;
+    }
+
+    .bridge-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .bridge-stat {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+    }
+
+    .bridge-stat-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-3);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .bridge-stat-value {
+      display: block;
+      color: var(--text-1);
+      font-family: 'Syne', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -.04em;
+    }
+
+    .bridge-stat-copy {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-2);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+
+    .bridge-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .bridge-actions a {
+      min-width: 180px;
+      text-decoration: none;
+    }
+
+    .bridge-hint {
+      color: var(--text-3);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 20px 16px;
+      }
+
+      .bridge-panel {
+        padding: 24px;
+      }
+
+      .bridge-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .bridge-actions {
+        flex-direction: column;
+      }
+
+      .bridge-actions a {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bridge-grid" aria-hidden="true"></div>
+
+  <main class="bridge-shell">
+    <section class="bridge-panel">
+      <div class="bridge-content">
+        <span class="bridge-eyebrow">Fluxo real ativo</span>
+
+        <div class="bridge-copy">
+          <h1 class="bridge-title">O protótipo <span>StockOS.html</span> agora aponta para a aplicação consolidada.</h1>
+          <p>
+            A identidade visual, os componentes shared e as páginas operacionais do sistema foram
+            unificados nas telas reais servidas por <code>src/main/resources/static</code>.
+          </p>
+          <p>
+            Esta rota foi mantida apenas como ponte para o fluxo oficial, evitando uma tela órfã e
+            preservando a navegação para quem ainda acessar o endereço legado.
+          </p>
+        </div>
+
+        <div class="bridge-meta">
+          <article class="bridge-stat">
+            <span class="bridge-stat-label">Base Visual</span>
+            <span class="bridge-stat-value">1 sistema</span>
+            <span class="bridge-stat-copy">Sidebar, topbar, cards, tabelas e formulários agora seguem a mesma linguagem da referência.</span>
+          </article>
+          <article class="bridge-stat">
+            <span class="bridge-stat-label">Destino</span>
+            <span class="bridge-stat-value">Fluxo oficial</span>
+            <span class="bridge-stat-copy">A navegação leva para login ou dashboard, conforme a sessão já existente do usuário.</span>
+          </article>
+          <article class="bridge-stat">
+            <span class="bridge-stat-label">Status</span>
+            <span class="bridge-stat-value">Produção</span>
+            <span class="bridge-stat-copy">A antiga tela de protótipo não é mais fonte de UI, apenas um ponto de entrada seguro.</span>
+          </article>
+        </div>
+
+        <div class="bridge-actions">
+          <a class="btn-primary" href="/dashboard.html">Abrir dashboard</a>
+          <a class="btn-secondary" href="/login.html">Ir para login</a>
+        </div>
+
+        <p class="bridge-hint" id="bridge-hint">Redirecionando automaticamente para o fluxo principal…</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var hasUsuario = false;
+      try {
+        hasUsuario = Boolean(sessionStorage.getItem('usuario') || localStorage.getItem('usuario'));
+      } catch (error) {}
+
+      var destino = hasUsuario ? '/dashboard.html' : '/login.html';
+      var hint = document.getElementById('bridge-hint');
+      if (hint) {
+        hint.textContent = hasUsuario
+          ? 'Sessão detectada. Redirecionando para o dashboard…'
+          : 'Nenhuma sessão ativa. Redirecionando para o login…';
+      }
+
+      window.setTimeout(function () {
+        window.location.replace(destino);
+      }, 1800);
+    })();
+  </script>
+</body>
+</html>

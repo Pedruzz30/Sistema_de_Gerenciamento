@@ -1,0 +1,13 @@
+/* Tipografia */
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
+h1 { font-size: var(--fs-32); line-height: 1.1; }
+h2 { font-size: var(--fs-24); line-height: 1.15; }
+h3 { font-size: var(--fs-18); line-height: 1.2; }
+h4 { font-size: var(--fs-15); line-height: 1.25; }
+
+.mono   { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.display { letter-spacing: -0.03em; font-weight: 700; }
+.muted  { color: var(--ink-3); }
+.subtle { color: var(--ink-4); }
+.tnum   { font-variant-numeric: tabular-nums; }
+.caps   { font-size: var(--fs-10); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-4); font-weight: 600; }

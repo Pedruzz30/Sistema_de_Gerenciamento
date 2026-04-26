@@ -1,0 +1,38 @@
+/* KPI cards */
+.kpi {
+  padding: var(--sp-5);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  position: relative; overflow: hidden;
+  transition: border-color 0.12s;
+}
+.kpi:hover { border-color: var(--rule-strong); }
+.kpi-label {
+  font-size: var(--fs-11);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  font-weight: 500;
+}
+.kpi-value {
+  font-size: var(--fs-32);
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.kpi-value .unit { font-size: 0.55em; color: var(--ink-4); margin-left: 2px; font-weight: 400; }
+.kpi-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: var(--fs-12); color: var(--ink-4);
+}
+.kpi-delta { font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi-delta.up   { color: var(--ok); }
+.kpi-delta.down { color: var(--bad); }
+.kpi-spark { width: 100%; height: 30px; margin-top: var(--sp-1); }
+
+.kpi.small { padding: var(--sp-4); }
+.kpi.small .kpi-value { font-size: var(--fs-24); }

@@ -1,0 +1,47 @@
+/* Botões */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--sp-2);
+  height: 36px; padding: 0 var(--sp-4);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-size: var(--fs-13); font-weight: 500;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.btn:hover { background: oklch(0.20 0.005 250); color: var(--ink); border-color: var(--rule-strong); }
+.btn:active { opacity: .85; }
+.btn:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 14px; height: 14px; }
+
+.btn-accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn-accent:hover { background: #4f52e8; border-color: #4f52e8; color: #fff; }
+
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #4f52e8; border-color: #4f52e8; }
+
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: var(--paper-raised); border-color: var(--rule); }
+
+.btn-danger { color: var(--bad); border-color: var(--rule); background: transparent; }
+.btn-danger:hover { background: var(--bad-soft); border-color: var(--bad); }
+
+.btn-sm { height: 28px; padding: 0 var(--sp-3); font-size: var(--fs-12); }
+.btn-lg { height: 44px; padding: 0 var(--sp-5); font-size: var(--fs-14); }
+.btn-block { width: 100%; }
+
+/* Icon-only button */
+.iconbtn {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  color: var(--ink-3);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.iconbtn:hover { background: var(--paper-raised); color: var(--ink); border-color: var(--rule-strong); }
+.iconbtn svg { width: 14px; height: 14px; }

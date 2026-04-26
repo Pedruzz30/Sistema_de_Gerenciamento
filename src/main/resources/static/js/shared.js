@@ -1,7 +1,62 @@
 // ── shared.js — base compartilhada do frontend ─────────────────────────────
 // Responsável por shell, navegação, ícones, toasts e utilitários globais.
 
-const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
+const USUARIO_STORAGE_KEY = 'usuario';
+
+function parseUsuario(raw) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
+  }
+}
+
+function persistirUsuario(usuarioAtual) {
+  if (!usuarioAtual) return;
+  const payload = JSON.stringify(usuarioAtual);
+  [window.sessionStorage, window.localStorage].forEach(function (storage) {
+    try {
+      storage.setItem(USUARIO_STORAGE_KEY, payload);
+    } catch (error) {}
+  });
+}
+
+function limparUsuarioPersistido() {
+  [window.sessionStorage, window.localStorage].forEach(function (storage) {
+    try {
+      storage.removeItem(USUARIO_STORAGE_KEY);
+    } catch (error) {}
+  });
+}
+
+function lerUsuarioPersistido() {
+  const sessionUsuario = parseUsuario((function () {
+    try {
+      return window.sessionStorage.getItem(USUARIO_STORAGE_KEY);
+    } catch (error) {
+      return null;
+    }
+  })());
+  if (sessionUsuario) {
+    persistirUsuario(sessionUsuario);
+    return sessionUsuario;
+  }
+
+  const localUsuario = parseUsuario((function () {
+    try {
+      return window.localStorage.getItem(USUARIO_STORAGE_KEY);
+    } catch (error) {
+      return null;
+    }
+  })());
+  if (localUsuario) {
+    persistirUsuario(localUsuario);
+  }
+  return localUsuario;
+}
+
+const usuario = lerUsuarioPersistido();
 if (!usuario) window.location.href = '/login.html';
 
 // ── X-User-RU header injection ──────────────────────────────────────────────
@@ -76,7 +131,7 @@ function temAlgumaPermissao(perms) {
 }
 
 function logout() {
-  sessionStorage.removeItem('usuario');
+  limparUsuarioPersistido();
   window.location.href = '/login.html';
 }
 

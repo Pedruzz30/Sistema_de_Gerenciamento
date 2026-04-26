@@ -1,0 +1,36 @@
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  height: 20px;
+  border-radius: 100px;
+  font-size: var(--fs-10);
+  font-weight: 600;
+  background: var(--paper-raised);
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.badge.ok     { background: var(--ok-soft);   color: var(--ok);   border-color: transparent; }
+.badge.warn   { background: var(--warn-soft);  color: var(--warn); border-color: transparent; }
+.badge.bad    { background: var(--bad-soft);   color: var(--bad);  border-color: transparent; }
+.badge.info   { background: var(--info-soft);  color: var(--info); border-color: transparent; }
+.badge.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.badge.solid-ink { background: var(--ink); color: var(--paper); border-color: transparent; }
+
+/* Live pill */
+.live-pill {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: 3px var(--sp-3);
+  background: var(--ok-soft); color: var(--ok);
+  border-radius: 100px;
+  font-size: var(--fs-11); font-weight: 500;
+}
+.live-pill .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

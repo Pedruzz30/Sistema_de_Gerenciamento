@@ -1,0 +1,115 @@
+/* StockOS — design tokens (dark premium) */
+:root {
+  /* surfaces */
+  --paper:        #09090f;
+  --paper-sunk:   #111118;
+  --paper-raised: #1c1c27;
+  --paper-inset:  #16161e;
+
+  /* ink */
+  --ink:   #f0f0f5;
+  --ink-2: #c0c0cc;
+  --ink-3: #8e8ea0;
+  --ink-4: #4e4e62;
+
+  /* borders */
+  --rule:       #22222e;
+  --rule-strong:#2c2c3c;
+
+  /* accent (indigo) */
+  --accent:      #6366f1;
+  --accent-ink:  #fff;
+  --accent-soft: rgba(99,102,241,.1);
+  --accent-soft-2: rgba(99,102,241,.18);
+
+  /* semantic */
+  --ok:       #22c55e;
+  --ok-soft:  rgba(34,197,94,.1);
+  --warn:     #f59e0b;
+  --warn-soft:rgba(245,158,11,.1);
+  --bad:      #f43f5e;
+  --bad-soft: rgba(244,63,94,.1);
+  --info:     #6366f1;
+  --info-soft:rgba(99,102,241,.1);
+
+  /* fonts */
+  --font-display: 'Inter', -apple-system, system-ui, sans-serif;
+  --font-ui:      'Inter', -apple-system, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* shape */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 9px;
+  --r-lg: 12px;
+  --r-xl: 18px;
+
+  /* shadow */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+  --shadow-md: 0 4px 20px rgba(0,0,0,.45);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.55);
+
+  /* spacing */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* font sizes */
+  --fs-10: 10px;  --fs-11: 11px;  --fs-12: 12px;  --fs-13: 13px;
+  --fs-14: 14px;  --fs-15: 15px;  --fs-16: 16px;  --fs-18: 18px;
+  --fs-20: 20px;  --fs-24: 24px;  --fs-28: 28px;  --fs-32: 32px;
+  --fs-36: 36px;  --fs-40: 40px;  --fs-46: 46px;
+
+  /* layout */
+  --sidebar-w: 224px;
+  --topbar-h:  56px;
+
+  /* ── Legacy aliases ── */
+  --bg-base:      var(--paper);
+  --bg-card:      var(--paper-sunk);
+  --bg-hover:     var(--paper-raised);
+  --bg-input:     var(--paper-inset);
+  --border:       var(--rule);
+  --border-light: var(--rule-strong);
+  --text-1:       var(--ink);
+  --text-2:       var(--ink-3);
+  --text-3:       var(--ink-4);
+  --radius:       var(--r-md);
+  --radius-sm:    var(--r-sm);
+  --purple:       var(--accent);
+  --purple-light: var(--accent);
+  --pink:         var(--bad);
+  --green:        var(--ok);
+  --green-text:   var(--ok);
+  --red:          var(--bad);
+  --red-text:     var(--bad);
+  --amber:        var(--warn);
+  --amber-text:   var(--warn);
+  --cyan:         var(--info);
+  --sky-text:     var(--info);
+  --header-h:     var(--topbar-h);
+  --focus-ring:   0 0 0 3px rgba(99,102,241,.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+input, select, textarea { font: inherit; color: inherit; }
+::selection { background: rgba(99,102,241,.25); color: var(--ink); }
+.mono { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+.num  { font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
