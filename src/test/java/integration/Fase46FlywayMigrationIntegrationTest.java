@@ -163,7 +163,9 @@ class Fase46FlywayMigrationIntegrationTest {
         if (env != null) {
             return env;
         }
-        return propriedadesLocais().getProperty("DB_PASSWORD", "");
+        Properties properties = propriedadesLocais();
+        return properties.getProperty("DB_PASSWORD",
+            properties.getProperty("spring.datasource.password", ""));
     }
 
     private static String adminUrl() {

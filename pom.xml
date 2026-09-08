@@ -18,8 +18,9 @@
     <name>Sistema Gerenciamento</name>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>25</java.version>
         <flyway.version>12.11.0</flyway.version>
+        <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
     <dependencies>
