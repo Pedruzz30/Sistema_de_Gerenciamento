@@ -1,0 +1,13 @@
+package model;
+
+public enum EstadoDisponibilidade {
+    DISPONIVEL,
+    DISPONIVEL_COM_ALERTA,
+    PAUSADO,
+    INATIVO,
+    FORA_DO_HORARIO,
+    CANAL_NAO_PERMITIDO,
+    SEM_FICHA_PUBLICADA,
+    ESTOQUE_INSUFICIENTE,
+    CONFIGURACAO_INCOMPLETA
+}

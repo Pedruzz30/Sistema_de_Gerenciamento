@@ -49,6 +49,8 @@ class Wave4ApiAuthorizationIntegrationTest {
     void endpointsDeLeituraExigemHeaderDeIdentidade() {
         List<String> paths = List.of(
                 "/api/produtos",
+                "/api/unidades",
+                "/api/movimentos-estoque",
                 "/api/cardapio/categorias",
                 "/api/cardapio/itens",
                 "/api/cardapio/admin/categorias",
@@ -57,7 +59,9 @@ class Wave4ApiAuthorizationIntegrationTest {
                 "/api/fornecedores",
                 "/api/fornecedores/ativos",
                 "/api/notas",
+                "/api/compras",
                 "/api/cotacoes/relatorio?mes=2026-04",
+                "/api/rentabilidade/ranking",
                 "/api/logs",
                 "/api/caixas",
                 "/api/caixas/metricas",
@@ -77,6 +81,8 @@ class Wave4ApiAuthorizationIntegrationTest {
     @Test
     void permissoesDosPerfisSaoRespeitadasNosEndpointsProtegidos() {
         assertEquals(HttpStatus.OK, get("/api/produtos", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/unidades", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/movimentos-estoque", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/cardapio/categorias", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/cardapio/itens", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/cardapio/admin/categorias", gerenteEstoque.getRu()).getStatusCode());
@@ -84,13 +90,17 @@ class Wave4ApiAuthorizationIntegrationTest {
         assertEquals(HttpStatus.OK, get("/api/movimentacoes", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/fornecedores", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/notas", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/compras", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/cotacoes/relatorio?mes=2026-04", gerenteEstoque.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/rentabilidade/ranking", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/logs", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/caixas", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/caixas/metricas", gerenteEstoque.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/funcionarios/classes", gerenteEstoque.getRu()).getStatusCode());
 
         assertEquals(HttpStatus.OK, get("/api/produtos", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/unidades", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.OK, get("/api/movimentos-estoque", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/cardapio/categorias", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/cardapio/itens", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.OK, get("/api/caixas", caixa.getRu()).getStatusCode());
@@ -100,7 +110,9 @@ class Wave4ApiAuthorizationIntegrationTest {
         assertEquals(HttpStatus.FORBIDDEN, get("/api/cardapio/admin/itens", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/fornecedores", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/notas", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, get("/api/compras", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/cotacoes/relatorio?mes=2026-04", caixa.getRu()).getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, get("/api/rentabilidade/ranking", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/logs", caixa.getRu()).getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, get("/api/funcionarios/classes", caixa.getRu()).getStatusCode());
     }

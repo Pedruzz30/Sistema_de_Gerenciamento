@@ -2,18 +2,24 @@ package controller;
 
 import java.math.BigDecimal;
 import model.CotacaoMensal;
+import model.EmbalagemProduto;
+import model.EstoqueProduto;
 import model.NivelEstoque;
 import model.Pedido;
 import model.Permissao;
 import model.CategoriaEstoque;
+import model.PoliticaFalta;
 import model.Produto;
 import model.TipoMovimentacao;
+import model.UnidadeMedida;
 import model.Usuario;
 import model.LogAcao;
 import repository.CotacaoRepository;
 import repository.LogRepository;
 import repository.UsuarioRepository;
 import service.EstoqueService;
+import service.ProdutoEstoqueService;
+import service.UnidadeMedidaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,15 +37,21 @@ public class ProdutoController {
     private final UsuarioRepository usuarioRepository;
     private final LogRepository logRepository;
     private final CotacaoRepository cotacaoRepository;
+    private final UnidadeMedidaService unidadeMedidaService;
+    private final ProdutoEstoqueService produtoEstoqueService;
 
     public ProdutoController(EstoqueService estoqueService,
                              UsuarioRepository usuarioRepository,
                              LogRepository logRepository,
-                             CotacaoRepository cotacaoRepository) {
+                             CotacaoRepository cotacaoRepository,
+                             UnidadeMedidaService unidadeMedidaService,
+                             ProdutoEstoqueService produtoEstoqueService) {
         this.estoqueService = estoqueService;
         this.usuarioRepository = usuarioRepository;
         this.logRepository = logRepository;
         this.cotacaoRepository = cotacaoRepository;
+        this.unidadeMedidaService = unidadeMedidaService;
+        this.produtoEstoqueService = produtoEstoqueService;
     }
 
     // GET /api/produtos
@@ -90,7 +102,10 @@ public class ProdutoController {
                     request.quantidadeInicial(),
                     request.quantidadeMinima(),
                     request.precoUnitario(),
-                    parseCategoriaEstoque(request.categoriaEstoque())
+                    parseCategoriaEstoque(request.categoriaEstoque()),
+                    resolverUnidadeOpcional(request.unidadeBaseCodigo()),
+                    parsePoliticaFalta(request.politicaFalta()),
+                    request.ativo()
             );
 
             logRepository.salvar(new LogAcao(
@@ -120,7 +135,10 @@ public class ProdutoController {
                     request.nome(),
                     request.quantidadeMinima(),
                     request.precoUnitario(),
-                    parseCategoriaEstoque(request.categoriaEstoque())
+                    parseCategoriaEstoque(request.categoriaEstoque()),
+                    resolverUnidadeOpcional(request.unidadeBaseCodigo()),
+                    parsePoliticaFalta(request.politicaFalta()),
+                    request.ativo()
             );
 
             logRepository.salvar(new LogAcao(
@@ -191,6 +209,59 @@ public class ProdutoController {
         return ResponseEntity.ok(resp);
     }
 
+    @GetMapping("/produtos/{id}/embalagens")
+    public ResponseEntity<List<EmbalagemProdutoResponse>> listarEmbalagens(
+            @PathVariable int id,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_ESTOQUE,
+                "Voce nao tem permissao para visualizar embalagens de produto."
+        );
+        return ResponseEntity.ok(produtoEstoqueService.listarEmbalagens(id).stream()
+                .map(EmbalagemProdutoResponse::from)
+                .toList());
+    }
+
+    @PostMapping("/produtos/{id}/embalagens")
+    public ResponseEntity<?> cadastrarEmbalagem(@PathVariable int id,
+                                                @RequestBody EmbalagemProdutoRequest request,
+                                                @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
+            EmbalagemProduto embalagem = produtoEstoqueService.cadastrarEmbalagem(
+                    ator,
+                    id,
+                    request.nome(),
+                    request.quantidadeBase(),
+                    request.unidadeBaseCodigo(),
+                    request.codigoBarras(),
+                    request.ativa()
+            );
+            return ResponseEntity.ok(EmbalagemProdutoResponse.from(embalagem));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/produtos/{id}/estoque")
+    public ResponseEntity<?> obterEstoqueDecimal(@PathVariable int id,
+                                                 @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader,
+                usuarioRepository,
+                Permissao.VER_ESTOQUE,
+                "Voce nao tem permissao para visualizar estoque."
+        );
+        try {
+            EstoqueProduto estoque = produtoEstoqueService.obterOuCriarEstoque(id);
+            return ResponseEntity.ok(EstoqueProdutoResponse.from(estoque));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+        }
+    }
+
     // ── Records ───────────────────────────────────────────────────────────────
 
     public record CadastroProdutoRequest(
@@ -198,14 +269,20 @@ public class ProdutoController {
             int quantidadeInicial,
             int quantidadeMinima,
             BigDecimal precoUnitario,
-            String categoriaEstoque
+            String categoriaEstoque,
+            String unidadeBaseCodigo,
+            String politicaFalta,
+            Boolean ativo
     ) {}
 
     public record AtualizarProdutoRequest(
             String nome,
             int quantidadeMinima,
             BigDecimal precoUnitario,
-            String categoriaEstoque
+            String categoriaEstoque,
+            String unidadeBaseCodigo,
+            String politicaFalta,
+            Boolean ativo
     ) {}
 
     public record MovimentacaoRequest(
@@ -224,7 +301,10 @@ public class ProdutoController {
             BigDecimal precoCusto,
             String nivelEstoque,
             String categoriaEstoque,
-            boolean controladoPorEstoque
+            boolean controladoPorEstoque,
+            String unidadeBaseCodigo,
+            String politicaFalta,
+            boolean ativo
     ) {
         public static ProdutoResponse from(Produto p, NivelEstoque nivel, BigDecimal precoCusto) {
             return new ProdutoResponse(
@@ -236,7 +316,70 @@ public class ProdutoController {
                     precoCusto,
                     nivel.name(),
                     p.getCategoriaEstoque() != null ? p.getCategoriaEstoque().name() : null,
-                    p.isControladoPorEstoque()
+                    p.isControladoPorEstoque(),
+                    p.getUnidadeBase() != null ? p.getUnidadeBase().getCodigo() : null,
+                    p.getPoliticaFalta().name(),
+                    p.isAtivo()
+            );
+        }
+    }
+
+    public record EmbalagemProdutoRequest(
+            String nome,
+            BigDecimal quantidadeBase,
+            String unidadeBaseCodigo,
+            String codigoBarras,
+            Boolean ativa
+    ) {}
+
+    public record EmbalagemProdutoResponse(
+            long id,
+            int produtoId,
+            String nome,
+            BigDecimal quantidadeBase,
+            String unidadeBaseCodigo,
+            String codigoBarras,
+            boolean ativa
+    ) {
+        public static EmbalagemProdutoResponse from(EmbalagemProduto embalagem) {
+            return new EmbalagemProdutoResponse(
+                    embalagem.getId(),
+                    embalagem.getProduto().getId(),
+                    embalagem.getNome(),
+                    embalagem.getQuantidadeBase(),
+                    embalagem.getUnidadeBase().getCodigo(),
+                    embalagem.getCodigoBarras(),
+                    embalagem.isAtiva()
+            );
+        }
+    }
+
+    public record EstoqueProdutoResponse(
+            long id,
+            Long filialId,
+            int produtoId,
+            String produtoNome,
+            BigDecimal quantidadeAtual,
+            BigDecimal quantidadeReservada,
+            BigDecimal quantidadeDisponivel,
+            BigDecimal custoMedio,
+            String unidadeBaseCodigo,
+            long version,
+            String atualizadoEm
+    ) {
+        public static EstoqueProdutoResponse from(EstoqueProduto estoque) {
+            return new EstoqueProdutoResponse(
+                    estoque.getId(),
+                    estoque.getFilialId(),
+                    estoque.getProduto().getId(),
+                    estoque.getProduto().getNome(),
+                    estoque.getQuantidadeAtual(),
+                    estoque.getQuantidadeReservada(),
+                    estoque.quantidadeDisponivel(),
+                    estoque.getCustoMedio(),
+                    estoque.getProduto().getUnidadeBase() != null ? estoque.getProduto().getUnidadeBase().getCodigo() : null,
+                    estoque.getVersion(),
+                    estoque.getAtualizadoEm().toString()
             );
         }
     }
@@ -285,6 +428,24 @@ public class ProdutoController {
             return CategoriaEstoque.valueOf(valor.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Categoria de estoque invalida.");
+        }
+    }
+
+    private UnidadeMedida resolverUnidadeOpcional(String codigo) {
+        if (codigo == null || codigo.isBlank()) {
+            return null;
+        }
+        return unidadeMedidaService.buscarPorCodigoObrigatorio(codigo);
+    }
+
+    private static PoliticaFalta parsePoliticaFalta(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        try {
+            return PoliticaFalta.valueOf(valor.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Politica de falta invalida.");
         }
     }
 

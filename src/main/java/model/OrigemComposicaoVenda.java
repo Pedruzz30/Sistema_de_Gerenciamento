@@ -1,0 +1,9 @@
+package model;
+
+public enum OrigemComposicaoVenda {
+    PRODUTO_DIRETO,
+    FICHA_TECNICA,
+    MODIFICADOR_ADICAO,
+    MODIFICADOR_REMOCAO,
+    MODIFICADOR_SUBSTITUICAO
+}

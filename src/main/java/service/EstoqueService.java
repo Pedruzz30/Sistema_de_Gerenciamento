@@ -6,8 +6,10 @@ import model.NivelEstoque;
 import model.Pedido;
 import model.Permissao;
 import model.CategoriaEstoque;
+import model.PoliticaFalta;
 import model.Produto;
 import model.TipoMovimentacao;
+import model.UnidadeMedida;
 import model.Usuario;
 import org.springframework.transaction.annotation.Transactional;
 import repository.PedidoRepository;
@@ -49,6 +51,29 @@ public class EstoqueService {
     @Transactional
     public Produto cadastrarProduto(Usuario usuario, String nome, int quantidadeInicial, int quantidadeMinima,
                                     BigDecimal preco, CategoriaEstoque categoriaEstoque) {
+        return cadastrarProduto(
+                usuario,
+                nome,
+                quantidadeInicial,
+                quantidadeMinima,
+                preco,
+                categoriaEstoque,
+                null,
+                PoliticaFalta.BLOQUEAR,
+                Boolean.TRUE
+        );
+    }
+
+    @Transactional
+    public Produto cadastrarProduto(Usuario usuario,
+                                    String nome,
+                                    int quantidadeInicial,
+                                    int quantidadeMinima,
+                                    BigDecimal preco,
+                                    CategoriaEstoque categoriaEstoque,
+                                    UnidadeMedida unidadeBase,
+                                    PoliticaFalta politicaFalta,
+                                    Boolean ativo) {
         validarPermissaoEdicaoEstoque(usuario);
 
         if (nome == null || nome.trim().isEmpty()) {
@@ -63,7 +88,18 @@ public class EstoqueService {
         validarProdutoDeEstoque(nome);
 
         Produto produto = produtoRepository.salvar(
-                new Produto(0, nome, quantidadeInicial, quantidadeMinima, preco, categoriaEstoque)
+                new Produto(
+                        0,
+                        nome,
+                        quantidadeInicial,
+                        quantidadeMinima,
+                        preco,
+                        categoriaEstoque,
+                        Boolean.TRUE,
+                        unidadeBase,
+                        politicaFalta,
+                        ativo
+                )
         );
         registrarNivelEstoque(produto);
         return produto;
@@ -77,6 +113,31 @@ public class EstoqueService {
     @Transactional
     public Produto atualizarProduto(Usuario usuario, int id, String nome, int quantidadeMinima, BigDecimal preco,
                                     CategoriaEstoque categoriaEstoque) {
+        Produto produtoAtual = buscarProdutoPorId(id)
+                .orElseThrow(() -> new IllegalArgumentException("Produto nao encontrado com ID: " + id));
+        return atualizarProduto(
+                usuario,
+                id,
+                nome,
+                quantidadeMinima,
+                preco,
+                categoriaEstoque,
+                produtoAtual.getUnidadeBase(),
+                produtoAtual.getPoliticaFalta(),
+                produtoAtual.isAtivo()
+        );
+    }
+
+    @Transactional
+    public Produto atualizarProduto(Usuario usuario,
+                                    int id,
+                                    String nome,
+                                    int quantidadeMinima,
+                                    BigDecimal preco,
+                                    CategoriaEstoque categoriaEstoque,
+                                    UnidadeMedida unidadeBase,
+                                    PoliticaFalta politicaFalta,
+                                    Boolean ativo) {
         validarPermissaoEdicaoEstoque(usuario);
 
         if (nome == null || nome.trim().isEmpty()) {
@@ -92,6 +153,9 @@ public class EstoqueService {
 
         Produto produtoAtual = buscarProdutoPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produto nao encontrado com ID: " + id));
+        UnidadeMedida unidadeFinal = unidadeBase != null ? unidadeBase : produtoAtual.getUnidadeBase();
+        PoliticaFalta politicaFinal = politicaFalta != null ? politicaFalta : produtoAtual.getPoliticaFalta();
+        Boolean ativoFinal = ativo != null ? ativo : produtoAtual.isAtivo();
 
         Produto produtoAtualizado = produtoRepository.salvar(
                 new Produto(
@@ -101,7 +165,10 @@ public class EstoqueService {
                         quantidadeMinima,
                         preco,
                         categoriaEstoque,
-                        produtoAtual.isControladoPorEstoque()
+                        produtoAtual.isControladoPorEstoque(),
+                        unidadeFinal,
+                        politicaFinal,
+                        ativoFinal
                 )
         );
         return produtoAtualizado;

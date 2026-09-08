@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import repository.LogRepository;
 import repository.UsuarioRepository;
 import service.CardapioService;
+import service.VariacaoItemCardapioService;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,13 +22,16 @@ import java.util.List;
 public class CardapioAdminController {
 
     private final CardapioService cardapioService;
+    private final VariacaoItemCardapioService variacaoItemCardapioService;
     private final UsuarioRepository usuarioRepository;
     private final LogRepository logRepository;
 
     public CardapioAdminController(CardapioService cardapioService,
+                                   VariacaoItemCardapioService variacaoItemCardapioService,
                                    UsuarioRepository usuarioRepository,
                                    LogRepository logRepository) {
         this.cardapioService = cardapioService;
+        this.variacaoItemCardapioService = variacaoItemCardapioService;
         this.usuarioRepository = usuarioRepository;
         this.logRepository = logRepository;
     }
@@ -131,6 +135,7 @@ public class CardapioAdminController {
         );
         registrarLog(ator, "CARDAPIO_ITEM_CRIADO",
                 "Item de cardapio criado: " + item.getNome() + " (" + item.getCodigo() + ")");
+        variacaoItemCardapioService.garantirVariacaoPadraoSePossivel(item, ator);
         return ResponseEntity.status(HttpStatus.CREATED).body(ItemAdminResponse.from(item, cardapioService));
     }
 
@@ -153,6 +158,7 @@ public class CardapioAdminController {
         );
         registrarLog(ator, "CARDAPIO_ITEM_ATUALIZADO",
                 "Item de cardapio atualizado: " + item.getNome() + " (" + item.getCodigo() + ")");
+        variacaoItemCardapioService.garantirVariacaoPadraoSePossivel(item, ator);
         return ResponseEntity.ok(ItemAdminResponse.from(item, cardapioService));
     }
 

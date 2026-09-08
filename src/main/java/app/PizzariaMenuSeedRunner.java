@@ -7,6 +7,7 @@ import model.Produto;
 import model.TipoItemCardapio;
 import model.Usuario;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import repository.CategoriaCardapioRepository;
 import repository.ItemCardapioRepository;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@ConditionalOnProperty(name = "stockos.seed.demo-menu.enabled", havingValue = "true")
 public class PizzariaMenuSeedRunner implements CommandLineRunner {
 
     private static final BigDecimal PRECO_BROTO = new BigDecimal("29.90");

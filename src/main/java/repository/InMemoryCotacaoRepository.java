@@ -59,6 +59,10 @@ public class InMemoryCotacaoRepository implements CotacaoRepository {
 
     @Override
     public synchronized List<CotacaoMensal> listarTodas() {
-        return new ArrayList<>(cotacoes);
+        return cotacoes.stream()
+                .sorted(Comparator
+                        .comparing(CotacaoMensal::getMesReferencia).reversed()
+                        .thenComparing(Comparator.comparingLong(CotacaoMensal::getId).reversed()))
+                .collect(Collectors.toList());
     }
 }

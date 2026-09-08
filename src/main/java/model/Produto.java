@@ -7,6 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -66,6 +69,17 @@ public class Produto {
     @Column(name = "controlado_por_estoque")
     private Boolean controladoPorEstoque = Boolean.TRUE;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unidade_base_id")
+    private UnidadeMedida unidadeBase;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "politica_falta", length = 20)
+    private PoliticaFalta politicaFalta = PoliticaFalta.BLOQUEAR;
+
+    @Column
+    private Boolean ativo = Boolean.TRUE;
+
     // ── Campo mutável controlado ──────────────────────────────────────────────
 
     @Column(name = "quantidade_atual", nullable = false)
@@ -104,6 +118,30 @@ public class Produto {
 
     public Produto(int id, String nome, int quantidadeAtual, int quantidadeMinima,
                    BigDecimal precoUnitario, CategoriaEstoque categoriaEstoque, Boolean controladoPorEstoque) {
+        this(
+                id,
+                nome,
+                quantidadeAtual,
+                quantidadeMinima,
+                precoUnitario,
+                categoriaEstoque,
+                controladoPorEstoque,
+                null,
+                PoliticaFalta.BLOQUEAR,
+                Boolean.TRUE
+        );
+    }
+
+    public Produto(int id,
+                   String nome,
+                   int quantidadeAtual,
+                   int quantidadeMinima,
+                   BigDecimal precoUnitario,
+                   CategoriaEstoque categoriaEstoque,
+                   Boolean controladoPorEstoque,
+                   UnidadeMedida unidadeBase,
+                   PoliticaFalta politicaFalta,
+                   Boolean ativo) {
 
         validar(id >= 0,                            "ID do produto não pode ser negativo.");
         validar(nome != null && !nome.isBlank(),    "Nome do produto é obrigatório.");
@@ -120,6 +158,9 @@ public class Produto {
         this.precoUnitario    = precoUnitario.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
         this.categoriaEstoque = categoriaEstoque;
         this.controladoPorEstoque = controladoPorEstoque;
+        this.unidadeBase = unidadeBase;
+        this.politicaFalta = politicaFalta == null ? PoliticaFalta.BLOQUEAR : politicaFalta;
+        this.ativo = ativo == null ? Boolean.TRUE : ativo;
     }
 
     // ── Fábrica para repositório ──────────────────────────────────────────────
@@ -143,7 +184,18 @@ public class Produto {
      */
     public Produto comId(int novoId) {
         validar(novoId > 0, "Novo ID deve ser maior que zero.");
-        return new Produto(novoId, nome, quantidadeAtual, quantidadeMinima, precoUnitario, categoriaEstoque, controladoPorEstoque);
+        return new Produto(
+                novoId,
+                nome,
+                quantidadeAtual,
+                quantidadeMinima,
+                precoUnitario,
+                categoriaEstoque,
+                controladoPorEstoque,
+                unidadeBase,
+                politicaFalta,
+                ativo
+        );
     }
 
     // ── Operações de estoque ──────────────────────────────────────────────────
@@ -265,6 +317,9 @@ public class Produto {
     public BigDecimal       getPrecoUnitario()    { return precoUnitario;    }
     public CategoriaEstoque getCategoriaEstoque() { return categoriaEstoque; }
     public boolean          isControladoPorEstoque() { return controladoPorEstoque == null || controladoPorEstoque; }
+    public UnidadeMedida    getUnidadeBase()      { return unidadeBase; }
+    public PoliticaFalta    getPoliticaFalta()    { return politicaFalta == null ? PoliticaFalta.BLOQUEAR : politicaFalta; }
+    public boolean          isAtivo()             { return ativo == null || ativo; }
 
     /** @return {@code true} se uma categoria de estoque foi definida */
     public boolean possuiCategoriaEstoque() {
