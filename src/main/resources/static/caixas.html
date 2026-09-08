@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StockOS — Caixas</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/estoque.css">
-  <link rel="stylesheet" href="/css/pages.css">
-  <link rel="stylesheet" href="/css/pdv.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
 
@@ -16,39 +16,44 @@
 
   <!-- ── Sidebar ── -->
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
-      StockOS
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Menu</div>
-      <div id="nav-items"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-name">Carregando...</div>
-          <div class="user-role" id="user-role">--</div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
       </div>
     </div>
   </aside>
 
-  <!-- ── Header ── -->
-  <header class="header">
-    <div>
-      <div class="header-title">Caixas PDV</div>
-      <div class="header-sub">Gerencie abertura, vendas e encerramento de caixas</div>
-    </div>
-    <div class="header-right">
-      <button class="btn-primary" onclick="abrirModalAbrirCaixa()">+ Abrir Caixa</button>
-    </div>
-  </header>
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Caixas PDV</span>
+        </div>
+        <h1 class="page-title header-title" id="header-title">Caixas PDV</h1>
+        <p class="page-sub header-sub" id="header-sub">Gerencie abertura, vendas e encerramento de caixas.</p>
+      </div>
+      <div class="topbar-right header-right">
+        <button class="btn btn-accent btn-primary" onclick="abrirModalAbrirCaixa()">+ Abrir Caixa</button>
+      </div>
+    </header>
 
-  <!-- ── Main ── -->
-  <main class="main">
+    <div class="main-body content">
 
     <!-- Resumo do dia -->
     <div class="info-grid fade-up" id="resumo-dia" hidden>
@@ -78,12 +83,13 @@
     <div class="card fade-up fade-up-3" id="consolidado-card" hidden>
       <div class="card-header">
         <span class="card-title">Consolidado do Dia</span>
-        <button class="btn-secondary btn-secondary--compact" onclick="carregarConsolidado()">Atualizar</button>
+        <button class="btn btn-secondary btn-secondary--compact" onclick="carregarConsolidado()">Atualizar</button>
       </div>
       <pre id="consolidado-texto" class="consolidado-texto"></pre>
     </div>
 
-  </main>
+    </div>
+  </div>
 </div>
 
 <!-- ── Modal: Abrir Caixa ── -->
@@ -94,19 +100,19 @@
       <button class="modal-close" onclick="fecharModal('modal-abrir')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
+      <div class="field form-group">
         <label>Número do Caixa</label>
-        <input type="number" id="abrir-numero" placeholder="Ex: 1" min="1">
+        <input class="input" type="number" id="abrir-numero" placeholder="Ex: 1" min="1">
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Saldo Inicial (R$)</label>
-        <input type="number" id="abrir-saldo" placeholder="0,00" step="0.01" min="0">
+        <input class="input" type="number" id="abrir-saldo" placeholder="0,00" step="0.01" min="0">
       </div>
       <div class="alert-modal" id="alert-abrir"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-abrir')">Cancelar</button>
-      <button class="btn-primary" onclick="confirmarAbrirCaixa()">Abrir</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-abrir')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAbrirCaixa()">Abrir</button>
     </div>
   </div>
 </div>
@@ -123,19 +129,19 @@
         <div class="produto-info-nome" id="mov-caixa-info">Caixa —</div>
         <div class="produto-info-qtd">Saldo atual: <strong id="mov-saldo-atual">—</strong></div>
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Valor (R$)</label>
-        <input type="number" id="mov-valor" placeholder="0,00" step="0.01" min="0.01">
+        <input class="input" type="number" id="mov-valor" placeholder="0,00" step="0.01" min="0.01">
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Descrição (opcional)</label>
-        <input type="text" id="mov-descricao" placeholder="Ex: Venda 3 laranjas">
+        <input class="input" type="text" id="mov-descricao" placeholder="Ex: Venda 3 laranjas">
       </div>
       <div class="alert-modal" id="alert-mov"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-mov')">Cancelar</button>
-      <button class="btn-primary" id="btn-confirmar-mov" onclick="confirmarMovimentacao()">Confirmar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-mov')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-mov" onclick="confirmarMovimentacao()">Confirmar</button>
     </div>
   </div>
 </div>
@@ -151,7 +157,7 @@
       <div class="mov-caixa-list" id="movs-lista"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-movs-lista')">Fechar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-movs-lista')">Fechar</button>
     </div>
   </div>
 </div>
@@ -165,7 +171,8 @@
     </div>
     <div class="modal-body">
       <div class="alert-modal error alert-modal--static" id="alert-encerrar-warn">
-        ⚠ Tem certeza? Após encerrar, o caixa não poderá receber mais movimentações.
+        <span class="btn-inline-icon" data-icon="alertTriangle"></span>
+        Tem certeza? Após encerrar, o caixa não poderá receber mais movimentações.
       </div>
       <p class="inline-note">
         Caixa: <strong id="encerrar-caixa-num">—</strong>
@@ -173,19 +180,19 @@
       <p class="inline-note">
         Valor no sistema: <strong id="encerrar-valor-sistema">R$0,00</strong>
       </p>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Valor contado (R$)</label>
-        <input type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0">
+        <input class="input" type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0">
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Observação (opcional)</label>
-        <input type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
+        <input class="input" type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
       </div>
       <div class="alert-modal" id="alert-encerrar"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-encerrar')">Cancelar</button>
-      <button class="btn-primary btn-primary--danger" id="btn-confirmar-encerrar" onclick="confirmarEncerrar()">Encerrar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-encerrar')">Cancelar</button>
+      <button class="btn btn-primary btn-primary--danger" id="btn-confirmar-encerrar" onclick="confirmarEncerrar()">Encerrar</button>
     </div>
   </div>
 </div>

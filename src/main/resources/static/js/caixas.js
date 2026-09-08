@@ -9,6 +9,10 @@ let tipoMovAtual         = null;
 let numeroCaixaAtual     = null;
 let numeroCaixaEncerrar  = null;
 
+function buttonIcon(name) {
+  return '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup(name) + '</span>';
+}
+
 // ── Permissões ────────────────────────────────────────────────────────────
 
 const PODE_OPERAR_CAIXA         = temPermissao(PERMISSOES.VER_VENDAS);
@@ -129,17 +133,17 @@ function renderCaixas() {
     const botoesAbertos = [
       // PDV substitui o modal simples de venda
       PODE_OPERAR_CAIXA
-        ? `<button class="btn-sm success" onclick="abrirPDV(${c.numeroCaixa})">🛒 PDV</button>`
+        ? `<button class="btn-sm success" onclick="abrirPDV(${c.numeroCaixa})">${buttonIcon('cart')}PDV</button>`
         : '',
       PODE_GERIR_FINANCAS_CAIXA
-        ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.saldoAtual})">📤 Sangria</button>`
+        ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('minus')}Sangria</button>`
         : '',
       PODE_GERIR_FINANCAS_CAIXA
-        ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.saldoAtual})">📥 Suprimento</button>`
+        ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('plus')}Suprimento</button>`
         : '',
-      `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">📋 Ver movs</button>`,
+      `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}Ver movs</button>`,
       PODE_GERIR_FINANCAS_CAIXA
-        ? `<button class="btn-sm danger" onclick="abrirModalEncerrar(${c.numeroCaixa})">🔒 Encerrar</button>`
+        ? `<button class="btn-sm danger" onclick="abrirModalEncerrar(${c.numeroCaixa})">${buttonIcon('lock')}Encerrar</button>`
         : '',
     ].filter(Boolean).join('');
 
@@ -176,7 +180,7 @@ function renderCaixas() {
         <div class="caixa-actions">
           ${c.status === 'ABERTO'
             ? botoesAbertos
-            : `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">📋 Ver movs</button>`}
+            : `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}Ver movs</button>`}
         </div>
       </div>`;
   }).join('');
@@ -236,7 +240,7 @@ function abrirModalMov(tipo, numero, saldoAtual) {
   limparAlert('alert-mov');
   document.getElementById('mov-valor').value     = '';
   document.getElementById('mov-descricao').value = '';
-  const titulos = { venda: '💵 Registrar Venda', sangria: '📤 Sangria', suprimento: '📥 Suprimento' };
+  const titulos = { venda: 'Registrar Venda', sangria: 'Sangria', suprimento: 'Suprimento' };
   document.getElementById('modal-mov-titulo').textContent = titulos[tipo] || 'Movimentação';
   document.getElementById('mov-caixa-info').textContent   = `Caixa ${numero}`;
   document.getElementById('mov-saldo-atual').textContent  = `R$${(saldoAtual||0).toFixed(2)}`;
@@ -338,7 +342,8 @@ function mostrarFechamento(data, erroMsg) {
   if (erroMsg) {
     container.innerHTML = `
       <div class="alert-modal error alert-modal--static">
-        ⚠ ${escapeHtml(erroMsg)}
+        <span class="btn-inline-icon" aria-hidden="true">${iconMarkup('alertTriangle')}</span>
+        ${escapeHtml(erroMsg)}
       </div>`;
   } else {
     const abertoPor = escapeHtml(data.abertoPor || data.nomeOperador || '—');
@@ -353,7 +358,10 @@ function mostrarFechamento(data, erroMsg) {
     const divergenciaClass = divergencia === 0 ? '' : (divergencia > 0 ? 'text-success' : 'text-danger');
     container.innerHTML = `
       <div class="fechamento-card">
-        <div class="fechamento-title">✓ Caixa ${data.numeroCaixa} Encerrado</div>
+        <div class="fechamento-title">
+          <span class="btn-inline-icon" aria-hidden="true">${iconMarkup('checkCircle')}</span>
+          Caixa ${data.numeroCaixa} Encerrado
+        </div>
         <div class="fechamento-rows">
           <div class="fechamento-row"><span class="label">Aberto por</span>
             <span class="value">${abertoPor}</span></div>

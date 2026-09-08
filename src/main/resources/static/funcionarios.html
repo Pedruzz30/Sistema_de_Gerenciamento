@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockOS — Funcionários</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/global.css">
-<link rel="stylesheet" href="/css/estoque.css">
-<link rel="stylesheet" href="/css/pages.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
 
@@ -15,49 +16,53 @@
 
   <!-- ── Sidebar ── -->
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
-      StockOS
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Menu</div>
-      <div id="nav-items"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-name">Carregando...</div>
-          <div class="user-role" id="user-role">--</div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
       </div>
     </div>
   </aside>
 
-  <!-- ── Header ── -->
-  <header class="header">
-    <div>
-      <div class="header-title">Funcionários</div>
-      <div class="header-sub">Gerencie cadastros, classes e permissões</div>
-    </div>
-    <div class="header-right">
-      <button class="btn-primary" onclick="abrirModalCadastro()">+ Novo Funcionário</button>
-    </div>
-  </header>
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Funcionários</span>
+        </div>
+        <h1 class="page-title header-title" id="header-title">Funcionários</h1>
+        <p class="page-sub header-sub" id="header-sub">Gerencie cadastros, classes e permissões.</p>
+      </div>
+      <div class="topbar-right header-right">
+        <button class="btn btn-accent btn-primary" onclick="abrirModalCadastro()">+ Novo Funcionário</button>
+      </div>
+    </header>
 
-  <!-- ── Main ── -->
-  <main class="main">
+    <div class="main-body content">
 
     <div class="page-summary-grid fade-up" id="funcionario-summary"></div>
 
     <!-- Filtros -->
     <div class="toolbar fade-up">
       <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="busca" placeholder="Buscar funcionário..." oninput="filtrar()">
+        <input class="input input-search" type="text" id="busca" placeholder="Buscar funcionário..." oninput="filtrar()">
       </div>
-      <div class="filter-group">
+      <div class="seg filter-group">
         <button class="filter-btn active" onclick="setFiltro('todos', this)">Todos</button>
         <button class="filter-btn" onclick="setFiltro('ativos', this)">Ativos</button>
         <button class="filter-btn" onclick="setFiltro('inativos', this)">Inativos</button>
@@ -71,7 +76,7 @@
         <span class="table-count" id="table-count">—</span>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="table">
           <thead>
             <tr>
               <th>RU</th>
@@ -89,7 +94,8 @@
       </div>
     </div>
 
-  </main>
+    </div>
+  </div>
 </div>
 
 <!-- ── Modal: Cadastrar Funcionário ── -->

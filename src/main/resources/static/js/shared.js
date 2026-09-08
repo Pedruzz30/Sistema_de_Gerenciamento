@@ -130,6 +130,41 @@ function temAlgumaPermissao(perms) {
   return Array.isArray(perms) && perms.some(temPermissao);
 }
 
+function resolverContextoOperacionalCardapio(overrides) {
+  const opcoes = overrides || {};
+  let filialId = Number(opcoes.filialId || 0);
+  let canal = String(opcoes.canal || '').trim();
+
+  try {
+    if (!filialId) filialId = Number(window.localStorage.getItem('stockos.filialId') || 0);
+    if (!canal) canal = String(window.localStorage.getItem('stockos.canalVenda') || '').trim();
+  } catch (error) {}
+
+  if (!filialId && usuario && usuario.filialId) filialId = Number(usuario.filialId);
+  if (!canal) {
+    canal = 'BALCAO';
+    console.warn('Contexto operacional sem canal configurado. Usando BALCAO como fallback temporario.');
+  }
+  if (!filialId) {
+    filialId = 1;
+    console.warn('Contexto operacional sem filial configurada. Usando filial 1 como fallback temporario.');
+  }
+
+  return { filialId: filialId, canal: canal.toUpperCase() };
+}
+
+function getFilialOperacionalAtual() {
+  return resolverContextoOperacionalCardapio().filialId;
+}
+
+function getCanalVendaAtual() {
+  return resolverContextoOperacionalCardapio().canal;
+}
+
+window.resolverContextoOperacionalCardapio = resolverContextoOperacionalCardapio;
+window.getFilialOperacionalAtual = getFilialOperacionalAtual;
+window.getCanalVendaAtual = getCanalVendaAtual;
+
 function logout() {
   limparUsuarioPersistido();
   window.location.href = '/login.html';
@@ -325,11 +360,11 @@ function paginaAtual() {
 // ── Navigation ───────────────────────────────────────────────────────────────
 const NAV_ITENS = [
   { icon: 'grid', label: 'Dashboard', permsAny: null, href: '/dashboard.html', id: 'dashboard' },
-  { icon: 'box', label: 'Estoque', permsAny: [PERMISSOES.VER_ESTOQUE], href: '/estoque', id: 'estoque' },
-  { icon: 'cart', label: 'Cardapio', permsAny: [PERMISSOES.EDITAR_ESTOQUE], href: '/cardapio.html', id: 'cardapio' },
+  { icon: 'box', label: 'Estoque', permsAny: [PERMISSOES.VER_ESTOQUE], href: '/estoque.html', id: 'estoque' },
+  { icon: 'cart', label: 'Cardápio', permsAny: [PERMISSOES.EDITAR_ESTOQUE], href: '/cardapio.html', id: 'cardapio' },
   { icon: 'truck', label: 'Fornecedores', permsAny: [PERMISSOES.VER_COMPRAS], href: '/fornecedores.html', id: 'fornecedores' },
   { icon: 'receipt', label: 'Notas Fiscais', permsAny: [PERMISSOES.VER_COMPRAS], href: '/notas.html', id: 'notas' },
-  { icon: 'wallet', label: 'Caixas', permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS], href: '/caixas.html', id: 'caixas' },
+  { icon: 'wallet', label: 'Caixas PDV', permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS], href: '/caixas.html', id: 'caixas' },
   { icon: 'chart', label: 'Cotações', permsAny: [PERMISSOES.VER_FINANCAS], href: '/cotacoes.html', id: 'cotacoes' },
   { icon: 'users', label: 'Funcionários', permsAny: [PERMISSOES.GERENCIAR_FUNCIONARIOS], href: '/funcionarios.html', id: 'funcionarios' },
   { icon: 'clipboard', label: 'Logs', permsAny: [PERMISSOES.VER_LOGS], href: '/logs.html', id: 'logs' },
@@ -345,7 +380,7 @@ function renderSidebar() {
     .map(function (item) {
       return '<a href="' + item.href + '" class="nav-item ' + (item.id === atual ? 'active' : '') + '">' +
         '<span class="nav-icon" aria-hidden="true">' + iconMarkup(item.icon) + '</span>' +
-        '<span>' + item.label + '</span>' +
+        '<span class="label">' + item.label + '</span>' +
         '</a>';
     }).join('');
 }
@@ -380,9 +415,10 @@ function renderUserCard() {
 
   avatar.textContent = (usuario.nome[0] + usuario.sobrenome[0]).toUpperCase();
   name.textContent = usuario.nome + ' ' + usuario.sobrenome;
-  role.textContent = usuario.perfil === 'ADMIN'
+  var papel = usuario.perfil === 'ADMIN'
     ? 'Superior'
     : (usuario.nomeClasse ? usuario.nomeClasse.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (letra) { return letra.toUpperCase(); }) : 'Operador');
+  role.textContent = papel + ' · RU ' + usuario.ru;
 }
 
 // ── Shell mobile e acessibilidade global ────────────────────────────────────
@@ -410,7 +446,7 @@ function setupShell() {
 
   const app = document.querySelector('.app');
   const sidebar = document.querySelector('.sidebar');
-  const header = document.querySelector('.header');
+  const header = document.querySelector('.header, .topbar');
   if (!app || !sidebar || !header) return;
 
   let headerMain = header.querySelector('.header-main');

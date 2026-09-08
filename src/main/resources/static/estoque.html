@@ -4,62 +4,69 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockOS — Estoque</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/global.css">
-<link rel="stylesheet" href="/css/estoque.css">
-<link rel="stylesheet" href="/css/pages.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
 
 <div class="app">
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
-      StockOS
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Menu</div>
-      <div id="nav-items"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-name">Carregando...</div>
-          <div class="user-role" id="user-role">--</div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">×</button>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
       </div>
     </div>
   </aside>
 
-  <header class="header">
-    <div>
-      <div class="header-title">Estoque</div>
-      <div class="header-sub">Gerencie produtos, categorias, entradas e saídas</div>
-    </div>
-    <div class="header-right">
-      <button class="btn-primary" onclick="abrirModalCadastro()" id="btn-novo-produto">
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Estoque</span>
+        </div>
+        <h1 class="page-title header-title" id="header-title">Estoque</h1>
+        <p class="page-sub header-sub" id="header-sub">Gerencie produtos, categorias, entradas e saídas.</p>
+      </div>
+      <div class="topbar-right header-right">
+      <button class="btn btn-accent" onclick="abrirModalCadastro()" id="btn-novo-produto">
         + Novo Produto
       </button>
-    </div>
-  </header>
+      </div>
+    </header>
 
-  <main class="main">
+    <div class="main-body content">
     <div class="categoria-summary-grid fade-up" id="categoria-summary"></div>
 
     <div class="toolbar fade-up">
       <div class="search-wrap">
-        <span class="search-icon">🔎</span>
-        <input type="text" id="busca" placeholder="Buscar produto..." oninput="filtrarProdutos()">
+        <input class="input input-search" type="text" id="busca" placeholder="Buscar produto..." oninput="filtrarProdutos()">
       </div>
-      <div class="filter-group" data-filter-group="nivel">
+      <div class="seg filter-group" data-filter-group="nivel">
         <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
         <button class="filter-btn" onclick="filtrar('critico', this)">Crítico</button>
         <button class="filter-btn" onclick="filtrar('baixo', this)">Baixo</button>
         <button class="filter-btn" onclick="filtrar('adequado', this)">Adequado</button>
       </div>
-      <div class="filter-group" data-filter-group="categoria">
+      <div class="seg filter-group" data-filter-group="categoria">
         <button class="filter-btn active" onclick="filtrarCategoria('todas', this)">Todas</button>
         <button class="filter-btn" onclick="filtrarCategoria('BEBIDAS', this)">Bebidas</button>
         <button class="filter-btn" onclick="filtrarCategoria('SECO', this)">Estoque seco</button>
@@ -80,13 +87,13 @@
       <div class="table-header">
         <span class="table-title">Produtos em Estoque</span>
         <div class="table-header-actions">
-          <button class="btn-secondary" id="btn-exportar-csv" onclick="exportarCsvProdutos()">Exportar CSV</button>
+          <button class="btn btn-secondary" id="btn-exportar-csv" onclick="exportarCsvProdutos()">Exportar CSV</button>
           <span class="table-count" id="table-count">-</span>
         </div>
       </div>
 
       <div class="table-wrap">
-        <table>
+        <table class="table">
           <thead>
             <tr>
               <th>Produto</th>
@@ -104,7 +111,8 @@
         </table>
       </div>
     </div>
-  </main>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal-cadastro" onclick="fecharModalSeClicouFora(event, 'modal-cadastro')">
@@ -114,33 +122,33 @@
       <button class="modal-close" onclick="fecharModal('modal-cadastro')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
+      <div class="field form-group">
         <label>Nome do produto</label>
-        <input type="text" id="c-nome" placeholder="Ex: Laranja">
+        <input class="input" type="text" id="c-nome" placeholder="Ex: Laranja">
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Categoria de estoque</label>
-        <select id="c-categoria"></select>
+        <select class="select" id="c-categoria"></select>
       </div>
       <div class="form-row-2">
-        <div class="form-group">
+        <div class="field form-group">
           <label>Quantidade inicial</label>
-          <input type="number" id="c-qtd-inicial" placeholder="0" min="0">
+          <input class="input" type="number" id="c-qtd-inicial" placeholder="0" min="0">
         </div>
-        <div class="form-group">
+        <div class="field form-group">
           <label>Quantidade mínima</label>
-          <input type="number" id="c-qtd-minima" placeholder="0" min="0">
+          <input class="input" type="number" id="c-qtd-minima" placeholder="0" min="0">
         </div>
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Preço unitário (R$)</label>
-        <input type="number" id="c-preco" placeholder="0,00" step="0.01" min="0">
+        <input class="input" type="number" id="c-preco" placeholder="0,00" step="0.01" min="0">
       </div>
       <div class="alert-modal" id="alert-cadastro"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn-primary" onclick="cadastrarProduto()">Cadastrar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
+      <button class="btn btn-primary" onclick="cadastrarProduto()">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -152,29 +160,29 @@
       <button class="modal-close" onclick="fecharModal('modal-edicao')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
+      <div class="field form-group">
         <label>Nome do produto</label>
-        <input type="text" id="e-nome">
+        <input class="input" type="text" id="e-nome">
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Categoria de estoque</label>
-        <select id="e-categoria"></select>
+        <select class="select" id="e-categoria"></select>
       </div>
       <div class="form-row-2">
-        <div class="form-group">
+        <div class="field form-group">
           <label>Quantidade mínima</label>
-          <input type="number" id="e-qtd-minima" min="0">
+          <input class="input" type="number" id="e-qtd-minima" min="0">
         </div>
-        <div class="form-group">
+        <div class="field form-group">
           <label>Preço unitário (R$)</label>
-          <input type="number" id="e-preco" step="0.01" min="0">
+          <input class="input" type="number" id="e-preco" step="0.01" min="0">
         </div>
       </div>
       <div class="alert-modal" id="alert-edicao"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-edicao')">Cancelar</button>
-      <button class="btn-primary" onclick="atualizarProduto()">Salvar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-edicao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="atualizarProduto()">Salvar</button>
     </div>
   </div>
 </div>
@@ -200,15 +208,15 @@
           Saída
         </button>
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Quantidade</label>
-        <input type="number" id="mov-qtd" placeholder="0" min="1">
+        <input class="input" type="number" id="mov-qtd" placeholder="0" min="1">
       </div>
       <div class="alert-modal" id="alert-mov"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-mov')">Cancelar</button>
-      <button class="btn-primary" id="btn-confirmar-mov" onclick="confirmarMovimentacao()">Confirmar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-mov')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-mov" onclick="confirmarMovimentacao()">Confirmar</button>
     </div>
   </div>
 </div>

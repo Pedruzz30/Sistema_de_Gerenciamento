@@ -4,46 +4,57 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StockOS — Notas Fiscais</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/estoque.css">
-  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
 
 <div class="app">
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
-      StockOS
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Menu</div>
-      <div id="nav-items"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-name">Carregando...</div>
-          <div class="user-role" id="user-role">--</div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
       </div>
     </div>
   </aside>
 
-  <header class="header">
-    <div>
-      <div class="header-title">Notas Fiscais</div>
-      <div class="header-sub">A nota fiscal agora resolve produto novo e vínculo com fornecedor no mesmo fluxo.</div>
-    </div>
-    <div class="header-right">
-      <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">+ Nova Nota</button>
-    </div>
-  </header>
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Notas Fiscais</span>
+        </div>
+        <h1 class="page-title header-title" id="header-title">Notas Fiscais</h1>
+        <p class="page-sub header-sub" id="header-sub">Resolva produto novo e vínculo com fornecedor no mesmo fluxo.</p>
+      </div>
+      <div class="topbar-right header-right">
+        <button class="btn btn-accent btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">
+          <span class="btn-inline-icon" data-icon="plus"></span>
+          Nova Nota
+        </button>
+      </div>
+    </header>
 
-  <main class="main">
+    <div class="main-body content">
     <div class="tabs fade-up">
       <button class="tab-btn active" id="tab-lista" onclick="abrirAba('aba-lista')">Todas as Notas</button>
       <button class="tab-btn" id="tab-nova" onclick="abrirAba('aba-nova')">Nova Nota</button>
@@ -56,7 +67,7 @@
           <span class="table-count" id="notas-count">-</span>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="table">
             <thead>
             <tr>
               <th>#</th>
@@ -111,7 +122,10 @@
         </div>
         <div class="alert-modal" id="alert-s1"></div>
         <div class="actions-inline">
-          <button class="btn-primary" id="btn-step1-avancar" onclick="avancarStep1()">Abrir Nota →</button>
+          <button class="btn-primary" id="btn-step1-avancar" onclick="avancarStep1()">
+            Abrir Nota
+            <span class="btn-inline-icon" data-icon="arrowRight"></span>
+          </button>
           <button class="btn-secondary" onclick="abrirAba('aba-lista')">Cancelar</button>
         </div>
       </div>
@@ -129,7 +143,8 @@
               <div class="nota-inline-sub">Pesquise um produto existente ou crie um novo sem sair desta tela.</div>
             </div>
             <button class="btn-secondary" type="button" id="btn-toggle-novo-produto" onclick="toggleNovoProduto()">
-              + Novo Produto
+              <span class="btn-inline-icon" data-icon="plus"></span>
+              Novo Produto
             </button>
           </div>
 
@@ -150,7 +165,8 @@
               <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
             </div>
             <button class="btn-primary notes-item-composer__submit" id="btn-adicionar-item" onclick="adicionarItem()">
-              + Adicionar Item
+              <span class="btn-inline-icon" data-icon="plus"></span>
+              Adicionar Item
             </button>
           </div>
 
@@ -199,7 +215,10 @@
             <span class="notes-total-label">Total: <strong id="s2-total" class="notes-total-value">R$0,00</strong></span>
             <button class="btn-secondary btn-secondary--compact" onclick="descartarRascunho()">Descartar Rascunho</button>
           </div>
-          <button class="btn-primary" onclick="avancarStep2()" id="btn-step2-avancar" disabled>Confirmar Nota →</button>
+          <button class="btn-primary" onclick="avancarStep2()" id="btn-step2-avancar" disabled>
+            Confirmar Nota
+            <span class="btn-inline-icon" data-icon="arrowRight"></span>
+          </button>
         </div>
       </div>
 
@@ -229,9 +248,9 @@
         <p class="inline-note">
           Clique abaixo para registrar o pagamento e encerrar o ciclo desta nota fiscal.
         </p>
-        <button class="btn-primary" id="btn-step4-avancar" onclick="avancarStep4()">Registrar pagamento</button>
-        <div class="alert-modal notes-alert-spacing" id="alert-s4"></div>
-      </div>
+          <button class="btn-primary" id="btn-step4-avancar" onclick="avancarStep4()">Registrar pagamento</button>
+          <div class="alert-modal notes-alert-spacing" id="alert-s4"></div>
+        </div>
 
       <div class="nota-panel fade-up fade-up-1" id="painel-done" hidden>
         <div class="notes-done-state">
@@ -247,7 +266,8 @@
         </div>
       </div>
     </div>
-  </main>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal-detalhe" onclick="fecharModalSeClicouFora(event,'modal-detalhe')">

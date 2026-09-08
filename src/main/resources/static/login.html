@@ -4,371 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockOS — Login</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg:        #09090f;
-    --surface:   #111118;
-    --surface-2: #1c1c27;
-    --border:    #22222e;
-    --border-2:  #2c2c3c;
-    --indigo:    #6366f1;
-    --indigo-lt: #818cf8;
-    --text-1:    #f0f0f5;
-    --text-2:    #8e8ea0;
-    --text-3:    #4e4e62;
-    --green:     #22c55e;
-    --green-lt:  #4ade80;
-    --red-lt:    #f87171;
-  }
-
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    color: var(--text-1);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* ── Subtle grid background ── */
-  .bg-grid {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 30%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 30%, transparent 100%);
-  }
-
-  /* Faint glow */
-  .bg-glow {
-    position: fixed; z-index: 0; pointer-events: none;
-    width: 700px; height: 500px;
-    top: -200px; left: 50%; transform: translateX(-50%);
-    background: radial-gradient(ellipse at center, rgba(99,102,241,.14) 0%, transparent 70%);
-    border-radius: 50%;
-  }
-
-  /* ── Layout ── */
-  .page {
-    position: relative; z-index: 1;
-    display: grid;
-    grid-template-columns: 1fr 440px;
-    min-height: 100vh;
-  }
-
-  /* ── Left panel ── */
-  .panel-left {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 44px 56px;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    font-size: 16px;
-    letter-spacing: -0.3px;
-  }
-  .logo-icon {
-    width: 30px; height: 30px;
-    background: var(--indigo);
-    border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 14px;
-  }
-
-  .hero { max-width: 480px; }
-  .hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    background: rgba(99,102,241,.08);
-    border: 1px solid rgba(99,102,241,.18);
-    border-radius: 100px;
-    padding: 4px 12px 4px 9px;
-    font-size: 12px;
-    color: var(--indigo-lt);
-    font-weight: 500;
-    margin-bottom: 24px;
-  }
-  .hero-eyebrow-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--indigo-lt);
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: .4; }
-  }
-
-  .hero h1 {
-    font-size: 48px;
-    font-weight: 700;
-    line-height: 1.08;
-    letter-spacing: -1.5px;
-    margin-bottom: 18px;
-    color: var(--text-1);
-  }
-  .hero h1 em {
-    font-style: normal;
-    color: var(--indigo-lt);
-  }
-  .hero p {
-    font-size: 15px;
-    color: var(--text-2);
-    line-height: 1.65;
-    max-width: 380px;
-    font-weight: 400;
-  }
-
-  .stats {
-    display: flex;
-    gap: 28px;
-    align-items: center;
-  }
-  .stat { display: flex; flex-direction: column; gap: 3px; }
-  .stat-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--text-1);
-    letter-spacing: -0.5px;
-  }
-  .stat-label {
-    font-size: 11px;
-    color: var(--text-3);
-    text-transform: uppercase;
-    letter-spacing: .8px;
-    font-weight: 500;
-  }
-  .stat-divider {
-    width: 1px;
-    height: 36px;
-    background: var(--border-2);
-  }
-
-  /* ── Right panel ── */
-  .panel-right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 32px;
-    border-left: 1px solid var(--border);
-    background: var(--surface);
-  }
-
-  .card {
-    width: 100%;
-    max-width: 360px;
-    animation: slideUp .5s cubic-bezier(.16,1,.3,1) both;
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .card-head { margin-bottom: 28px; }
-  .card-head h2 {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.4px;
-    margin-bottom: 5px;
-  }
-  .card-head p {
-    font-size: 13px;
-    color: var(--text-2);
-    line-height: 1.5;
-  }
-
-  /* ── Form ── */
-  .f-group { margin-bottom: 14px; }
-  .f-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .f-group.full { margin-bottom: 0; }
-
-  label {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-2);
-    text-transform: uppercase;
-    letter-spacing: .6px;
-    margin-bottom: 6px;
-  }
-
-  .input-wrap { position: relative; }
-  .input-icon {
-    position: absolute;
-    left: 12px; top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-3);
-    font-size: 14px;
-    pointer-events: none;
-  }
-
-  input {
-    width: 100%;
-    background: var(--surface-2);
-    border: 1px solid var(--border-2);
-    border-radius: 8px;
-    padding: 10px 12px 10px 36px;
-    font-family: inherit;
-    font-size: 13px;
-    color: var(--text-1);
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  input::placeholder { color: var(--text-3); }
-  input:focus {
-    border-color: var(--indigo);
-    box-shadow: 0 0 0 3px rgba(99,102,241,.15);
-  }
-
-  .btn-submit {
-    width: 100%;
-    margin-top: 18px;
-    padding: 11px;
-    background: var(--indigo);
-    border: 1px solid var(--indigo);
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    color: #fff;
-    cursor: pointer;
-    transition: background .15s, opacity .15s;
-  }
-  .btn-submit:hover { background: #4f52e8; border-color: #4f52e8; }
-  .btn-submit:active { opacity: .88; }
-  .btn-submit.loading { opacity: .65; pointer-events: none; }
-
-  .btn-text { display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .btn-spinner {
-    display: none;
-    width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin .65s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading .btn-text    { display: none; }
-  .loading .btn-spinner { display: block; margin: 0 auto; }
-
-  /* ── Alert ── */
-  .alert {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 13px;
-    border-radius: 8px;
-    font-size: 13px;
-    margin-top: 12px;
-    line-height: 1.4;
-  }
-  .alert.error {
-    display: flex;
-    background: rgba(244,63,94,.08);
-    border: 1px solid rgba(244,63,94,.2);
-    color: var(--red-lt);
-  }
-  .alert.success {
-    display: flex;
-    background: rgba(34,197,94,.08);
-    border: 1px solid rgba(34,197,94,.2);
-    color: var(--green-lt);
-  }
-  .alert-icon { flex-shrink: 0; font-size: 14px; }
-
-  /* ── Card footer ── */
-  .card-foot {
-    margin-top: 24px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .card-foot p {
-    font-size: 11px;
-    color: var(--text-3);
-  }
-  .secure-badge {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    color: var(--green);
-    background: rgba(34,197,94,.07);
-    border: 1px solid rgba(34,197,94,.16);
-    border-radius: 100px;
-    padding: 3px 9px;
-  }
-  .secure-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 1000px) {
-    .page { grid-template-columns: 1fr; min-height: 100vh; }
-    .panel-left {
-      padding: 32px 28px 20px;
-      gap: 36px;
-      justify-content: flex-start;
-    }
-    .panel-right {
-      border-left: none;
-      border-top: 1px solid var(--border);
-      padding: 24px 28px 36px;
-      align-items: stretch;
-    }
-    .hero { max-width: none; }
-    .hero h1 { font-size: 40px; max-width: 680px; }
-    .card { max-width: 440px; }
-  }
-
-  @media (max-width: 640px) {
-    .panel-left, .panel-right { padding-left: 20px; padding-right: 20px; }
-    .hero h1 { font-size: 32px; letter-spacing: -1px; }
-    .stats { gap: 16px; }
-    .stat-divider { display: none; }
-    .f-row { grid-template-columns: 1fr; }
-    .card { max-width: none; }
-    .card-foot { flex-direction: column; align-items: flex-start; gap: 10px; }
-  }
-
-  @media (max-width: 440px) {
-    .hero h1 { font-size: 28px; }
-    .hero-eyebrow { margin-bottom: 18px; }
-    .stats { flex-wrap: wrap; }
-  }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
 </head>
-<body>
+<body class="login-page">
 
-<div class="bg-grid"></div>
-<div class="bg-glow"></div>
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
 
 <div class="page">
 
   <!-- Left -->
   <div class="panel-left">
     <div class="logo">
-      <div class="logo-icon">📦</div>
+      <div class="logo-icon">S</div>
       StockOS
     </div>
 
@@ -401,40 +53,43 @@
 
   <!-- Right -->
   <div class="panel-right">
-    <div class="card">
+    <div class="sheet login-card">
       <div class="card-head">
         <h2>Bem-vindo de volta</h2>
         <p>Entre com suas credenciais para acessar o sistema.</p>
       </div>
 
       <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="f-row">
-          <div class="f-group">
+        <div class="f-row grid-2">
+          <div class="f-group field">
             <label for="nome">Nome</label>
             <div class="input-wrap">
-              <span class="input-icon">👤</span>
-              <input type="text" id="nome" placeholder="Admin" autocomplete="given-name" required>
+              <span class="input-icon" data-login-icon="user" aria-hidden="true"></span>
+              <input class="input" type="text" id="nome" placeholder="Admin" autocomplete="given-name" required>
             </div>
           </div>
-          <div class="f-group">
+          <div class="f-group field">
             <label for="sobrenome">Sobrenome</label>
             <div class="input-wrap">
-              <span class="input-icon">👤</span>
-              <input type="text" id="sobrenome" placeholder="Superior" autocomplete="family-name" required>
+              <span class="input-icon" data-login-icon="user" aria-hidden="true"></span>
+              <input class="input" type="text" id="sobrenome" placeholder="Superior" autocomplete="family-name" required>
             </div>
           </div>
         </div>
 
-        <div class="f-group full">
+        <div class="f-group full field">
           <label for="senha">Senha</label>
           <div class="input-wrap">
-            <span class="input-icon">🔑</span>
-            <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" required>
+            <span class="input-icon" data-login-icon="lock" aria-hidden="true"></span>
+            <input class="input" type="password" id="senha" placeholder="••••••••" autocomplete="current-password" required>
           </div>
         </div>
 
-        <button type="submit" class="btn-submit" id="btnSubmit">
-          <span class="btn-text">Entrar no sistema →</span>
+        <button type="submit" class="btn btn-primary btn-block btn-submit" id="btnSubmit">
+          <span class="btn-text">
+            Entrar no sistema
+            <span class="btn-inline-icon" data-login-icon="arrowRight" aria-hidden="true"></span>
+          </span>
           <div class="btn-spinner"></div>
         </button>
 
@@ -457,6 +112,28 @@
 </div>
 
 <script>
+  const LOGIN_ICONS = {
+    user: '<circle cx="12" cy="8" r="3"/><path d="M6 19a6 6 0 0 1 12 0"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 1 1 8 0v3"/>',
+    arrowRight: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+    checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+    alertTriangle: '<path d="m12 3 9 16H3l9-16Z"/><path d="M12 9v4"/><path d="M12 16h.01"/>',
+  };
+
+  function loginIconMarkup(name) {
+    return '<svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      (LOGIN_ICONS[name] || LOGIN_ICONS.alertTriangle) +
+      '</svg>';
+  }
+
+  function renderLoginIcons() {
+    document.querySelectorAll('[data-login-icon]').forEach((element) => {
+      element.innerHTML = loginIconMarkup(element.getAttribute('data-login-icon'));
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', renderLoginIcons);
+
   function persistirUsuario(usuario) {
     const payload = JSON.stringify(usuario);
     [window.sessionStorage, window.localStorage].forEach((storage) => {
@@ -488,7 +165,7 @@
         const usuario = await res.json();
         persistirUsuario(usuario);
         alert.className = 'alert success';
-        alertIcon.textContent = '✓';
+        alertIcon.innerHTML = loginIconMarkup('checkCircle');
         alertMsg.textContent = `Bem-vindo, ${usuario.nome}! Redirecionando...`;
         setTimeout(() => { window.location.href = '/dashboard.html'; }, 1000);
       } else {
@@ -496,7 +173,7 @@
       }
     } catch (err) {
       alert.className = 'alert error';
-      alertIcon.textContent = '✕';
+      alertIcon.innerHTML = loginIconMarkup('alertTriangle');
       alertMsg.textContent = 'Nome, sobrenome ou senha incorretos.';
       btn.classList.remove('loading');
       document.querySelectorAll('input').forEach(i => {

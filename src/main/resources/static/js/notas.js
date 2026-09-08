@@ -75,7 +75,9 @@ function renderTabelaNotas(notas) {
           icon: 'receipt',
           title: 'Nenhuma nota fiscal registrada',
           copy: 'Crie uma nova nota para registrar compras de fornecedores e entrada de estoque.',
-          actions: '<button class="btn-primary" onclick="iniciarNovaNota(); abrirAba(\'aba-nova\')">Nova Nota</button>'
+          actions: '<button class="btn-primary" onclick="iniciarNovaNota(); abrirAba(\'aba-nova\')">' +
+            '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>' +
+            'Nova Nota</button>'
         })}
       </td></tr>`;
     return;
@@ -229,7 +231,9 @@ function toggleNovoProduto(forceOpen) {
     : painel.hidden;
 
   painel.hidden = !abrir;
-  botao.textContent = abrir ? 'Usar Produto Existente' : '+ Novo Produto';
+  botao.innerHTML = abrir
+    ? 'Usar Produto Existente'
+    : '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>Novo Produto';
 
   if (abrir) {
     document.getElementById('s2-produto-busca').value = '';

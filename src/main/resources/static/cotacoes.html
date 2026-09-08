@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockOS — Cotações</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/global.css">
-<link rel="stylesheet" href="/css/estoque.css">
-<link rel="stylesheet" href="/css/pages.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
 
@@ -15,39 +16,44 @@
 
   <!-- ── Sidebar ── -->
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
-      StockOS
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Menu</div>
-      <div id="nav-items"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-name">Carregando...</div>
-          <div class="user-role" id="user-role">--</div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
       </div>
     </div>
   </aside>
 
-  <!-- ── Header ── -->
-  <header class="header">
-    <div>
-      <div class="header-title">Cotações Mensais</div>
-      <div class="header-sub">Registre e compare preços de compra mês a mês</div>
-    </div>
-    <div class="header-right">
-      <button class="btn-primary" onclick="abrirModalCotacao()">+ Registrar Cotação</button>
-    </div>
-  </header>
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Cotações</span>
+        </div>
+        <h1 class="page-title header-title" id="header-title">Cotações Mensais</h1>
+        <p class="page-sub header-sub" id="header-sub">Registre e compare preços de compra mês a mês.</p>
+      </div>
+      <div class="topbar-right header-right">
+        <button class="btn btn-accent btn-primary" onclick="abrirModalCotacao()">+ Registrar Cotação</button>
+      </div>
+    </header>
 
-  <!-- ── Main ── -->
-  <main class="main">
+    <div class="main-body content">
 
     <div class="page-summary-grid fade-up" id="cotacao-summary"></div>
 
@@ -64,7 +70,7 @@
           <span class="card-title">Comparação com Mês Anterior</span>
           <div class="card-tools">
             <input type="month" id="relatorio-mes" class="compact-control">
-            <button class="btn-secondary btn-secondary--compact" onclick="carregarRelatorio()">Buscar</button>
+            <button class="btn btn-secondary btn-secondary--compact" onclick="carregarRelatorio()">Buscar</button>
           </div>
         </div>
         <div id="relatorio-container">
@@ -82,7 +88,7 @@
             <select id="historico-produto" class="compact-control compact-control--select">
               <option value="">— carregando produtos —</option>
             </select>
-            <button class="btn-secondary btn-secondary--compact" onclick="carregarHistorico()">Buscar</button>
+            <button class="btn btn-secondary btn-secondary--compact" onclick="carregarHistorico()">Buscar</button>
           </div>
         </div>
         <div id="historico-container">
@@ -91,7 +97,8 @@
       </div>
     </div>
 
-  </main>
+    </div>
+  </div>
 </div>
 
 <!-- ── Modal: Registrar Cotação ── -->
@@ -102,31 +109,31 @@
       <button class="modal-close" onclick="fecharModal('modal-cotacao')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
+      <div class="field form-group">
         <label>Produto</label>
-        <select id="c-produto">
+        <select class="select" id="c-produto">
           <option value="">— carregando produtos —</option>
         </select>
       </div>
-      <div class="form-group">
+      <div class="field form-group">
         <label>Mês de Referência (AAAA-MM)</label>
-        <input type="month" id="c-mes">
+        <input class="input" type="month" id="c-mes">
       </div>
       <div class="form-row-2">
-        <div class="form-group">
+        <div class="field form-group">
           <label>Preço Unitário (R$)</label>
-          <input type="number" id="c-preco" placeholder="0,00" step="0.01" min="0.01">
+          <input class="input" type="number" id="c-preco" placeholder="0,00" step="0.01" min="0.01">
         </div>
-        <div class="form-group">
+        <div class="field form-group">
           <label>Quantidade Comprada</label>
-          <input type="number" id="c-qtd" placeholder="0" min="1">
+          <input class="input" type="number" id="c-qtd" placeholder="0" min="1">
         </div>
       </div>
       <div class="alert-modal" id="alert-cotacao"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-cotacao')">Cancelar</button>
-      <button class="btn-primary" onclick="registrarCotacao()">Registrar</button>
+      <button class="btn btn-secondary" onclick="fecharModal('modal-cotacao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="registrarCotacao()">Registrar</button>
     </div>
   </div>
 </div>

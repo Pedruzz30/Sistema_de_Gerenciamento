@@ -4,48 +4,61 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StockOS - Gestao de Cardapio</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/pages.css">
-  <link rel="stylesheet" href="/css/estoque.css">
-  <link rel="stylesheet" href="/css/cardapio.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
 
 <div class="app">
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📦</div>
-      StockOS
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Menu</div>
-      <div id="nav-items"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-name">Carregando...</div>
-          <div class="user-role" id="user-role">--</div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
         </div>
-        <button class="btn-logout" onclick="logout()" title="Sair">x</button>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
       </div>
     </div>
   </aside>
 
-  <header class="header">
-    <div>
-      <div class="header-title">Gestao de Cardapio</div>
-      <div class="header-sub">Categorias e itens vendidos no PDV sem depender apenas do seed.</div>
-    </div>
-    <div class="header-right header-right--cardapio">
-      <button class="btn-secondary" type="button" onclick="abrirModalCategoria()">Nova Categoria</button>
-      <button class="btn-primary" type="button" onclick="abrirModalItem()">Novo Item</button>
-    </div>
-  </header>
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Cardápio</span>
+        </div>
+        <h1 class="page-title header-title" id="header-title">Gestão de Cardápio</h1>
+        <p class="page-sub header-sub" id="header-sub">Categorias e itens vendidos no PDV sem depender apenas do seed.</p>
+      </div>
+      <div class="topbar-right header-right header-right--cardapio">
+        <button class="btn btn-secondary" type="button" onclick="abrirModalCategoria()">
+          <span class="btn-inline-icon" data-icon="plus"></span>
+          Nova Categoria
+        </button>
+        <button class="btn btn-accent btn-primary" type="button" onclick="abrirModalItem()">
+          <span class="btn-inline-icon" data-icon="plus"></span>
+          Novo Item
+        </button>
+      </div>
+    </header>
 
-  <main class="main">
+    <div class="main-body content">
     <div id="cardapio-page-alert"></div>
     <div class="page-summary-grid fade-up" id="cardapio-summary"></div>
 
@@ -59,7 +72,7 @@
           <span class="table-count" id="categorias-count">-</span>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="table cardapio-category-table">
             <thead>
             <tr>
               <th>Ordem</th>
@@ -75,7 +88,7 @@
         </div>
       </section>
 
-      <section class="table-card fade-up cardapio-panel">
+      <section class="table-card fade-up cardapio-panel cardapio-panel--items">
         <div class="table-header table-header--stack">
           <div class="table-header-row">
             <div>
@@ -86,8 +99,7 @@
           </div>
           <div class="toolbar toolbar--cardapio">
             <div class="search-wrap">
-              <input type="text" id="item-search" placeholder="Buscar por nome, codigo ou texto..." oninput="aplicarFiltrosItens()">
-              <span class="search-icon">🔎</span>
+              <input class="input input-search" type="text" id="item-search" placeholder="Buscar por nome, codigo ou texto..." oninput="aplicarFiltrosItens()">
             </div>
             <select class="compact-control compact-control--select" id="item-category-filter" onchange="aplicarFiltrosItens()">
               <option value="">Todas as categorias</option>
@@ -109,7 +121,7 @@
           </div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="table cardapio-items-table">
             <thead>
             <tr>
               <th>Item</th>
@@ -127,7 +139,59 @@
         </div>
       </section>
     </div>
-  </main>
+
+    <section class="table-card fade-up cardapio-panel cardapio-panel--modifiers">
+      <div class="table-header table-header--stack">
+        <div class="table-header-row">
+          <div>
+            <span class="table-title">Modificadores</span>
+            <div class="inline-note inline-note--spaced">Configure grupos, opcoes, impactos de estoque e associacoes por variacao.</div>
+          </div>
+          <div class="actions-grid">
+            <button class="btn btn-secondary" type="button" onclick="abrirModalAssociarGrupo()">
+              <span class="btn-inline-icon" data-icon="plus"></span>
+              Associar
+            </button>
+            <button class="btn btn-accent btn-primary" type="button" onclick="abrirModalGrupoModificador()">
+              <span class="btn-inline-icon" data-icon="plus"></span>
+              Novo Grupo
+            </button>
+          </div>
+        </div>
+        <div class="toolbar toolbar--cardapio">
+          <select class="compact-control compact-control--select" id="modificador-variacao-preview" onchange="carregarConfiguracaoVariacaoAdmin()">
+            <option value="">Selecione uma variacao para previa</option>
+          </select>
+          <button class="btn btn-secondary" type="button" onclick="carregarConfiguracaoVariacaoAdmin()">Atualizar previa</button>
+        </div>
+      </div>
+      <div class="cardapio-modifier-grid">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+            <tr>
+              <th>Grupo</th>
+              <th>Regras</th>
+              <th>Status</th>
+              <th>Acoes</th>
+            </tr>
+            </thead>
+            <tbody id="tabela-modificadores">
+            <tr><td colspan="4" class="empty">Carregando modificadores...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cardapio-preview-panel" id="modificador-preview">
+          <div class="empty-state empty-state--compact">
+            <div class="empty-state__icon" aria-hidden="true"><span data-icon="clipboard"></span></div>
+            <div class="empty-state__title">Previa de configuracao</div>
+            <div class="empty-state__copy">Selecione uma variacao para revisar opcoes, disponibilidade e validacao oficial.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal-categoria" onclick="fecharModalSeClicouFora(event, 'modal-categoria')">
@@ -214,6 +278,204 @@
     <div class="modal-footer">
       <button class="btn-secondary" type="button" onclick="fecharModal('modal-item')">Cancelar</button>
       <button class="btn-primary" type="button" id="btn-salvar-item" onclick="salvarItem()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-grupo-modificador" onclick="fecharModalSeClicouFora(event, 'modal-grupo-modificador')">
+  <div class="modal modal--wide">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-grupo-modificador-titulo">Grupo de Modificador</h3>
+      <button class="modal-close" onclick="fecharModal('modal-grupo-modificador')">x</button>
+    </div>
+    <div class="modal-body modal-body--scroll">
+      <input type="hidden" id="grupo-modificador-id">
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" id="grupo-modificador-nome" placeholder="Ex: Adicionais">
+        </div>
+        <div class="form-group">
+          <label>Codigo</label>
+          <input type="text" id="grupo-modificador-codigo" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Descricao</label>
+        <input type="text" id="grupo-modificador-descricao" placeholder="Uso operacional do grupo.">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Tipo de selecao</label>
+          <select id="grupo-modificador-tipo">
+            <option value="UNICA">UNICA</option>
+            <option value="MULTIPLA">MULTIPLA</option>
+            <option value="QUANTIDADE">QUANTIDADE</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ordem</label>
+          <input type="number" id="grupo-modificador-ordem" min="0" step="1" value="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Minimo</label>
+          <input type="number" id="grupo-modificador-min" min="0" step="1" value="0">
+        </div>
+        <div class="form-group">
+          <label>Maximo</label>
+          <input type="number" id="grupo-modificador-max" min="0" step="1" value="1">
+        </div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="grupo-modificador-obrigatorio"> Obrigatorio</label>
+      <label class="check-row"><input type="checkbox" id="grupo-modificador-repeticao"> Permite repeticao</label>
+      <label class="check-row"><input type="checkbox" id="grupo-modificador-ativo" checked> Ativo</label>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-grupo-modificador"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-grupo-modificador')">Cancelar</button>
+      <button class="btn-primary" type="button" id="btn-salvar-grupo-modificador" onclick="salvarGrupoModificador()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-opcoes-modificador" onclick="fecharModalSeClicouFora(event, 'modal-opcoes-modificador')">
+  <div class="modal modal--wide">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-opcoes-modificador-titulo">Opcoes do grupo</h3>
+      <button class="modal-close" onclick="fecharModal('modal-opcoes-modificador')">x</button>
+    </div>
+    <div class="modal-body modal-body--scroll">
+      <input type="hidden" id="opcao-grupo-id">
+      <input type="hidden" id="opcao-id">
+      <div id="lista-opcoes-modificador" class="modifier-list"></div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Nome da opcao</label>
+          <input type="text" id="opcao-nome" placeholder="Ex: Bacon">
+        </div>
+        <div class="form-group">
+          <label>Codigo</label>
+          <input type="text" id="opcao-codigo" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Acrescimo (R$)</label>
+          <input type="number" id="opcao-acrescimo" min="0" step="0.01" value="0">
+        </div>
+        <div class="form-group">
+          <label>Maximo por item</label>
+          <input type="number" id="opcao-max" min="1" step="1" value="1">
+        </div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="opcao-padrao"> Selecionada por padrao</label>
+      <label class="check-row"><input type="checkbox" id="opcao-ativa" checked> Ativa</label>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-opcao-modificador"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" type="button" onclick="limparFormularioOpcaoModificador()">Nova opcao</button>
+      <button class="btn-primary" type="button" id="btn-salvar-opcao-modificador" onclick="salvarOpcaoModificador()">Salvar opcao</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-componente-modificador" onclick="fecharModalSeClicouFora(event, 'modal-componente-modificador')">
+  <div class="modal modal--wide">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-componente-titulo">Componentes da opcao</h3>
+      <button class="modal-close" onclick="fecharModal('modal-componente-modificador')">x</button>
+    </div>
+    <div class="modal-body modal-body--scroll">
+      <input type="hidden" id="componente-opcao-id">
+      <input type="hidden" id="componente-id">
+      <div id="lista-componentes-modificador" class="modifier-list"></div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Efeito</label>
+          <select id="componente-efeito" onchange="aplicarRegrasComponenteAdmin()">
+            <option value="ADICIONAR">ADICIONAR</option>
+            <option value="REMOVER">REMOVER</option>
+            <option value="SUBSTITUIR">SUBSTITUIR</option>
+            <option value="SEM_IMPACTO_ESTOQUE">SEM_IMPACTO_ESTOQUE</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Politica de falta</label>
+          <select id="componente-politica">
+            <option value="HERDAR_PRODUTO">HERDAR_PRODUTO</option>
+            <option value="BLOQUEAR">BLOQUEAR</option>
+            <option value="ALERTAR">ALERTAR</option>
+            <option value="IGNORAR">IGNORAR</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Produto origem</label>
+          <select id="componente-produto-origem"></select>
+        </div>
+        <div class="form-group">
+          <label>Produto destino</label>
+          <select id="componente-produto-destino"></select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Quantidade base</label>
+          <input type="number" id="componente-quantidade" min="0" step="0.000001" value="0">
+        </div>
+        <div class="form-group">
+          <label>Unidade base</label>
+          <select id="componente-unidade"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observacao</label>
+        <input type="text" id="componente-observacao" placeholder="Opcional">
+      </div>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-componente-modificador"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" type="button" onclick="limparFormularioComponenteModificador()">Novo componente</button>
+      <button class="btn-primary" type="button" id="btn-salvar-componente-modificador" onclick="salvarComponenteModificador()">Salvar componente</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-associar-modificador" onclick="fecharModalSeClicouFora(event, 'modal-associar-modificador')">
+  <div class="modal modal--narrow">
+    <div class="modal-header">
+      <h3 class="modal-title">Associar grupo a variacao</h3>
+      <button class="modal-close" onclick="fecharModal('modal-associar-modificador')">x</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Variacao</label>
+        <select id="assoc-variacao"></select>
+      </div>
+      <div class="form-group">
+        <label>Grupo</label>
+        <select id="assoc-grupo"></select>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Minimo override</label>
+          <input type="number" id="assoc-min" min="0" step="1" placeholder="vazio = grupo">
+        </div>
+        <div class="form-group">
+          <label>Maximo override</label>
+          <input type="number" id="assoc-max" min="0" step="1" placeholder="vazio = grupo">
+        </div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="assoc-obrigatorio"> Obrigatorio override</label>
+      <label class="check-row"><input type="checkbox" id="assoc-ativo" checked> Ativo</label>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-assoc-modificador"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-associar-modificador')">Cancelar</button>
+      <button class="btn-primary" type="button" id="btn-salvar-assoc-modificador" onclick="salvarAssociacaoModificador()">Associar</button>
     </div>
   </div>
 </div>

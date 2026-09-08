@@ -4,12 +4,14 @@ const PODE_VER_FINANCEIRO_DASH = temAlgumaPermissao([
   PERMISSOES.VER_VENDAS,
   PERMISSOES.VER_FINANCAS,
 ]);
+const PODE_VER_RENTABILIDADE_DASH = temPermissao(PERMISSOES.VER_FINANCAS);
 
 async function carregarDados() {
   let produtos = [];
   let caixas = [];
   let movimentacoes = [];
   let metricas = null;
+  let rentabilidade = null;
 
   if (PODE_VER_ESTOQUE_DASH) {
     try {
@@ -52,6 +54,16 @@ async function carregarDados() {
     }
   }
 
+  if (PODE_VER_RENTABILIDADE_DASH) {
+    try {
+      const resp = await fetch('/api/rentabilidade/ranking');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      rentabilidade = await resp.json();
+    } catch (err) {
+      console.error('Erro ao carregar rentabilidade:', err);
+    }
+  }
+
   renderSummaryCards(produtos, caixas);
   renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
@@ -60,6 +72,7 @@ async function carregarDados() {
   window._dadosProdutos = produtos;
   window._dadosMov      = movimentacoes;
   window._dadosCaixas   = caixas;
+  window._dadosRentabilidade = rentabilidade;
   window._graficosRendered = false; // força re-render se dados recarregarem
 }
 
@@ -162,6 +175,10 @@ function renderPermissionSections() {
   if (PODE_VER_FINANCEIRO_DASH) {
     document.getElementById('section-financeiro').classList.add('visible');
   }
+  if (PODE_VER_RENTABILIDADE_DASH) {
+    var rentabilidadeSection = document.getElementById('section-rentabilidade');
+    if (rentabilidadeSection) rentabilidadeSection.classList.add('visible');
+  }
 }
 
 // ── Alertas de estoque ─────────────────────────────────────
@@ -170,7 +187,9 @@ function renderAlertas(produtos) {
   var list = document.getElementById('alerta-list');
 
   if (alertas.length === 0) {
-    list.innerHTML = '<div class="empty">✓ Todos os produtos estão em nível adequado.</div>';
+    list.innerHTML = '<div class="empty"><span class="btn-inline-icon" aria-hidden="true">' +
+      iconMarkup('checkCircle') +
+      '</span>Todos os produtos estão em nível adequado.</div>';
     return;
   }
 
@@ -262,7 +281,12 @@ function abrirTabDash(aba) {
   // Renderiza gráficos na primeira vez que a aba for aberta
   if (aba === 'graficos' && !window._graficosRendered) {
     window._graficosRendered = true;
-    renderGraficos(window._dadosProdutos || [], window._dadosMov || [], window._dadosCaixas || []);
+    renderGraficos(
+      window._dadosProdutos || [],
+      window._dadosMov || [],
+      window._dadosCaixas || [],
+      window._dadosRentabilidade || null
+    );
   }
 }
 
@@ -273,6 +297,7 @@ function abrirTabDash(aba) {
 window._dadosProdutos = [];
 window._dadosMov      = [];
 window._dadosCaixas   = [];
+window._dadosRentabilidade = null;
 window._graficosRendered = false;
 
 // ── Instâncias Chart.js (para .destroy() ao recarregar) ──────────────────
@@ -430,7 +455,7 @@ function normalizarProdutoLucratividade(produto, indice) {
         chartSoft: 'rgba(148,163,184,.18)',
         table: 'pending',
         status: 'pending',
-        label: !custoValido ? '⚠ pendente' : 'Preço inválido',
+        label: !custoValido ? 'Custo pendente' : 'Preço inválido',
       };
 
   return {
@@ -447,6 +472,9 @@ function normalizarProdutoLucratividade(produto, indice) {
     produtoOriginal: produtoBase,
     vendaCampo: vendaInfo.key,
     custoCampo: custoInfo.key,
+    unidadesVendidas: null,
+    receitaEstimada: null,
+    lucroTotalEstimado: null,
   };
 }
 
@@ -485,6 +513,76 @@ function gerarAnaliseLucratividade(produtos) {
     mediaMargem: mediaMargem,
     maisLucrativo: validos.length ? validos[0] : null,
     menorMargem: validos.length ? validos[validos.length - 1] : null,
+    lucroTotalEstimado: null,
+    receitaTotalEstimada: null,
+    unidadesVendidasTotal: null,
+    rankingEstimado: false,
+  };
+}
+
+function gerarAnaliseLucratividadeApi(payload) {
+  if (!payload || !Array.isArray(payload.itens)) return null;
+
+  var itens = payload.itens.map(function (apiItem, indice) {
+    var precoVenda = parseNumeroSeguro(apiItem.precoVenda);
+    var precoCusto = parseNumeroSeguro(apiItem.precoCusto);
+    var lucroUnitario = parseNumeroSeguro(apiItem.lucroUnitario);
+    var margem = parseNumeroSeguro(apiItem.margemPercentual);
+    var receitaEstimada = parseNumeroSeguro(apiItem.receitaEstimada);
+    var lucroTotalEstimado = parseNumeroSeguro(apiItem.lucroTotalEstimado);
+    var temMargemValida = apiItem.margemValida === true && Number.isFinite(margem);
+    var classificacao = temMargemValida
+      ? obterClassificacaoMargem(margem)
+      : {
+          chart: '#94a3b8',
+          chartSoft: 'rgba(148,163,184,.18)',
+          table: 'pending',
+          status: 'pending',
+          label: apiItem.statusLabel || 'Pendente',
+        };
+
+    if (apiItem.statusLabel) {
+      classificacao.label = apiItem.statusLabel;
+    }
+
+    return {
+      id: apiItem.produtoId !== undefined ? apiItem.produtoId : (indice + 1),
+      nome: String(apiItem.nome || ('Produto ' + (indice + 1))).trim(),
+      precoVenda: precoVenda,
+      precoCusto: precoCusto,
+      lucroUnitario: lucroUnitario,
+      margem: margem,
+      vendaValida: Number.isFinite(precoVenda) && precoVenda > 0,
+      custoValido: Number.isFinite(precoCusto) && precoCusto >= 0,
+      temMargemValida: temMargemValida,
+      classificacao: classificacao,
+      produtoOriginal: apiItem,
+      posicao: apiItem.posicao || null,
+      unidadesVendidas: Number(apiItem.unidadesVendidas || 0),
+      receitaEstimada: Number.isFinite(receitaEstimada) ? receitaEstimada : 0,
+      lucroTotalEstimado: Number.isFinite(lucroTotalEstimado) ? lucroTotalEstimado : 0,
+    };
+  });
+
+  var validos = itens.filter(function (item) { return item.temMargemValida; });
+  var pendentesCusto = itens.filter(function (item) { return !item.custoValido; });
+  var margemMedia = parseNumeroSeguro(payload.margemMediaPercentual);
+  var menorMargem = validos.length
+    ? validos.slice().sort(function (a, b) { return a.margem - b.margem; })[0]
+    : null;
+
+  return {
+    itens: itens,
+    validos: validos,
+    pendentesCusto: pendentesCusto,
+    mediaMargem: Number.isFinite(margemMedia) ? margemMedia : null,
+    maisLucrativo: validos.length ? validos[0] : null,
+    menorMargem: menorMargem,
+    lucroTotalEstimado: parseNumeroSeguro(payload.lucroTotalEstimado),
+    receitaTotalEstimada: parseNumeroSeguro(payload.receitaTotalEstimada),
+    unidadesVendidasTotal: Number(payload.unidadesVendidasTotal || 0),
+    rankingEstimado: payload.estimado === true,
+    modoCalculo: payload.modoCalculo || '',
   };
 }
 
@@ -501,9 +599,8 @@ function atualizarResumoLucratividade(analise) {
         escapeHtml(resumirTexto(analise.maisLucrativo.nome, 28)) + '</div>'
     : '<div class="profit-summary-value">—</div>';
 
-  var menorValor = analise.menorMargem
-    ? '<div class="profit-summary-value profit-summary-value--compact">' +
-        escapeHtml(resumirTexto(analise.menorMargem.nome, 28)) + '</div>'
+  var lucroTotalValor = Number.isFinite(analise.lucroTotalEstimado)
+    ? '<div class="profit-summary-value">' + formatarMoedaBR(analise.lucroTotalEstimado) + '</div>'
     : '<div class="profit-summary-value">—</div>';
 
   var cards = [
@@ -527,14 +624,14 @@ function atualizarResumoLucratividade(analise) {
         : 'Nenhum produto elegível para ranking.',
     },
     {
-      label: 'Menor Margem',
-      icon: 'alertTriangle',
-      tone: 'red',
-      valueHtml: menorValor,
-      meta: analise.menorMargem
-        ? formatarPercentual(analise.menorMargem.margem) + ' de margem · lucro/un. ' +
-          formatarMoedaBR(analise.menorMargem.lucroUnitario)
-        : 'Ainda não há margem válida para comparar.',
+      label: 'Lucro Estimado',
+      icon: 'wallet',
+      tone: 'green',
+      valueHtml: lucroTotalValor,
+      meta: Number.isFinite(analise.receitaTotalEstimada)
+        ? 'Receita estimada ' + formatarMoedaBR(analise.receitaTotalEstimada) +
+          ' · ' + (analise.unidadesVendidasTotal || 0) + ' un. vendidas.'
+        : 'Disponível quando o ranking enriquecido carrega.',
     },
     {
       label: 'Sem Custo Definido',
@@ -564,6 +661,8 @@ function atualizarResumoLucratividade(analise) {
       badge.textContent = 'sem produtos';
     } else if (!analise.validos.length) {
       badge.textContent = analise.pendentesCusto.length + ' custo(s) pendentes';
+    } else if (analise.rankingEstimado) {
+      badge.textContent = analise.validos.length + ' produto(s) · estimado';
     } else {
       badge.textContent = analise.validos.length + ' produto(s) analisados';
     }
@@ -702,6 +801,11 @@ function renderTabelaLucratividade(analise) {
     var lucroClasse = item.temMargemValida
       ? (item.lucroUnitario >= 0 ? 'positive' : 'negative')
       : '';
+    var lucroTotalClasse = item.temMargemValida && Number.isFinite(item.lucroTotalEstimado)
+      ? (item.lucroTotalEstimado >= 0 ? 'positive' : 'negative')
+      : '';
+    var unidadesVendidas = Number.isFinite(item.unidadesVendidas) ? item.unidadesVendidas : null;
+    var lucroTotal = Number.isFinite(item.lucroTotalEstimado) ? item.lucroTotalEstimado : null;
 
     return '<tr class="' + (item.temMargemValida ? '' : 'is-pending') + '">' +
              '<td class="profit-rank">' + (item.posicao ? item.posicao + 'º' : '—') + '</td>' +
@@ -714,18 +818,22 @@ function renderTabelaLucratividade(analise) {
              '<td class="profit-money ' + lucroClasse + '">' +
                (item.temMargemValida ? formatarMoedaBR(item.lucroUnitario) : '—') +
              '</td>' +
-             '<td class="profit-margin ' + item.classificacao.table + '">' +
-               (item.temMargemValida ? formatarPercentual(item.margem) : '—') +
-             '</td>' +
-             '<td><span class="profit-status ' + item.classificacao.status + '">' +
-               item.classificacao.label +
-             '</span></td>' +
-           '</tr>';
+              '<td class="profit-margin ' + item.classificacao.table + '">' +
+                (item.temMargemValida ? formatarPercentual(item.margem) : '—') +
+              '</td>' +
+              '<td>' + (unidadesVendidas !== null ? unidadesVendidas + ' un.' : '—') + '</td>' +
+              '<td class="profit-money ' + lucroTotalClasse + '">' +
+                (lucroTotal !== null ? formatarMoedaBR(lucroTotal) : '—') +
+              '</td>' +
+              '<td><span class="profit-status ' + item.classificacao.status + '">' +
+                escapeHtml(item.classificacao.label) +
+              '</span></td>' +
+            '</tr>';
   }).join('');
 }
 
-function renderAnaliseLucratividade(produtos) {
-  var analise = gerarAnaliseLucratividade(produtos);
+function renderAnaliseLucratividade(produtos, rentabilidade) {
+  var analise = gerarAnaliseLucratividadeApi(rentabilidade) || gerarAnaliseLucratividade(produtos);
   atualizarResumoLucratividade(analise);
   renderGraficoLucratividade(analise);
   renderTabelaLucratividade(analise);
@@ -733,8 +841,10 @@ function renderAnaliseLucratividade(produtos) {
 
 // ── Ponto de entrada ──────────────────────────────────────────────────────
 
-function renderGraficos(produtos, movimentacoes, caixas) {
-  renderAnaliseLucratividade(produtos);
+function renderGraficos(produtos, movimentacoes, caixas, rentabilidade) {
+  if (PODE_VER_RENTABILIDADE_DASH) {
+    renderAnaliseLucratividade(produtos, rentabilidade);
+  }
   if (typeof Chart === 'undefined') {
     console.warn('Chart.js não carregou — gráficos indisponíveis.');
     return;

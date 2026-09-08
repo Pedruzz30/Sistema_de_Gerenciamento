@@ -4,286 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StockOS — Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/global.css">
-    <link rel="stylesheet" href="/css/pages.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="tokens.css">
+    <link rel="stylesheet" href="app.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <style>
-        .profitability-section { margin-top: 16px; }
-        .profitability-intro {
-            margin: -4px 0 18px;
-            color: var(--text-2);
-            font-size: 13px;
-            line-height: 1.6;
-            max-width: 880px;
-        }
-        .profit-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        .profit-summary-card {
-            background: var(--bg-hover);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 16px;
-            min-height: 138px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .profit-summary-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        .profit-summary-label {
-            color: var(--text-2);
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .profit-summary-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 15px;
-            flex-shrink: 0;
-        }
-        .profit-summary-icon.green {
-            color: #6ee7b7;
-            background: rgba(16,185,129,.15);
-        }
-        .profit-summary-icon.amber {
-            color: #fbbf24;
-            background: rgba(245,158,11,.15);
-        }
-        .profit-summary-icon.red {
-            color: #fb7185;
-            background: rgba(244,63,94,.15);
-        }
-        .profit-summary-icon.slate {
-            color: #cbd5f5;
-            background: rgba(148,163,184,.16);
-        }
-        .profit-summary-value {
-            font-family: 'Syne', sans-serif;
-            font-size: 26px;
-            font-weight: 700;
-            line-height: 1.08;
-            color: var(--text-1);
-        }
-        .profit-summary-value--compact {
-            font-size: 22px;
-            line-height: 1.18;
-        }
-        .profit-summary-meta {
-            color: var(--text-3);
-            font-size: 12px;
-            line-height: 1.55;
-        }
-        .profit-summary-icon .icon-svg {
-            width: 16px;
-            height: 16px;
-        }
-        .dashboard-tabs {
-            margin-top: 8px;
-        }
-        .profit-layout {
-            display: grid;
-            gap: 16px;
-        }
-        .profit-panel {
-            background: var(--bg-hover);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 18px;
-        }
-        .profit-panel-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-        .profit-panel-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-1);
-        }
-        .profit-panel-sub {
-            margin-top: 4px;
-            color: var(--text-3);
-            font-size: 12px;
-            line-height: 1.5;
-        }
-        .profit-panel-badge {
-            font-size: 10px;
-            padding: 4px 9px;
-            border-radius: 999px;
-            background: rgba(6,182,212,.12);
-            border: 1px solid rgba(6,182,212,.22);
-            color: #7dd3fc;
-            white-space: nowrap;
-        }
-        .profit-chart-scroll {
-            max-height: 520px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-        .profit-chart-wrap {
-            position: relative;
-            height: 280px;
-            min-height: 280px;
-        }
-        .profit-empty {
-            padding: 36px 24px;
-            text-align: center;
-            color: var(--text-3);
-            font-size: 13px;
-            line-height: 1.6;
-            border: 1px dashed var(--border);
-            border-radius: var(--radius-sm);
-            background: rgba(255,255,255,.02);
-        }
-        .profit-table-wrap { overflow-x: auto; }
-        .profit-table {
-            width: 100%;
-            min-width: 760px;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        .profit-table th {
-            text-align: left;
-            padding: 0 10px 12px;
-            color: var(--text-3);
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: .02em;
-            border-bottom: 1px solid var(--border);
-        }
-        .profit-table td {
-            padding: 14px 10px;
-            border-bottom: 1px solid rgba(255,255,255,.06);
-            color: var(--text-1);
-            vertical-align: middle;
-        }
-        .profit-table tbody tr:hover { background: rgba(255,255,255,.02); }
-        .profit-table tbody tr.is-pending { opacity: .68; }
-        .profit-rank {
-            width: 44px;
-            color: var(--text-2);
-            font-family: 'Syne', sans-serif;
-            font-weight: 700;
-        }
-        .profit-product-name {
-            color: var(--text-1);
-            font-weight: 600;
-        }
-        .profit-product-meta {
-            margin-top: 4px;
-            color: var(--text-3);
-            font-size: 11px;
-        }
-        .profit-money.positive { color: #6ee7b7; }
-        .profit-money.negative { color: #fb7185; }
-        .profit-margin.good { color: #6ee7b7; font-weight: 700; }
-        .profit-margin.medium { color: #fbbf24; font-weight: 700; }
-        .profit-margin.low { color: #fb7185; font-weight: 700; }
-        .profit-margin.pending { color: var(--text-3); font-weight: 600; }
-        .profit-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 9px;
-            border-radius: 999px;
-            border: 1px solid transparent;
-            font-size: 11px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .profit-status.high {
-            background: rgba(16,185,129,.12);
-            border-color: rgba(16,185,129,.2);
-            color: #6ee7b7;
-        }
-        .profit-status.medium {
-            background: rgba(245,158,11,.12);
-            border-color: rgba(245,158,11,.2);
-            color: #fbbf24;
-        }
-        .profit-status.low {
-            background: rgba(244,63,94,.12);
-            border-color: rgba(244,63,94,.2);
-            color: #fb7185;
-        }
-        .profit-status.pending {
-            background: rgba(148,163,184,.12);
-            border-color: rgba(148,163,184,.18);
-            color: #cbd5f5;
-        }
-        @media (max-width: 1180px) {
-            .profit-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        @media (max-width: 720px) {
-            .profit-summary-grid { grid-template-columns: 1fr; }
-            .profit-panel-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .profit-chart-scroll { max-height: none; }
-        }
-    </style>
 </head>
 <body>
 
 <div class="app">
 
-    <!-- ── Sidebar ── -->
     <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="sidebar-logo-icon">📦</div>
-            StockOS
+        <div class="sidebar-brand">
+            <div class="brand-mark">S</div>
+            <div class="brand-text">
+                <span class="name">StockOS</span>
+                <span class="sub">Forno · V2</span>
+            </div>
         </div>
 
-        <div class="sidebar-section">
-            <div class="sidebar-section-label">Menu</div>
-            <div id="nav-items"></div>
-        </div>
+        <span class="nav-label">Operação</span>
+        <nav class="nav" id="nav-items"></nav>
 
-        <div class="sidebar-bottom">
-            <div class="user-card">
-                <div class="user-avatar" id="user-avatar">--</div>
-                <div class="user-info">
-                    <div class="user-name" id="user-name">Carregando...</div>
-                    <div class="user-role" id="user-role">--</div>
+        <div class="sidebar-foot">
+            <div class="user-chip">
+                <div class="avatar user-avatar" id="user-avatar">--</div>
+                <div class="user-meta user-info">
+                    <span class="name user-name" id="user-name">Carregando...</span>
+                    <span class="role user-role" id="user-role">Operador · RU --</span>
                 </div>
-                <button class="btn-logout" onclick="logout()" title="Sair">✕</button>
+                <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
             </div>
         </div>
     </aside>
 
-    <!-- ── Header ── -->
-    <header class="header">
-        <div>
-            <div class="header-title" id="header-title">Carregando...</div>
-            <div class="header-sub"  id="header-sub"></div>
-        </div>
-        <div class="header-right">
-            <div class="badge-live">
-                <span class="badge-live-dot"></span>
-                Sistema online
+    <div class="main page">
+        <header class="topbar header">
+            <div class="topbar-left">
+                <div class="crumbs">
+                    <span>StockOS</span>
+                    <span class="sep">›</span>
+                    <span class="cur">Dashboard</span>
+                </div>
+                <h1 class="page-title header-title" id="header-title">Dashboard</h1>
+                <p class="page-sub header-sub" id="header-sub">Visão operacional consolidada do turno.</p>
             </div>
-        </div>
-    </header>
+            <div class="topbar-right header-right">
+                <div class="live-pill">
+                    <span class="live-dot"></span>
+                    Turno ativo · 26 abr 2026
+                </div>
+            </div>
+        </header>
 
-    <!-- ── Main ── -->
-    <main class="main">
+        <div class="main-body content">
 
         <!-- Cards de resumo (sempre visíveis acima das abas) -->
         <div class="summary-grid" id="summary-grid"></div>
@@ -410,13 +185,13 @@
 
             </div>
 
-            <section class="card fade-up profitability-section">
+            <section class="perm-section card fade-up profitability-section" id="section-rentabilidade">
                 <div class="card-header">
                     <span class="card-title">Análise de Lucratividade</span>
                     <span class="card-badge" id="profitability-badge">aguardando dados</span>
                 </div>
                 <div class="profitability-intro">
-                    Margens calculadas a partir dos produtos já carregados no dashboard, destacando cobertura de custo, melhor desempenho e itens que ainda precisam de definição financeira.
+                    Ranking calculado no backend com preço de venda atual, último custo cotado e saídas de estoque originadas por venda.
                 </div>
 
                 <div id="profit-summary-grid" class="profit-summary-grid"></div>
@@ -461,6 +236,8 @@
                                     <th>Custo</th>
                                     <th>Lucro/Un.</th>
                                     <th>Margem</th>
+                                    <th>Vendidas</th>
+                                    <th>Lucro Est.</th>
                                     <th>Status</th>
                                 </tr>
                                 </thead>
@@ -473,7 +250,8 @@
 
         </div>
 
-    </main>
+        </div>
+    </div>
 
 </div>
 
