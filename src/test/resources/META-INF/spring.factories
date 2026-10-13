@@ -1,0 +1,5 @@
+# Registers the fail-fast guard from support.TestDatabaseGuard on the TEST
+# classpath only. This file lives under src/test/resources, so it is never
+# packaged into the application jar and has no effect at runtime.
+org.springframework.context.ApplicationListener=\
+support.TestDatabaseGuard

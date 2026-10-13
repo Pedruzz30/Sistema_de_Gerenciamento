@@ -12,10 +12,14 @@ target/
 # Local environment and Spring overrides
 .env
 src/main/resources/application-local.properties
+src/test/resources/application-test-local.properties
 
 # Claude / configs locais
 Json/
 .Json/
+
+# Backups de auditoria de banco de dados (nunca versionar)
+backups_auditoria/
 
 # IDEs
 .idea/

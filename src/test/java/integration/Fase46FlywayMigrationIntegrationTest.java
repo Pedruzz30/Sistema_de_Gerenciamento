@@ -151,7 +151,11 @@ class Fase46FlywayMigrationIntegrationTest {
     }
 
     private static String jdbcUrl() {
-        return System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://localhost:5432/sistema_gerenciamento");
+        // Default is the dedicated test database, never production. This URL
+        // is only used as the admin connection point to CREATE/DROP the
+        // throwaway sg_f46_* databases this test creates for itself; it must
+        // still never default to "sistema_gerenciamento".
+        return System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://localhost:5432/sistema_gerenciamento_test");
     }
 
     private static String dbUser() {
