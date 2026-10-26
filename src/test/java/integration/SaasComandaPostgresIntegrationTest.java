@@ -80,7 +80,7 @@ class SaasComandaPostgresIntegrationTest {
             insert into stockos_private.planos
             (id,codigo,nome,preco_mensal,max_filiais,max_usuarios)
             values (?,?,?,?,1,10)
-            """,plan,"test_"+company.toString().replace("-",""),"Teste",BigDecimal.ZERO);
+            """,plan,"t_"+company.toString().replace("-","").substring(0,28),"Teste",BigDecimal.ZERO);
         jdbc.update("""
             insert into stockos_private.licencas
             (empresa_id,plano_id,status,vigencia_inicio,vigencia_fim,valor_mensal_snapshot)
