@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StockOS — Comandas</title>
+<link rel="stylesheet" href="/css/saas-comandas.css">
+</head>
+<body>
+<header><strong>STOCK<span>OS</span></strong><small>Painel de comandas · Piloto</small><button id="logout" hidden>Sair</button></header>
+<main>
+<section id="login" class="panel">
+<h1>Acesse seu estabelecimento</h1>
+<p class="muted">Ambiente de testes. Utilize sua conta StockOS autorizada.</p>
+<form id="login-form"><label>E-mail<input type="email" id="email" required autocomplete="email"></label><label>Senha<input type="password" id="password" required autocomplete="current-password"></label><button type="submit">Entrar</button></form>
+</section>
+<section id="workspace" hidden>
+<div class="topline"><div><h1>Comandas</h1><p class="muted">Registre cada produto quando ele for entregue.</p></div><div class="selection"><label>Empresa<select id="empresa"></select></label><label>Filial<select id="filial"></select></label></div></div>
+<div class="bar"><button id="refresh">Atualizar</button><form id="open-form"><label>Nova comanda <input id="numero" type="number" min="1" max="9999" placeholder="001" required></label><button type="submit">Abrir</button></form></div>
+<div class="layout"><section class="panel"><h2>Em aberto</h2><div id="comandas" class="cards"></div></section><section class="panel"><h2 id="detail-title">Selecione uma comanda</h2><div id="detail" hidden><div id="itens"></div><div class="totals"><span>Total <strong id="total">—</strong></span><span>Pago <strong id="paid">—</strong></span><span>Restante <strong id="restante">—</strong></span></div><form id="item-form"><h3>Adicionar produto</h3><select id="produto" required></select><label>Quantidade<input id="quantidade" type="number" min="1" value="1" required></label><button type="submit">Registrar entrega</button></form><form id="pay-form"><h3>Registrar pagamento</h3><select id="modalidade"><option>DINHEIRO</option><option>PIX</option><option>DEBITO</option><option>CREDITO</option></select><label>Valor (R$)<input id="valor" type="number" min=".01" step=".01" required></label><button type="submit">Registrar pagamento</button></form><button id="close-tab">Encerrar comanda</button></div></section></div>
+</section>
+<p id="feedback" role="status" aria-live="polite"></p>
+</main>
+<script type="module" src="/js/saas-comandas.js"></script>
+</body></html>

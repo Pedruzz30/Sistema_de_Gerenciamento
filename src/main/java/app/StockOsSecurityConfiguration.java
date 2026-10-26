@@ -30,6 +30,7 @@ public class StockOsSecurityConfiguration {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         if ("supabase-jwt".equals(mode)) {
             http.authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/saas/config").permitAll()
                     .requestMatchers("/api/auth/login").denyAll()
                     // Only SaaS endpoints designed with tenant membership checks are enabled.
                     // Legacy APIs still trust caller-controlled filialId; keep them unreachable.
