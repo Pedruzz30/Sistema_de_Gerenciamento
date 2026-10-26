@@ -4,25 +4,35 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ProductionSafetyGateTest {
+    private static final String ISSUER = "https://example-project.supabase.co/auth/v1";
+
     @Test
-    void permitsLegacyModeOnlyOutsideProduction() {
-        assertDoesNotThrow(() -> new ProductionSafetyGate("legacy-dev", "test").verify());
-        assertDoesNotThrow(() -> new ProductionSafetyGate("legacy-dev", "").verify());
+    void legacyAllowedOnlyOnLoopback() {
+        assertDoesNotThrow(() -> new ProductionSafetyGate("legacy-dev", "test", "", "127.0.0.1").verify());
+        assertThrows(IllegalStateException.class,
+                () -> new ProductionSafetyGate("legacy-dev", "dev", "", "0.0.0.0").verify());
     }
 
     @Test
-    void rejectsInsecureProductionProfiles() {
+    void productionAlwaysBlockedUntilTenantSecurityIsReady() {
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSafetyGate("legacy-dev", "prod").verify());
+                () -> new ProductionSafetyGate("legacy-dev", "prod", "", "127.0.0.1").verify());
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSafetyGate("legacy-dev", "dev, production").verify());
+                () -> new ProductionSafetyGate("supabase-jwt", "dev,production", ISSUER, "127.0.0.1").verify());
     }
 
     @Test
-    void rejectsUnimplementedAuthModes() {
+    void jwtModeRequiresValidIssuer() {
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSafetyGate("supabase-jwt", "dev").verify());
+                () -> new ProductionSafetyGate("supabase-jwt", "test", "", "127.0.0.1").verify());
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSafetyGate("made-up", "dev").verify());
+                () -> new ProductionSafetyGate("supabase-jwt", "test", "http://host/auth/v1", "127.0.0.1").verify());
+        assertDoesNotThrow(() -> new ProductionSafetyGate("supabase-jwt", "test", ISSUER, "127.0.0.1").verify());
+    }
+
+    @Test
+    void unknownModeIsRejected() {
+        assertThrows(IllegalStateException.class,
+                () -> new ProductionSafetyGate("fake", "test", "", "127.0.0.1").verify());
     }
 }

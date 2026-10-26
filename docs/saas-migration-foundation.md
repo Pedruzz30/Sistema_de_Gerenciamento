@@ -4,7 +4,7 @@
 
 This branch starts from `appmod/java-upgrade-20260908035846`, retaining the dedicated test database safety guard. It adds a **fail-closed production startup check** so existing `X-User-RU` authentication is never mistaken for production-ready authentication.
 
-**Not ready for customers**: do not expose the current endpoints to the internet. No Supabase project has been provisioned or modified. Do not use the Space Underground project as a customer database.
+**Not ready for customers**: do not expose the current endpoints to the internet. No Supabase project has been provisioned or modified. See `docs/stockos-supabase-jwt-staging.md` for an opt-in staging JWT foundation; production remains blocked. Do not use the Space Underground project as a customer database.
 
 ## Current critical findings
 

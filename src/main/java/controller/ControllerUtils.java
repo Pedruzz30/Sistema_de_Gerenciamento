@@ -4,10 +4,14 @@ import model.Permissao;
 import model.Usuario;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import repository.UsuarioRepository;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Utility methods shared across REST controllers.
@@ -24,6 +28,24 @@ public final class ControllerUtils {
      * Requests are denied when identity is missing, malformed, unknown or inactive.
      */
     public static Usuario resolveUser(String ruHeader, UsuarioRepository repo) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            // A validated access token is the sole identity source in JWT mode.
+            // Ignore even a forged X-User-RU header supplied by the caller.
+            final UUID subject;
+            try {
+                subject = UUID.fromString(jwtAuth.getToken().getSubject());
+            } catch (IllegalArgumentException | NullPointerException ex) {
+                throw new SecurityException("JWT sem identificador de usuario valido.");
+            }
+
+            Usuario linked = repo.buscarPorAuthUserId(subject)
+                    .orElseThrow(() -> new SecurityException("Usuario nao vinculado ou inativo."));
+            if (!linked.isAtivo()) throw new SecurityException("Usuario inativo.");
+            return linked;
+        }
+        // Legacy fallback is allowed only in local-development mode.
+        // In JWT mode the Spring SecurityFilterChain rejects unauthenticated /api/** requests.
         if (ruHeader == null || ruHeader.isBlank()) {
             log.warn("X-User-RU ausente.");
             throw new SecurityException("Identidade ausente. Informe o cabecalho X-User-RU.");

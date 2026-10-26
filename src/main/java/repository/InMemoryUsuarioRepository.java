@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.UUID;
 
 public class InMemoryUsuarioRepository implements UsuarioRepository {
 
@@ -43,6 +44,15 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
     @Override
     public synchronized Optional<Usuario> buscarPorRu(long ru) {
         return usuarios.stream().filter(usuario -> usuario.getRu() == ru).findFirst();
+    }
+
+    @Override
+    public synchronized Optional<Usuario> buscarPorAuthUserId(UUID authUserId) {
+        if (authUserId == null) return Optional.empty();
+        return usuarios.stream()
+                .filter(Usuario::isAtivo)
+                .filter(u -> authUserId.equals(u.getAuthUserId()))
+                .findFirst();
     }
 
     @Override
