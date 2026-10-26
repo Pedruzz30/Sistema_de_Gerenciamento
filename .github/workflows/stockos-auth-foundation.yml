@@ -1,0 +1,27 @@
+name: StockOS auth foundation checks
+
+on:
+  pull_request:
+    paths:
+      - 'pom.xml'
+      - 'src/main/java/**'
+      - 'src/test/java/app/ProductionSafetyGateTest.java'
+      - 'src/test/java/controller/ControllerUtilsJwtTest.java'
+      - '.github/workflows/stockos-auth-foundation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-auth-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Compile and test JWT security foundation
+        run: mvn -B -Dtest=ProductionSafetyGateTest,ControllerUtilsJwtTest test
