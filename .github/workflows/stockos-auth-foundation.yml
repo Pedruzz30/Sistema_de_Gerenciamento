@@ -29,3 +29,34 @@ jobs:
           cache: maven
       - name: Compile and test JWT security foundation
         run: mvn -B -Dtest=ProductionSafetyGateTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
+
+  postgres-saas-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: stockos_ci_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stockos_ci_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      STOCKOS_TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_test
+      DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Run PostgreSQL Flyway + SaaS transaction integration tests
+        run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test

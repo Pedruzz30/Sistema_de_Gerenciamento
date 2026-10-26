@@ -1,0 +1,204 @@
+package integration;
+
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.web.server.ResponseStatusException;
+import service.SaasComandaService;
+import service.SaasLicenseService;
+import service.SaasTenantAccess;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * PostgreSQL-only SaaS tests. Run against a disposable local CI database,
+ * NEVER a Supabase project or a database with business records.
+ */
+@EnabledIfEnvironmentVariable(named = "STOCKOS_TEST_DB_URL",
+        matches = "jdbc:postgresql://(localhost|127\\.0\\.0\\.1):5432/stockos_ci_test")
+class SaasComandaPostgresIntegrationTest {
+    private static JdbcTemplate jdbc;
+    private static TransactionTemplate tx;
+    private static SaasComandaService comandas;
+    private static SaasTenantAccess tenant;
+    private static final UUID OWNER = UUID.randomUUID();
+    private static final UUID OUTSIDER = UUID.randomUUID();
+
+    @BeforeAll
+    static void initialize() {
+        String url=System.getenv("STOCKOS_TEST_DB_URL");
+        if(url==null || !url.matches("jdbc:postgresql://(localhost|127\\.0\\.0\\.1):5432/stockos_ci_test"))
+            throw new IllegalStateException("Somente PostgreSQL local descartavel e permitido");
+        DriverManagerDataSource ds=new DriverManagerDataSource(
+                url,System.getenv("DB_USERNAME"),System.getenv("DB_PASSWORD"));
+        Flyway flyway=Flyway.configure()
+                .dataSource(ds)
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(false)
+                .load();
+        flyway.migrate();
+        jdbc=new JdbcTemplate(ds);
+        tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
+        tenant=new SaasTenantAccess(jdbc,new SaasLicenseService(jdbc));
+        comandas=new SaasComandaService(jdbc,tenant);
+    }
+
+    private static void login(UUID id){
+        Jwt jwt=Jwt.withTokenValue("integration-jwt").header("alg","RS256")
+                .subject(id.toString()).claim("role","authenticated").build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
+                List.of(new SimpleGrantedAuthority("ROLE_AUTHENTICATED"))));
+    }
+
+    private static Fixture fixture(int stock,int price){
+        UUID company=UUID.randomUUID(),branch=UUID.randomUUID(),product=UUID.randomUUID();
+        UUID plan=UUID.randomUUID();
+        jdbc.update("insert into stockos_private.empresas(id,nome) values (?,?)",company,"Loja "+company);
+        jdbc.update("insert into stockos_private.filiais(id,empresa_id,nome) values (?,?,'Principal')",branch,company);
+        jdbc.update("insert into stockos_private.membros(empresa_id,auth_user_id,papel) values (?,?,'PROPRIETARIO')",company,OWNER);
+        jdbc.update("""
+            insert into stockos_private.planos
+            (id,codigo,nome,preco_mensal,max_filiais,max_usuarios)
+            values (?,?,?,?,1,10)
+            """,plan,"test_"+company.toString().replace("-",""),"Teste",BigDecimal.ZERO);
+        jdbc.update("""
+            insert into stockos_private.licencas
+            (empresa_id,plano_id,status,vigencia_inicio,vigencia_fim,valor_mensal_snapshot)
+            values (?,?,'TRIAL',now()-interval '1 day',now()+interval '1 day',0)
+            """,company,plan);
+        jdbc.update("""
+            insert into stockos_private.produtos
+            (id,empresa_id,filial_id,codigo,nome,preco_unitario,estoque_atual)
+            values (?,?,?,'A001','Agua',?,?)
+            """,product,company,branch,BigDecimal.valueOf(price),stock);
+        return new Fixture(company,branch,product);
+    }
+
+    private record Fixture(UUID company,UUID branch,UUID product) {}
+
+    private static UUID id(Map<String,Object> row){return (UUID)row.get("id");}
+
+    @Test
+    void migrationCreatesPrivateSaasTablesAndRejectsWrongTenantLinks(){
+        login(OWNER);
+        Fixture a=fixture(10,5), b=fixture(10,5);
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from information_schema.tables
+            where table_schema='stockos_private' and table_name='comandas'
+            """,Integer.class));
+        // Composite FK forbids attaching an item to a product in a different store.
+        UUID tab=id(tx.execute(t->comandas.abrir(a.company,a.branch,1)));
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("""
+            insert into stockos_private.comanda_itens
+            (empresa_id,filial_id,comanda_id,produto_id,nome_snapshot,
+             quantidade,preco_unitario_snapshot,idempotency_key,criado_por)
+            values (?,?,?,?,'Bloqueado',1,5,?,?)
+            """,a.company,a.branch,tab,b.product,UUID.randomUUID().toString(),OWNER));
+    }
+
+    @Test
+    void rejectsCrossCompanyAccessAndInactiveSubscription() {
+        login(OWNER);
+        Fixture a=fixture(3,8);
+        login(OUTSIDER);
+        assertEquals(HttpStatus.FORBIDDEN,assertThrows(ResponseStatusException.class,
+                ()->comandas.listar(a.company,a.branch)).getStatusCode());
+        login(OWNER);
+        jdbc.update("update stockos_private.licencas set status='SUSPENSA' where empresa_id=?",a.company);
+        assertEquals(HttpStatus.FORBIDDEN,assertThrows(ResponseStatusException.class,
+                ()->comandas.listar(a.company,a.branch)).getStatusCode());
+    }
+
+    @Test
+    void repeatedItemAndPaymentKeysNeverDoubleBook() {
+        login(OWNER);
+        Fixture a=fixture(5,12);
+        UUID tab=id(tx.execute(t->comandas.abrir(a.company,a.branch,1)));
+        UUID key=UUID.randomUUID();
+        Map<String,Object> first=tx.execute(t->comandas.adicionar(a.company,a.branch,tab,a.product,2,key.toString()));
+        Map<String,Object> second=tx.execute(t->comandas.adicionar(a.company,a.branch,tab,a.product,2,key.toString()));
+        assertEquals(first.get("id"),second.get("id"));
+        assertEquals(3,stock(a));
+        assertEquals(1,movements(a,"ENTREGA"));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(t->comandas.adicionar(a.company,a.branch,tab,a.product,3,key.toString())))
+                .getStatusCode());
+        String paymentKey=UUID.randomUUID().toString();
+        tx.execute(t->comandas.pagamento(a.company,a.branch,tab,"PIX",new BigDecimal("10.00"),paymentKey));
+        tx.execute(t->comandas.pagamento(a.company,a.branch,tab,"PIX",new BigDecimal("10.00"),paymentKey));
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from stockos_private.pagamentos
+            where empresa_id=? and idempotency_key=?
+            """,Integer.class,a.company,paymentKey));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(t->comandas.fechar(a.company,a.branch))).getStatusCode());
+        tx.execute(t->comandas.pagamento(a.company,a.branch,tab,"DINHEIRO",new BigDecimal("14.00"),UUID.randomUUID().toString()));
+        assertEquals("FECHADA",tx.execute(t->comandas.fechar(a.company,a.branch)).get("status"));
+        assertEquals(3,stock(a)); // Closing must not decrement delivered stock again.
+    }
+
+    @Test
+    void concurrentAttemptsToSellLastUnitOnlyAllowOne() throws Exception {
+        login(OWNER);
+        Fixture a=fixture(1,10);
+        UUID tab=id(tx.execute(t->comandas.abrir(a.company,a.branch,1)));
+        CountDownLatch start=new CountDownLatch(1);
+        try(ExecutorService pool=Executors.newFixedThreadPool(2)){
+            Future<Boolean> f1=pool.submit(()->attemptSale(a,tab,start));
+            Future<Boolean> f2=pool.submit(()->attemptSale(a,tab,start));
+            start.countDown();
+            boolean one=f1.get(15,TimeUnit.SECONDS),two=f2.get(15,TimeUnit.SECONDS);
+            assertNotEquals(one,two,"Exactly one sale must consume the final unit");
+            assertEquals(0,stock(a));
+            assertEquals(1,movements(a,"ENTREGA"));
+        }
+    }
+
+    private static boolean attemptSale(Fixture a,UUID tab,CountDownLatch start) {
+        login(OWNER);
+        try {
+            assertTrue(start.await(8,TimeUnit.SECONDS));
+            tx.execute(t->comandas.adicionar(a.company,a.branch,tab,a.product,1,UUID.randomUUID().toString()));
+            return true;
+        } catch(ResponseStatusException ex) {
+            if(ex.getStatusCode()!=HttpStatus.CONFLICT)throw ex;
+            return false;
+        } catch(InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(ex);
+        } finally {SecurityContextHolder.clearContext();}
+    }
+
+    private static int stock(Fixture a){
+        return jdbc.queryForObject("""
+          select estoque_atual from stockos_private.produtos
+          where empresa_id=? and filial_id=? and id=?
+          """,Integer.class,a.company,a.branch,a.product);
+    }
+    private static int movements(Fixture a,String type){
+        return jdbc.queryForObject("""
+          select count(*) from stockos_private.movimentos_estoque
+          where empresa_id=? and filial_id=? and tipo=?
+          """,Integer.class,a.company,a.branch,type);
+    }
+}
