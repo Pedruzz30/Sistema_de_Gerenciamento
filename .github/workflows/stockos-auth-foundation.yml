@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - 'pom.xml'
+      - 'src/main/resources/db/migration/**'
       - 'src/main/java/**'
       - 'src/test/java/app/ProductionSafetyGateTest.java'
       - 'src/test/java/controller/ControllerUtilsJwtTest.java'
+      - 'src/test/java/service/SaasTenantAccessTest.java'
       - '.github/workflows/stockos-auth-foundation.yml'
   workflow_dispatch:
 
@@ -24,4 +26,4 @@ jobs:
           java-version: '25'
           cache: maven
       - name: Compile and test JWT security foundation
-        run: mvn -B -Dtest=ProductionSafetyGateTest,ControllerUtilsJwtTest test
+        run: mvn -B -Dtest=ProductionSafetyGateTest,ControllerUtilsJwtTest,SaasTenantAccessTest test

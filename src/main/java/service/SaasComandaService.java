@@ -82,12 +82,13 @@ public class SaasComandaService {
         validateKey(chave);
         requireComanda(empresa,filial,comanda,true);
         List<Map<String,Object>> previous=jdbc.queryForList("""
-          select id, produto_id, quantidade from stockos_private.comanda_itens
+          select id, produto_id, quantidade, comanda_id from stockos_private.comanda_itens
           where empresa_id=? and filial_id=? and idempotency_key=?
           """,empresa,filial,chave);
         if(!previous.isEmpty()){
             Map<String,Object> existing=previous.get(0);
-            if(!produto.equals(existing.get("produto_id")) ||
+            if(!comanda.equals(existing.get("comanda_id")) ||
+               !produto.equals(existing.get("produto_id")) ||
                quantidade != ((Number)existing.get("quantidade")).intValue()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Chave reutilizada com dados diferentes");
             }
