@@ -18,7 +18,8 @@ import static org.mockito.Mockito.*;
 
 class SaasTenantAccessTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    private final SaasTenantAccess tenant = new SaasTenantAccess(jdbc);
+    private final SaasLicenseService licenses = mock(SaasLicenseService.class);
+    private final SaasTenantAccess tenant = new SaasTenantAccess(jdbc, licenses);
 
     @AfterEach
     void cleanup() { SecurityContextHolder.clearContext(); }
@@ -55,6 +56,27 @@ class SaasTenantAccessTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> tenant.requireMembership(UUID.randomUUID(), "GERENTE", "PROPRIETARIO"));
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void activeMembershipMustAlsoHaveActiveLicense() {
+        login(UUID.randomUUID());
+        when(jdbc.query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of("PROPRIETARIO"));
+        UUID company = UUID.randomUUID();
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Licenca expirada"))
+                .when(licenses).requireActive(company);
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> tenant.requireMembership(company)).getStatusCode());
+    }
+
+    @Test
+    void readOnlyMembershipWorksForExpiredAccount() {
+        login(UUID.randomUUID());
+        when(jdbc.query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of("PROPRIETARIO"));
+        assertEquals("PROPRIETARIO", tenant.requireMemberWithoutLicense(UUID.randomUUID()));
+        verifyNoInteractions(licenses);
     }
 
     @Test

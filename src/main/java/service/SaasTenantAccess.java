@@ -16,7 +16,12 @@ import java.util.UUID;
 @Service
 public class SaasTenantAccess {
     private final JdbcTemplate jdbc;
-    public SaasTenantAccess(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final SaasLicenseService licenses;
+
+    public SaasTenantAccess(JdbcTemplate jdbc, SaasLicenseService licenses) {
+        this.jdbc = jdbc;
+        this.licenses = licenses;
+    }
 
     public UUID authenticatedSubject() {
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
@@ -31,6 +36,16 @@ public class SaasTenantAccess {
     }
 
     public String requireMembership(UUID empresaId, String... roles) {
+        String role = requireMemberWithoutLicense(empresaId, roles);
+        licenses.requireActive(empresaId);
+        return role;
+    }
+
+    /**
+     * Read-only account context: permits members to see licensing information
+     * even after a subscription expires. Do not use for sales/stock mutations.
+     */
+    public String requireMemberWithoutLicense(UUID empresaId, String... roles) {
         UUID userId = authenticatedSubject();
         List<String> found = jdbc.query("""
             select m.papel from stockos_private.membros m
@@ -58,7 +73,7 @@ public class SaasTenantAccess {
     }
 
     public List<Map<String,Object>> filiais(UUID empresaId) {
-        requireMembership(empresaId);
+        requireMemberWithoutLicense(empresaId);
         return jdbc.queryForList("""
             select id, nome from stockos_private.filiais
             where empresa_id=? and ativa=true order by nome

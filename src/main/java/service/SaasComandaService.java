@@ -229,8 +229,8 @@ public class SaasComandaService {
     private void requireComanda(UUID empresa,UUID filial,UUID comanda,boolean opened){
         String statement="""
           select status from stockos_private.comandas
-          where id=? and empresa_id=? and filial_id=? for update
-          """;
+          where id=? and empresa_id=? and filial_id=?
+          """ + (opened ? " for update" : "");
         List<String> statuses=jdbc.query(statement,(r,i)->r.getString(1),comanda,empresa,filial);
         if(statuses.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Comanda nao encontrada");
         if(opened && !"ABERTA".equals(statuses.get(0)))

@@ -34,10 +34,21 @@ async function workspace(){
 }
 function fill(el,entries){el.replaceChildren();for(const v of entries){const opt=document.createElement('option');opt.value=v.id;text(opt,v.name);el.append(opt);}}
 async function loadBranches(){
- state.empresa=$('empresa').value;branches=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/filiais');
+ state.empresa=$('empresa').value;
+ const licenca=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/licenca');
+ const allowed=licenca.acesso_liberado===true;
+ const banner=$('license-banner');
+ banner.hidden=false;
+ banner.classList.toggle('alert',!allowed);
+ text(banner,allowed
+   ? 'Licença '+(licenca.plano||'')+' ativa até '+new Date(licenca.vigencia_fim).toLocaleDateString('pt-BR')+'.'
+   : 'Operações bloqueadas: licença '+String(licenca.status||'inexistente')+'. Contate a administração do StockOS.');
+ document.querySelector('.bar').hidden=!allowed;
+ document.querySelector('.layout').hidden=!allowed;
+ branches=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/filiais');
  fill($('filial'),branches.map(b=>({id:b.id,name:b.nome})));
  state.filial=branches[0]?.id||null;selected=null;renderDetail();
- if(state.filial)await refresh();
+ if(state.filial&&allowed)await refresh();
  else report('Nenhuma filial ativa foi vinculada a esta empresa.');
 }
 async function refresh(){
