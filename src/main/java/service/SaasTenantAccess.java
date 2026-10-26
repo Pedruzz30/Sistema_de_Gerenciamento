@@ -57,6 +57,14 @@ public class SaasTenantAccess {
         }
     }
 
+    public List<Map<String,Object>> filiais(UUID empresaId) {
+        requireMembership(empresaId);
+        return jdbc.queryForList("""
+            select id, nome from stockos_private.filiais
+            where empresa_id=? and ativa=true order by nome
+            """,empresaId);
+    }
+
     public List<Map<String, Object>> empresas() {
         return jdbc.queryForList("""
             select e.id, e.nome, m.papel

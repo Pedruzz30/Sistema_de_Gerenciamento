@@ -135,6 +135,12 @@ public class SaasComandaService {
         if(rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Item nao encontrado");
         if(rows.get(0).get("cancelado_em")!=null) throw new ResponseStatusException(HttpStatus.CONFLICT,"Item ja cancelado");
         int n=((Number)rows.get(0).get("quantidade")).intValue();
+        BigDecimal saldoRestante = total(empresa,filial,comanda)
+                .subtract(BigDecimal.valueOf(n).multiply(precoItem(empresa,filial,comanda,itemId)));
+        if (pago(empresa,filial,comanda).compareTo(saldoRestante)>0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Nao e possivel cancelar item: estorne o pagamento antes");
+        }
         UUID p=(UUID)rows.get(0).get("produto_id");
         jdbc.update("""
           update stockos_private.comanda_itens set cancelado_em=now(),cancelado_por=?
@@ -207,6 +213,12 @@ public class SaasComandaService {
           from stockos_private.comanda_itens
           where empresa_id=? and filial_id=? and comanda_id=? and cancelado_em is null
           """, BigDecimal.class,empresa,filial,comanda);
+    }
+    private BigDecimal precoItem(UUID empresa,UUID filial,UUID comanda,UUID itemId) {
+        return jdbc.queryForObject("""
+          select preco_unitario_snapshot from stockos_private.comanda_itens
+          where empresa_id=? and filial_id=? and comanda_id=? and id=?
+          """,BigDecimal.class,empresa,filial,comanda,itemId);
     }
     private BigDecimal pago(UUID empresa,UUID filial,UUID comanda){
         return jdbc.queryForObject("""
