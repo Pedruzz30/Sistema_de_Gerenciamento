@@ -80,7 +80,8 @@ create table stockos_private.comanda_itens (
     foreign key (empresa_id, filial_id, produto_id)
       references stockos_private.produtos (empresa_id, filial_id, id),
     unique (empresa_id, idempotency_key),
-    unique (empresa_id, filial_id, comanda_id, id)
+    unique (empresa_id, filial_id, comanda_id, id),
+    unique (empresa_id, filial_id, id)
 );
 create index ix_stockos_comanda_itens
   on stockos_private.comanda_itens (empresa_id, filial_id, comanda_id);
