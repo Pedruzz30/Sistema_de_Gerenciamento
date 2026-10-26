@@ -34,7 +34,7 @@ public class StockOsSecurityConfiguration {
                     .requestMatchers("/api/auth/login").denyAll()
                     // Only SaaS endpoints designed with tenant membership checks are enabled.
                     // Legacy APIs still trust caller-controlled filialId; keep them unreachable.
-                    .requestMatchers("/api/auth/me", "/api/saas/**").authenticated()
+                    .requestMatchers("/api/auth/me", "/api/saas/**", "/api/admin/stockos/**").authenticated()
                     .requestMatchers("/api/**").denyAll()
                     .anyRequest().permitAll());
             http.oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
