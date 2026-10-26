@@ -151,9 +151,9 @@ class SaasComandaPostgresIntegrationTest {
             where empresa_id=? and idempotency_key=?
             """,Integer.class,a.company,paymentKey));
         assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
-                ()->tx.execute(t->comandas.fechar(a.company,a.branch))).getStatusCode());
+                ()->tx.execute(t->comandas.fechar(a.company,a.branch,tab))).getStatusCode());
         tx.execute(t->comandas.pagamento(a.company,a.branch,tab,"DINHEIRO",new BigDecimal("14.00"),UUID.randomUUID().toString()));
-        assertEquals("FECHADA",tx.execute(t->comandas.fechar(a.company,a.branch)).get("status"));
+        assertEquals("FECHADA",tx.execute(t->comandas.fechar(a.company,a.branch,tab)).get("status"));
         assertEquals(3,stock(a)); // Closing must not decrement delivered stock again.
     }
 
