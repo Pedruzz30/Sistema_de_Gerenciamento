@@ -62,7 +62,7 @@ async function refresh(){
    api(uri()+'/comandas'),api(uri()+'/produtos'),api(uri()+'/caixa/atual')
  ]);
  fill($('produto'),products.filter(p=>p.ativo).map(p=>({id:p.id,name:p.nome+' — '+fmt(p.preco_unitario)+' ('+p.estoque_atual+')'})));
- renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();await renderGoods();await renderEmployees();
+ renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();await renderGoods();await renderEmployees();await renderCatalog();
 }
 function renderTabs(){
  const el=$('comandas');el.replaceChildren();
@@ -397,6 +397,68 @@ async function renderEmployees(){
    history.append(p);
  }
 }
+
+function populateCatalogEditor(){
+ const p=products.find(v=>v.id===$('catalog-select').value);
+ if(!p)return;
+ $('catalog-edit-code').value=p.codigo;
+ $('catalog-edit-name').value=p.nome;
+ $('catalog-edit-price').value=p.preco_unitario;
+ $('catalog-edit-active').checked=Boolean(p.ativo);
+}
+async function renderCatalog(){
+ const panel=$('catalog-panel');panel.hidden=!state.licenseAllowed||!state.filial||!isManager();
+ if(panel.hidden)return;
+ const sel=$('catalog-select'),prev=sel.value;sel.replaceChildren();
+ for(const p of products){const option=document.createElement('option');option.value=p.id;option.textContent=p.nome+' ('+p.codigo+')';sel.append(option);}
+ if(products.some(p=>p.id===prev))sel.value=prev;
+ populateCatalogEditor();
+ await renderReports();
+}
+$('catalog-select').onchange=populateCatalogEditor;
+$('catalog-create').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ const qty=Number($('catalog-stock').value);
+ const price=$('catalog-price').value;
+ if(!Number.isInteger(qty)||qty<0)throw Error('Quantidade inválida.');
+ await api(uri()+'/produtos',{method:'POST',body:JSON.stringify({
+  codigo:$('catalog-code').value,nome:$('catalog-name').value,
+  precoUnitario:price,estoqueInicial:qty
+ })});
+ e.target.reset();await refresh();
+});};
+$('catalog-edit').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ const p=products.find(p=>p.id===$('catalog-select').value);
+ if(!p)throw Error('Selecione um produto');
+ await api(uri()+'/produtos/'+encodeURIComponent(p.id),{method:'PUT',body:JSON.stringify({
+  codigo:$('catalog-edit-code').value,nome:$('catalog-edit-name').value,
+  precoUnitario:$('catalog-edit-price').value,
+  ativo:$('catalog-edit-active').checked,versaoEsperada:p.versao_cadastro
+ })});
+ await refresh();
+});};
+async function renderReports(){
+ if(!state.filial||!isManager())return;
+ const days=Number($('report-days').value);
+ const now=new Date(),start=new Date(now.getTime()-days*86400000);
+ const dates='inicio='+encodeURIComponent(start.toISOString())+'&fim='+encodeURIComponent(now.toISOString());
+ const base=uri()+'/relatorios/';
+ const [financial,low,top]=await Promise.all([
+  api(base+'financeiro?'+dates),
+  api(base+'estoque-baixo?quantidadeMaxima=5&limite=20'),
+  api(base+'produtos-mais-entregues?'+dates+'&limite=10')
+ ]);
+ text($('reports-summary'),'Recebido: '+fmt(financial.total_recebido)+
+    ' · Estornado: '+fmt(financial.total_estornado)+
+    ' · Devolvido: '+fmt(financial.total_devolvido)+
+    ' · Fluxo líquido registrado: '+fmt(financial.fluxo_liquido_registrado));
+ const lowbox=$('reports-low-stock');lowbox.replaceChildren();
+ const lowhead=document.createElement('h3');text(lowhead,'Estoque baixo (até 5 unidades)');lowbox.append(lowhead);
+ for(const p of low){const line=document.createElement('div');line.className='item';text(line,p.nome+' · '+p.estoque_atual+' unidades');lowbox.append(line);}
+ const box=$('reports-top-products');box.replaceChildren();
+ const title=document.createElement('h3');text(title,'Mais entregues no período');box.append(title);
+ for(const p of top){const row=document.createElement('div');row.className='item';text(row,p.nome+' · '+p.unidades+' unidades');box.append(row);}
+}
+$('report-filter').onsubmit=e=>{e.preventDefault();submit(renderReports);};
 
 async function submit(action){
  if(state.busy)return;state.busy=true;

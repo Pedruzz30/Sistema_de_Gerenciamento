@@ -33,6 +33,29 @@
   <div id="closed-stock-items"></div>
 
 </section>
+<section id="catalog-panel" class="panel cash-panel" hidden>
+<h2>Produtos e relatórios</h2>
+<form id="catalog-create">
+<h3>Novo produto</h3>
+<label>Código<input id="catalog-code" maxlength="60" required></label>
+<label>Nome<input id="catalog-name" maxlength="160" required></label>
+<label>Preço de venda<input id="catalog-price" type="number" step=".01" min="0" required></label>
+<label>Estoque inicial<input id="catalog-stock" type="number" min="0" value="0" required></label>
+<button type="submit">Cadastrar produto</button>
+</form>
+<h3>Editar produto existente</h3><label>Produto<select id="catalog-select"></select></label>
+<form id="catalog-edit">
+<label>Código<input id="catalog-edit-code" required maxlength="60"></label>
+<label>Nome<input id="catalog-edit-name" required maxlength="160"></label>
+<label>Preço<input id="catalog-edit-price" type="number" min="0" step=".01" required></label>
+<label><input id="catalog-edit-active" type="checkbox" checked> Produto ativo</label>
+<p class="muted">Estoque não é alterado por aqui. Use conferência de inventário.</p>
+<button type="submit">Salvar cadastro</button>
+</form>
+<h3>Resumo operacional</h3>
+<form id="report-filter"><label>Período<select id="report-days"><option value="1">Últimas 24 horas</option><option value="7" selected>Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label><button type="submit">Atualizar relatórios</button></form>
+<div id="reports-summary"></div><div id="reports-low-stock"></div><div id="reports-top-products"></div>
+</section>
 <section id="employees-panel" class="panel cash-panel" hidden>
  <h2>Funcionários da empresa</h2>
  <p class="muted">Apenas o proprietário pode alterar acesso. Convites para novas contas ainda não estão disponíveis.</p>
