@@ -19,6 +19,7 @@ import service.SaasCashService;
 import service.SaasPostCloseRefundService;
 import service.SaasStockReturnService;
 import service.SaasInventoryAdjustmentService;
+import service.SaasGoodsReceiptService;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -48,6 +49,7 @@ class SaasComandaPostgresIntegrationTest {
     private static SaasPostCloseRefundService refunds;
     private static SaasStockReturnService returns;
     private static SaasInventoryAdjustmentService stocktake;
+    private static SaasGoodsReceiptService goods;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -73,6 +75,7 @@ class SaasComandaPostgresIntegrationTest {
         refunds=new SaasPostCloseRefundService(jdbc,tenant,caixa);
         returns=new SaasStockReturnService(jdbc,tenant);
         stocktake=new SaasInventoryAdjustmentService(jdbc,tenant);
+        goods=new SaasGoodsReceiptService(jdbc,tenant);
     }
 
     private static void login(UUID id){
@@ -291,6 +294,44 @@ class SaasComandaPostgresIntegrationTest {
         tx.execute(t->stocktake.conferir(f.company,f.branch,f.product,
                 9,9,"Conferencia posterior sem diferenca",UUID.randomUUID().toString()));
         assertEquals(2,stocktake.historico(f.company,f.branch,50).size());
+    }
+
+    @Test
+    void receivingGoodsIsIdempotentAndAtomicAcrossProducts() {
+        login(OWNER);
+        Fixture f=fixture(4,10);
+        UUID supplier=(UUID)tx.execute(t->goods.cadastrarFornecedor(f.company,"Distribuidora Teste","12345678")).get("id");
+        String key=UUID.randomUUID().toString();
+        var inputs=List.of(new SaasGoodsReceiptService.ItemInput(f.product,3,new BigDecimal("5.50")));
+        Map<String,Object> first=tx.execute(t->goods.receber(f.company,f.branch,supplier,"NF-0001",inputs,key));
+        Map<String,Object> second=tx.execute(t->goods.receber(f.company,f.branch,supplier,"NF-0001",inputs,key));
+        assertEquals(first.get("id"),second.get("id"));
+        assertEquals(7,stock(f));
+        assertEquals(1,goods.entradas(f.company,f.branch,30).size());
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+            ()->tx.execute(t->goods.receber(f.company,f.branch,supplier,"NF-0001",inputs,
+                UUID.randomUUID().toString()))).getStatusCode());
+        var invalid=List.of(
+            new SaasGoodsReceiptService.ItemInput(f.product,2,new BigDecimal("6.00")),
+            new SaasGoodsReceiptService.ItemInput(UUID.randomUUID(),1,new BigDecimal("1.00")));
+        assertEquals(HttpStatus.NOT_FOUND,assertThrows(ResponseStatusException.class,
+            ()->tx.execute(t->goods.receber(f.company,f.branch,supplier,"NF-0002",invalid,
+                UUID.randomUUID().toString()))).getStatusCode());
+        assertEquals(7,stock(f));
+        assertEquals(1,goods.entradas(f.company,f.branch,30).size());
+    }
+
+    @Test
+    void goodsReceiptRejectsProductsFromOtherBranch() {
+        login(OWNER);
+        Fixture a=fixture(3,10),b=fixture(8,12);
+        UUID supplier=(UUID)tx.execute(t->goods.cadastrarFornecedor(a.company,"Distribuidora A","87654321")).get("id");
+        assertEquals(HttpStatus.NOT_FOUND,assertThrows(ResponseStatusException.class,()->
+            tx.execute(t->goods.receber(a.company,a.branch,supplier,"NF-0003",
+                List.of(new SaasGoodsReceiptService.ItemInput(b.product,5,new BigDecimal("4.00"))),
+                UUID.randomUUID().toString()))).getStatusCode());
+        assertEquals(3,stock(a));
+        assertEquals(8,stock(b));
     }
 
     @Test
