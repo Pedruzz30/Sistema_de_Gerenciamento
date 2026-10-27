@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.web.server.ResponseStatusException;
 import service.SaasComandaService;
+import service.SaasCashService;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -40,6 +41,7 @@ class SaasComandaPostgresIntegrationTest {
     private static JdbcTemplate jdbc;
     private static TransactionTemplate tx;
     private static SaasComandaService comandas;
+    private static SaasCashService caixa;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -61,6 +63,7 @@ class SaasComandaPostgresIntegrationTest {
         tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
         tenant=new SaasTenantAccess(jdbc,new SaasLicenseService(jdbc));
         comandas=new SaasComandaService(jdbc,tenant);
+        caixa=new SaasCashService(jdbc,tenant);
     }
 
     private static void login(UUID id){
@@ -134,6 +137,7 @@ class SaasComandaPostgresIntegrationTest {
         login(OWNER);
         Fixture a=fixture(5,12);
         UUID tab=id(tx.execute(t->comandas.abrir(a.company,a.branch,1)));
+        tx.execute(t->caixa.abrir(a.company,a.branch,new BigDecimal("50.00")));
         UUID key=UUID.randomUUID();
         Map<String,Object> first=tx.execute(t->comandas.adicionar(a.company,a.branch,tab,a.product,2,key.toString()));
         Map<String,Object> second=tx.execute(t->comandas.adicionar(a.company,a.branch,tab,a.product,2,key.toString()));
@@ -155,6 +159,37 @@ class SaasComandaPostgresIntegrationTest {
         tx.execute(t->comandas.pagamento(a.company,a.branch,tab,"DINHEIRO",new BigDecimal("14.00"),UUID.randomUUID().toString()));
         assertEquals("FECHADA",tx.execute(t->comandas.fechar(a.company,a.branch,tab)).get("status"));
         assertEquals(3,stock(a)); // Closing must not decrement delivered stock again.
+    }
+
+    @Test
+    void cashShiftSeparatesPhysicalMoneyFromElectronicReceipts() {
+        login(OWNER);
+        Fixture f=fixture(12,10);
+        UUID tab=id(tx.execute(t->comandas.abrir(f.company,f.branch,1)));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,()->
+                tx.execute(t->{
+                    comandas.adicionar(f.company,f.branch,tab,f.product,2,UUID.randomUUID().toString());
+                    return comandas.pagamento(f.company,f.branch,tab,"PIX",
+                            new BigDecimal("10.00"),UUID.randomUUID().toString());
+                })).getStatusCode());
+        assertEquals(12,stock(f),"Rollback must restore stock when payment fails without shift");
+        tx.execute(t->caixa.abrir(f.company,f.branch,new BigDecimal("50.00")));
+        tx.execute(t->comandas.adicionar(f.company,f.branch,tab,f.product,2,UUID.randomUUID().toString()));
+        tx.execute(t->comandas.pagamento(f.company,f.branch,tab,"PIX",
+                new BigDecimal("10.00"),UUID.randomUUID().toString()));
+        tx.execute(t->comandas.pagamento(f.company,f.branch,tab,"DINHEIRO",
+                new BigDecimal("10.00"),UUID.randomUUID().toString()));
+        Map<String,Object> status=caixa.atual(f.company,f.branch);
+        assertEquals(0,new BigDecimal("60.00").compareTo((BigDecimal)status.get("dinheiro_esperado")));
+        assertEquals(0,new BigDecimal("10.00").compareTo((BigDecimal)status.get("pix")));
+        tx.execute(t->caixa.movimentar(f.company,f.branch,"SANGRIA",
+                new BigDecimal("5.00"),"Deposito bancario",UUID.randomUUID().toString()));
+        Map<String,Object> closed=tx.execute(t->caixa.fechar(f.company,f.branch,new BigDecimal("53.00")));
+        assertEquals(0,new BigDecimal("55.00").compareTo((BigDecimal)closed.get("valor_esperado")));
+        assertEquals(0,new BigDecimal("-2.00").compareTo((BigDecimal)closed.get("diferenca")));
+        assertEquals("FECHADO",closed.get("status"));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,()->
+                tx.execute(t->caixa.fechar(f.company,f.branch,BigDecimal.ZERO))).getStatusCode());
     }
 
     @Test
