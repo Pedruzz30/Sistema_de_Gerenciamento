@@ -22,3 +22,5 @@ button.danger{background:#dd857f;color:#27100e}
 .payment-row{align-items:center;flex-wrap:wrap}
 .payment-row small{color:#b2bdcd;font-size:12px;flex-basis:100%}
 button.outline{border:1px solid #627388;background:transparent;color:#d2deea;font-size:12px;padding:8px 10px}
+
+#refunds-panel{margin-top:20px}#refunds-panel>label{max-width:380px;margin-bottom:14px}#closed-tab-payments .item small{color:#a5b1c4}
