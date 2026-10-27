@@ -33,6 +33,18 @@
   <div id="closed-stock-items"></div>
 
 </section>
+<section id="inventory-panel" class="panel cash-panel" hidden>
+  <h2>Conferência de estoque</h2>
+  <p class="muted">Ajuste inventário apenas após contar fisicamente as unidades. Cada correção é auditada.</p>
+  <form id="inventory-form">
+    <label>Produto<select id="inventory-product" required></select></label>
+    <label>Saldo esperado<input id="inventory-expected" type="number" readonly></label>
+    <label>Quantidade contada<input id="inventory-counted" type="number" min="0" required></label>
+    <label>Motivo<input id="inventory-reason" minlength="8" maxlength="240" required></label>
+    <button type="submit">Registrar conferência</button>
+  </form>
+  <h3>Últimas conferências</h3><div id="inventory-history"></div>
+</section>
 <section id="cash-panel" class="panel cash-panel" hidden aria-labelledby="cash-title">
   <div class="cash-heading">
     <div><h2 id="cash-title">Caixa da filial</h2><p class="muted">Dinheiro na gaveta separado de Pix e cartões.</p></div>

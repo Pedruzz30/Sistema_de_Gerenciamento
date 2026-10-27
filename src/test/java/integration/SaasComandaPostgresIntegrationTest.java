@@ -18,6 +18,7 @@ import service.SaasComandaService;
 import service.SaasCashService;
 import service.SaasPostCloseRefundService;
 import service.SaasStockReturnService;
+import service.SaasInventoryAdjustmentService;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -46,6 +47,7 @@ class SaasComandaPostgresIntegrationTest {
     private static SaasCashService caixa;
     private static SaasPostCloseRefundService refunds;
     private static SaasStockReturnService returns;
+    private static SaasInventoryAdjustmentService stocktake;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -70,6 +72,7 @@ class SaasComandaPostgresIntegrationTest {
         caixa=new SaasCashService(jdbc,tenant);
         refunds=new SaasPostCloseRefundService(jdbc,tenant,caixa);
         returns=new SaasStockReturnService(jdbc,tenant);
+        stocktake=new SaasInventoryAdjustmentService(jdbc,tenant);
     }
 
     private static void login(UUID id){
@@ -269,6 +272,25 @@ class SaasComandaPostgresIntegrationTest {
                 ()->tx.execute(t->returns.registrar(f.company,f.branch,tab,item,1,
                         "REESTOQUE","Tentativa de quarta unidade",UUID.randomUUID().toString()))).getStatusCode());
         assertEquals(2,returns.historico(f.company,f.branch,tab).size());
+    }
+
+    @Test
+    void inventoryCountIsAuditedIdempotentAndRejectsStaleBalance() {
+        login(OWNER);
+        Fixture f=fixture(12,10);
+        String key=UUID.randomUUID().toString();
+        Map<String,Object> first=tx.execute(t->stocktake.conferir(f.company,f.branch,f.product,
+                12,9,"Diferenca na contagem fisica",key));
+        assertEquals(first.get("id"),tx.execute(t->stocktake.conferir(f.company,f.branch,f.product,
+                12,9,"Diferenca na contagem fisica",key)).get("id"));
+        assertEquals(9,stock(f));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(t->stocktake.conferir(f.company,f.branch,f.product,
+                        12,4,"Contagem desatualizada na prateleira",UUID.randomUUID().toString())))
+                .getStatusCode());
+        tx.execute(t->stocktake.conferir(f.company,f.branch,f.product,
+                9,9,"Conferencia posterior sem diferenca",UUID.randomUUID().toString()));
+        assertEquals(2,stocktake.historico(f.company,f.branch,50).size());
     }
 
     @Test

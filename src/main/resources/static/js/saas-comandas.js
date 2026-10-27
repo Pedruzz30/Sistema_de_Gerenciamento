@@ -62,7 +62,7 @@ async function refresh(){
    api(uri()+'/comandas'),api(uri()+'/produtos'),api(uri()+'/caixa/atual')
  ]);
  fill($('produto'),products.filter(p=>p.ativo).map(p=>({id:p.id,name:p.nome+' — '+fmt(p.preco_unitario)+' ('+p.estoque_atual+')'})));
- renderTabs();await renderDetail();await renderCash();await renderClosedTabs();
+ renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();
 }
 function renderTabs(){
  const el=$('comandas');el.replaceChildren();
@@ -243,6 +243,43 @@ async function renderClosedStock(){
  }
 }
 $('closed-tab-select').onchange=()=>submit(async()=>{await renderClosedPayments();await renderClosedStock();});
+
+async function renderInventory(){
+ const panel=$('inventory-panel');
+ panel.hidden=!state.licenseAllowed||!state.filial||!isManager();
+ if(panel.hidden)return;
+ const select=$('inventory-product');const selectedId=select.value;select.replaceChildren();
+ for(const p of products){
+   const option=document.createElement('option');option.value=p.id;option.textContent=p.nome+' · '+p.estoque_atual+' unidades';select.append(option);
+ }
+ if(products.some(p=>p.id===selectedId))select.value=selectedId;
+ updateInventoryExpected();
+ const history=await api(uri()+'/produtos/ajustes?limite=20');
+ const box=$('inventory-history');box.replaceChildren();
+ for(const item of history){
+   const line=document.createElement('div');line.className='item';
+   text(line,item.produto_nome+': '+item.estoque_anterior+' → '+item.estoque_contado+' · '+item.motivo);
+   box.append(line);
+ }
+}
+function updateInventoryExpected(){
+ const p=products.find(p=>p.id===$('inventory-product').value);
+ $('inventory-expected').value=p?.estoque_atual??'';
+}
+$('inventory-product').onchange=updateInventoryExpected;
+$('inventory-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ if(!isManager())throw Error('Somente gerente ou proprietário pode conferir estoque.');
+ const produto=$('inventory-product').value;
+ const esperado=Number($('inventory-expected').value);
+ const contado=Number($('inventory-counted').value);
+ const motivo=$('inventory-reason').value.trim();
+ if(!Number.isInteger(contado)||contado<0||motivo.length<8)throw Error('Contagem ou motivo inválido.');
+ if(!window.confirm('Confirmar conferência de '+esperado+' para '+contado+' unidades?'))return;
+ await api(uri()+'/produtos/'+produto+'/ajustes',{method:'POST',
+   headers:{'Idempotency-Key':crypto.randomUUID()},
+   body:JSON.stringify({estoqueEsperado:esperado,estoqueContado:contado,motivo})});
+ $('inventory-counted').value='';$('inventory-reason').value='';await refresh();
+});};
 
 async function submit(action){
  if(state.busy)return;state.busy=true;
