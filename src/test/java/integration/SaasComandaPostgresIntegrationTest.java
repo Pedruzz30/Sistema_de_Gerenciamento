@@ -16,6 +16,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.web.server.ResponseStatusException;
 import service.SaasComandaService;
 import service.SaasCashService;
+import service.SaasPostCloseRefundService;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -42,6 +43,7 @@ class SaasComandaPostgresIntegrationTest {
     private static TransactionTemplate tx;
     private static SaasComandaService comandas;
     private static SaasCashService caixa;
+    private static SaasPostCloseRefundService refunds;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -64,6 +66,7 @@ class SaasComandaPostgresIntegrationTest {
         tenant=new SaasTenantAccess(jdbc,new SaasLicenseService(jdbc));
         comandas=new SaasComandaService(jdbc,tenant);
         caixa=new SaasCashService(jdbc,tenant);
+        refunds=new SaasPostCloseRefundService(jdbc,tenant,caixa);
     }
 
     private static void login(UUID id){
@@ -209,6 +212,35 @@ class SaasComandaPostgresIntegrationTest {
         assertEquals(0,new BigDecimal("30.00").compareTo((BigDecimal)caixa.atual(f.company,f.branch).get("dinheiro_esperado")));
         assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
             ()->tx.execute(t->comandas.fechar(f.company,f.branch,tab))).getStatusCode());
+    }
+
+    @Test
+    void closedSaleRefundUsesNewShiftAndKeepsOldDrawerUnchanged() {
+        login(OWNER);
+        Fixture f=fixture(5,20);
+        UUID tab=id(tx.execute(t->comandas.abrir(f.company,f.branch,1)));
+        tx.execute(t->caixa.abrir(f.company,f.branch,new BigDecimal("50.00")));
+        tx.execute(t->comandas.adicionar(f.company,f.branch,tab,f.product,1,UUID.randomUUID().toString()));
+        UUID payment=id(tx.execute(t->comandas.pagamento(f.company,f.branch,tab,"DINHEIRO",
+                new BigDecimal("20.00"),UUID.randomUUID().toString())));
+        tx.execute(t->comandas.fechar(f.company,f.branch,tab));
+        Map<String,Object> old=tx.execute(t->caixa.fechar(f.company,f.branch,new BigDecimal("70.00")));
+        assertEquals(0,new BigDecimal("70.00").compareTo((BigDecimal)old.get("valor_esperado")));
+        tx.execute(t->caixa.abrir(f.company,f.branch,new BigDecimal("30.00")));
+        String key=UUID.randomUUID().toString();
+        Map<String,Object> first=tx.execute(t->refunds.registrar(f.company,f.branch,tab,payment,
+            "Cliente solicitou devolucao","COMPROVANTE-TESTE-001",true,key));
+        Map<String,Object> replay=tx.execute(t->refunds.registrar(f.company,f.branch,tab,payment,
+            "Cliente solicitou devolucao","COMPROVANTE-TESTE-001",true,key));
+        assertEquals(first.get("id"),replay.get("id"));
+        assertEquals(0,new BigDecimal("10.00").compareTo(
+                (BigDecimal)caixa.atual(f.company,f.branch).get("dinheiro_esperado")));
+        assertEquals(0,new BigDecimal("70.00").compareTo(jdbc.queryForObject("""
+            select valor_esperado from stockos_private.caixa_turnos where id=?
+            """,BigDecimal.class,old.get("id"))));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+            ()->tx.execute(t->refunds.registrar(f.company,f.branch,tab,payment,
+                "Cliente solicitou devolucao","COMPROVANTE-TESTE-002",true,UUID.randomUUID().toString()))).getStatusCode());
     }
 
     @Test
