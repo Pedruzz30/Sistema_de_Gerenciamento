@@ -21,6 +21,9 @@ import service.SaasStockReturnService;
 import service.SaasInventoryAdjustmentService;
 import service.SaasGoodsReceiptService;
 import service.SaasEmployeeService;
+import service.SaasProdutoService;
+import service.SaasReportsService;
+import java.time.OffsetDateTime;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -52,6 +55,8 @@ class SaasComandaPostgresIntegrationTest {
     private static SaasInventoryAdjustmentService stocktake;
     private static SaasGoodsReceiptService goods;
     private static SaasEmployeeService employees;
+    private static SaasProdutoService catalog;
+    private static SaasReportsService reports;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -79,6 +84,8 @@ class SaasComandaPostgresIntegrationTest {
         stocktake=new SaasInventoryAdjustmentService(jdbc,tenant);
         goods=new SaasGoodsReceiptService(jdbc,tenant);
         employees=new SaasEmployeeService(jdbc,tenant);
+        catalog=new SaasProdutoService(jdbc,tenant);
+        reports=new SaasReportsService(jdbc,tenant);
     }
 
     private static void login(UUID id){
@@ -355,6 +362,36 @@ class SaasComandaPostgresIntegrationTest {
         login(employee);
         assertEquals(HttpStatus.FORBIDDEN,assertThrows(ResponseStatusException.class,
                 ()->tx.execute(t->employees.alterar(a.company,OWNER,"ATENDENTE",true))).getStatusCode());
+    }
+
+    @Test
+    void productEditIsVersionedAndDoesNotChangeHistoricalStockOrPricing() {
+        login(OWNER);
+        Fixture f=fixture(9,10);
+        Map<String,Object> changed=tx.execute(x->catalog.atualizar(f.company,f.branch,f.product,
+                "B002","Agua mineral",new BigDecimal("12.50"),true,0));
+        assertEquals("Agua mineral",changed.get("nome"));
+        assertEquals(9,stock(f));
+        assertEquals(1,((Number)changed.get("versao_cadastro")).longValue());
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(x->catalog.atualizar(f.company,f.branch,f.product,
+                        "B003","Preco antigo",new BigDecimal("11"),true,0))).getStatusCode());
+        assertEquals(1,catalog.historico(f.company,f.branch,f.product).size());
+    }
+
+    @Test
+    void reportsSeparateCardAndCashAndShowLowStock() {
+        login(OWNER);
+        Fixture f=fixture(2,10);
+        UUID tab=id(tx.execute(x->comandas.abrir(f.company,f.branch,1)));
+        tx.execute(x->caixa.abrir(f.company,f.branch,BigDecimal.ZERO));
+        tx.execute(x->comandas.adicionar(f.company,f.branch,tab,f.product,1,UUID.randomUUID().toString()));
+        tx.execute(x->comandas.pagamento(f.company,f.branch,tab,"PIX",new BigDecimal("10.00"),UUID.randomUUID().toString()));
+        OffsetDateTime start=OffsetDateTime.now().minusHours(2),end=OffsetDateTime.now().plusHours(2);
+        Map<String,Object> result=reports.financeiro(f.company,f.branch,start,end);
+        assertEquals(0,new BigDecimal("10.00").compareTo((BigDecimal)result.get("fluxo_liquido_registrado")));
+        assertEquals(1,reports.estoqueBaixo(f.company,f.branch,1,20).size());
+        assertEquals(1,reports.produtosMaisEntregues(f.company,f.branch,start,end,20).size());
     }
 
     @Test
