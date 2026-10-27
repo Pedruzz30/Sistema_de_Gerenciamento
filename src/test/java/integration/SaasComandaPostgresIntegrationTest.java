@@ -369,6 +369,42 @@ class SaasComandaPostgresIntegrationTest {
     }
 
     @Test
+    void reactivationCannotStealSeatReservedForPendingInvite() {
+        login(OWNER);
+        Fixture shop=fixture(7,10);
+        UUID inactive=UUID.randomUUID();
+        jdbc.update("""
+            insert into stockos_private.membros(empresa_id,auth_user_id,papel,ativo)
+            values (?,?,'ATENDENTE',false)
+            """,shop.company,inactive);
+        jdbc.update("""
+            update stockos_private.planos
+            set max_usuarios=2
+            where id=(select plano_id from stockos_private.licencas where empresa_id=?)
+            """,shop.company);
+        var invitationService=new SaasEmployeeInvitations(jdbc,tenant,
+             new SaasLicenseService(jdbc),
+             new SaasVerifiedAuthIdentity(
+                 new StagingSupabaseSettings("legacy-dev","","",""),new ObjectMapper()));
+        Map<String,Object> invite=tx.execute(t->invitationService.create(
+             shop.company,"new.worker@example.com","ATENDENTE"));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+             ()->tx.execute(t->employees.alterar(
+                 shop.company,inactive,"ATENDENTE",true))).getStatusCode());
+        assertEquals(Boolean.FALSE,jdbc.queryForObject("""
+            select ativo from stockos_private.membros
+            where empresa_id=? and auth_user_id=?
+            """,Boolean.class,shop.company,inactive));
+        tx.execute(t->{invitationService.revoke(shop.company,(UUID)invite.get("id"));return null;});
+        Map<String,Object> reactivated=tx.execute(t->employees.alterar(
+             shop.company,inactive,"ATENDENTE",true));
+        assertEquals(Boolean.TRUE,reactivated.get("ativo"));
+        assertEquals(2,jdbc.queryForObject("""
+            select count(*) from stockos_private.membros where empresa_id=? and ativo=true
+            """,Integer.class,shop.company));
+    }
+
+    @Test
     void productEditIsVersionedAndDoesNotChangeHistoricalStockOrPricing() {
         login(OWNER);
         Fixture f=fixture(9,10);

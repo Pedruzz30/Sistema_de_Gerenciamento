@@ -50,8 +50,16 @@ public class SaasEmployeeService {
     join stockos_private.planos p on p.id=l.plano_id
     where l.empresa_id=?
     """,Integer.class,empresa);
-   if(count==null||max==null||count>=max)
-    throw new ResponseStatusException(HttpStatus.CONFLICT,"Limite de usuarios do plano atingido");
+   Integer reserved=jdbc.queryForObject("""
+    select count(*) from stockos_private.convites_funcionarios
+    where empresa_id=? and status='PENDENTE' and expira_em>now()
+    """,Integer.class,empresa);
+   // Pending invitations reserve seats; reactivation must not take those
+   // seats away or exceed the contracted maximum when invitees join.
+   if(count==null||max==null||reserved==null
+      ||((long)count+(long)reserved)>=max)
+    throw new ResponseStatusException(HttpStatus.CONFLICT,
+      "Limite de usuarios e convites pendentes do plano atingido");
   }
   jdbc.update("update stockos_private.membros set papel=?,ativo=? where empresa_id=? and auth_user_id=?",papel,ativo,empresa,target);
   jdbc.update("""
