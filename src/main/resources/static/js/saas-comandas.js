@@ -62,7 +62,7 @@ async function refresh(){
    api(uri()+'/comandas'),api(uri()+'/produtos'),api(uri()+'/caixa/atual')
  ]);
  fill($('produto'),products.filter(p=>p.ativo).map(p=>({id:p.id,name:p.nome+' — '+fmt(p.preco_unitario)+' ('+p.estoque_atual+')'})));
- renderTabs();await renderDetail();await renderCash();
+ renderTabs();await renderDetail();await renderCash();await renderClosedTabs();
 }
 function renderTabs(){
  const el=$('comandas');el.replaceChildren();
@@ -148,6 +148,61 @@ async function renderCash(){
    }
  }
 }
+
+async function renderClosedTabs(){
+ const panel=$('refunds-panel');
+ panel.hidden=!state.licenseAllowed||!state.filial||!isManager();
+ if(panel.hidden)return;
+ const closed=await api(uri()+'/comandas/fechadas');
+ const select=$('closed-tab-select');
+ select.replaceChildren();
+ for(const tab of closed){
+   const option=document.createElement('option');
+   option.value=tab.id;
+   option.textContent='#'+String(tab.numero).padStart(3,'0')+' · '+new Date(tab.fechada_em).toLocaleString('pt-BR');
+   select.append(option);
+ }
+ await renderClosedPayments();
+}
+async function renderClosedPayments(){
+ const selectedClosed=$('closed-tab-select').value;
+ const host=$('closed-tab-payments');host.replaceChildren();
+ if(!selectedClosed)return;
+ const payments=await api(uri()+'/comandas/'+selectedClosed+'/pagamentos-fechados');
+ for(const payment of payments){
+   const line=document.createElement('div');line.className='item';line.style.flexWrap='wrap';
+   const span=document.createElement('span');
+   text(span,payment.modalidade+' · '+fmt(payment.valor)+(payment.devolucao_id?' · DEVOLVIDO':''));
+   line.append(span);
+   if(!payment.devolucao_id){
+     const button=document.createElement('button');
+     button.type='button';button.className='outline';button.textContent='Registrar devolução';
+     button.onclick=()=>submit(async()=>{
+       if(shift?.status!=='ABERTO')throw Error('Abra o caixa atual para registrar uma devolução.');
+       const motivo=window.prompt('Motivo da devolução (mínimo 8 caracteres):');
+       if(motivo===null)return;
+       const referencia=window.prompt('Referência do comprovante da devolução já realizada:');
+       if(referencia===null)return;
+       if(motivo.trim().length<8||referencia.trim().length<6)
+         throw Error('Informe motivo (8 caracteres) e referência (6 caracteres).');
+       if(!window.confirm('Você CONFIRMA que a devolução externa de '+fmt(payment.valor)+' JÁ FOI REALIZADA? O StockOS apenas registrará essa declaração.'))return;
+       await api(uri()+'/comandas/'+selectedClosed+'/pagamentos/'+payment.id+'/devolucoes',{
+         method:'POST',
+         headers:{'Idempotency-Key':crypto.randomUUID()},
+         body:JSON.stringify({motivo:motivo.trim(),comprovanteReferencia:referencia.trim(),devolucaoConfirmada:true})
+       });
+       await refresh();
+     });
+     line.append(button);
+   } else {
+     const note=document.createElement('small');
+     text(note,'Comprovante: '+payment.comprovante_referencia+' · '+payment.devolucao_motivo);
+     line.append(note);
+   }
+   host.append(line);
+ }
+}
+$('closed-tab-select').onchange=()=>submit(renderClosedPayments);
 
 async function submit(action){
  if(state.busy)return;state.busy=true;
