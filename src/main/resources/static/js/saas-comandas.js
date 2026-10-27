@@ -62,7 +62,7 @@ async function refresh(){
    api(uri()+'/comandas'),api(uri()+'/produtos'),api(uri()+'/caixa/atual')
  ]);
  fill($('produto'),products.filter(p=>p.ativo).map(p=>({id:p.id,name:p.nome+' — '+fmt(p.preco_unitario)+' ('+p.estoque_atual+')'})));
- renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();await renderGoods();
+ renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();await renderGoods();await renderEmployees();
 }
 function renderTabs(){
  const el=$('comandas');el.replaceChildren();
@@ -358,6 +358,45 @@ $('receipt-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
 });};
 $('receipt-document').oninput=()=>{receiptPendingKey=null;};
 $('receipt-supplier').onchange=()=>{receiptPendingKey=null;};
+
+async function renderEmployees(){
+ const panel=$('employees-panel');
+ panel.hidden=!state.licenseAllowed||state.role!=='PROPRIETARIO';
+ if(panel.hidden)return;
+ const base='/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/funcionarios';
+ const [members,audit]=await Promise.all([api(base),api(base+'/auditoria')]);
+ const list=$('employees-list');list.replaceChildren();
+ const {data:{user}}=await supabase.auth.getUser();
+ for(const m of members){
+   const row=document.createElement('div');row.className='item';
+   const name=document.createElement('span');
+   text(name,m.auth_user_id+(m.auth_user_id===user?.id?' (você)':'')+' · '+m.papel+(m.ativo?' · ativo':' · inativo'));
+   row.append(name);
+   if(m.auth_user_id!==user?.id){
+     const edit=document.createElement('button');edit.type='button';edit.className='outline';
+     text(edit,'Alterar');
+     edit.onclick=()=>submit(async()=>{
+       const role=window.prompt('Papel: PROPRIETARIO, GERENTE ou ATENDENTE',m.papel);
+       if(role===null)return;
+       const papel=role.trim().toUpperCase();
+       if(!['PROPRIETARIO','GERENTE','ATENDENTE'].includes(papel))throw Error('Papel inválido.');
+       const ativo=window.confirm('Deseja manter este funcionário ATIVO? Cancelar desativa.');
+       if(!window.confirm('Confirma alteração para '+papel+(ativo?' (ativo)':' (inativo)')+'?'))return;
+       await api(base+'/'+encodeURIComponent(m.auth_user_id),{method:'PUT',body:JSON.stringify({papel,ativo})});
+       await renderEmployees();
+     });
+     row.append(edit);
+   }
+   list.append(row);
+ }
+ const history=$('employees-audit');history.replaceChildren();
+ for(const a of audit.slice(0,20)){
+   const p=document.createElement('div');p.className='item';
+   text(p,a.alvo_auth_user_id+' · '+a.papel_anterior+' → '+a.papel_novo+
+     ' · '+(a.ativo_novo?'ativo':'inativo')+' · '+new Date(a.registrado_em).toLocaleString('pt-BR'));
+   history.append(p);
+ }
+}
 
 async function submit(action){
  if(state.busy)return;state.busy=true;
