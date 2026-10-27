@@ -56,6 +56,7 @@ class FakeStoreApi:
              "versao_cadastro": 0},
         ]
         self.receipts = []
+        self.invites = []
 
     def respond(self, route):
         request = route.request
@@ -80,6 +81,27 @@ class FakeStoreApi:
         if not self.licensed:
             return self.json(route, {"detail": "Licença suspensa"}, 403)
 
+        if path == "/api/saas/empresas/empresa-fixture/convites":
+            if self.role != "PROPRIETARIO":
+                return self.json(route, {"detail": "Permission denied"}, 403)
+            if method == "GET":
+                return self.json(route, self.invites)
+            if method == "POST":
+                data = request.post_data_json
+                item = {
+                    "id": "invitation-" + str(len(self.invites) + 1),
+                    "email_normalizado": data["email"].lower(),
+                    "papel": data["papel"],
+                    "status": "PENDENTE",
+                    "expira_em": "2027-12-01T00:00:00Z"
+                }
+                self.invites.append(item)
+                return self.json(route, {**item, "codigoConvite": "A" * 43}, 201)
+        if "/convites/" in path and method == "DELETE":
+            ident = path.rsplit("/", 1)[-1]
+            target = next(inv for inv in self.invites if inv["id"] == ident)
+            target["status"] = "REVOGADO"
+            return route.fulfill(status=204, body="")
         if path == "/api/saas/empresas/empresa-fixture/fornecedores":
             if method == "GET":
                 return self.json(route, [{"id": "fornecedor-a", "nome": "Distribuidora",
@@ -271,6 +293,27 @@ class StorefrontBrowserSmoke(unittest.TestCase):
         self.assertEqual(store.receipts[0]["linhas"], 2)
         self.assertEqual(store.products[0]["estoque_atual"], 13)
         self.assertEqual(store.products[1]["estoque_atual"], 7)
+        self.assertFalse(self.page_errors, self.page_errors)
+
+    def test_invitation_create_and_revoke_without_reexposing_code(self):
+        store = self.visit(FakeStoreApi())
+        self.page.locator("#employees-panel").wait_for(state="visible")
+        self.page.locator("#invite-email").fill("NEW.WORKER@example.com")
+        self.page.locator("#invite-role").select_option("GERENTE")
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        self.page.locator("#invite-create-form button").click()
+        self.page.get_by_text("Código de convite (exibido uma vez):", exact=False).wait_for()
+        self.assertEqual(len(store.invites), 1)
+        self.assertEqual(store.invites[0]["papel"], "GERENTE")
+        self.assertEqual(store.invites[0]["email_normalizado"], "new.worker@example.com")
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        self.page.locator("#invite-list button").click()
+        self.page.get_by_text("REVOGADO", exact=False).wait_for()
+        self.assertEqual(store.invites[0]["status"], "REVOGADO")
+        self.page.locator("#invite-list-refresh").click()
+        self.assertIn("Código de convite", self.page.locator("#invite-token-output").text_content())
+        # The read-only invitation listing never returns the secret token.
+        self.assertFalse(any("codigoConvite" in row for row in store.invites))
         self.assertFalse(self.page_errors, self.page_errors)
 
     def test_attendant_cannot_see_manager_controls(self):

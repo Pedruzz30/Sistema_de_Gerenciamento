@@ -439,6 +439,7 @@ async function renderEmployees(){
      ' · '+(a.ativo_novo?'ativo':'inativo')+' · '+new Date(a.registrado_em).toLocaleString('pt-BR'));
    history.append(p);
  }
+ await renderEmployeeInvitations();
 }
 
 function populateCatalogEditor(){
