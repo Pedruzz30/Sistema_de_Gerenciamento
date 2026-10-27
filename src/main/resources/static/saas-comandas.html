@@ -33,6 +33,26 @@
   <div id="closed-stock-items"></div>
 
 </section>
+<section id="goods-panel" class="panel cash-panel" hidden>
+  <h2>Receber mercadorias</h2>
+  <p class="muted">Registre a entrega física do fornecedor uma única vez, conferindo documento e quantidades.</p>
+  <form id="supplier-form">
+    <h3>Novo fornecedor</h3>
+    <label>Nome<input id="supplier-name" maxlength="160" required></label>
+    <label>CNPJ/identificação (opcional)<input id="supplier-document" maxlength="32"></label>
+    <button type="submit">Cadastrar fornecedor</button>
+  </form>
+  <form id="receipt-form">
+    <h3>Nova entrada</h3>
+    <label>Fornecedor<select id="receipt-supplier" required></select></label>
+    <label>Nota/referência<input id="receipt-document" minlength="3" maxlength="80" required></label>
+    <label>Produto<select id="receipt-product" required></select></label>
+    <label>Quantidade recebida<input id="receipt-quantity" type="number" min="1" required></label>
+    <label>Custo unitário (R$)<input id="receipt-unit-cost" type="number" min="0" step=".01" required></label>
+    <button type="submit">Registrar entrada conferida</button>
+  </form>
+  <h3>Últimas entradas</h3><div id="receipt-history"></div>
+</section>
 <section id="inventory-panel" class="panel cash-panel" hidden>
   <h2>Conferência de estoque</h2>
   <p class="muted">Ajuste inventário apenas após contar fisicamente as unidades. Cada correção é auditada.</p>

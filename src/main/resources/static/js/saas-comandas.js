@@ -62,7 +62,7 @@ async function refresh(){
    api(uri()+'/comandas'),api(uri()+'/produtos'),api(uri()+'/caixa/atual')
  ]);
  fill($('produto'),products.filter(p=>p.ativo).map(p=>({id:p.id,name:p.nome+' — '+fmt(p.preco_unitario)+' ('+p.estoque_atual+')'})));
- renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();
+ renderTabs();await renderDetail();await renderCash();await renderClosedTabs();await renderInventory();await renderGoods();
 }
 function renderTabs(){
  const el=$('comandas');el.replaceChildren();
@@ -279,6 +279,42 @@ $('inventory-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
    headers:{'Idempotency-Key':crypto.randomUUID()},
    body:JSON.stringify({estoqueEsperado:esperado,estoqueContado:contado,motivo})});
  $('inventory-counted').value='';$('inventory-reason').value='';await refresh();
+});};
+
+async function renderGoods(){
+ const panel=$('goods-panel');panel.hidden=!state.licenseAllowed||!state.filial||!isManager();
+ if(panel.hidden)return;
+ const [suppliers,history]=await Promise.all([
+  api('/api/saas/empresas/'+state.empresa+'/fornecedores'),
+  api(uri()+'/entradas-mercadoria?limite=20')
+ ]);
+ const select=$('receipt-supplier');select.replaceChildren();
+ for(const f of suppliers.filter(x=>x.ativo)){const o=document.createElement('option');o.value=f.id;o.textContent=f.nome;select.append(o);}
+ const product=$('receipt-product'),old=product.value;product.replaceChildren();
+ for(const p of products.filter(x=>x.ativo)){const o=document.createElement('option');o.value=p.id;o.textContent=p.nome;product.append(o);}
+ if(products.some(x=>x.id===old))product.value=old;
+ const host=$('receipt-history');host.replaceChildren();
+ for(const h of history){const row=document.createElement('div');row.className='item';
+   text(row,h.fornecedor_nome+' · '+h.documento_referencia+' · '+fmt(h.custo_total)+' · '+h.linhas+' produto(s)');
+   host.append(row);}
+}
+$('supplier-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ await api('/api/saas/empresas/'+state.empresa+'/fornecedores',{method:'POST',
+  body:JSON.stringify({nome:$('supplier-name').value,documento:$('supplier-document').value})});
+ e.target.reset();await renderGoods();
+});};
+$('receipt-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ const quantidade=Number($('receipt-quantity').value),custo=Number($('receipt-unit-cost').value);
+ if(!Number.isInteger(quantidade)||quantidade<=0||!Number.isFinite(custo)||custo<0)
+  throw Error('Quantidade ou custo inválido.');
+ const reference=$('receipt-document').value.trim();
+ if(!window.confirm('Confirmar entrada física de '+quantidade+' unidade(s) para a referência '+reference+'?'))
+  return;
+ await api(uri()+'/entradas-mercadoria',{method:'POST',
+  headers:{'Idempotency-Key':crypto.randomUUID()},
+  body:JSON.stringify({fornecedorId:$('receipt-supplier').value,documentoReferencia:reference,
+     itens:[{produtoId:$('receipt-product').value,quantidade,custoUnitario:custo.toFixed(2)}]})});
+ e.target.reset();await refresh();
 });};
 
 async function submit(action){
