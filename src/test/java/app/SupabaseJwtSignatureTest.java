@@ -20,7 +20,6 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -45,7 +44,6 @@ class SupabaseJwtSignatureTest {
             exchange.sendResponseHeaders(200,data.length);
             try(var out=exchange.getResponseBody()){out.write(data);}
         });
-        server.setExecutor(Executors.newSingleThreadExecutor());
         server.start();
         try {
             JwtDecoder decoder=StockOsSecurityConfiguration.buildJwtDecoder(
