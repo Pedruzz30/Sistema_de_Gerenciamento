@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fase46FlywayMigrationIntegrationTest {
 
-    private static final String VERSAO_ATUAL_SCHEMA = "20261027.06";
+    private static final String VERSAO_ATUAL_SCHEMA = "20261027.07";
 
     @Test
     void bancoVazioExecutaFlywayEHibernateValidate() throws Exception {

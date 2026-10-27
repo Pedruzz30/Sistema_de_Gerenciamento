@@ -20,6 +20,7 @@ import service.SaasPostCloseRefundService;
 import service.SaasStockReturnService;
 import service.SaasInventoryAdjustmentService;
 import service.SaasGoodsReceiptService;
+import service.SaasEmployeeService;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -50,6 +51,7 @@ class SaasComandaPostgresIntegrationTest {
     private static SaasStockReturnService returns;
     private static SaasInventoryAdjustmentService stocktake;
     private static SaasGoodsReceiptService goods;
+    private static SaasEmployeeService employees;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -76,6 +78,7 @@ class SaasComandaPostgresIntegrationTest {
         returns=new SaasStockReturnService(jdbc,tenant);
         stocktake=new SaasInventoryAdjustmentService(jdbc,tenant);
         goods=new SaasGoodsReceiptService(jdbc,tenant);
+        employees=new SaasEmployeeService(jdbc,tenant);
     }
 
     private static void login(UUID id){
@@ -332,6 +335,26 @@ class SaasComandaPostgresIntegrationTest {
                 UUID.randomUUID().toString()))).getStatusCode());
         assertEquals(3,stock(a));
         assertEquals(8,stock(b));
+    }
+
+    @Test
+    void employeeRolesHaveAuditAndOwnerProtection() {
+        login(OWNER);
+        Fixture a=fixture(5,10);
+        UUID employee=UUID.randomUUID();
+        jdbc.update("""
+           insert into stockos_private.membros
+           (empresa_id,auth_user_id,papel,ativo) values (?,?,'ATENDENTE',true)
+           """,a.company,employee);
+        tx.execute(t->employees.alterar(a.company,employee,"GERENTE",true));
+        assertEquals("GERENTE",employees.listar(a.company).stream()
+                .filter(m->employee.equals(m.get("auth_user_id"))).findFirst().orElseThrow().get("papel"));
+        assertEquals(1,employees.auditoria(a.company).size());
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(t->employees.alterar(a.company,OWNER,"ATENDENTE",true))).getStatusCode());
+        login(employee);
+        assertEquals(HttpStatus.FORBIDDEN,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(t->employees.alterar(a.company,OWNER,"ATENDENTE",true))).getStatusCode());
     }
 
     @Test
