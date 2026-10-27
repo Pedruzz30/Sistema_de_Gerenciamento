@@ -49,7 +49,10 @@
     <label>Produto<select id="receipt-product" required></select></label>
     <label>Quantidade recebida<input id="receipt-quantity" type="number" min="1" required></label>
     <label>Custo unitário (R$)<input id="receipt-unit-cost" type="number" min="0" step=".01" required></label>
-    <button type="submit">Registrar entrada conferida</button>
+    <button id="receipt-add" type="button">Adicionar à lista</button>
+    <div id="receipt-cart" aria-live="polite"></div>
+    <strong id="receipt-total">Total da entrada: R$ 0,00</strong>
+    <button id="receipt-confirm" type="submit" disabled>Confirmar entrada completa</button>
   </form>
   <h3>Últimas entradas</h3><div id="receipt-history"></div>
 </section>

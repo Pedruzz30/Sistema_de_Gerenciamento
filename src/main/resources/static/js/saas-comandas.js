@@ -281,6 +281,26 @@ $('inventory-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
  $('inventory-counted').value='';$('inventory-reason').value='';await refresh();
 });};
 
+let receiptCart=[];
+let receiptPendingKey=null;
+function receiptTotal(){
+  return receiptCart.reduce((sum,row)=>sum+row.quantidade*Number(row.custoUnitario),0);
+}
+function renderReceiptCart(){
+ const box=$('receipt-cart');box.replaceChildren();
+ for(const [index,row] of receiptCart.entries()){
+   const p=products.find(v=>v.id===row.produtoId);
+   const line=document.createElement('div');line.className='item';
+   const title=document.createElement('span');
+   text(title,(p?.nome||row.produtoId)+' · '+row.quantidade+' × '+fmt(row.custoUnitario)+' = '+fmt(row.quantidade*Number(row.custoUnitario)));
+   const remove=document.createElement('button');remove.type='button';remove.className='outline';
+   text(remove,'Remover');
+   remove.onclick=()=>{receiptCart.splice(index,1);receiptPendingKey=null;renderReceiptCart();};
+   line.append(title,remove);box.append(line);
+ }
+ text($('receipt-total'),'Total da entrada: '+fmt(receiptTotal()));
+ $('receipt-confirm').disabled=!receiptCart.length;
+}
 async function renderGoods(){
  const panel=$('goods-panel');panel.hidden=!state.licenseAllowed||!state.filial||!isManager();
  if(panel.hidden)return;
@@ -293,6 +313,7 @@ async function renderGoods(){
  const product=$('receipt-product'),old=product.value;product.replaceChildren();
  for(const p of products.filter(x=>x.ativo)){const o=document.createElement('option');o.value=p.id;o.textContent=p.nome;product.append(o);}
  if(products.some(x=>x.id===old))product.value=old;
+ renderReceiptCart();
  const host=$('receipt-history');host.replaceChildren();
  for(const h of history){const row=document.createElement('div');row.className='item';
    text(row,h.fornecedor_nome+' · '+h.documento_referencia+' · '+fmt(h.custo_total)+' · '+h.linhas+' produto(s)');
@@ -303,19 +324,40 @@ $('supplier-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
   body:JSON.stringify({nome:$('supplier-name').value,documento:$('supplier-document').value})});
  e.target.reset();await renderGoods();
 });};
+$('receipt-add').onclick=()=>{
+ try{
+   if(receiptCart.length>=100)throw Error('Limite de 100 produtos por recebimento.');
+   const produtoId=$('receipt-product').value;
+   const quantidade=Number($('receipt-quantity').value);
+   const raw=$('receipt-unit-cost').value;
+   const custo=Number(raw);
+   if(!produtoId || !Number.isInteger(quantidade) || quantidade<=0 || quantidade>100000 ||
+      !raw || !/^\\d+(\\.\\d{1,2})?$/.test(raw) || !Number.isFinite(custo) || custo<0)
+     throw Error('Informe produto, quantidade positiva e custo com até duas casas decimais.');
+   if(receiptCart.some(i=>i.produtoId===produtoId))throw Error('Produto já adicionado à lista.');
+   const next=receiptTotal()+quantidade*custo;
+   if(next>9999999999999999)throw Error('Valor da nota excede o limite.');
+   receiptCart.push({produtoId,quantidade,custoUnitario:custo.toFixed(2)});
+   receiptPendingKey=null;
+   $('receipt-quantity').value='';$('receipt-unit-cost').value='';
+   renderReceiptCart();report('Produto adicionado à lista.',true);
+ }catch(error){report(error.message);}
+};
 $('receipt-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
- const quantidade=Number($('receipt-quantity').value),custo=Number($('receipt-unit-cost').value);
- if(!Number.isInteger(quantidade)||quantidade<=0||!Number.isFinite(custo)||custo<0)
-  throw Error('Quantidade ou custo inválido.');
+ if(!receiptCart.length)throw Error('Adicione pelo menos um produto à lista.');
  const reference=$('receipt-document').value.trim();
- if(!window.confirm('Confirmar entrada física de '+quantidade+' unidade(s) para a referência '+reference+'?'))
-  return;
+ const fornecedorId=$('receipt-supplier').value;
+ if(!fornecedorId||reference.length<3)throw Error('Selecione fornecedor e referência do documento.');
+ if(!window.confirm('Confirmar o recebimento de '+receiptCart.length+' produto(s), total '+fmt(receiptTotal())+', documento '+reference+'?'))return;
+ // Keep this key across retries after network failures to prevent duplicate stock.
+ if(!receiptPendingKey)receiptPendingKey=crypto.randomUUID();
  await api(uri()+'/entradas-mercadoria',{method:'POST',
-  headers:{'Idempotency-Key':crypto.randomUUID()},
-  body:JSON.stringify({fornecedorId:$('receipt-supplier').value,documentoReferencia:reference,
-     itens:[{produtoId:$('receipt-product').value,quantidade,custoUnitario:custo.toFixed(2)}]})});
- e.target.reset();await refresh();
+  headers:{'Idempotency-Key':receiptPendingKey},
+  body:JSON.stringify({fornecedorId,documentoReferencia:reference,itens:receiptCart})});
+ receiptCart=[];receiptPendingKey=null;e.target.reset();await refresh();
 });};
+$('receipt-document').oninput=()=>{receiptPendingKey=null;};
+$('receipt-supplier').onchange=()=>{receiptPendingKey=null;};
 
 async function submit(action){
  if(state.busy)return;state.busy=true;

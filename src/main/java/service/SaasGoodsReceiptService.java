@@ -94,7 +94,11 @@ public class SaasGoodsReceiptService {
             bad("Informe de 1 a 100 produtos por recebimento");
         String doc=documento.trim().toUpperCase(Locale.ROOT);
         List<ItemInput> ordered=new ArrayList<>(itens);
-        ordered.sort(Comparator.comparing(i->i.produtoId()==null?"":i.produtoId().toString()));
+        // Validate before sorting so malformed/null JSON entries fail with 400,
+        // not an unhandled NullPointerException.
+        if(ordered.stream().anyMatch(i->i==null || i.produtoId()==null))
+            bad("Produto de entrada invalido");
+        ordered.sort(Comparator.comparing(i->i.produtoId().toString()));
         Set<UUID> uniqueProducts=new HashSet<>();
         BigDecimal total=BigDecimal.ZERO;
         for(ItemInput i:ordered){
