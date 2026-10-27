@@ -36,7 +36,11 @@ public class SaasComandaService {
                           and i.comanda_id=c.id and i.cancelado_em is null),0) as total,
               coalesce((select sum(p.valor) from stockos_private.pagamentos p
                         where p.empresa_id=c.empresa_id and p.filial_id=c.filial_id
-                          and p.comanda_id=c.id),0) as pago
+                          and p.comanda_id=c.id
+                          and not exists (
+                            select 1 from stockos_private.pagamento_estornos pe
+                            where pe.pagamento_id=p.id
+                          )),0) as pago
             from stockos_private.comandas c
             where c.empresa_id=? and c.filial_id=? and c.status='ABERTA'
             order by c.numero
@@ -200,6 +204,119 @@ public class SaasComandaService {
            """,empresa,filial,comanda,modalidade,valor,chave,tenant.authenticatedSubject(),turno);
     }
 
+    /**
+     * Recorded full reversal only. It does NOT call banks, card processors or Pix.
+     * Operator must make/confirm the external refund independently.
+     * Original payment remains immutable; an auditable reversal is appended.
+     */
+    @Transactional
+    public Map<String,Object> estornarPagamento(UUID empresa, UUID filial, UUID comanda,
+             UUID pagamentoId, String motivo, String chave) {
+        tenant.requireMembership(empresa,"GERENTE","PROPRIETARIO");
+        tenant.requireFilial(empresa,filial);
+        validateKey(chave);
+        if (motivo==null || motivo.trim().length()<8 || motivo.length()>240)
+            bad("Informe o motivo do estorno (8 a 240 caracteres)");
+        String motivoNormalizado=motivo.trim();
+        requireComanda(empresa,filial,comanda,true); // Same lock order as payment posting.
+
+        List<Map<String,Object>> replay=jdbc.queryForList("""
+            select id,pagamento_id,comanda_id,motivo,valor
+            from stockos_private.pagamento_estornos
+            where empresa_id=? and idempotency_key=?
+            """,empresa,chave);
+        if(!replay.isEmpty()){
+            Map<String,Object> existing=replay.get(0);
+            if(!pagamentoId.equals(existing.get("pagamento_id"))
+                    || !comanda.equals(existing.get("comanda_id"))
+                    || !motivoNormalizado.equals(existing.get("motivo")))
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Chave de estorno utilizada com dados diferentes");
+            return existing;
+        }
+
+        List<UUID> openShift=jdbc.query("""
+            select id from stockos_private.caixa_turnos
+            where empresa_id=? and filial_id=? and status='ABERTO' for update
+            """,(rs,i)->rs.getObject(1,UUID.class),empresa,filial);
+        if(openShift.isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Caixa fechado: estorno exige procedimento de conciliacao separado");
+        UUID turno=openShift.get(0);
+
+        List<Map<String,Object>> payment=jdbc.queryForList("""
+            select id,caixa_turno_id,modalidade,valor
+            from stockos_private.pagamentos
+            where empresa_id=? and filial_id=? and comanda_id=? and id=? for update
+            """,empresa,filial,comanda,pagamentoId);
+        if(payment.isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Pagamento nao encontrado");
+        Map<String,Object> p=payment.get(0);
+        if(!turno.equals(p.get("caixa_turno_id")))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Pagamento pertence a outro turno: conciliacao manual necessaria");
+
+        Integer reversed=jdbc.queryForObject("""
+            select count(*) from stockos_private.pagamento_estornos
+            where empresa_id=? and filial_id=? and pagamento_id=?
+            """,Integer.class,empresa,filial,pagamentoId);
+        if(reversed!=null && reversed>0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Este pagamento ja foi estornado");
+
+        if("DINHEIRO".equals(p.get("modalidade"))) {
+            BigDecimal drawer=jdbc.queryForObject("""
+                select t.valor_abertura
+                + coalesce((select sum(p2.valor)
+                    from stockos_private.pagamentos p2
+                    where p2.empresa_id=t.empresa_id
+                      and p2.filial_id=t.filial_id
+                      and p2.caixa_turno_id=t.id and p2.modalidade='DINHEIRO'
+                      and not exists (select 1 from stockos_private.pagamento_estornos x
+                        where x.pagamento_id=p2.id)),0)
+                + coalesce((select sum(m.valor)
+                    from stockos_private.caixa_movimentos m
+                    where m.empresa_id=t.empresa_id and m.filial_id=t.filial_id
+                      and m.caixa_turno_id=t.id and m.tipo='SUPRIMENTO'),0)
+                - coalesce((select sum(m.valor)
+                    from stockos_private.caixa_movimentos m
+                    where m.empresa_id=t.empresa_id and m.filial_id=t.filial_id
+                      and m.caixa_turno_id=t.id and m.tipo='SANGRIA'),0)
+                from stockos_private.caixa_turnos t
+                where t.id=? and t.empresa_id=? and t.filial_id=?
+                """,BigDecimal.class,turno,empresa,filial);
+            if(drawer==null || drawer.compareTo((BigDecimal)p.get("valor"))<0)
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Dinheiro previsto insuficiente para estorno; confira o caixa");
+        }
+
+        return jdbc.queryForMap("""
+            insert into stockos_private.pagamento_estornos
+                (empresa_id,filial_id,comanda_id,pagamento_id,caixa_turno_id,
+                 modalidade,valor,motivo,idempotency_key,registrado_por)
+            values (?,?,?,?,?,?,?,?,?,?)
+            returning id,pagamento_id,comanda_id,valor,motivo,registrado_em
+            """,empresa,filial,comanda,pagamentoId,turno,p.get("modalidade"),
+                p.get("valor"),motivoNormalizado,chave,tenant.authenticatedSubject());
+    }
+
+    /** Include reversals so the original payment stays visible to the manager. */
+    public List<Map<String,Object>> listarPagamentos(UUID empresa,UUID filial,UUID comanda) {
+        tenant.requireMembership(empresa);
+        tenant.requireFilial(empresa,filial);
+        requireComanda(empresa,filial,comanda,false);
+        return jdbc.queryForList("""
+            select p.id,p.modalidade,p.valor,p.registrado_em,p.registrado_por,
+                   e.id as estorno_id,e.motivo as estorno_motivo,
+                   e.registrado_em as estornado_em,e.registrado_por as estornado_por
+            from stockos_private.pagamentos p
+            left join stockos_private.pagamento_estornos e
+              on e.pagamento_id=p.id
+            where p.empresa_id=? and p.filial_id=? and p.comanda_id=?
+            order by p.registrado_em,p.id
+            """,empresa,filial,comanda);
+    }
+
     @Transactional
     public Map<String,Object> fechar(UUID empresa,UUID filial,UUID comanda) {
         tenant.requireMembership(empresa, "ATENDENTE","GERENTE","PROPRIETARIO");
@@ -232,8 +349,12 @@ public class SaasComandaService {
     }
     private BigDecimal pago(UUID empresa,UUID filial,UUID comanda){
         return jdbc.queryForObject("""
-          select coalesce(sum(valor),0) from stockos_private.pagamentos
-          where empresa_id=? and filial_id=? and comanda_id=?
+          select coalesce(sum(p.valor),0) from stockos_private.pagamentos p
+          where p.empresa_id=? and p.filial_id=? and p.comanda_id=?
+            and not exists (
+              select 1 from stockos_private.pagamento_estornos e
+              where e.pagamento_id=p.id
+            )
           """,BigDecimal.class,empresa,filial,comanda);
     }
     private void requireComanda(UUID empresa,UUID filial,UUID comanda,boolean opened){

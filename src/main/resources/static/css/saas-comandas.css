@@ -17,3 +17,8 @@
 button.danger{background:#dd857f;color:#27100e}
 #cash-history-panel{margin-top:20px;border-top:1px solid #303849;padding-top:18px}
 @media(max-width:770px){.cash-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cash-actions{grid-template-columns:1fr}.cash-inline{flex-wrap:wrap}}
+
+.payments-panel{border-top:1px solid #364157;padding-top:16px;margin-top:18px}
+.payment-row{align-items:center;flex-wrap:wrap}
+.payment-row small{color:#b2bdcd;font-size:12px;flex-basis:100%}
+button.outline{border:1px solid #627388;background:transparent;color:#d2deea;font-size:12px;padding:8px 10px}

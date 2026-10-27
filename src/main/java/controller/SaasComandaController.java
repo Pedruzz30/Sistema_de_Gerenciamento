@@ -57,6 +57,22 @@ public class SaasComandaController {
         return service.pagamento(empresaId,filialId,comandaId,request.modalidade(),request.valor(),key);
     }
 
+    @GetMapping("/{comandaId}/pagamentos")
+    public List<Map<String,Object>> listarPagamentos(@PathVariable UUID empresaId,
+            @PathVariable UUID filialId,@PathVariable UUID comandaId) {
+        return service.listarPagamentos(empresaId,filialId,comandaId);
+    }
+
+    @PostMapping("/{comandaId}/pagamentos/{pagamentoId}/estornos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String,Object> estornarPagamento(@PathVariable UUID empresaId,
+            @PathVariable UUID filialId,@PathVariable UUID comandaId,
+            @PathVariable UUID pagamentoId,@RequestHeader("Idempotency-Key") String chave,
+            @RequestBody EstornoRequest r) {
+        return service.estornarPagamento(empresaId,filialId,comandaId,
+                pagamentoId,r.motivo(),chave);
+    }
+
     @PostMapping("/{comandaId}/fechar")
     public Map<String,Object> fechar(@PathVariable UUID empresaId,@PathVariable UUID filialId,
                                        @PathVariable UUID comandaId){
@@ -66,4 +82,5 @@ public class SaasComandaController {
     public record AbrirRequest(int numero){}
     public record ItemRequest(UUID produtoId,int quantidade){}
     public record PagamentoRequest(String modalidade,BigDecimal valor){}
+    public record EstornoRequest(String motivo){}
 }

@@ -79,8 +79,40 @@ async function renderDetail(){
  if(!tab){text($('detail-title'),'Selecione uma comanda');return;}
  text($('detail-title'),'Comanda #'+String(tab.numero).padStart(3,'0'));
  text($('total'),fmt(tab.total));text($('paid'),fmt(tab.pago));text($('restante'),fmt(Math.max(0,Number(tab.total)-Number(tab.pago))));
- const items=await api(uri()+'/comandas/'+encodeURIComponent(tab.id)+'/itens');const box=$('itens');box.replaceChildren();
+ const [items,payments]=await Promise.all([
+   api(uri()+'/comandas/'+encodeURIComponent(tab.id)+'/itens'),
+   api(uri()+'/comandas/'+encodeURIComponent(tab.id)+'/pagamentos')
+ ]);
+ const box=$('itens');box.replaceChildren();
  for(const item of items){const div=document.createElement('div');div.className='item';text(div,item.quantidade+' × '+item.nome_snapshot+' — '+fmt(Number(item.quantidade)*Number(item.preco_unitario_snapshot))+(item.cancelado_em?' (cancelado)':''));box.append(div);}
+ const entries=$('payment-entries');entries.replaceChildren();
+ if(!payments.length){const empty=document.createElement('p');empty.className='muted';text(empty,'Nenhum pagamento registrado.');entries.append(empty);}
+ for(const payment of payments){
+   const line=document.createElement('div');line.className='item payment-row';
+   const description=document.createElement('span');
+   text(description,payment.modalidade+' · '+fmt(payment.valor)+(payment.estorno_id?' · ESTORNADO':''));
+   line.append(description);
+   if(payment.estorno_id){
+     const why=document.createElement('small');text(why,'Motivo: '+payment.estorno_motivo);line.append(why);
+   }else if(isManager()){
+     const reverse=document.createElement('button');reverse.type='button';reverse.className='outline';
+     text(reverse,'Registrar estorno');
+     reverse.onclick=()=>submit(async()=>{
+       if(!shift||shift.status!=='ABERTO')throw Error('É preciso caixa aberto para estornar.');
+       const reason=window.prompt('Informe o motivo do estorno (mínimo 8 caracteres):');
+       if(reason===null)return;
+       if(reason.trim().length<8)throw Error('Informe um motivo mais detalhado.');
+       if(!window.confirm('Confirmar estorno integral de '+fmt(payment.valor)+'? A devolução externa deve ser feita separadamente.'))return;
+       await api(uri()+'/comandas/'+selected+'/pagamentos/'+payment.id+'/estornos',{
+         method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},
+         body:JSON.stringify({motivo:reason.trim()})
+       });
+       await refresh();
+     });
+     line.append(reverse);
+   }
+   entries.append(line);
+ }
 }
 
 const isManager=()=>state.role==='GERENTE'||state.role==='PROPRIETARIO';

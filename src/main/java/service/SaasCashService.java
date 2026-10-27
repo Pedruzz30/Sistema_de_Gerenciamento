@@ -152,8 +152,12 @@ public class SaasCashService {
                    coalesce(sum(valor) filter (where modalidade='PIX'),0) as pix,
                    coalesce(sum(valor) filter (where modalidade='DEBITO'),0) as debito,
                    coalesce(sum(valor) filter (where modalidade='CREDITO'),0) as credito
-            from stockos_private.pagamentos
-            where empresa_id=? and filial_id=? and caixa_turno_id=?
+            from stockos_private.pagamentos p
+            where p.empresa_id=? and p.filial_id=? and p.caixa_turno_id=?
+              and not exists (
+                select 1 from stockos_private.pagamento_estornos e
+                where e.pagamento_id=p.id
+              )
             """,empresa,filial,turno);
         Map<String,Object> adjustments=jdbc.queryForMap("""
             select coalesce(sum(valor) filter (where tipo='SUPRIMENTO'),0) as suprimentos,
