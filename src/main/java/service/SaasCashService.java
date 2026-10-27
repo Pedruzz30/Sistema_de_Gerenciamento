@@ -169,12 +169,22 @@ public class SaasCashService {
             select valor_abertura from stockos_private.caixa_turnos
             where id=? and empresa_id=? and filial_id=?
             """,BigDecimal.class,turno,empresa,filial);
+        Map<String,Object> refunds=jdbc.queryForMap("""
+            select coalesce(sum(valor) filter (where modalidade='DINHEIRO'),0) as devolucoes_dinheiro,
+                   coalesce(sum(valor) filter (where modalidade='PIX'),0) as devolucoes_pix,
+                   coalesce(sum(valor) filter (where modalidade='DEBITO'),0) as devolucoes_debito,
+                   coalesce(sum(valor) filter (where modalidade='CREDITO'),0) as devolucoes_credito
+            from stockos_private.devolucoes_pos_fechamento
+            where empresa_id=? and filial_id=? and turno_processamento_id=?
+            """,empresa,filial,turno);
         BigDecimal expected=opening
+                .subtract((BigDecimal)refunds.get("devolucoes_dinheiro"))
                 .add((BigDecimal)paid.get("dinheiro"))
                 .add((BigDecimal)adjustments.get("suprimentos"))
                 .subtract((BigDecimal)adjustments.get("sangrias"));
         Map<String,Object> summary=new java.util.LinkedHashMap<>(paid);
         summary.putAll(adjustments);
+        summary.putAll(refunds);
         summary.put("dinheiro_esperado",expected);
         return summary;
     }
