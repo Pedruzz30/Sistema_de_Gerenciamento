@@ -193,6 +193,25 @@ class SaasComandaPostgresIntegrationTest {
     }
 
     @Test
+    void fullPaymentReversalKeepsOriginalAndUpdatesCash() {
+        login(OWNER);
+        Fixture f=fixture(10,20);
+        UUID tab=id(tx.execute(t->comandas.abrir(f.company,f.branch,1)));
+        tx.execute(t->caixa.abrir(f.company,f.branch,new BigDecimal("30.00")));
+        tx.execute(t->comandas.adicionar(f.company,f.branch,tab,f.product,1,UUID.randomUUID().toString()));
+        UUID payment=id(tx.execute(t->comandas.pagamento(f.company,f.branch,tab,"DINHEIRO",new BigDecimal("20.00"),UUID.randomUUID().toString())));
+        String key=UUID.randomUUID().toString();
+        Map<String,Object> first=tx.execute(t->comandas.estornarPagamento(f.company,f.branch,tab,payment,"Devolucao integral ao cliente",key));
+        Map<String,Object> second=tx.execute(t->comandas.estornarPagamento(f.company,f.branch,tab,payment,"Devolucao integral ao cliente",key));
+        assertEquals(first.get("id"),second.get("id"));
+        assertEquals(1,jdbc.queryForObject("select count(*) from stockos_private.pagamentos where id=?",Integer.class,payment));
+        assertEquals(1,jdbc.queryForObject("select count(*) from stockos_private.pagamento_estornos where pagamento_id=?",Integer.class,payment));
+        assertEquals(0,new BigDecimal("30.00").compareTo((BigDecimal)caixa.atual(f.company,f.branch).get("dinheiro_esperado")));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+            ()->tx.execute(t->comandas.fechar(f.company,f.branch,tab))).getStatusCode());
+    }
+
+    @Test
     void concurrentAttemptsToSellLastUnitOnlyAllowOne() throws Exception {
         login(OWNER);
         Fixture a=fixture(1,10);
