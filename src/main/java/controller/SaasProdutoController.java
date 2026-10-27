@@ -29,5 +29,21 @@ public class SaasProdutoController {
                 request.precoUnitario(),request.estoqueInicial());
     }
 
+    @PutMapping("/{produtoId}")
+    public Map<String,Object> atualizar(@PathVariable UUID empresaId,@PathVariable UUID filialId,
+                  @PathVariable UUID produtoId,@RequestBody ProdutoUpdateRequest request) {
+        return service.atualizar(empresaId,filialId,produtoId,request.codigo(),
+                request.nome(),request.precoUnitario(),request.ativo(),request.versaoEsperada());
+    }
+
+    @GetMapping("/{produtoId}/historico")
+    public List<Map<String,Object>> historico(@PathVariable UUID empresaId,
+               @PathVariable UUID filialId,@PathVariable UUID produtoId) {
+        return service.historico(empresaId,filialId,produtoId);
+    }
+
+    public record ProdutoUpdateRequest(String codigo,String nome,BigDecimal precoUnitario,
+            boolean ativo,long versaoEsperada) {}
+
     public record ProdutoRequest(String codigo,String nome,BigDecimal precoUnitario,int estoqueInicial) {}
 }
