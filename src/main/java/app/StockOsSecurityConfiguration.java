@@ -52,8 +52,16 @@ public class StockOsSecurityConfiguration {
         String issuer = rawIssuer.replaceAll("/+$", "");
         // New StockOS Supabase project must use an asymmetric signing key;
         // legacy HS256 secrets cannot be verified through JWKS.
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(issuer + "/.well-known/jwks.json")
-                .build();
+        return buildJwtDecoder(issuer, issuer + "/.well-known/jwks.json");
+    }
+
+    /**
+     * Same production decoder and claim validators, with the JWKS location
+     * injectable only for isolated cryptographic tests. Production always
+     * derives the JWKS URL from its validated Supabase issuer.
+     */
+    static NimbusJwtDecoder buildJwtDecoder(String issuer, String jwksUri) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
 
         OAuth2TokenValidator<Jwt> authenticatedAudienceAndRole = token ->
                 token.getAudience().contains("authenticated")
