@@ -359,6 +359,40 @@ $('receipt-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
 $('receipt-document').oninput=()=>{receiptPendingKey=null;};
 $('receipt-supplier').onchange=()=>{receiptPendingKey=null;};
 
+async function renderEmployeeInvitations(){
+ if(!state.empresa||state.role!=='PROPRIETARIO')return;
+ const entries=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/convites');
+ const target=$('invite-list');target.replaceChildren();
+ for(const v of entries){
+  const row=document.createElement('div');row.className='item';
+  const label=document.createElement('span');
+  text(label,v.email_normalizado+' · '+v.papel+' · '+v.status+' · vence '+new Date(v.expira_em).toLocaleString('pt-BR'));
+  row.append(label);
+  if(v.status==='PENDENTE'){
+   const revoke=document.createElement('button');revoke.type='button';revoke.className='outline';
+   text(revoke,'Revogar');
+   revoke.onclick=()=>submit(async()=>{
+     if(!window.confirm('Revogar convite deste funcionário?'))return;
+     await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/convites/'+encodeURIComponent(v.id),{method:'DELETE'});
+     await renderEmployeeInvitations();
+   });
+   row.append(revoke);
+  }
+  target.append(row);
+ }
+}
+$('invite-create-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ const email=$('invite-email').value.trim();
+ const papel=$('invite-role').value;
+ if(!window.confirm('Criar convite para '+email+' como '+papel+'?'))return;
+ const result=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/convites',{
+   method:'POST',body:JSON.stringify({email,papel})});
+ text($('invite-token-output'),'Código de convite (exibido uma vez): '+result.codigoConvite);
+ $('invite-email').value='';
+ await renderEmployeeInvitations();
+});};
+$('invite-list-refresh').onclick=()=>submit(renderEmployeeInvitations);
+
 async function renderEmployees(){
  const panel=$('employees-panel');
  panel.hidden=!state.licenseAllowed||state.role!=='PROPRIETARIO';

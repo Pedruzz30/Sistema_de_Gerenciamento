@@ -59,8 +59,19 @@
 <section id="employees-panel" class="panel cash-panel" hidden>
  <h2>Funcionários da empresa</h2>
  <p class="muted">Apenas o proprietário pode alterar acesso. Convites para novas contas ainda não estão disponíveis.</p>
+ <h3>Convidar novo funcionário</h3>
+ <form id="invite-create-form">
+  <label>E-mail confirmado da pessoa<input id="invite-email" type="email" required></label>
+  <label>Permissão<select id="invite-role"><option value="ATENDENTE">Atendente</option><option value="GERENTE">Gerente</option></select></label>
+  <button type="submit">Criar convite de 72 horas</button>
+ </form>
+ <p id="invite-token-output" class="muted" aria-live="polite"></p>
+ <p class="muted">O código aparece uma única vez. Compartilhe apenas diretamente com o funcionário convidado; o envio por e-mail ainda não é automático.</p>
  <div id="employees-list"></div>
  <h3>Histórico de permissões</h3><div id="employees-audit"></div>
+ <h3>Convites criados</h3>
+ <button id="invite-list-refresh" type="button">Atualizar convites</button>
+ <div id="invite-list"></div>
 </section>
 <section id="goods-panel" class="panel cash-panel" hidden>
   <h2>Receber mercadorias</h2>
