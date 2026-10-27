@@ -163,6 +163,7 @@ async function renderClosedTabs(){
    select.append(option);
  }
  await renderClosedPayments();
+ await renderClosedStock();
 }
 async function renderClosedPayments(){
  const selectedClosed=$('closed-tab-select').value;
@@ -202,7 +203,46 @@ async function renderClosedPayments(){
    host.append(line);
  }
 }
-$('closed-tab-select').onchange=()=>submit(renderClosedPayments);
+async function renderClosedStock(){
+ const tab=$('closed-tab-select').value;
+ const host=$('closed-stock-items');host.replaceChildren();
+ if(!tab)return;
+ const items=await api(uri()+'/comandas/'+tab+'/itens-fechados');
+ for(const item of items){
+   const remaining=Number(item.quantidade)-Number(item.quantidade_devolvida);
+   const line=document.createElement('div');line.className='item';line.style.flexWrap='wrap';
+   const label=document.createElement('span');
+   text(label,item.nome_snapshot+' · Vendidos: '+item.quantidade+' · Restantes: '+remaining);
+   line.append(label);
+   if(remaining>0){
+     const button=document.createElement('button');
+     button.type='button';button.className='outline';
+     text(button,'Registrar retorno físico');
+     button.onclick=()=>submit(async()=>{
+       const raw=window.prompt('Quantas unidades foram efetivamente devolvidas? (máx. '+remaining+')','1');
+       if(raw===null)return;
+       const n=Number(raw);
+       if(!Number.isInteger(n)||n<=0||n>remaining)throw Error('Quantidade inválida.');
+       const condition=window.prompt('Destino: REESTOQUE (apto à venda) ou DESCARTE (danificado)','DESCARTE');
+       if(condition===null)return;
+       const destino=condition.trim().toUpperCase();
+       if(!['REESTOQUE','DESCARTE'].includes(destino))throw Error('Selecione REESTOQUE ou DESCARTE.');
+       const motivo=window.prompt('Motivo do retorno físico (mínimo 8 caracteres):');
+       if(motivo===null)return;
+       if(motivo.trim().length<8)throw Error('Motivo muito curto.');
+       if(!window.confirm('Confirma '+n+' unidade(s) para '+destino+'? Isto NÃO faz reembolso financeiro.'))return;
+       await api(uri()+'/comandas/'+tab+'/itens/'+item.id+'/devolucoes-estoque',{
+         method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},
+         body:JSON.stringify({quantidade:n,destino,motivo:motivo.trim()})
+       });
+       await refresh();
+     });
+     line.append(button);
+   }
+   host.append(line);
+ }
+}
+$('closed-tab-select').onchange=()=>submit(async()=>{await renderClosedPayments();await renderClosedStock();});
 
 async function submit(action){
  if(state.busy)return;state.busy=true;
