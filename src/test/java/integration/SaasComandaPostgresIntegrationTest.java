@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import service.SaasComandaService;
 import service.SaasCashService;
 import service.SaasPostCloseRefundService;
+import service.SaasStockReturnService;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
 
@@ -44,6 +45,7 @@ class SaasComandaPostgresIntegrationTest {
     private static SaasComandaService comandas;
     private static SaasCashService caixa;
     private static SaasPostCloseRefundService refunds;
+    private static SaasStockReturnService returns;
     private static SaasTenantAccess tenant;
     private static final UUID OWNER = UUID.randomUUID();
     private static final UUID OUTSIDER = UUID.randomUUID();
@@ -67,6 +69,7 @@ class SaasComandaPostgresIntegrationTest {
         comandas=new SaasComandaService(jdbc,tenant);
         caixa=new SaasCashService(jdbc,tenant);
         refunds=new SaasPostCloseRefundService(jdbc,tenant,caixa);
+        returns=new SaasStockReturnService(jdbc,tenant);
     }
 
     private static void login(UUID id){
@@ -241,6 +244,31 @@ class SaasComandaPostgresIntegrationTest {
         assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
             ()->tx.execute(t->refunds.registrar(f.company,f.branch,tab,payment,
                 "Cliente solicitou devolucao","COMPROVANTE-TESTE-002",true,UUID.randomUUID().toString()))).getStatusCode());
+    }
+
+    @Test
+    void physicalReturnsSeparateRestockFromDiscardAndRespectSoldQuantity(){
+        login(OWNER);
+        Fixture f=fixture(8,12);
+        UUID tab=id(tx.execute(t->comandas.abrir(f.company,f.branch,1)));
+        tx.execute(t->caixa.abrir(f.company,f.branch,BigDecimal.ZERO));
+        UUID item=id(tx.execute(t->comandas.adicionar(f.company,f.branch,tab,f.product,3,UUID.randomUUID().toString())));
+        tx.execute(t->comandas.pagamento(f.company,f.branch,tab,"PIX",new BigDecimal("36.00"),UUID.randomUUID().toString()));
+        tx.execute(t->comandas.fechar(f.company,f.branch,tab));
+        assertEquals(5,stock(f));
+        String key=UUID.randomUUID().toString();
+        Map<String,Object> restocked=tx.execute(t->returns.registrar(f.company,f.branch,tab,item,1,
+                "REESTOQUE","Produto lacrado devolvido",key));
+        assertEquals(restocked.get("id"),tx.execute(t->returns.registrar(f.company,f.branch,tab,item,1,
+                "REESTOQUE","Produto lacrado devolvido",key)).get("id"));
+        assertEquals(6,stock(f));
+        tx.execute(t->returns.registrar(f.company,f.branch,tab,item,2,
+                "DESCARTE","Embalagem aberta e avariada",UUID.randomUUID().toString()));
+        assertEquals(6,stock(f));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+                ()->tx.execute(t->returns.registrar(f.company,f.branch,tab,item,1,
+                        "REESTOQUE","Tentativa de quarta unidade",UUID.randomUUID().toString()))).getStatusCode());
+        assertEquals(2,returns.historico(f.company,f.branch,tab).size());
     }
 
     @Test
