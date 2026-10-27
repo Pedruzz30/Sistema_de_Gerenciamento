@@ -179,15 +179,25 @@ public class SaasComandaService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Chave reutilizada com pagamento diferente");
             return entry;
         }
+        // Serialize receipts with cash-close operations. Pix and card transactions
+        // also belong to the active shift for truthful end-of-shift reconciliation.
+        List<UUID> openShift=jdbc.query("""
+          select id from stockos_private.caixa_turnos
+          where empresa_id=? and filial_id=? and status='ABERTO'
+          for update
+          """,(rs,i)->rs.getObject(1,UUID.class),empresa,filial);
+        if(openShift.isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Abra o caixa antes de receber");
+        UUID turno=openShift.get(0);
         BigDecimal total=total(empresa,filial,comanda);
         BigDecimal pago=pago(empresa,filial,comanda);
         if(pago.add(valor).compareTo(total)>0)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Pagamento excede valor devido");
         return jdbc.queryForMap("""
            insert into stockos_private.pagamentos
-             (empresa_id,filial_id,comanda_id,modalidade,valor,idempotency_key,registrado_por)
-           values (?,?,?,?,?,?,?) returning id,modalidade,valor,registrado_em
-           """,empresa,filial,comanda,modalidade,valor,chave,tenant.authenticatedSubject());
+             (empresa_id,filial_id,comanda_id,modalidade,valor,idempotency_key,registrado_por,caixa_turno_id)
+           values (?,?,?,?,?,?,?,?) returning id,modalidade,valor,registrado_em
+           """,empresa,filial,comanda,modalidade,valor,chave,tenant.authenticatedSubject(),turno);
     }
 
     @Transactional
