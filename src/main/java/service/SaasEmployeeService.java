@@ -26,6 +26,12 @@ public class SaasEmployeeService {
   if(target==null||!List.of("PROPRIETARIO","GERENTE","ATENDENTE").contains(papel))
    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Papel ou usuario invalido");
   jdbc.queryForObject("select id from stockos_private.empresas where id=? for update",UUID.class,empresa);
+  Integer stillOwner=jdbc.queryForObject("""
+    select count(*) from stockos_private.membros
+    where empresa_id=? and auth_user_id=? and ativo=true and papel='PROPRIETARIO'
+    """,Integer.class,empresa,actor);
+  if(stillOwner==null||stillOwner!=1)
+   throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Proprietario sem acesso");
   List<Map<String,Object>> rows=jdbc.queryForList("""
    select papel,ativo from stockos_private.membros
    where empresa_id=? and auth_user_id=? for update

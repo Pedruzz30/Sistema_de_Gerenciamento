@@ -49,6 +49,17 @@ public class SaasEmployeeInvitations {
            """,(rs,i)->rs.getObject(1,UUID.class),company);
         if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Empresa invalida");
     }
+    /** Recheck after the company row lock so concurrent demotion/revocation
+     * cannot leave a stale owner authorization in flight. */
+    private void assertOwnerWhileLocked(UUID company,UUID actor){
+        Integer owners=jdbc.queryForObject("""
+            select count(*) from stockos_private.membros
+            where empresa_id=? and auth_user_id=? and papel='PROPRIETARIO' and ativo=true
+            """,Integer.class,company,actor);
+        if(owners==null || owners!=1)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Proprietario sem acesso");
+    }
+
     private int seatsAvailable(UUID company){
         Integer limit=jdbc.queryForObject("""
             select p.max_usuarios from stockos_private.licencas l
@@ -68,6 +79,7 @@ public class SaasEmployeeInvitations {
         String normalized=email(invitedEmail);
         UUID actor=tenant.authenticatedSubject();
         lockCompany(company);
+        assertOwnerWhileLocked(company,actor);
         jdbc.update("""
             update stockos_private.convites_funcionarios
             set status='REVOGADO',revogado_por=?,revogado_em=now()
@@ -111,6 +123,7 @@ public class SaasEmployeeInvitations {
     public void revoke(UUID company,UUID invitation){
         tenant.requireMembership(company,"PROPRIETARIO");
         lockCompany(company);
+        assertOwnerWhileLocked(company,tenant.authenticatedSubject());
         int changed=jdbc.update("""
             update stockos_private.convites_funcionarios
             set status='REVOGADO',revogado_por=?,revogado_em=now()
