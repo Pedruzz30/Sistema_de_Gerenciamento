@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 import service.ErroNegocioException;
 
 import java.util.Map;
@@ -59,6 +60,16 @@ public class GlobalExceptionHandler {
         registrarAviso(request, "ACESSO_NEGADO", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErroResponse(ex.getMessage(), "ACESSO_NEGADO", Map.of()));
+    }
+
+    /** Preserve intentional HTTP status codes from SaaS authorization and validation. */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErroResponse> handleResponseStatus(
+            ResponseStatusException ex, HttpServletRequest request) {
+        String reason = ex.getReason() == null ? "Requisicao nao autorizada ou invalida." : ex.getReason();
+        registrarAviso(request, "HTTP_" + ex.getStatusCode().value(), reason);
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(new ErroResponse(reason, "HTTP_" + ex.getStatusCode().value(), Map.of()));
     }
 
     /** Unexpected exceptions → 500 Internal Server Error */

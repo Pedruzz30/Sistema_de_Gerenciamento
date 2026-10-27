@@ -127,6 +127,10 @@ class SaasHttpSecurityPostgresIntegrationTest {
         mvc.perform(get("/api/legacy/admin").header("Authorization","Bearer owner-test"))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{}")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/login")
+                .header("Authorization","Bearer owner-test")
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{}")).andExpect(status().isForbidden());
     }
 
