@@ -14,6 +14,14 @@
 <form id="login-form"><label>E-mail<input type="email" id="email" required autocomplete="email"></label><label>Senha<input type="password" id="password" required autocomplete="current-password"></label><button type="submit">Entrar</button></form>
 </section>
 <section id="workspace" hidden>
+<section class="panel" id="claim-invite-panel">
+  <h2>Recebeu um convite para trabalhar?</h2>
+  <p class="muted">Entre com a conta Supabase cujo e-mail foi confirmado e informe o código de convite fornecido pelo proprietário.</p>
+  <form id="claim-invite-form">
+    <label>Código de convite<input id="claim-invite-code" type="text" minlength="43" maxlength="43" autocomplete="off" required></label>
+    <button type="submit">Aceitar convite</button>
+  </form>
+</section>
 <div id="license-banner" class="license" hidden role="status" aria-live="polite"></div>
 <div class="topline"><div><h1>Comandas</h1><p class="muted">Registre cada produto quando ele for entregue.</p></div><div class="selection"><label>Empresa<select id="empresa"></select></label><label>Filial<select id="filial"></select></label></div></div>
 <div class="bar"><button id="refresh">Atualizar</button><form id="open-form"><label>Nova comanda <input id="numero" type="number" min="1" max="9999" placeholder="001" required></label><button type="submit">Abrir</button></form></div>

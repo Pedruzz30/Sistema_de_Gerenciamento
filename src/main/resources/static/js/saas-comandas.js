@@ -26,6 +26,15 @@ async function init(){
   if(session)await workspace();
  }catch(e){report(e.message);}
 }
+$('claim-invite-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ const codigo=$('claim-invite-code').value.trim();
+ if(!/^[A-Za-z0-9_-]{43}$/.test(codigo))throw Error('O código do convite deve conter 43 caracteres.');
+ await api('/api/saas/convites/aceitar',{method:'POST',body:JSON.stringify({codigo})});
+ $('claim-invite-code').value='';
+ await workspace();
+ report('Convite aceito. Agora você pode acessar o estabelecimento.',true);
+});};
+
 async function workspace(){
  $('login').hidden=true;$('workspace').hidden=false;$('logout').hidden=false;
  companies=await api('/api/saas/empresas');
