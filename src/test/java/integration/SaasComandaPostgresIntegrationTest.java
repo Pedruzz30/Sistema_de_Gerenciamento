@@ -23,6 +23,10 @@ import service.SaasGoodsReceiptService;
 import service.SaasEmployeeService;
 import service.SaasProdutoService;
 import service.SaasReportsService;
+import service.SaasEmployeeInvitations;
+import service.SaasVerifiedAuthIdentity;
+import app.StagingSupabaseSettings;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import service.SaasLicenseService;
 import service.SaasTenantAccess;
@@ -392,6 +396,59 @@ class SaasComandaPostgresIntegrationTest {
         assertEquals(0,new BigDecimal("10.00").compareTo((BigDecimal)result.get("fluxo_liquido_registrado")));
         assertEquals(1,reports.estoqueBaixo(f.company,f.branch,1,20).size());
         assertEquals(1,reports.produtosMaisEntregues(f.company,f.branch,start,end,20).size());
+    }
+
+    @Test
+    void inviteUsesConfirmedIdentityAndCannotBeRedeemedTwice() {
+        login(OWNER);
+        Fixture shop=fixture(5,10);
+        UUID invitee=UUID.randomUUID();
+        SaasVerifiedAuthIdentity verified=new SaasVerifiedAuthIdentity(
+           new StagingSupabaseSettings("legacy-dev","","",""),new ObjectMapper()) {
+           @Override public String confirmedEmail(UUID expected) {
+               assertEquals(invitee,expected);
+               return "employee@example.com";
+           }
+        };
+        SaasEmployeeInvitations service=new SaasEmployeeInvitations(jdbc,tenant,
+             new SaasLicenseService(jdbc),verified);
+        Map<String,Object> issued=tx.execute(t->service.create(
+             shop.company,"Employee@Example.com","ATENDENTE"));
+        String token=(String)issued.get("codigoConvite");
+        assertEquals(43,token.length());
+        assertEquals(1,service.list(shop.company).size());
+        login(invitee);
+        Map<String,Object> joined=tx.execute(t->service.accept(token));
+        assertEquals("ACEITO",joined.get("status"));
+        assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+             ()->tx.execute(t->service.accept(token))).getStatusCode());
+        assertEquals(2,jdbc.queryForObject(
+            "select count(*) from stockos_private.membros where empresa_id=?",
+            Integer.class,shop.company));
+    }
+
+    @Test
+    void inviteCannotBeClaimedByDifferentVerifiedEmail() {
+        login(OWNER);
+        Fixture shop=fixture(2,10);
+        UUID invitee=UUID.randomUUID();
+        SaasVerifiedAuthIdentity verified=new SaasVerifiedAuthIdentity(
+           new StagingSupabaseSettings("legacy-dev","","",""),new ObjectMapper()) {
+           @Override public String confirmedEmail(UUID expected) {
+               assertEquals(invitee,expected);
+               return "different@example.com";
+           }
+        };
+        SaasEmployeeInvitations service=new SaasEmployeeInvitations(jdbc,tenant,
+             new SaasLicenseService(jdbc),verified);
+        String token=(String)tx.execute(t->service.create(shop.company,
+           "expected@example.com","GERENTE")).get("codigoConvite");
+        login(invitee);
+        assertEquals(HttpStatus.FORBIDDEN,assertThrows(ResponseStatusException.class,
+           ()->tx.execute(t->service.accept(token))).getStatusCode());
+        assertEquals(1,jdbc.queryForObject(
+           "select count(*) from stockos_private.membros where empresa_id=?",
+           Integer.class,shop.company));
     }
 
     @Test
