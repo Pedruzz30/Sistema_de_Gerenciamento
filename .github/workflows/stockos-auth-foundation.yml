@@ -6,6 +6,11 @@ on:
       - 'pom.xml'
       - 'src/main/resources/db/migration/**'
       - 'src/main/java/**'
+      - 'src/main/resources/static/saas-*.html'
+      - 'src/main/resources/static/js/saas-*.js'
+      - 'src/main/resources/static/css/saas-*.css'
+      - 'src/test/java/integration/SaasComandaPostgresIntegrationTest.java'
+      - 'src/test/java/integration/Fase46FlywayMigrationIntegrationTest.java'
       - 'src/test/java/app/ProductionSafetyGateTest.java'
       - 'src/test/java/controller/ControllerUtilsJwtTest.java'
       - 'src/test/java/service/SaasTenantAccessTest.java'
@@ -27,6 +32,10 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Validate browser modules syntax
+        run: |
+          node --check src/main/resources/static/js/saas-comandas.js
+          node --check src/main/resources/static/js/saas-admin.js
       - name: Compile and test JWT security foundation
         run: mvn -B -Dtest=ProductionSafetyGateTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
 
