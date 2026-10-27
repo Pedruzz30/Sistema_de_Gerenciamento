@@ -488,6 +488,55 @@ class SaasComandaPostgresIntegrationTest {
     }
 
     @Test
+    void privateSchemaBlocksBrowserLikeRolesAndKeepsRlsEnabled() throws Exception {
+        // A role created after Flyway has no implicit Data API permissions.
+        // The disposable CI database is the only allowed target for this test.
+        String role="stockos_ci_untrusted_"+UUID.randomUUID().toString().replace("-","");
+        jdbc.execute("create role "+role+" nologin");
+        try {
+            assertEquals(Boolean.FALSE,jdbc.queryForObject("""
+                 select has_schema_privilege(?, 'stockos_private', 'USAGE')
+                 """,Boolean.class,role));
+            assertEquals(Boolean.FALSE,jdbc.queryForObject("""
+                 select has_table_privilege(?, 'stockos_private.membros','SELECT')
+                 """,Boolean.class,role));
+            assertEquals(Boolean.FALSE,jdbc.queryForObject("""
+                 select has_table_privilege(?, 'stockos_private.convites_funcionarios','SELECT')
+                 """,Boolean.class,role));
+
+            // Actual PostgreSQL privilege failure, not just catalog introspection.
+            try (var connection=jdbc.getDataSource().getConnection()) {
+                connection.setAutoCommit(false);
+                try (var stmt=connection.createStatement()) {
+                    stmt.execute("set local role "+role);
+                    var denied=assertThrows(java.sql.SQLException.class,
+                        ()->stmt.executeQuery("select * from stockos_private.membros"));
+                    assertEquals("42501",denied.getSQLState());
+                } finally {connection.rollback();}
+            }
+
+            // Grant only schema usage: table grants must still be absent.
+            jdbc.execute("grant usage on schema stockos_private to "+role);
+            assertEquals(Boolean.TRUE,jdbc.queryForObject("""
+                 select has_schema_privilege(?, 'stockos_private','USAGE')
+                 """,Boolean.class,role));
+            assertEquals(Boolean.FALSE,jdbc.queryForObject("""
+                 select has_table_privilege(?, 'stockos_private.comandas','SELECT')
+                 """,Boolean.class,role));
+            Integer missingRls=jdbc.queryForObject("""
+                 select count(*) from pg_catalog.pg_class c
+                 join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+                 where n.nspname='stockos_private' and c.relkind='r'
+                   and c.relrowsecurity=false
+                 """,Integer.class);
+            assertEquals(0,missingRls);
+        } finally {
+            jdbc.execute("revoke all on schema stockos_private from "+role);
+            jdbc.execute("drop role "+role);
+        }
+    }
+
+    @Test
     void concurrentAttemptsToSellLastUnitOnlyAllowOne() throws Exception {
         login(OWNER);
         Fixture a=fixture(1,10);
