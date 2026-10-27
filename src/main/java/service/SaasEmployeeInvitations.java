@@ -142,7 +142,7 @@ public class SaasEmployeeInvitations {
         if(found.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Convite invalido");
         Map<String,Object> invite=found.get(0);
         if(!"PENDENTE".equals(invite.get("status"))
-             || !((OffsetDateTime)invite.get("expira_em")).isAfter(OffsetDateTime.now()))
+             || !((java.sql.Timestamp)invite.get("expira_em")).toInstant().isAfter(java.time.Instant.now()))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Convite vencido ou utilizado");
         if(!verifiedEmail.equals(invite.get("email_normalizado")))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Email nao corresponde ao convite");
