@@ -5,6 +5,7 @@ import repository.*;
 import service.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
@@ -30,6 +31,8 @@ public class AppConfig {
     // ── Repositories ──────────────────────────────────────────────────────────
 
     @Bean
+    // Hardcoded demonstration users must never be seeded when JWT mode is enabled.
+    @ConditionalOnProperty(name="stockos.security.mode",havingValue="legacy-dev",matchIfMissing=true)
     public Usuario adminSuperior(UsuarioRepository usuarioRepository) {
         popularUsuariosPadrao(usuarioRepository);
         Usuario admin = usuarioRepository.listarTodos().stream()

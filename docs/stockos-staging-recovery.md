@@ -1,0 +1,45 @@
+# StockOS — Staging, Auth, backups e restauração
+
+## Estado atual
+**Somente uma fundação de staging.** Não há projeto Supabase StockOS
+criado, Auth real conectado, implantação ou backup de clientes configurado.
+Perfil Spring `prod` bloqueado por código.
+
+## Configuração isolada
+1. Criar **novo** projeto Supabase somente para StockOS, sem reutilizar
+   projetos existentes da Space Underground.
+2. Selecionar assinatura assimétrica JWT com endpoint JWKS (não HS256 legado).
+   Obter URL `https://<ref>.supabase.co` e **publishable key**
+   `sb_publishable_...`. Nunca usar `service_role`/`sb_secret` no browser.
+3. Configurar em ambiente privado:
+   `STOCKOS_SECURITY_MODE=supabase-jwt`,
+   `STOCKOS_SUPABASE_AUTH_ISSUER=https://<ref>.supabase.co/auth/v1`,
+   `STOCKOS_SUPABASE_URL=https://<ref>.supabase.co`,
+   `STOCKOS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`.
+   Config inválida impede inicialização. Habilitar SSL verificado no JDBC
+   conforme certificado e connection string providos pelo projeto.
+4. Provisionar funcionários verificados e vínculos apenas por processo
+   administrativo confiável; convites via e-mail ainda não implementados.
+5. Validar todas as rotas e políticas, papéis DB e logs ANTES de liberar
+   portas externas; não usar credenciais de superuser em produção.
+6. **NÃO remover o bloqueio `prod`** por conta destas etapas.
+
+## Backup e recuperação
+- O CI usa contêiner PostgreSQL 17 **descartável**, faz `pg_dump -Fc`
+  do banco de testes e `pg_restore` em segundo banco vazio do mesmo
+  contêiner. Compara contagens em tabelas de SaaS e histórico Flyway.
+- O arquivo temporário é eliminado ao fim do job; nenhum dump é enviado
+  como artefato público e nenhum banco Supabase é acessado.
+- Isso prova somente o procedimento técnico no CI, **não** equivale a
+  backups diários de produção, ponto de recuperação, criptografia off-site
+  ou restauração de Auth/Storage.
+- Para o projeto Supabase futuro, revisar backups gerenciados, retenção
+  específica do plano, PITR se necessário, criptografia, controle de
+  acesso, armazenamento externo separado e exercícios de restauração.
+- Supabase Storage armazena blobs fora do banco: o backup da base contém
+  metadados e **não** recupera automaticamente arquivos do Storage.
+
+Referências oficiais:
+https://supabase.com/docs/guides/platform/backups
+https://supabase.com/docs/guides/auth/jwts
+https://supabase.com/docs/guides/getting-started/api-keys

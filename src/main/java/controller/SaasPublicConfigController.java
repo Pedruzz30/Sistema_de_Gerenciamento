@@ -1,18 +1,21 @@
 package controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import app.StagingSupabaseSettings;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Exposes only the public Supabase project URL and publishable key. */
+/** Only the verified PUBLIC Supabase URL and publishable key may reach browsers. */
 @RestController
 public class SaasPublicConfigController {
-    @Value("${stockos.supabase.url:}") private String url;
-    @Value("${stockos.supabase.publishable-key:}") private String publishableKey;
+    private final StagingSupabaseSettings settings;
+
+    public SaasPublicConfigController(StagingSupabaseSettings settings) {
+        this.settings = settings;
+    }
 
     @GetMapping("/api/saas/config")
     public PublicConfig config() {
-        return new PublicConfig(url, publishableKey);
+        return new PublicConfig(settings.projectUrl(), settings.publishableKey());
     }
 
     public record PublicConfig(String supabaseUrl, String publishableKey) {}

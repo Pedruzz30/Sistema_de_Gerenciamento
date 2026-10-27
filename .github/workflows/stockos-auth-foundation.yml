@@ -12,6 +12,9 @@ on:
       - 'src/test/java/integration/SaasComandaPostgresIntegrationTest.java'
       - 'src/test/java/integration/Fase46FlywayMigrationIntegrationTest.java'
       - 'src/test/java/app/ProductionSafetyGateTest.java'
+      - 'src/test/java/app/StagingSupabaseSettingsTest.java'
+      - 'scripts/ci/**'
+      - 'docs/stockos-staging-recovery.md'
       - 'src/test/java/controller/ControllerUtilsJwtTest.java'
       - 'src/test/java/service/SaasTenantAccessTest.java'
       - 'src/test/java/service/SaasLicenseServiceTest.java'
@@ -37,7 +40,7 @@ jobs:
           node --check src/main/resources/static/js/saas-comandas.js
           node --check src/main/resources/static/js/saas-admin.js
       - name: Compile and test JWT security foundation
-        run: mvn -B -Dtest=ProductionSafetyGateTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
+        run: mvn -B -Dtest=ProductionSafetyGateTest,StagingSupabaseSettingsTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
 
   postgres-saas-integration:
     runs-on: ubuntu-latest
@@ -69,3 +72,7 @@ jobs:
           cache: maven
       - name: Run PostgreSQL Flyway + SaaS transaction integration tests
         run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test
+      - name: Prove full database backup and restore on disposable PostgreSQL
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/verify-stockos-backup-restore.sh
