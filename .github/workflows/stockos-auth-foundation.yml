@@ -10,6 +10,7 @@ on:
       - 'src/main/resources/static/js/saas-*.js'
       - 'src/main/resources/static/css/saas-*.css'
       - 'src/test/java/integration/SaasComandaPostgresIntegrationTest.java'
+      - 'src/test/java/integration/SaasHttpSecurityPostgresIntegrationTest.java'
       - 'src/test/java/integration/Fase46FlywayMigrationIntegrationTest.java'
       - 'src/test/java/app/ProductionSafetyGateTest.java'
       - 'src/test/java/app/StagingSupabaseSettingsTest.java'
@@ -73,6 +74,8 @@ jobs:
           cache: maven
       - name: Run PostgreSQL Flyway + SaaS transaction integration tests
         run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test
+      - name: Test real HTTP security and tenant boundaries with mocked JWT decoder
+        run: mvn -B -Dtest=SaasHttpSecurityPostgresIntegrationTest test
       - name: Prove full database backup and restore on disposable PostgreSQL
         env:
           CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
