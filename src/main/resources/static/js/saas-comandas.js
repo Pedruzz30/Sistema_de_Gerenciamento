@@ -2,7 +2,8 @@ import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 const $=id=>document.getElementById(id);
 const fmt=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n||0));
 let supabase, companies=[], branches=[], tabs=[], products=[], selected=null;
-const state={empresa:null,filial:null,busy:false};
+let shift=null;
+const state={empresa:null,filial:null,busy:false,role:null,licenseAllowed:false};
 function report(message,success=false){$('feedback').textContent=message||'';$('feedback').className=success?'success':'';}
 function text(el,content){el.textContent=content;}
 async function api(path,options={}){
@@ -35,8 +36,10 @@ async function workspace(){
 function fill(el,entries){el.replaceChildren();for(const v of entries){const opt=document.createElement('option');opt.value=v.id;text(opt,v.name);el.append(opt);}}
 async function loadBranches(){
  state.empresa=$('empresa').value;
+ state.role=companies.find(c=>c.id===state.empresa)?.papel||null;
  const licenca=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/licenca');
  const allowed=licenca.acesso_liberado===true;
+ state.licenseAllowed=allowed;
  const banner=$('license-banner');
  banner.hidden=false;
  banner.classList.toggle('alert',!allowed);
@@ -45,18 +48,21 @@ async function loadBranches(){
    : 'Operações bloqueadas: licença '+String(licenca.status||'inexistente')+'. Contate a administração do StockOS.');
  document.querySelector('.bar').hidden=!allowed;
  document.querySelector('.layout').hidden=!allowed;
+ $('cash-panel').hidden=!allowed;
  branches=await api('/api/saas/empresas/'+encodeURIComponent(state.empresa)+'/filiais');
  fill($('filial'),branches.map(b=>({id:b.id,name:b.nome})));
  state.filial=branches[0]?.id||null;selected=null;renderDetail();
  if(state.filial&&allowed)await refresh();
- else report('Nenhuma filial ativa foi vinculada a esta empresa.');
+ else if(!state.filial) report('Nenhuma filial ativa foi vinculada a esta empresa.');
 }
 async function refresh(){
  state.filial=$('filial').value;
  if(!state.filial)return;
- [tabs,products]=await Promise.all([api(uri()+'/comandas'),api(uri()+'/produtos')]);
+ [tabs,products,shift]=await Promise.all([
+   api(uri()+'/comandas'),api(uri()+'/produtos'),api(uri()+'/caixa/atual')
+ ]);
  fill($('produto'),products.filter(p=>p.ativo).map(p=>({id:p.id,name:p.nome+' — '+fmt(p.preco_unitario)+' ('+p.estoque_atual+')'})));
- renderTabs();await renderDetail();
+ renderTabs();await renderDetail();await renderCash();
 }
 function renderTabs(){
  const el=$('comandas');el.replaceChildren();
@@ -76,6 +82,41 @@ async function renderDetail(){
  const items=await api(uri()+'/comandas/'+encodeURIComponent(tab.id)+'/itens');const box=$('itens');box.replaceChildren();
  for(const item of items){const div=document.createElement('div');div.className='item';text(div,item.quantidade+' × '+item.nome_snapshot+' — '+fmt(Number(item.quantidade)*Number(item.preco_unitario_snapshot))+(item.cancelado_em?' (cancelado)':''));box.append(div);}
 }
+
+const isManager=()=>state.role==='GERENTE'||state.role==='PROPRIETARIO';
+const cashBase=()=>uri()+'/caixa';
+
+function cashValue(id,value){text($(id),fmt(value));}
+async function renderCash(){
+ const open=shift?.status==='ABERTO';
+ $('cash-open').hidden=open;
+ $('cash-active').hidden=!open;
+ $('cash-management').hidden=!open||!isManager();
+ $('cash-history-panel').hidden=!isManager();
+ text($('cash-status'),open?'ABERTO':'SEM TURNO ABERTO');
+ $('cash-status').classList.toggle('open',open);
+ if(open){
+   cashValue('cash-expected',shift.dinheiro_esperado);
+   cashValue('cash-money',shift.dinheiro);
+   cashValue('cash-pix',shift.pix);
+   cashValue('cash-debit',shift.debito);
+   cashValue('cash-credit',shift.credito);
+   text($('cash-adjustments'),fmt(shift.sangrias)+' / '+fmt(shift.suprimentos));
+ }
+ if(isManager()){
+   const history=await api(cashBase()+'/historico');
+   const host=$('cash-history');host.replaceChildren();
+   if(!history.length){const p=document.createElement('p');p.className='muted';text(p,'Nenhum turno registrado.');host.append(p);}
+   for(const row of history.slice(0,8)){
+     const item=document.createElement('div');item.className='item';
+     const date=new Date(row.aberto_em).toLocaleString('pt-BR');
+     const diff=row.status==='FECHADO'?' · Diferença: '+fmt(row.diferenca):'';
+     text(item,date+' · '+row.status+' · Abertura: '+fmt(row.valor_abertura)+diff);
+     host.append(item);
+   }
+ }
+}
+
 async function submit(action){
  if(state.busy)return;state.busy=true;
  for(const b of document.querySelectorAll('button'))b.disabled=true;
@@ -90,4 +131,31 @@ $('open-form').onsubmit=e=>{e.preventDefault();submit(async()=>{await api(uri()+
 $('item-form').onsubmit=e=>{e.preventDefault();submit(async()=>{await api(uri()+'/comandas/'+selected+'/itens',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({produtoId:$('produto').value,quantidade:Number($('quantidade').value)})});await refresh();});};
 $('pay-form').onsubmit=e=>{e.preventDefault();submit(async()=>{await api(uri()+'/comandas/'+selected+'/pagamentos',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({modalidade:$('modalidade').value,valor:Number($('valor').value).toFixed(2)})});$('valor').value='';await refresh();});};
 $('close-tab').onclick=()=>submit(async()=>{await api(uri()+'/comandas/'+selected+'/fechar',{method:'POST'});selected=null;await refresh();});
+
+$('cash-open-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ if(!state.filial||!state.licenseAllowed)throw Error('Selecione uma filial com licença ativa.');
+ await api(cashBase()+'/abrir',{method:'POST',body:JSON.stringify({valorAbertura:Number($('cash-opening').value).toFixed(2)})});
+ await refresh();
+});};
+$('cash-move-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ if(!isManager())throw Error('Apenas gerente ou proprietário pode movimentar o caixa.');
+ const tipo=$('cash-move-type').value;
+ const valor=Number($('cash-move-value').value).toFixed(2);
+ const motivo=$('cash-move-reason').value.trim();
+ await api(cashBase()+'/movimentos',{
+   method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},
+   body:JSON.stringify({tipo,valor,motivo})
+ });
+ e.target.reset();await refresh();
+});};
+$('cash-close-form').onsubmit=e=>{e.preventDefault();submit(async()=>{
+ if(!isManager())throw Error('Apenas gerente ou proprietário pode fechar o caixa.');
+ const counted=Number($('cash-counted').value).toFixed(2);
+ if(!window.confirm('Confirma o fechamento do turno com '+fmt(counted)+' em dinheiro contado?'))return;
+ const closed=await api(cashBase()+'/fechar',{method:'POST',body:JSON.stringify({valorContado:counted})});
+ $('cash-counted').value='';
+ await refresh();
+ report('Caixa fechado. Diferença: '+fmt(closed.diferenca)+(Number(closed.diferenca)===0?' (conferido).':'. Confira o histórico.'),true);
+});};
+
 init();

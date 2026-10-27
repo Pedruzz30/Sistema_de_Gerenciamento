@@ -18,6 +18,49 @@
 <div class="topline"><div><h1>Comandas</h1><p class="muted">Registre cada produto quando ele for entregue.</p></div><div class="selection"><label>Empresa<select id="empresa"></select></label><label>Filial<select id="filial"></select></label></div></div>
 <div class="bar"><button id="refresh">Atualizar</button><form id="open-form"><label>Nova comanda <input id="numero" type="number" min="1" max="9999" placeholder="001" required></label><button type="submit">Abrir</button></form></div>
 <div class="layout"><section class="panel"><h2>Em aberto</h2><div id="comandas" class="cards"></div></section><section class="panel"><h2 id="detail-title">Selecione uma comanda</h2><div id="detail" hidden><div id="itens"></div><div class="totals"><span>Total <strong id="total">—</strong></span><span>Pago <strong id="paid">—</strong></span><span>Restante <strong id="restante">—</strong></span></div><form id="item-form"><h3>Adicionar produto</h3><select id="produto" required></select><label>Quantidade<input id="quantidade" type="number" min="1" value="1" required></label><button type="submit">Registrar entrega</button></form><form id="pay-form"><h3>Registrar pagamento</h3><select id="modalidade"><option>DINHEIRO</option><option>PIX</option><option>DEBITO</option><option>CREDITO</option></select><label>Valor (R$)<input id="valor" type="number" min=".01" step=".01" required></label><button type="submit">Registrar pagamento</button></form><button id="close-tab">Encerrar comanda</button></div></section></div>
+
+<section id="cash-panel" class="panel cash-panel" hidden aria-labelledby="cash-title">
+  <div class="cash-heading">
+    <div><h2 id="cash-title">Caixa da filial</h2><p class="muted">Dinheiro na gaveta separado de Pix e cartões.</p></div>
+    <span id="cash-status" class="cash-pill">—</span>
+  </div>
+  <div id="cash-open">
+    <p class="muted">Abra o turno antes de registrar pagamentos de comandas.</p>
+    <form id="cash-open-form" class="cash-inline">
+      <label>Dinheiro inicial (R$)<input id="cash-opening" type="number" min="0" step=".01" value="0.00" required></label>
+      <button type="submit">Abrir caixa</button>
+    </form>
+  </div>
+  <div id="cash-active" hidden>
+    <div class="cash-stats" aria-live="polite">
+      <div><small>Dinheiro esperado</small><strong id="cash-expected">—</strong></div>
+      <div><small>Dinheiro recebido</small><strong id="cash-money">—</strong></div>
+      <div><small>Pix</small><strong id="cash-pix">—</strong></div>
+      <div><small>Débito</small><strong id="cash-debit">—</strong></div>
+      <div><small>Crédito</small><strong id="cash-credit">—</strong></div>
+      <div><small>Sangrias / suprimentos</small><strong id="cash-adjustments">—</strong></div>
+    </div>
+    <div id="cash-management" class="cash-actions" hidden>
+      <form id="cash-move-form">
+        <h3>Movimentação</h3>
+        <label>Tipo<select id="cash-move-type"><option value="SANGRIA">Sangria</option><option value="SUPRIMENTO">Suprimento</option></select></label>
+        <label>Valor (R$)<input id="cash-move-value" type="number" min=".01" step=".01" required></label>
+        <label>Motivo<input id="cash-move-reason" maxlength="240" minlength="5" required placeholder="Ex.: depósito bancário"></label>
+        <button type="submit">Registrar movimentação</button>
+      </form>
+      <form id="cash-close-form">
+        <h3>Fechar turno</h3>
+        <p class="muted">Conte apenas as notas e moedas da gaveta. Pix e cartões não entram na contagem.</p>
+        <label>Dinheiro contado (R$)<input id="cash-counted" type="number" min="0" step=".01" required></label>
+        <button class="danger" type="submit">Conferir e fechar caixa</button>
+      </form>
+    </div>
+  </div>
+  <div id="cash-history-panel" hidden>
+    <h3>Últimos fechamentos</h3>
+    <div id="cash-history"></div>
+  </div>
+</section>
 </section>
 <p id="feedback" role="status" aria-live="polite"></p>
 </main>
