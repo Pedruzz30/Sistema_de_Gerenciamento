@@ -261,6 +261,11 @@ class StorefrontBrowserSmoke(unittest.TestCase):
         self.page.get_by_text("Total da entrada: R$ 15,50").wait_for()
         self.page.once("dialog", lambda d: d.accept())
         self.page.locator("#receipt-confirm").click()
+        self.page.wait_for_timeout(650)
+        self.assertEqual(len(store.receipts), 1, "POST receipt missing. UI feedback: "
+                         + str(self.page.locator("#feedback").text_content())
+                         + " | API calls: " + str([(m, p) for m, p, _ in store.requests][-12:])
+                         + " | JS errors: " + str(self.page_errors))
         self.page.get_by_text("NOTA-123", exact=False).wait_for()
         self.assertEqual(len(store.receipts), 1)
         self.assertEqual(store.receipts[0]["linhas"], 2)
