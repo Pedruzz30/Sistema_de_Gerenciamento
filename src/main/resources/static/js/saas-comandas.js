@@ -332,7 +332,7 @@ $('receipt-add').onclick=()=>{
    const raw=$('receipt-unit-cost').value;
    const custo=Number(raw);
    if(!produtoId || !Number.isInteger(quantidade) || quantidade<=0 || quantidade>100000 ||
-      !raw || !/^\\d+(\\.\\d{1,2})?$/.test(raw) || !Number.isFinite(custo) || custo<0)
+      !raw || !/^\d+(\.\d{1,2})?$/.test(raw) || !Number.isFinite(custo) || custo<0)
      throw Error('Informe produto, quantidade positiva e custo com até duas casas decimais.');
    if(receiptCart.some(i=>i.produtoId===produtoId))throw Error('Produto já adicionado à lista.');
    const next=receiptTotal()+quantidade*custo;
