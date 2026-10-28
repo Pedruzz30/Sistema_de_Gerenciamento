@@ -26,6 +26,9 @@ on:
       - 'src/test/java/app/SupabaseJwtSignatureTest.java'
       - 'src/test/java/app/SupabaseJwtEs256SignatureTest.java'
       - 'scripts/ci/**'
+      - 'scripts/dev/**'
+      - 'compose.stockos-local.yml'
+      - 'docs/stockos-windows-local-recovery.md'
       - 'tests/browser/**'
       - 'docs/stockos-staging-recovery.md'
       - 'src/test/java/controller/ControllerUtilsJwtTest.java'
@@ -83,6 +86,10 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Validate local Docker Compose without starting or deleting local databases
+        env:
+          STOCKOS_LOCAL_DB_PASSWORD: ci_config_validation_only
+        run: docker compose -f compose.stockos-local.yml config --quiet
       - name: Verify legacy Flyway never installs SaaS schema
         run: mvn -B -Dtest=Fase46FlywayMigrationIntegrationTest test
       - name: Run PostgreSQL Flyway + SaaS transaction integration tests
