@@ -27,6 +27,9 @@ on:
       - 'src/test/java/app/SupabaseJwtEs256SignatureTest.java'
       - 'scripts/ci/**'
       - 'scripts/dev/**'
+      - 'package.json'
+      - 'vite.config.mjs'
+      - 'docs/stockos-vite-local.md'
       - 'compose.stockos-local.yml'
       - 'docs/stockos-windows-local-recovery.md'
       - 'tests/browser/**'
@@ -119,6 +122,36 @@ jobs:
         env:
           CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: bash scripts/ci/verify-stockos-backup-restore.sh
+
+  vite-frontend-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Vite config syntax
+        run: node --check vite.config.mjs
+      - name: Install Vite dev dependencies without changing repository
+        run: npm install --no-audit --no-fund
+      - name: Start local-only frontend server and check existing pages
+        run: |
+          npm run dev > /tmp/stockos-vite.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for try in $(seq 1 25); do
+            if curl --fail --silent --output /tmp/stockos-login.html http://127.0.0.1:5173/login.html; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/stockos-vite.log; exit 1; fi
+          grep -q 'StockOS' /tmp/stockos-login.html
+          curl --fail --silent http://127.0.0.1:5173/saas-comandas.html | grep -q 'login-form'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5173/login)" = 302
+          echo "PASS: Vite loads legacy login and SaaS pages on localhost; clean route redirects"
 
   browser-saas-smoke:
     runs-on: ubuntu-latest
