@@ -1,0 +1,17 @@
+{
+  "name": "stockos-frontend-dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only Vite development server for existing StockOS HTML/CSS/JS pages",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.config.mjs",
+    "dev:check": "node --check vite.config.mjs"
+  },
+  "devDependencies": {
+    "vite": "8.3.5"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

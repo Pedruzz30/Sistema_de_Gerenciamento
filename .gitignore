@@ -31,3 +31,8 @@ backups_auditoria/
 Thumbs.db
 # Senha gerada para o PostgreSQL isolado de desenvolvimento Windows
 .stockos-local.env
+
+# Vite / Node frontend dev (nao versionar artefatos)
+node_modules/
+dist/
+.vite/
