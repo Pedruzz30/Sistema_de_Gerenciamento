@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@ConditionalOnProperty(name = "stockos.security.mode", havingValue = "legacy-dev", matchIfMissing = true)
 @ConditionalOnProperty(name = "stockos.seed.demo-menu.enabled", havingValue = "true")
 public class PizzariaMenuSeedRunner implements CommandLineRunner {
 

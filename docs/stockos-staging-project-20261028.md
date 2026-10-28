@@ -1,0 +1,67 @@
+# StockOS Staging — projeto Supabase identificado (28/10/2026)
+
+Este é o **único projeto autorizado para testes do StockOS**.
+
+| Atributo | Valor |
+| --- | --- |
+| Organização | Space Underground |
+| Projeto | StockOS Staging |
+| Project ref | `hucfndwhaebvithtkovn` |
+| Região existente | `sa-east-1` (São Paulo, Brasil) |
+| PostgreSQL | 17.11 |
+| URL pública do projeto | `https://hucfndwhaebvithtkovn.supabase.co` |
+| Issuer de tokens | `https://hucfndwhaebvithtkovn.supabase.co/auth/v1` |
+| JWT signing alg | **ECC P-256 / ES256 (ativo)**, confirmado no painel JWT Keys em 28/10/2026 |
+| Conta de usuário de testes | Nenhuma, na inspeção inicial |
+| Tabelas SaaS | **23 tabelas privadas instaladas**; 13 migrations Supabase aplicadas em 28/10/2026 |
+| Chave publicável | Existe `sb_publishable_...`, obter diretamente no painel ou conectar por configuração privada |
+| Banco real conectado ao Java | **Ainda não** |
+| Migrations Flyway executadas | **Nenhuma** (as 13 migrations foram registradas no histórico Supabase, não Flyway) |
+
+Projeto recriado em São Paulo em 28/10/2026; a referência anterior foi desativada. As verificações foram somente leitura pelo conector Supabase. `get_advisors(security)`
+retornou zero alertas iniciais. Isso não equivale a auditoria completa ou
+confirmação das opções do Data API marcadas na criação.
+
+## Variáveis previstas para Java (valores públicos, SEM segredos)
+
+```env
+STOCKOS_SECURITY_MODE=supabase-jwt
+STOCKOS_SERVER_ADDRESS=127.0.0.1
+STOCKOS_SUPABASE_EXPECTED_PROJECT_REF=hucfndwhaebvithtkovn
+STOCKOS_SUPABASE_URL=https://hucfndwhaebvithtkovn.supabase.co
+STOCKOS_SUPABASE_AUTH_ISSUER=https://hucfndwhaebvithtkovn.supabase.co/auth/v1
+STOCKOS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_COLE_A_CHAVE_PUBLICA_NO_AMBIENTE
+SPRING_PROFILES_ACTIVE=staging
+FLYWAY_BASELINE_ON_MIGRATE=false
+```
+
+**Não** colocar `DB_PASSWORD`, `sb_secret`, JWT de sessão ou `service_role`
+no Git, mensagens ou códigos públicos. Obter a URL JDBC e certificado diretamente
+em *Connect > Database connection* do novo projeto, e configurar em ambiente
+privado (SSL verificado). Os defaults do backend não são credenciais de staging.
+
+## Sequência segura para conectar de verdade
+
+1. **Concluído no painel:** chave ECC P-256 assimétrica ativa (ES256); HS256 aparece apenas como chave anterior. O backend foi ajustado para aceitar ES256 e RS256, nunca HS256. Verificar o JWKS público e testar um token realmente emitido pelo Supabase antes de liberar login.
+2. Verificar *Settings > Data API* (se realmente desabilitada) e *Authentication >
+   Providers > Email*: confirmação por e-mail, URLs de redirecionamento e políticas.
+3. **Concluído o schema SaaS:** as 13 migrations `stockos_private` foram aplicadas sem migrations legadas. O perfil `staging` desabilita o Flyway automático para evitar execução duplicada ou criação de tabelas legadas. Ainda é necessário separar os componentes JPA antes de iniciar a API contra esse banco.
+4. O schema foi aplicado pelo conector Supabase, com histórico Supabase separado do Flyway. Novas alterações devem seguir um fluxo de migrations SaaS independente, sem duplicar SQL já executado.
+5. Criar contas fictícias e seed seguro por administrador autorizado; validar
+   login e aceitação de convites com token e e-mail confirmados.
+6. Configurar usuário PostgreSQL de runtime com menor privilégio e revisar
+   tenant/RLS antes de expor endpoints.
+7. Executar testes de isolamento multiempresa, caixa, estoque, devoluções
+   e backup/restauração. `ProductionSafetyGate` continua bloqueando `prod`.
+
+## Regras de proteção
+
+- NÃO acessar `zvzfkfvxbuofgqrrogxh` (Space Underground) ou
+  `bhezekckmyrmlxovwfwr` (projeto anterior) para qualquer ação StockOS.
+- Nunca usar o banco StockOS como substituto do banco Space.
+- Não fazer merge da PR #3 nem deploy de produção sem revisão.
+
+Documentação oficial:
+https://supabase.com/docs/guides/getting-started/quickstarts/spring-boot
+https://supabase.com/docs/guides/auth/signing-keys
+https://supabase.com/docs/guides/api/securing-your-api

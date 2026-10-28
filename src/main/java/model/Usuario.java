@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Representa um usuário do sistema — seja um administrador ou um operador.
@@ -80,7 +81,10 @@ public class Usuario {
     private String cpf;      // 11 dígitos sem formatação, validado
 
     @Column(nullable = false, length = 120)
-    private String senha;    // ⚠ texto simples — hash em produção
+    private String senha;    // Legacy only; never used to validate Supabase JWTs.
+
+    @Column(name = "auth_user_id", unique = true)
+    private UUID authUserId; // Stable Supabase Auth subject, null for unlinked legacy users.
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -150,7 +154,8 @@ public class Usuario {
      */
     private Usuario(long ru, String nome, String sobrenome, String cpf,
                     String senha, ClasseFuncionario classe, Perfil perfil,
-                    boolean ativo) {
+                    boolean ativo, UUID authUserId) {
+        this.authUserId = authUserId;
         this.ru        = ru;
         this.nome      = nome;
         this.sobrenome = sobrenome;
@@ -181,8 +186,22 @@ public class Usuario {
      */
     public Usuario comRu(long novoRu) {
         validar(novoRu > 0, "Novo RU deve ser maior que zero.");
-        return new Usuario(novoRu, nome, sobrenome, cpf, senha, classe, perfil, ativo);
+        return new Usuario(novoRu, nome, sobrenome, cpf, senha, classe, perfil, ativo, authUserId);
     }
+
+    /**
+     * Links an existing local employee to a verified Supabase Auth identity.
+     * This must only be called by a privileged provisioning workflow, never by a user-supplied request.
+     */
+    public void vincularAuthUserId(UUID externalId) {
+        validar(externalId != null, "Identidade externa obrigatoria.");
+        if (this.authUserId != null && !this.authUserId.equals(externalId)) {
+            throw new IllegalStateException("Identidade externa ja vinculada; trocas exigem revisao administrativa.");
+        }
+        this.authUserId = externalId;
+    }
+
+    public UUID getAuthUserId() { return authUserId; }
 
     // ── Autenticação ──────────────────────────────────────────────────────────
 
