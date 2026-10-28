@@ -1,6 +1,7 @@
 package app;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,16 +18,25 @@ public class StagingSupabaseSettings {
     private final String issuer;
     private final String projectUrl;
     private final String publishableKey;
+    private final String expectedProjectRef;
 
+    @Autowired
     public StagingSupabaseSettings(
             @Value("${stockos.security.mode:legacy-dev}") String mode,
             @Value("${stockos.security.supabase-issuer:}") String issuer,
             @Value("${stockos.supabase.url:}") String projectUrl,
-            @Value("${stockos.supabase.publishable-key:}") String publishableKey) {
+            @Value("${stockos.supabase.publishable-key:}") String publishableKey,
+            @Value("${stockos.supabase.expected-project-ref:}") String expectedProjectRef) {
         this.mode=mode;
         this.issuer=issuer;
         this.projectUrl=projectUrl;
         this.publishableKey=publishableKey;
+        this.expectedProjectRef=expectedProjectRef;
+    }
+
+    /** Backwards-compatible constructor used by existing unit and fixture tests. */
+    public StagingSupabaseSettings(String mode,String issuer,String projectUrl,String publishableKey) {
+        this(mode,issuer,projectUrl,publishableKey,"");
     }
 
     @PostConstruct
@@ -47,6 +57,9 @@ public class StagingSupabaseSettings {
                     || (!project.getPath().isEmpty() && !"/".equals(project.getPath()))
                     || !issuer.equals(projectUrl.replaceAll("/+$","")+"/auth/v1")
                     || !project.getHost().equalsIgnoreCase(tokenIssuer.getHost())
+                    || (!expectedProjectRef.isBlank() &&
+                        (!expectedProjectRef.matches("[a-z0-9-]{3,40}")
+                         || !host.equalsIgnoreCase(expectedProjectRef+".supabase.co")))
                     || !publishableKey.startsWith("sb_publishable_")
                     || publishableKey.length()<25) {
                 throw new IllegalArgumentException("inconsistent public Supabase config");

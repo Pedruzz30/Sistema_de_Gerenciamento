@@ -14,9 +14,9 @@ até que a segurança e o fluxo comercial sejam auditados.
 ## Decisões/autorização necessárias (quando estiver disponível)
 
 ### 1. Novo Supabase SOMENTE para StockOS
-- Definir nome da organização/projeto, região, modalidade de cobrança e aceitar
-  custos nos próprios termos da plataforma.
-- Escolher novo projeto independente, sem tocar nas bases da Space Underground.
+- **Concluído:** projeto `StockOS Staging` criado na organização Space Underground,
+  com banco independente na região US East (`us-east-1`), ref `earocdtfxtvcsfsfxbvt`.
+- Verificar plano/custos e necessidade futura de hospedar o banco no Brasil.
 - Configurar Auth: confirmação de e-mail, URLs de redirect, domínio futuro e
   provedor SMTP transacional. Usar chave de assinatura JWT assimétrica.
 - Obter URL do projeto, issuer e **publishable key**; as chaves `sb_secret`

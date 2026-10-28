@@ -1,13 +1,12 @@
 # StockOS — Staging, Auth, backups e restauração
 
 ## Estado atual
-**Somente uma fundação de staging.** Não há projeto Supabase StockOS
-criado, Auth real conectado, implantação ou backup de clientes configurado.
+**StockOS Staging agora existe**, na organização Space Underground, região `us-east-1`, referência `earocdtfxtvcsfsfxbvt`. O banco está vazio e não existe implantação nem backup de clientes configurado. Auth real ainda não foi testado.
 Perfil Spring `prod` bloqueado por código.
 
 ## Configuração isolada
-1. Criar **novo** projeto Supabase somente para StockOS, sem reutilizar
-   projetos existentes da Space Underground.
+1. Projeto criado: `StockOS Staging` (`earocdtfxtvcsfsfxbvt`). Não reutilizar
+   os bancos existentes da Space Underground.
 2. Selecionar assinatura assimétrica JWT com endpoint JWKS (não HS256 legado).
    Obter URL `https://<ref>.supabase.co` e **publishable key**
    `sb_publishable_...`. Nunca usar `service_role`/`sb_secret` no browser.
@@ -15,11 +14,12 @@ Perfil Spring `prod` bloqueado por código.
    `STOCKOS_SECURITY_MODE=supabase-jwt`,
    `STOCKOS_SUPABASE_AUTH_ISSUER=https://<ref>.supabase.co/auth/v1`,
    `STOCKOS_SUPABASE_URL=https://<ref>.supabase.co`,
-   `STOCKOS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`.
+   `STOCKOS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` e
+   `STOCKOS_SUPABASE_EXPECTED_PROJECT_REF=earocdtfxtvcsfsfxbvt`.
    Config inválida impede inicialização. Habilitar SSL verificado no JDBC
    conforme certificado e connection string providos pelo projeto.
-4. Provisionar funcionários verificados e vínculos apenas por processo
-   administrativo confiável; convites via e-mail ainda não implementados.
+4. O fluxo de convites com código de uso único está implementado; o envio de
+   e-mails automáticos e testes de identidade com Supabase Auth real ainda faltam.
 5. Validar todas as rotas e políticas, papéis DB e logs ANTES de liberar
    portas externas; não usar credenciais de superuser em produção.
 6. **NÃO remover o bloqueio `prod`** por conta destas etapas.

@@ -29,6 +29,16 @@ class StagingSupabaseSettingsTest {
     }
 
     @Test
+    void pinnedStockOsProjectRejectsOtherOrganizationsAuthIssuer() {
+        assertDoesNotThrow(()->new StagingSupabaseSettings(
+                "supabase-jwt",ISSUER,URL,PUBLIC,"stockos-test").validate());
+        assertThrows(IllegalStateException.class,()->new StagingSupabaseSettings(
+                "supabase-jwt",ISSUER,URL,PUBLIC,"other-project").validate());
+        assertThrows(IllegalStateException.class,()->new StagingSupabaseSettings(
+                "supabase-jwt",ISSUER,URL,PUBLIC,"../unsafe").validate());
+    }
+
+    @Test
     void localLegacyWithoutSupabaseIsStillAllowed() {
         assertDoesNotThrow(()->new StagingSupabaseSettings(
                 "legacy-dev","","","").validate());
