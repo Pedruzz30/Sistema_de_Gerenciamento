@@ -1,0 +1,22 @@
+# PostgreSQL for the LOCAL LEGACY preview only, never Supabase Staging.
+# Dedicated host port and Docker volume prevent touching older local databases.
+services:
+  postgres:
+    image: postgres:17
+    restart: "no"
+    environment:
+      POSTGRES_DB: stockos_legacy_local
+      POSTGRES_USER: stockos_local
+      POSTGRES_PASSWORD: ${STOCKOS_LOCAL_DB_PASSWORD:?Run scripts/dev/start-local-legacy.ps1}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - stockos_legacy_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockos_local -d stockos_legacy_local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  stockos_legacy_local_data:

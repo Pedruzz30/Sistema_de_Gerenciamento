@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fase46FlywayMigrationIntegrationTest {
 
-    private static final String VERSAO_ATUAL_SCHEMA = "20260715.01";
+    private static final String VERSAO_ATUAL_SCHEMA = "20261026.01";
 
     @Test
     void bancoVazioExecutaFlywayEHibernateValidate() throws Exception {
@@ -41,6 +41,12 @@ class Fase46FlywayMigrationIntegrationTest {
                 assertTrue(tabelaExiste(st, "venda_item_partes"));
                 assertTrue(tabelaExiste(st, "flyway_schema_history"));
                 assertEquals(VERSAO_ATUAL_SCHEMA, versaoAtualFlyway(st));
+                try (ResultSet rs = st.executeQuery("""
+                    select count(*) from pg_namespace where nspname='stockos_private'
+                    """)) {
+                    rs.next();
+                    assertEquals(0, rs.getInt(1), "Legacy Flyway must not create StockOS schema");
+                }
             }
         } finally {
             removerBancoTemporario(target);
@@ -151,7 +157,11 @@ class Fase46FlywayMigrationIntegrationTest {
     }
 
     private static String jdbcUrl() {
-        return System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://localhost:5432/sistema_gerenciamento");
+        // Default is the dedicated test database, never production. This URL
+        // is only used as the admin connection point to CREATE/DROP the
+        // throwaway sg_f46_* databases this test creates for itself; it must
+        // still never default to "sistema_gerenciamento".
+        return System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://localhost:5432/sistema_gerenciamento_test");
     }
 
     private static String dbUser() {
@@ -163,7 +173,9 @@ class Fase46FlywayMigrationIntegrationTest {
         if (env != null) {
             return env;
         }
-        return propriedadesLocais().getProperty("DB_PASSWORD", "");
+        Properties properties = propriedadesLocais();
+        return properties.getProperty("DB_PASSWORD",
+            properties.getProperty("spring.datasource.password", ""));
     }
 
     private static String adminUrl() {

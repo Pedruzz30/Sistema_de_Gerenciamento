@@ -1,0 +1,170 @@
+name: StockOS auth foundation checks
+
+on:
+  pull_request:
+    paths:
+      - 'pom.xml'
+      - 'src/main/resources/db/migration/**'
+      - 'src/main/java/**'
+      - 'src/main/resources/static/saas-*.html'
+      - 'src/main/resources/static/js/saas-*.js'
+      - 'src/main/resources/static/css/saas-*.css'
+      - 'src/test/java/integration/SaasComandaPostgresIntegrationTest.java'
+      - 'src/test/java/integration/SaasHttpSecurityPostgresIntegrationTest.java'
+      - 'src/test/java/integration/SaasIsolatedStagingHttpIntegrationTest.java'
+      - 'src/test/java/integration/SaasRlsReadExecutorPostgresIntegrationTest.java'
+      - 'src/main/resources/application-staging.properties'
+      - 'src/main/resources/application.properties'
+      - 'src/main/resources/db/saas-migration/**'
+      - 'scripts/ci/verify-saas-runtime-reader-rls.sh'
+      - 'src/test/java/app/StockOsFlywaySeparationTest.java'
+      - 'src/test/java/integration/Fase46FlywayMigrationIntegrationTest.java'
+      - 'src/test/java/app/ProductionSafetyGateTest.java'
+      - 'src/test/java/app/StagingSupabaseSettingsTest.java'
+      - 'src/test/java/app/StockOsStagingMigrationSafetyTest.java'
+      - 'src/main/resources/application-staging.properties'
+      - 'src/test/java/app/SupabaseJwtSignatureTest.java'
+      - 'src/test/java/app/SupabaseJwtEs256SignatureTest.java'
+      - 'scripts/ci/**'
+      - 'scripts/dev/**'
+      - 'package.json'
+      - 'vite.config.mjs'
+      - 'docs/stockos-vite-local.md'
+      - 'compose.stockos-local.yml'
+      - 'docs/stockos-windows-local-recovery.md'
+      - 'tests/browser/**'
+      - 'docs/stockos-staging-recovery.md'
+      - 'src/test/java/controller/ControllerUtilsJwtTest.java'
+      - 'src/test/java/service/SaasTenantAccessTest.java'
+      - 'src/test/java/service/SaasLicenseServiceTest.java'
+      - 'src/test/java/service/SaasAdminAccessTest.java'
+      - '.github/workflows/stockos-auth-foundation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-auth-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Validate browser modules syntax
+        run: |
+          node --check src/main/resources/static/js/saas-comandas.js
+          node --check src/main/resources/static/js/saas-admin.js
+      - name: Verify local launcher rejects incompatible Java before Docker
+        run: pwsh -NoProfile -File scripts/dev/start-local-legacy.ps1 -CheckJavaOnly
+      - name: Compile and test JWT security foundation
+        run: mvn -B -Dtest=ProductionSafetyGateTest,StagingSupabaseSettingsTest,StockOsStagingMigrationSafetyTest,StockOsFlywaySeparationTest,SupabaseJwtSignatureTest,SupabaseJwtEs256SignatureTest,ControllerUtilsJwtTest,CaixaControllerDailyMetricsTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
+
+  postgres-saas-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: stockos_ci_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stockos_ci_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      STOCKOS_TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_test
+      DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Validate local Docker Compose without starting or deleting local databases
+        env:
+          STOCKOS_LOCAL_DB_PASSWORD: ci_config_validation_only
+        run: docker compose -f compose.stockos-local.yml config --quiet
+      - name: Verify legacy Flyway never installs SaaS schema
+        run: mvn -B -Dtest=Fase46FlywayMigrationIntegrationTest test
+      - name: Run PostgreSQL Flyway + SaaS transaction integration tests
+        run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test
+      - name: Test real HTTP security and tenant boundaries with mocked JWT decoder
+        run: mvn -B -Dtest=SaasHttpSecurityPostgresIntegrationTest test
+      - name: Bootstrap SaaS-only schema in a second disposable database
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/verify-saas-only-bootstrap.sh
+      - name: Verify standalone SaaS Spring Boot HTTP on database without legacy tables
+        env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
+          STOCKOS_SAAS_ONLY_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
+        run: mvn -B -Dtest=SaasIsolatedStagingHttpIntegrationTest test
+      - name: Enforce read-only runtime role and cross-tenant RLS on SaaS-only database
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/verify-saas-runtime-reader-rls.sh
+      - name: Test Spring transaction-local JWT RLS executor using restricted JDBC login
+        env:
+          STOCKOS_SAAS_ONLY_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
+        run: mvn -B -Dtest=SaasRlsReadExecutorPostgresIntegrationTest test
+      - name: Prove full database backup and restore on disposable PostgreSQL
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/verify-stockos-backup-restore.sh
+
+  vite-frontend-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Vite and dashboard syntax
+        run: |
+          node --check vite.config.mjs
+          node --check src/main/resources/static/js/dashboard.js
+      - name: Install Vite dev dependencies without changing repository
+        run: npm install --no-audit --no-fund
+      - name: Start local-only frontend server and check existing pages
+        run: |
+          npm run dev > /tmp/stockos-vite.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for try in $(seq 1 25); do
+            if curl --fail --silent --output /tmp/stockos-login.html http://127.0.0.1:5173/login.html; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/stockos-vite.log; exit 1; fi
+          grep -q 'StockOS' /tmp/stockos-login.html
+          curl --fail --silent http://127.0.0.1:5173/saas-comandas.html | grep -q 'login-form'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5173/login)" = 302
+          echo "PASS: Vite loads legacy login and SaaS pages on localhost; clean route redirects"
+
+  browser-saas-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned browser automation dependency
+        run: python -m pip install playwright==1.56.0
+      - name: Install headless Chromium and runtime libraries
+        run: python -m playwright install --with-deps chromium
+      - name: Exercise browser flows with fake Auth and API
+        run: python -m unittest discover -s tests/browser -p 'test_*.py' -v

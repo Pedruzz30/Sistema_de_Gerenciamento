@@ -4,7 +4,7 @@ Sistema web para operacao de estoque, compras, fornecedores, notas fiscais, cota
 
 ## Stack
 
-- Java 17
+- Java 25
 - Spring Boot 3.3
 - Spring Web
 - Spring Data JPA
@@ -25,7 +25,7 @@ Sistema web para operacao de estoque, compras, fornecedores, notas fiscais, cota
 
 ## Requisitos
 
-- Java 17 ou superior
+- Java 25 ou superior
 - Maven 3.9 ou superior
 - PostgreSQL em execucao
 
