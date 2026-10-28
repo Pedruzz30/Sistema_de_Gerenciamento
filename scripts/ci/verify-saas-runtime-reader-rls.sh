@@ -91,4 +91,18 @@ SQL
    exit 1
  fi
 done
+# Create a disposable ONLY local database login, so Java tests never run
+# as the superuser or DB owner. Grant only the NOLOGIN read role.
+docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U postgres -d "$db" <<'SQL'
+CREATE ROLE stockos_ci_reader LOGIN INHERIT NOSUPERUSER NOCREATEDB
+  NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD 'ci_reader_only';
+GRANT stockos_runtime_reader TO stockos_ci_reader;
+DO $
+BEGIN
+  IF has_table_privilege('stockos_ci_reader','stockos_private.produtos','SELECT') IS DISTINCT FROM true
+     OR has_table_privilege('stockos_ci_reader','stockos_private.produtos','UPDATE') THEN
+    RAISE EXCEPTION 'CI login has incorrect reader privileges';
+  END IF;
+END $;
+SQL
 echo "PASS: nonowner RLS blocks cross-tenant, context leakage, mutations and invitations"

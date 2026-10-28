@@ -12,6 +12,7 @@ on:
       - 'src/test/java/integration/SaasComandaPostgresIntegrationTest.java'
       - 'src/test/java/integration/SaasHttpSecurityPostgresIntegrationTest.java'
       - 'src/test/java/integration/SaasIsolatedStagingHttpIntegrationTest.java'
+      - 'src/test/java/integration/SaasRlsReadExecutorPostgresIntegrationTest.java'
       - 'src/main/resources/application-staging.properties'
       - 'src/main/resources/application.properties'
       - 'src/main/resources/db/saas-migration/**'
@@ -101,6 +102,10 @@ jobs:
         env:
           CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: bash scripts/ci/verify-saas-runtime-reader-rls.sh
+      - name: Test Spring transaction-local JWT RLS executor using restricted JDBC login
+        env:
+          STOCKOS_SAAS_ONLY_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
+        run: mvn -B -Dtest=SaasRlsReadExecutorPostgresIntegrationTest test
       - name: Prove full database backup and restore on disposable PostgreSQL
         env:
           CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}

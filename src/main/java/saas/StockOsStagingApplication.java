@@ -54,6 +54,7 @@ import service.*;
         SaasReportsService.class,
         SaasStockReturnService.class,
         SaasTenantAccess.class,
+        SaasRlsReadExecutor.class,
         SaasVerifiedAuthIdentity.class
 })
 public class StockOsStagingApplication {
