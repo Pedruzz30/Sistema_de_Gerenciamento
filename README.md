@@ -130,6 +130,9 @@ curl -Headers @{ "X-User-RU" = "<ru-retornado>" } "http://localhost:8080/api/pro
 
 ## Testes
 
+Consulte [Ambiente de testes](docs/ambiente-testes.md) antes de executar a suite. Nunca use dados de clientes ou do ambiente principal.
+
+
 Executar toda a suite:
 
 ```powershell

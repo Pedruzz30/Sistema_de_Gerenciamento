@@ -3,6 +3,7 @@ package integration;
 import app.Main;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import support.TestDatabaseGuard;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -34,7 +35,7 @@ class Fase46FlywayMigrationIntegrationTest {
                 }
             });
 
-            try (Connection conn = DriverManager.getConnection(target.url(), target.user(), target.password());
+            try (Connection conn = safeConnection(target.url(), target.user(), target.password());
                  Statement st = conn.createStatement()) {
                 assertTrue(tabelaExiste(st, "vendas"));
                 assertTrue(tabelaExiste(st, "venda_item_modificador_impactos"));
@@ -58,7 +59,7 @@ class Fase46FlywayMigrationIntegrationTest {
                     .load()
                     .migrate();
 
-            try (Connection conn = DriverManager.getConnection(target.url(), target.user(), target.password());
+            try (Connection conn = safeConnection(target.url(), target.user(), target.password());
                  Statement st = conn.createStatement()) {
                 st.execute("drop table flyway_schema_history");
             }
@@ -69,7 +70,7 @@ class Fase46FlywayMigrationIntegrationTest {
                 }
             });
 
-            try (Connection conn = DriverManager.getConnection(target.url(), target.user(), target.password());
+            try (Connection conn = safeConnection(target.url(), target.user(), target.password());
                  Statement st = conn.createStatement()) {
                 assertEquals(VERSAO_ATUAL_SCHEMA, versaoAtualFlyway(st));
                 assertTrue(tabelaExiste(st, "venda_item_consumo_estornos"));
@@ -83,7 +84,7 @@ class Fase46FlywayMigrationIntegrationTest {
     void bancoIncompativelFalhaAntesDeValidarAplicacao() throws Exception {
         DatabaseTarget target = criarBancoTemporario("bad");
         try {
-            try (Connection conn = DriverManager.getConnection(target.url(), target.user(), target.password());
+            try (Connection conn = safeConnection(target.url(), target.user(), target.password());
                  Statement st = conn.createStatement()) {
                 st.execute("create table produtos (id integer primary key)");
             }
@@ -119,8 +120,9 @@ class Fase46FlywayMigrationIntegrationTest {
     private DatabaseTarget criarBancoTemporario(String sufixo) throws Exception {
         String dbName = ("sg_f46_" + sufixo + "_" + Long.toUnsignedString(System.nanoTime(), 36))
                 .toLowerCase(Locale.ROOT);
+        TestDatabaseGuard.assertTemporaryDatabaseName(dbName);
         DatabaseTarget target = new DatabaseTarget(dbName, jdbcUrlForDatabase(dbName), dbUser(), dbPassword());
-        try (Connection conn = DriverManager.getConnection(adminUrl(), target.user(), target.password());
+        try (Connection conn = safeConnection(adminUrl(), target.user(), target.password());
              Statement st = conn.createStatement()) {
             st.execute("create database " + dbName);
         }
@@ -128,7 +130,8 @@ class Fase46FlywayMigrationIntegrationTest {
     }
 
     private void removerBancoTemporario(DatabaseTarget target) throws Exception {
-        try (Connection conn = DriverManager.getConnection(adminUrl(), target.user(), target.password());
+        TestDatabaseGuard.assertTemporaryDatabaseName(target.dbName());
+        try (Connection conn = safeConnection(adminUrl(), target.user(), target.password());
              Statement st = conn.createStatement()) {
             st.execute("drop database if exists " + target.dbName() + " with (force)");
         }
@@ -151,25 +154,33 @@ class Fase46FlywayMigrationIntegrationTest {
     }
 
     private static String jdbcUrl() {
-        // Default is the dedicated test database, never production. This URL
-        // is only used as the admin connection point to CREATE/DROP the
-        // throwaway sg_f46_* databases this test creates for itself; it must
-        // still never default to "sistema_gerenciamento".
-        return System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://localhost:5432/sistema_gerenciamento_test");
+        String url = configured(System.getenv("TEST_DB_URL"),
+                testProperties().getProperty("TEST_DB_URL"),
+                TestDatabaseGuard.DEFAULT_TEST_JDBC_URL);
+        TestDatabaseGuard.assertSafeJdbcUrl(url);
+        return url;
     }
 
     private static String dbUser() {
-        return System.getenv().getOrDefault("DB_USERNAME", "postgres");
+        return configured(System.getenv("TEST_DB_USERNAME"),
+                testProperties().getProperty("TEST_DB_USERNAME"), "stockos_test");
     }
 
     private static String dbPassword() {
-        String env = System.getenv("DB_PASSWORD");
-        if (env != null) {
-            return env;
+        return configured(System.getenv("TEST_DB_PASSWORD"),
+                testProperties().getProperty("TEST_DB_PASSWORD"), "");
+    }
+
+    private static String configured(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
         }
-        Properties properties = propriedadesLocais();
-        return properties.getProperty("DB_PASSWORD",
-            properties.getProperty("spring.datasource.password", ""));
+        return "";
+    }
+
+    private static Connection safeConnection(String url, String user, String password) throws Exception {
+        TestDatabaseGuard.assertSafeJdbcUrl(url);
+        return DriverManager.getConnection(url, user, password);
     }
 
     private static String adminUrl() {
@@ -178,20 +189,24 @@ class Fase46FlywayMigrationIntegrationTest {
 
     private static String jdbcUrlForDatabase(String dbName) {
         String raw = jdbcUrl();
+        TestDatabaseGuard.assertSafeJdbcUrl(raw);
+        TestDatabaseGuard.assertTemporaryDatabaseName(dbName);
         URI uri = URI.create(raw.substring("jdbc:".length()));
         String query = uri.getQuery() == null ? "" : "?" + uri.getQuery();
-        return "jdbc:postgresql://" + uri.getAuthority() + "/" + dbName + query;
+        String url = "jdbc:postgresql://" + uri.getAuthority() + "/" + dbName + query;
+        TestDatabaseGuard.assertSafeJdbcUrl(url);
+        return url;
     }
 
     private record DatabaseTarget(String dbName, String url, String user, String password) {}
 
-    private static Properties propriedadesLocais() {
+    private static Properties testProperties() {
         Properties properties = new Properties();
         try (java.io.InputStream in = java.nio.file.Files.newInputStream(
-                java.nio.file.Path.of("src", "main", "resources", "application-local.properties"))) {
+                java.nio.file.Path.of("src", "test", "resources", "application-test-local.properties"))) {
             properties.load(in);
         } catch (Exception ignored) {
-            // application-local.properties e opcional.
+            // Configuracao local de testes e opcional.
         }
         return properties;
     }
