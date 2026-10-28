@@ -20,73 +20,49 @@ function dataLocalHojeIso() {
 }
 
 async function carregarDados() {
-  let produtos = [];
-  let caixas = [];
-  let movimentacoes = [];
-  let metricasHoje = null;
-  let rentabilidade = null;
+  // Antes: cinco awaits serializados faziam cada pedido esperar o anterior.
+  // Em paralelo, um endpoint lento não bloqueia o resto do dashboard.
+  const jobs = [
+    PODE_VER_ESTOQUE_DASH ? ['/api/produtos', 'produtos'] : null,
+    PODE_VER_FINANCEIRO_DASH ? ['/api/caixas', 'caixas'] : null,
+    PODE_VER_ESTOQUE_DASH ? ['/api/movimentacoes', 'movimentacoes'] : null,
+    PODE_VER_FINANCEIRO_DASH ? ['/api/caixas/metricas/hoje', 'metricasHoje'] : null,
+    PODE_VER_RENTABILIDADE_DASH ? ['/api/rentabilidade/ranking', 'rentabilidade'] : null
+  ].filter(Boolean);
 
-  if (PODE_VER_ESTOQUE_DASH) {
+  const resultado = Object.create(null);
+  // Pintar estado inicial sem aguardar consultas ou ranking pesado.
+  renderSummaryCards([], [], null);
+  renderAlertas([]);
+  renderMovimentacoes([]);
+  renderFinanceiro([], null);
+
+  await Promise.all(jobs.map(async ([url, key]) => {
+    const begin = performance.now();
     try {
-      const resp = await fetch('/api/produtos');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      produtos = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar produtos:', err);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      resultado[key] = await response.json();
+    } catch (error) {
+      console.error('StockOS: falha em ' + url, error);
+      resultado[key] = null;
+    } finally {
+      console.debug('[StockOS dashboard] ' + url + ': ' + Math.round(performance.now() - begin) + 'ms');
     }
-  }
+    const produtos = resultado.produtos || [];
+    const caixas = resultado.caixas || [];
+    const movimentos = resultado.movimentacoes || [];
+    // Atualizar partes independentes assim que cada resposta chega.
+    if (key === 'produtos') { renderSummaryCards(produtos, caixas, resultado.metricasHoje); renderAlertas(produtos); }
+    if (key === 'caixas' || key === 'metricasHoje') { renderSummaryCards(produtos, caixas, resultado.metricasHoje); renderFinanceiro(caixas, resultado.metricasHoje); }
+    if (key === 'movimentacoes') renderMovimentacoes(movimentos);
+  }));
 
-  if (PODE_VER_FINANCEIRO_DASH) {
-    try {
-      const resp = await fetch('/api/caixas');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      caixas = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar caixas:', err);
-    }
-  }
-
-  if (PODE_VER_ESTOQUE_DASH) {
-    try {
-      const resp = await fetch('/api/movimentacoes');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      movimentacoes = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar movimentações:', err);
-    }
-  }
-
-  if (PODE_VER_FINANCEIRO_DASH) {
-    // BUG 2 fix: use dedicated metrics endpoint for correct ticket médio
-    try {
-      const resp = await fetch('/api/caixas/metricas/hoje');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      metricasHoje = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar métricas do dia:', err);
-    }
-  }
-
-  if (PODE_VER_RENTABILIDADE_DASH) {
-    try {
-      const resp = await fetch('/api/rentabilidade/ranking');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      rentabilidade = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar rentabilidade:', err);
-    }
-  }
-
-  renderSummaryCards(produtos, caixas, metricasHoje);
-  renderAlertas(produtos);
-  renderMovimentacoes(movimentacoes);
-  renderFinanceiro(caixas, metricasHoje);
-  // Salva dados para uso quando a aba de gráficos for aberta
-  window._dadosProdutos = produtos;
-  window._dadosMov      = movimentacoes;
-  window._dadosCaixas   = caixas;
-  window._dadosRentabilidade = rentabilidade;
-  window._graficosRendered = false; // força re-render se dados recarregarem
+  window._dadosProdutos = resultado.produtos || [];
+  window._dadosMov = resultado.movimentacoes || [];
+  window._dadosCaixas = resultado.caixas || [];
+  window._dadosRentabilidade = resultado.rentabilidade || null;
+  window._graficosRendered = false;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
