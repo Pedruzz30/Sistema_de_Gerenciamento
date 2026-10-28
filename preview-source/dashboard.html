@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockOS — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="tokens.css">
+    <link rel="stylesheet" href="app.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-mark">S</div>
+            <div class="brand-text">
+                <span class="name">StockOS</span>
+                <span class="sub">Gestão · Estoque</span>
+            </div>
+        </div>
+
+        <span class="nav-label">Operação</span>
+        <nav class="nav" id="nav-items"></nav>
+
+        <div class="sidebar-foot">
+            <div class="user-chip">
+                <div class="avatar user-avatar" id="user-avatar">--</div>
+                <div class="user-meta user-info">
+                    <span class="name user-name" id="user-name">Carregando...</span>
+                    <span class="role user-role" id="user-role">Operador · RU --</span>
+                </div>
+                <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
+            </div>
+        </div>
+    </aside>
+
+    <div class="main page">
+        <header class="topbar header">
+            <div class="topbar-left">
+                <div class="crumbs">
+                    <span>StockOS</span>
+                    <span class="sep">›</span>
+                    <span class="cur">Dashboard</span>
+                </div>
+                <h1 class="page-title header-title" id="header-title">Dashboard</h1>
+                <p class="page-sub header-sub" id="header-sub">Visão operacional consolidada do turno.</p>
+            </div>
+            <div class="topbar-right header-right">
+                <div class="live-pill">
+                    <span class="live-dot"></span>
+                    <span id="dashboard-context-status">Visão do dia</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-body content">
+
+        <!-- Cards de resumo (sempre visíveis acima das abas) -->
+        <div class="summary-grid" id="summary-grid"></div>
+
+        <!-- Abas -->
+        <div class="tabs fade-up dashboard-tabs">
+            <button class="tab-btn active" id="tab-visao"    onclick="abrirTabDash('visao')">Visão Geral</button>
+            <button class="tab-btn" id="tab-graficos" onclick="abrirTabDash('graficos')">Análise Visual</button>
+        </div>
+
+        <!-- ── Aba: Visão Geral ─────────────────────────────────────── -->
+        <div id="tabpanel-visao" class="tab-panel active">
+            <div class="main-grid">
+
+                <div class="stack">
+                    <div class="perm-section card fade-up" id="section-movimentacoes">
+                        <div class="card-header">
+                            <span class="card-title">Movimentações Recentes</span>
+                            <span class="card-badge">Hoje</span>
+                        </div>
+                        <div class="mov-list" id="mov-list"></div>
+                    </div>
+
+                    <div class="perm-section card fade-up" id="section-financeiro">
+                        <div class="card-header">
+                            <span class="card-title">Resumo Financeiro</span>
+                            <span class="card-badge">Dia atual</span>
+                        </div>
+                        <div class="financial-grid">
+                            <div class="fin-card">
+                                <div class="fin-label">Vendas de Hoje</div>
+                                <div class="fin-value green" id="fin-total-vendas">—</div>
+                            </div>
+                            <div class="fin-card">
+                                <div class="fin-label">Caixas Abertos</div>
+                                <div class="fin-value purple" id="fin-caixas-abertos">—</div>
+                            </div>
+                            <div class="fin-card">
+                                <div class="fin-label">Ticket Médio</div>
+                                <div class="fin-value" id="fin-ticket-medio">—</div>
+                            </div>
+                        </div>
+                        <div class="card-header card-header--subtle">
+                            <span class="card-title card-title--muted">Status dos Caixas</span>
+                        </div>
+                        <div class="caixa-list" id="caixa-list"></div>
+                    </div>
+                </div>
+
+                <div class="stack">
+                    <div class="perm-section card fade-up" id="section-alertas">
+                        <div class="card-header">
+                            <span class="card-title">Alertas de Estoque</span>
+                            <span class="card-badge" id="alerta-count">—</span>
+                        </div>
+                        <div class="alert-list" id="alerta-list"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── Aba: Análise Visual ──────────────────────────────────── -->
+        <div id="tabpanel-graficos" class="tab-panel">
+
+            <!-- Linha 1: Nível de estoque (largo) + Movimentações (fixo) -->
+            <div class="section-grid-two">
+
+                <div class="card fade-up">
+                    <div class="card-header">
+                        <span class="card-title">Nível de Estoque por Produto</span>
+                        <span class="card-badge" id="badge-g-estoque">—</span>
+                    </div>
+                    <div id="wrap-g-estoque" class="chart-frame chart-frame--tall">
+                        <canvas id="grafico-estoque"></canvas>
+                    </div>
+                    <div id="empty-g-estoque" class="chart-empty chart-empty--tall">
+                        Nenhum produto cadastrado.
+                    </div>
+                </div>
+
+                <div class="card card--column fade-up">
+                    <div class="card-header">
+                        <span class="card-title">Movimentações</span>
+                        <span class="card-badge">entradas vs saídas</span>
+                    </div>
+                    <div class="chart-center">
+                        <canvas id="grafico-mov"></canvas>
+                    </div>
+                    <div id="legend-g-mov" class="legend-inline"></div>
+                    <div id="empty-g-mov" class="chart-empty">
+                        Nenhuma movimentação.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Linha 2: Vendas por caixa (largo) + Distribuição de alertas -->
+            <div class="section-grid-two">
+
+                <div class="card fade-up">
+                    <div class="card-header">
+                        <span class="card-title">Movimentações por Caixa</span>
+                        <span class="card-badge">histórico</span>
+                    </div>
+                    <div id="wrap-g-caixas" class="chart-frame chart-frame--medium">
+                        <canvas id="grafico-caixas"></canvas>
+                    </div>
+                    <div id="empty-g-caixas" class="chart-empty chart-empty--tall">
+                        Nenhum caixa com dados de venda ainda.
+                    </div>
+                </div>
+
+                <div class="card card--column fade-up">
+                    <div class="card-header">
+                        <span class="card-title">Distribuição de Alertas</span>
+                        <span class="card-badge">por nível</span>
+                    </div>
+                    <div class="chart-center chart-center--compact">
+                        <canvas id="grafico-alertas"></canvas>
+                    </div>
+                    <div id="legend-g-alertas" class="legend-inline legend-inline--stack"></div>
+                </div>
+
+            </div>
+
+            <section class="perm-section card fade-up profitability-section" id="section-rentabilidade">
+                <div class="card-header">
+                    <span class="card-title">Análise de Lucratividade</span>
+                    <span class="card-badge" id="profitability-badge">aguardando dados</span>
+                </div>
+                <div class="profitability-intro">
+                    Ranking calculado no backend com preço de venda atual, último custo cotado e saídas de estoque originadas por venda.
+                </div>
+
+                <div id="profit-summary-grid" class="profit-summary-grid"></div>
+
+                <div class="profit-layout">
+                    <div class="profit-panel">
+                        <div class="profit-panel-header">
+                            <div>
+                                <div class="profit-panel-title">Margem por Produto</div>
+                                <div class="profit-panel-sub">Barras horizontais ordenadas da maior para a menor margem válida.</div>
+                            </div>
+                            <span class="profit-panel-badge" id="profit-chart-badge">0 itens elegíveis</span>
+                        </div>
+                        <div id="profit-chart-empty" class="profit-empty" hidden>
+                            Nenhum produto possui preço de venda e custo válidos ao mesmo tempo para gerar a análise de margem.
+                        </div>
+                        <div id="profit-chart-scroll" class="profit-chart-scroll">
+                            <div id="profit-chart-wrap" class="profit-chart-wrap">
+                                <canvas id="grafico-lucratividade"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profit-panel">
+                        <div class="profit-panel-header">
+                            <div>
+                                <div class="profit-panel-title">Ranking de Rentabilidade</div>
+                                <div class="profit-panel-sub">Produtos com margem válida aparecem primeiro; itens sem custo ficam sinalizados como pendentes.</div>
+                            </div>
+                            <span class="profit-panel-badge" id="profit-table-badge">0 produtos</span>
+                        </div>
+                        <div id="profit-table-empty" class="profit-empty" hidden>
+                            Nenhum produto cadastrado para compor o ranking.
+                        </div>
+                        <div id="profit-table-wrap" class="profit-table-wrap">
+                            <table class="profit-table">
+                                <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Produto</th>
+                                    <th>Venda</th>
+                                    <th>Custo</th>
+                                    <th>Lucro/Un.</th>
+                                    <th>Margem</th>
+                                    <th>Vendidas</th>
+                                    <th>Lucro Est.</th>
+                                    <th>Status</th>
+                                </tr>
+                                </thead>
+                                <tbody id="profit-ranking-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script src="/js/shared.js"></script>
+<script src="/js/dashboard.js"></script>
+<script>
+    // Atualiza o badge de alertas após renderizar
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const alertas = document.querySelectorAll('.alert-item').length;
+        const badge = document.getElementById('alerta-count');
+        if (badge) badge.textContent = alertas + ' alertas';
+      }, 100);
+    });
+</script>
+
+</body>
+</html>

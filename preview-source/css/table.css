@@ -1,0 +1,49 @@
+/* Tabelas */
+.table-wrap {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  overflow: auto;
+}
+.table { width: 100%; font-size: var(--fs-13); }
+.table thead th {
+  position: sticky; top: 0;
+  background: var(--paper-raised);
+  font-weight: 500;
+  font-size: var(--fs-10);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-4);
+  text-align: left;
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.table tbody td {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+  color: var(--ink-3);
+}
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover td { background: var(--paper-raised); }
+
+.col-num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.col-actions { text-align: right; width: 1%; white-space: nowrap; }
+.col-actions .iconbtn + .iconbtn { margin-left: var(--sp-1); }
+
+.cell-main { font-weight: 500; color: var(--ink); }
+.cell-sub { font-size: var(--fs-12); color: var(--ink-4); margin-top: 2px; }
+
+/* Level bar */
+.level-bar {
+  display: inline-block;
+  width: 72px; height: 5px;
+  background: var(--paper-raised);
+  border-radius: 100px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.level-bar > span { display: block; height: 100%; background: var(--ok); border-radius: 100px; transition: width 0.3s; }
+.level-bar.warn > span { background: var(--warn); }
+.level-bar.bad > span { background: var(--bad); }

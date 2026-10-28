@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StockOS — Comandas</title>
+<link rel="stylesheet" href="/css/saas-comandas.css">
+</head>
+<body>
+<header><strong>STOCK<span>OS</span></strong><small>Painel de comandas · Piloto</small><button id="logout" hidden>Sair</button></header>
+<main>
+<section id="login" class="panel">
+<h1>Acesse seu estabelecimento</h1>
+<p class="muted">Ambiente de testes. Utilize sua conta StockOS autorizada.</p>
+<form id="login-form"><label>E-mail<input type="email" id="email" required autocomplete="email"></label><label>Senha<input type="password" id="password" required autocomplete="current-password"></label><button type="submit">Entrar</button></form>
+</section>
+<section id="workspace" hidden>
+<section class="panel" id="claim-invite-panel">
+  <h2>Recebeu um convite para trabalhar?</h2>
+  <p class="muted">Entre com a conta Supabase cujo e-mail foi confirmado e informe o código de convite fornecido pelo proprietário.</p>
+  <form id="claim-invite-form">
+    <label>Código de convite<input id="claim-invite-code" type="text" minlength="43" maxlength="43" autocomplete="off" required></label>
+    <button type="submit">Aceitar convite</button>
+  </form>
+</section>
+<div id="license-banner" class="license" hidden role="status" aria-live="polite"></div>
+<div class="topline"><div><h1>Comandas</h1><p class="muted">Registre cada produto quando ele for entregue.</p></div><div class="selection"><label>Empresa<select id="empresa"></select></label><label>Filial<select id="filial"></select></label></div></div>
+<div class="bar"><button id="refresh">Atualizar</button><form id="open-form"><label>Nova comanda <input id="numero" type="number" min="1" max="9999" placeholder="001" required></label><button type="submit">Abrir</button></form></div>
+<div class="layout"><section class="panel"><h2>Em aberto</h2><div id="comandas" class="cards"></div></section><section class="panel"><h2 id="detail-title">Selecione uma comanda</h2><div id="detail" hidden><div id="itens"></div><div class="totals"><span>Total <strong id="total">—</strong></span><span>Pago <strong id="paid">—</strong></span><span>Restante <strong id="restante">—</strong></span></div><form id="item-form"><h3>Adicionar produto</h3><select id="produto" required></select><label>Quantidade<input id="quantidade" type="number" min="1" value="1" required></label><button type="submit">Registrar entrega</button></form><form id="pay-form"><h3>Registrar pagamento</h3><select id="modalidade"><option>DINHEIRO</option><option>PIX</option><option>DEBITO</option><option>CREDITO</option></select><label>Valor (R$)<input id="valor" type="number" min=".01" step=".01" required></label><button type="submit">Registrar pagamento</button></form><section id="payments-panel" class="payments-panel">
+  <h3>Pagamentos registrados</h3>
+  <p class="muted">Estornos registrados aqui não devolvem valores automaticamente pelo banco ou maquininha.</p>
+  <div id="payment-entries"></div>
+</section><button id="close-tab">Encerrar comanda</button></div></section></div>
+
+<section id="refunds-panel" class="panel cash-panel" hidden>
+  <h2>Devoluções de comandas fechadas</h2>
+  <p class="muted">Somente gerente e proprietário. Registra devoluções já realizadas, não envia dinheiro ao cliente.</p>
+  <label>Selecionar comanda encerrada<select id="closed-tab-select"></select></label>
+  <div id="closed-tab-payments"></div>
+  <h3>Produtos devolvidos fisicamente</h3>
+  <p class="muted">Selecione reestoque somente para produtos em condição de revenda.</p>
+  <div id="closed-stock-items"></div>
+
+</section>
+<section id="catalog-panel" class="panel cash-panel" hidden>
+<h2>Produtos e relatórios</h2>
+<form id="catalog-create">
+<h3>Novo produto</h3>
+<label>Código<input id="catalog-code" maxlength="60" required></label>
+<label>Nome<input id="catalog-name" maxlength="160" required></label>
+<label>Preço de venda<input id="catalog-price" type="number" step=".01" min="0" required></label>
+<label>Estoque inicial<input id="catalog-stock" type="number" min="0" value="0" required></label>
+<button type="submit">Cadastrar produto</button>
+</form>
+<h3>Editar produto existente</h3><label>Produto<select id="catalog-select"></select></label>
+<form id="catalog-edit">
+<label>Código<input id="catalog-edit-code" required maxlength="60"></label>
+<label>Nome<input id="catalog-edit-name" required maxlength="160"></label>
+<label>Preço<input id="catalog-edit-price" type="number" min="0" step=".01" required></label>
+<label><input id="catalog-edit-active" type="checkbox" checked> Produto ativo</label>
+<p class="muted">Estoque não é alterado por aqui. Use conferência de inventário.</p>
+<button type="submit">Salvar cadastro</button>
+</form>
+<h3>Resumo operacional</h3>
+<form id="report-filter"><label>Período<select id="report-days"><option value="1">Últimas 24 horas</option><option value="7" selected>Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label><button type="submit">Atualizar relatórios</button></form>
+<div id="reports-summary"></div><div id="reports-low-stock"></div><div id="reports-top-products"></div>
+</section>
+<section id="employees-panel" class="panel cash-panel" hidden>
+ <h2>Funcionários da empresa</h2>
+ <p class="muted">Apenas o proprietário pode alterar acesso. Convites para novas contas ainda não estão disponíveis.</p>
+ <h3>Convidar novo funcionário</h3>
+ <form id="invite-create-form">
+  <label>E-mail confirmado da pessoa<input id="invite-email" type="email" required></label>
+  <label>Permissão<select id="invite-role"><option value="ATENDENTE">Atendente</option><option value="GERENTE">Gerente</option></select></label>
+  <button type="submit">Criar convite de 72 horas</button>
+ </form>
+ <p id="invite-token-output" class="muted" aria-live="polite"></p>
+ <p class="muted">O código aparece uma única vez. Compartilhe apenas diretamente com o funcionário convidado; o envio por e-mail ainda não é automático.</p>
+ <div id="employees-list"></div>
+ <h3>Histórico de permissões</h3><div id="employees-audit"></div>
+ <h3>Convites criados</h3>
+ <button id="invite-list-refresh" type="button">Atualizar convites</button>
+ <div id="invite-list"></div>
+</section>
+<section id="goods-panel" class="panel cash-panel" hidden>
+  <h2>Receber mercadorias</h2>
+  <p class="muted">Registre a entrega física do fornecedor uma única vez, conferindo documento e quantidades.</p>
+  <form id="supplier-form">
+    <h3>Novo fornecedor</h3>
+    <label>Nome<input id="supplier-name" maxlength="160" required></label>
+    <label>CNPJ/identificação (opcional)<input id="supplier-document" maxlength="32"></label>
+    <button type="submit">Cadastrar fornecedor</button>
+  </form>
+  <form id="receipt-form">
+    <h3>Nova entrada</h3>
+    <label>Fornecedor<select id="receipt-supplier" required></select></label>
+    <label>Nota/referência<input id="receipt-document" minlength="3" maxlength="80" required></label>
+    <label>Produto<select id="receipt-product" required></select></label>
+    <label>Quantidade recebida<input id="receipt-quantity" type="number" min="1"></label>
+    <label>Custo unitário (R$)<input id="receipt-unit-cost" type="number" min="0" step=".01"></label>
+    <button id="receipt-add" type="button">Adicionar à lista</button>
+    <div id="receipt-cart" aria-live="polite"></div>
+    <strong id="receipt-total">Total da entrada: R$ 0,00</strong>
+    <button id="receipt-confirm" type="submit" disabled>Confirmar entrada completa</button>
+  </form>
+  <h3>Últimas entradas</h3><div id="receipt-history"></div>
+</section>
+<section id="inventory-panel" class="panel cash-panel" hidden>
+  <h2>Conferência de estoque</h2>
+  <p class="muted">Ajuste inventário apenas após contar fisicamente as unidades. Cada correção é auditada.</p>
+  <form id="inventory-form">
+    <label>Produto<select id="inventory-product" required></select></label>
+    <label>Saldo esperado<input id="inventory-expected" type="number" readonly></label>
+    <label>Quantidade contada<input id="inventory-counted" type="number" min="0" required></label>
+    <label>Motivo<input id="inventory-reason" minlength="8" maxlength="240" required></label>
+    <button type="submit">Registrar conferência</button>
+  </form>
+  <h3>Últimas conferências</h3><div id="inventory-history"></div>
+</section>
+<section id="cash-panel" class="panel cash-panel" hidden aria-labelledby="cash-title">
+  <div class="cash-heading">
+    <div><h2 id="cash-title">Caixa da filial</h2><p class="muted">Dinheiro na gaveta separado de Pix e cartões.</p></div>
+    <span id="cash-status" class="cash-pill">—</span>
+  </div>
+  <div id="cash-open">
+    <p class="muted">Abra o turno antes de registrar pagamentos de comandas.</p>
+    <form id="cash-open-form" class="cash-inline">
+      <label>Dinheiro inicial (R$)<input id="cash-opening" type="number" min="0" step=".01" value="0.00" required></label>
+      <button type="submit">Abrir caixa</button>
+    </form>
+  </div>
+  <div id="cash-active" hidden>
+    <div class="cash-stats" aria-live="polite">
+      <div><small>Dinheiro esperado</small><strong id="cash-expected">—</strong></div>
+      <div><small>Dinheiro recebido</small><strong id="cash-money">—</strong></div>
+      <div><small>Pix</small><strong id="cash-pix">—</strong></div>
+      <div><small>Débito</small><strong id="cash-debit">—</strong></div>
+      <div><small>Crédito</small><strong id="cash-credit">—</strong></div>
+      <div><small>Sangrias / suprimentos</small><strong id="cash-adjustments">—</strong></div>
+    </div>
+    <div id="cash-management" class="cash-actions" hidden>
+      <form id="cash-move-form">
+        <h3>Movimentação</h3>
+        <label>Tipo<select id="cash-move-type"><option value="SANGRIA">Sangria</option><option value="SUPRIMENTO">Suprimento</option></select></label>
+        <label>Valor (R$)<input id="cash-move-value" type="number" min=".01" step=".01" required></label>
+        <label>Motivo<input id="cash-move-reason" maxlength="240" minlength="5" required placeholder="Ex.: depósito bancário"></label>
+        <button type="submit">Registrar movimentação</button>
+      </form>
+      <form id="cash-close-form">
+        <h3>Fechar turno</h3>
+        <p class="muted">Conte apenas as notas e moedas da gaveta. Pix e cartões não entram na contagem.</p>
+        <label>Dinheiro contado (R$)<input id="cash-counted" type="number" min="0" step=".01" required></label>
+        <button class="danger" type="submit">Conferir e fechar caixa</button>
+      </form>
+    </div>
+  </div>
+  <div id="cash-history-panel" hidden>
+    <h3>Últimos fechamentos</h3>
+    <div id="cash-history"></div>
+  </div>
+</section>
+</section>
+<p id="feedback" role="status" aria-live="polite"></p>
+</main>
+<script type="module" src="/js/saas-comandas.js"></script>
+</body></html>

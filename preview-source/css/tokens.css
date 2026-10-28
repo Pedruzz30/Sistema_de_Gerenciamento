@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
+/* StockOS — design tokens */
+:root {
+  --paper: #07111d;
+  --paper-sunk: rgba(9, 20, 34, 0.84);
+  --paper-raised: rgba(17, 32, 52, 0.88);
+  --paper-inset: rgba(11, 24, 40, 0.92);
+
+  --ink: #f8fafc;
+  --ink-2: #cbd5e1;
+  --ink-3: #94a3b8;
+  --ink-4: #64748b;
+
+  --rule: rgba(148, 163, 184, 0.16);
+  --rule-strong: rgba(148, 163, 184, 0.28);
+
+  --accent: #f59e0b;
+  --accent-ink: #fff7ed;
+  --accent-soft: rgba(245, 158, 11, 0.12);
+  --accent-soft-2: rgba(245, 158, 11, 0.18);
+  --accent-cool: #22d3ee;
+  --accent-cool-soft: rgba(34, 211, 238, 0.12);
+
+  --ok: #34d399;
+  --ok-soft: rgba(52, 211, 153, 0.12);
+  --warn: #f59e0b;
+  --warn-soft: rgba(245, 158, 11, 0.12);
+  --bad: #f87171;
+  --bad-soft: rgba(248, 113, 113, 0.12);
+  --info: #22d3ee;
+  --info-soft: rgba(34, 211, 238, 0.12);
+
+  --font-display: 'Space Grotesk', 'Manrope', sans-serif;
+  --font-ui: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  --shadow-sm: 0 8px 24px rgba(2, 6, 23, 0.18);
+  --shadow-md: 0 20px 50px rgba(2, 6, 23, 0.34);
+  --shadow-lg: 0 32px 90px rgba(2, 6, 23, 0.46);
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-28: 28px;
+  --fs-32: 32px;
+  --fs-36: 36px;
+  --fs-40: 40px;
+  --fs-46: 46px;
+
+  --sidebar-w: 250px;
+  --topbar-h: 74px;
+
+  --bg-base: var(--paper);
+  --bg-card: var(--paper-sunk);
+  --bg-hover: var(--paper-raised);
+  --bg-input: var(--paper-inset);
+  --border: var(--rule);
+  --border-light: var(--rule-strong);
+  --text-1: var(--ink);
+  --text-2: var(--ink-2);
+  --text-3: var(--ink-4);
+  --radius: 20px;
+  --radius-sm: 14px;
+  --purple: var(--accent);
+  --purple-light: #fde68a;
+  --pink: #fb7185;
+  --green: var(--ok);
+  --green-text: #86efac;
+  --red: var(--bad);
+  --red-text: #fda4af;
+  --amber: var(--warn);
+  --amber-text: #fcd34d;
+  --cyan: var(--info);
+  --sky-text: #67e8f9;
+  --header-h: var(--topbar-h);
+  --focus-ring: 0 0 0 3px rgba(245, 158, 11, 0.16);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; color: inherit; }
+input, select, textarea { font: inherit; color: inherit; }
+::selection { background: rgba(245, 158, 11, 0.24); color: var(--ink); }
+.mono { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+.num { font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.04em; }

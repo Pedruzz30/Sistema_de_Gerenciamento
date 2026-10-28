@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockOS — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="login-page">
+
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<div class="page">
+
+  <!-- Left -->
+  <div class="panel-left">
+    <div class="logo">
+      <div class="logo-icon">S</div>
+      StockOS
+    </div>
+
+    <div class="hero">
+      <div class="hero-eyebrow">
+        <span class="hero-eyebrow-dot"></span>
+        Sistema de Gerenciamento
+      </div>
+      <h1>Controle total do seu <em>estoque</em></h1>
+      <p>Gerencie produtos, fornecedores, caixas e cotações em um único lugar. Acesso por perfil, logs de auditoria e relatórios em tempo real.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-value">4</span>
+        <span class="stat-label">Perfis</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-value">3</span>
+        <span class="stat-label">Caixas PDV</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-value">100%</span>
+        <span class="stat-label">Auditado</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right -->
+  <div class="panel-right">
+    <div class="sheet login-card">
+      <div class="card-head">
+        <h2>Bem-vindo de volta</h2>
+        <p>Entre com suas credenciais para acessar o sistema.</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="f-row grid-2">
+          <div class="f-group field">
+            <label for="nome">Nome</label>
+            <div class="input-wrap">
+              <span class="input-icon" data-login-icon="user" aria-hidden="true"></span>
+              <input class="input" type="text" id="nome" placeholder="Admin" autocomplete="given-name" required>
+            </div>
+          </div>
+          <div class="f-group field">
+            <label for="sobrenome">Sobrenome</label>
+            <div class="input-wrap">
+              <span class="input-icon" data-login-icon="user" aria-hidden="true"></span>
+              <input class="input" type="text" id="sobrenome" placeholder="Superior" autocomplete="family-name" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="f-group full field">
+          <label for="senha">Senha</label>
+          <div class="input-wrap">
+            <span class="input-icon" data-login-icon="lock" aria-hidden="true"></span>
+            <input class="input" type="password" id="senha" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-submit" id="btnSubmit">
+          <span class="btn-text">
+            Entrar no sistema
+            <span class="btn-inline-icon" data-login-icon="arrowRight" aria-hidden="true"></span>
+          </span>
+          <div class="btn-spinner"></div>
+        </button>
+
+        <div class="alert" id="alert">
+          <span class="alert-icon" id="alertIcon"></span>
+          <span id="alertMsg"></span>
+        </div>
+      </form>
+
+      <div class="card-foot">
+        <p>StockOS v1.0 &mdash; Gerenciamento</p>
+        <div class="secure-badge">
+          <span class="secure-dot"></span>
+          Conexão segura
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const LOGIN_ICONS = {
+    user: '<circle cx="12" cy="8" r="3"/><path d="M6 19a6 6 0 0 1 12 0"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 1 1 8 0v3"/>',
+    arrowRight: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+    checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+    alertTriangle: '<path d="m12 3 9 16H3l9-16Z"/><path d="M12 9v4"/><path d="M12 16h.01"/>',
+  };
+
+  function loginIconMarkup(name) {
+    return '<svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      (LOGIN_ICONS[name] || LOGIN_ICONS.alertTriangle) +
+      '</svg>';
+  }
+
+  function renderLoginIcons() {
+    document.querySelectorAll('[data-login-icon]').forEach((element) => {
+      element.innerHTML = loginIconMarkup(element.getAttribute('data-login-icon'));
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', renderLoginIcons);
+
+  function persistirUsuario(usuario) {
+    const payload = JSON.stringify(usuario);
+    [window.sessionStorage, window.localStorage].forEach((storage) => {
+      try { storage.setItem('usuario', payload); } catch (e) {}
+    });
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn     = document.getElementById('btnSubmit');
+    const alert   = document.getElementById('alert');
+    const alertMsg  = document.getElementById('alertMsg');
+    const alertIcon = document.getElementById('alertIcon');
+    const nome      = document.getElementById('nome').value.trim();
+    const sobrenome = document.getElementById('sobrenome').value.trim();
+    const senha     = document.getElementById('senha').value;
+
+    btn.classList.add('loading');
+    alert.className = 'alert';
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, sobrenome, senha })
+      });
+
+      if (res.ok) {
+        const usuario = await res.json();
+        persistirUsuario(usuario);
+        alert.className = 'alert success';
+        alertIcon.innerHTML = loginIconMarkup('checkCircle');
+        alertMsg.textContent = `Bem-vindo, ${usuario.nome}! Redirecionando...`;
+        setTimeout(() => { window.location.href = '/dashboard.html'; }, 1000);
+      } else {
+        throw new Error('Credenciais inválidas');
+      }
+    } catch (err) {
+      alert.className = 'alert error';
+      alertIcon.innerHTML = loginIconMarkup('alertTriangle');
+      alertMsg.textContent = 'Nome, sobrenome ou senha incorretos.';
+      btn.classList.remove('loading');
+      document.querySelectorAll('input').forEach(i => {
+        i.style.borderColor = 'rgba(244,63,94,.5)';
+        setTimeout(() => { i.style.borderColor = ''; }, 1500);
+      });
+    }
+  }
+</script>
+</body>
+</html>

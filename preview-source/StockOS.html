@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StockOS — Ponte do Sistema</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="bridge-page">
+  <div class="bridge-grid" aria-hidden="true"></div>
+
+  <main class="bridge-shell">
+    <section class="bridge-panel">
+      <div class="bridge-content">
+        <span class="bridge-eyebrow">Fluxo real ativo</span>
+
+        <div class="bridge-copy">
+          <h1 class="bridge-title">O protótipo <span>StockOS.html</span> agora aponta para a aplicação consolidada.</h1>
+          <p>
+            A identidade visual, os componentes shared e as páginas operacionais do sistema foram
+            unificados nas telas reais servidas por <code>src/main/resources/static</code>.
+          </p>
+          <p>
+            Esta rota foi mantida apenas como ponte para o fluxo oficial, evitando uma tela órfã e
+            preservando a navegação para quem ainda acessar o endereço legado.
+          </p>
+        </div>
+
+        <div class="bridge-meta">
+          <article class="bridge-stat">
+            <span class="bridge-stat-label">Base Visual</span>
+            <span class="bridge-stat-value">1 sistema</span>
+            <span class="bridge-stat-copy">Sidebar, topbar, cards, tabelas e formulários agora seguem a mesma linguagem da referência.</span>
+          </article>
+          <article class="bridge-stat">
+            <span class="bridge-stat-label">Destino</span>
+            <span class="bridge-stat-value">Fluxo oficial</span>
+            <span class="bridge-stat-copy">A navegação leva para login ou dashboard, conforme a sessão já existente do usuário.</span>
+          </article>
+          <article class="bridge-stat">
+            <span class="bridge-stat-label">Status</span>
+            <span class="bridge-stat-value">Produção</span>
+            <span class="bridge-stat-copy">A antiga tela de protótipo não é mais fonte de UI, apenas um ponto de entrada seguro.</span>
+          </article>
+        </div>
+
+        <div class="bridge-actions">
+          <a class="btn btn-primary" href="/dashboard.html">Abrir dashboard</a>
+          <a class="btn" href="/login.html">Ir para login</a>
+        </div>
+
+        <p class="bridge-hint" id="bridge-hint">Redirecionando automaticamente para o fluxo principal…</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var hasUsuario = false;
+      try {
+        hasUsuario = Boolean(sessionStorage.getItem('usuario') || localStorage.getItem('usuario'));
+      } catch (error) {}
+
+      var destino = hasUsuario ? '/dashboard.html' : '/login.html';
+      var hint = document.getElementById('bridge-hint');
+      if (hint) {
+        hint.textContent = hasUsuario
+          ? 'Sessão detectada. Redirecionando para o dashboard…'
+          : 'Nenhuma sessão ativa. Redirecionando para o login…';
+      }
+
+      window.setTimeout(function () {
+        window.location.replace(destino);
+      }, 1800);
+    })();
+  </script>
+</body>
+</html>
