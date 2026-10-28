@@ -26,7 +26,7 @@ if (-not $CheckOnly) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Nao foi possivel consultar mvn -version. Confira a instalacao do Maven.'
     }
-    $jdkMatch = [regex]::Match($mavenVersion, '(?im)^\\s*Java version:\\s*(\\d+)')
+    $jdkMatch = [regex]::Match($mavenVersion, '(?im)^\s*Java version:\s*(\d+)')
     if (-not $jdkMatch.Success) {
         throw "Nao identifiquei a versao Java usada pelo Maven. Execute mvn -version e confira JAVA_HOME."
     }
