@@ -53,7 +53,9 @@ class SaasRlsReadExecutorPostgresIntegrationTest {
                 .issuedAt(Instant.now().minusSeconds(15))
                 .expiresAt(Instant.now().plusSeconds(300))
                 .build();
-        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
+                List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_AUTHENTICATED"))));
     }
 
     private static List<String> products() {
