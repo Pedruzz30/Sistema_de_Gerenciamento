@@ -20,7 +20,7 @@
             <div class="brand-mark">S</div>
             <div class="brand-text">
                 <span class="name">StockOS</span>
-                <span class="sub">Forno · V2</span>
+                <span class="sub">Gestão · Estoque</span>
             </div>
         </div>
 
@@ -53,7 +53,7 @@
             <div class="topbar-right header-right">
                 <div class="live-pill">
                     <span class="live-dot"></span>
-                    Turno ativo · 26 abr 2026
+                    <span id="dashboard-context-status">Visão do dia</span>
                 </div>
             </div>
         </header>
@@ -89,7 +89,7 @@
                         </div>
                         <div class="financial-grid">
                             <div class="fin-card">
-                                <div class="fin-label">Total Vendas</div>
+                                <div class="fin-label">Vendas de Hoje</div>
                                 <div class="fin-value green" id="fin-total-vendas">—</div>
                             </div>
                             <div class="fin-card">
@@ -161,8 +161,8 @@
 
                 <div class="card fade-up">
                     <div class="card-header">
-                        <span class="card-title">Vendas por Caixa</span>
-                        <span class="card-badge">dia atual</span>
+                        <span class="card-title">Movimentações por Caixa</span>
+                        <span class="card-badge">histórico</span>
                     </div>
                     <div id="wrap-g-caixas" class="chart-frame chart-frame--medium">
                         <canvas id="grafico-caixas"></canvas>
