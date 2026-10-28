@@ -30,7 +30,7 @@ readonly migrations=(
   V20261027_10__private_schema_access_guard.sql
 )
 for file in "${migrations[@]}"; do
-  path="src/main/resources/db/migration/$file"
+  path="src/main/resources/db/saas-migration/$file"
   [[ -f "$path" ]] || { echo "MISSING MIGRATION: $path" >&2; exit 2; }
   docker exec -i "$CI_POSTGRES_CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" < "$path" > /dev/null
 done

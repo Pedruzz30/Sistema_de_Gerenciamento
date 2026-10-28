@@ -26,7 +26,7 @@ Supabase, que grava histórico em `supabase_migrations.schema_migrations`.
 
 Todas foram extraídas literalmente da PR #3 do repositório
 `Pedruzz30/Sistema_de_Gerenciamento`, no diretório
-`src/main/resources/db/migration`:
+`src/main/resources/db/saas-migration` (separado do Flyway legado):
 
 | Arquivo Flyway original | Migração Supabase |
 | --- | --- |

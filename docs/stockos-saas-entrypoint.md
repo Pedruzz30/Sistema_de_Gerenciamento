@@ -31,7 +31,7 @@ are still being implemented. Startup blocks legacy auth mode even in staging.
 The previous default `Main` remains available for local legacy development.
 
 CI boots a **second disposable PostgreSQL database** `stockos_ci_saas`
-using the 13 SaaS migrations only (not the legacy Flyway scripts), then
+using the 13 migrations in `db/saas-migration` only (not the legacy Flyway scripts), then
 runs `SaasIsolatedStagingHttpIntegrationTest` against it. The test checks
 zero public legacy tables, 23 private SaaS tables, no JPA or Flyway beans,
 no legacy controller/repository beans, and a real SaaS HTTP comanda operation.

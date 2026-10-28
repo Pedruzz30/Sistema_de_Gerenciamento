@@ -74,7 +74,7 @@ class SaasComandaPostgresIntegrationTest {
                 url,System.getenv("DB_USERNAME"),System.getenv("DB_PASSWORD"));
         Flyway flyway=Flyway.configure()
                 .dataSource(ds)
-                .locations("classpath:db/migration")
+                .locations("classpath:db/migration","classpath:db/saas-migration")
                 .baselineOnMigrate(false)
                 .load();
         flyway.migrate();
