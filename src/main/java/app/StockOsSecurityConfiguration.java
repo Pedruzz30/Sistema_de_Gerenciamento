@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -61,7 +62,14 @@ public class StockOsSecurityConfiguration {
      * derives the JWKS URL from its validated Supabase issuer.
      */
     static NimbusJwtDecoder buildJwtDecoder(String issuer, String jwksUri) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
+        // Supabase StockOS Staging currently signs with ECC P-256 (ES256).
+        // Explicitly permit only asymmetric algorithms supported by our deployment.
+        // NimbusJwtDecoder's default is RS256-only, which would reject valid ES256 sessions.
+        // Do not accept HS256/HS384/HS512 or select algorithms dynamically from token headers.
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri)
+                .jwsAlgorithm(SignatureAlgorithm.ES256)
+                .jwsAlgorithm(SignatureAlgorithm.RS256)
+                .build();
 
         OAuth2TokenValidator<Jwt> authenticatedAudienceAndRole = token ->
                 token.getAudience().contains("authenticated")

@@ -11,7 +11,7 @@ Este é o **único projeto autorizado para testes do StockOS**.
 | PostgreSQL | 17.11 |
 | URL pública do projeto | `https://hucfndwhaebvithtkovn.supabase.co` |
 | Issuer de tokens | `https://hucfndwhaebvithtkovn.supabase.co/auth/v1` |
-| JWT signing alg | **Ainda não verificado no projeto real** |
+| JWT signing alg | **ECC P-256 / ES256 (ativo)**, confirmado no painel JWT Keys em 28/10/2026 |
 | Conta de usuário de testes | Nenhuma, na inspeção inicial |
 | Tabelas SaaS | Nenhuma, na inspeção inicial |
 | Chave publicável | Existe `sb_publishable_...`, obter diretamente no painel ou conectar por configuração privada |
@@ -42,9 +42,7 @@ privado (SSL verificado). Os defaults do backend não são credenciais de stagin
 
 ## Sequência segura para conectar de verdade
 
-1. No projeto novo, verificar *Authentication > Signing Keys*: escolher uma
-   chave de assinatura **assimétrica** ativa e garantir que seu JWKS público
-   esteja disponível. O backend não aceita HS256 legado.
+1. **Concluído no painel:** chave ECC P-256 assimétrica ativa (ES256); HS256 aparece apenas como chave anterior. O backend foi ajustado para aceitar ES256 e RS256, nunca HS256. Verificar o JWKS público e testar um token realmente emitido pelo Supabase antes de liberar login.
 2. Verificar *Settings > Data API* (se realmente desabilitada) e *Authentication >
    Providers > Email*: confirmação por e-mail, URLs de redirecionamento e políticas.
 3. Preparar os scripts Flyway com **separação do schema legado em `public`**.

@@ -15,6 +15,7 @@ on:
       - 'src/test/java/app/ProductionSafetyGateTest.java'
       - 'src/test/java/app/StagingSupabaseSettingsTest.java'
       - 'src/test/java/app/SupabaseJwtSignatureTest.java'
+      - 'src/test/java/app/SupabaseJwtEs256SignatureTest.java'
       - 'scripts/ci/**'
       - 'tests/browser/**'
       - 'docs/stockos-staging-recovery.md'
@@ -43,7 +44,7 @@ jobs:
           node --check src/main/resources/static/js/saas-comandas.js
           node --check src/main/resources/static/js/saas-admin.js
       - name: Compile and test JWT security foundation
-        run: mvn -B -Dtest=ProductionSafetyGateTest,StagingSupabaseSettingsTest,SupabaseJwtSignatureTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
+        run: mvn -B -Dtest=ProductionSafetyGateTest,StagingSupabaseSettingsTest,SupabaseJwtSignatureTest,SupabaseJwtEs256SignatureTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
 
   postgres-saas-integration:
     runs-on: ubuntu-latest
