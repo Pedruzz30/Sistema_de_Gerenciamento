@@ -97,12 +97,12 @@ docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U postgres -d "$db" <
 CREATE ROLE stockos_ci_reader LOGIN INHERIT NOSUPERUSER NOCREATEDB
   NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD 'ci_reader_only';
 GRANT stockos_runtime_reader TO stockos_ci_reader;
-DO $
+DO $ci_permissions$
 BEGIN
   IF has_table_privilege('stockos_ci_reader','stockos_private.produtos','SELECT') IS DISTINCT FROM true
      OR has_table_privilege('stockos_ci_reader','stockos_private.produtos','UPDATE') THEN
     RAISE EXCEPTION 'CI login has incorrect reader privileges';
   END IF;
-END $;
+END $ci_permissions$;
 SQL
 echo "PASS: nonowner RLS blocks cross-tenant, context leakage, mutations and invitations"
