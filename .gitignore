@@ -29,3 +29,5 @@ backups_auditoria/
 # OS
 .DS_Store
 Thumbs.db
+# Senha gerada para o PostgreSQL isolado de desenvolvimento Windows
+.stockos-local.env
