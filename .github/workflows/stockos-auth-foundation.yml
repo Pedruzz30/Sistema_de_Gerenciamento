@@ -11,6 +11,8 @@ on:
       - 'src/main/resources/static/css/saas-*.css'
       - 'src/test/java/integration/SaasComandaPostgresIntegrationTest.java'
       - 'src/test/java/integration/SaasHttpSecurityPostgresIntegrationTest.java'
+      - 'src/test/java/integration/SaasIsolatedStagingHttpIntegrationTest.java'
+      - 'src/main/resources/application-staging.properties'
       - 'src/test/java/integration/Fase46FlywayMigrationIntegrationTest.java'
       - 'src/test/java/app/ProductionSafetyGateTest.java'
       - 'src/test/java/app/StagingSupabaseSettingsTest.java'
@@ -80,6 +82,8 @@ jobs:
         run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test
       - name: Test real HTTP security and tenant boundaries with mocked JWT decoder
         run: mvn -B -Dtest=SaasHttpSecurityPostgresIntegrationTest test
+      - name: Verify isolated SaaS Spring context and HTTP without legacy tables
+        run: mvn -B -Dtest=SaasIsolatedStagingHttpIntegrationTest test
       - name: Prove full database backup and restore on disposable PostgreSQL
         env:
           CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
