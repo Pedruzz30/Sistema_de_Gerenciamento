@@ -25,7 +25,25 @@
       precoCusto: +(precoUnitario*.6).toFixed(2),nivelEstoque:level(quantidadeAtual,quantidadeMinima),
       controladoPorEstoque:true, ativo:true, unidadeBaseCodigo:'UN',politicaFalta:'BLOQUEAR'
     }));
-    return { produtos, movimentacoes:[
+    return {
+      produtos,
+      fornecedores: [
+        {id:1,nome:'Distribuidora Modelo',cnpj:'11222333000181',telefone:'(21) 99999-0001',ativo:true,produtos:[produtos[5],produtos[6]]},
+        {id:2,nome:'Hortifruti Exemplo',cnpj:'11444777000161',telefone:'(21) 99999-0002',ativo:true,produtos:[produtos[18],produtos[19]]},
+        {id:3,nome:'Atacado Demonstração',cnpj:'27865757000102',telefone:'(21) 99999-0003',ativo:true,produtos:[produtos[0],produtos[1]]}
+      ],
+      funcionarios: [
+        {ru:1,nome:'Admin',sobrenome:'Demo',nomeClasse:'SUPERIOR',perfil:'ADMIN',ativo:true,permissoes:['VER_ESTOQUE','EDITAR_ESTOQUE','VER_VENDAS','VER_FINANCAS','VER_COMPRAS']},
+        {ru:2,nome:'Julia',sobrenome:'Exemplo',nomeClasse:'CAIXA',perfil:'OPERADOR',ativo:true,permissoes:['VER_VENDAS','VER_ESTOQUE']},
+        {ru:3,nome:'Mateus',sobrenome:'Teste',nomeClasse:'ESTOQUISTA',perfil:'OPERADOR',ativo:true,permissoes:['VER_ESTOQUE','EDITAR_ESTOQUE']}
+      ],
+      notas: [{id:1,numero:'DEMO-001',fornecedorId:1,fornecedorNome:'Distribuidora Modelo',status:'CONFIRMADA',dataEmissao:stamp(10,0),total:189.90,itens:[{id:1,produtoId:6,produtoNome:produtos[5].nome,quantidade:15,precoUnitario:12.66,subtotal:189.90}]}],
+      logs: [{id:1,usuarioRu:1,acao:'PREVIEW_INICIADO',descricao:'Ambiente fictício carregado para demonstração.',dataHora:stamp(8,0)}],
+      movimentacoesCaixa: [
+        {id:1,caixaId:1,numeroCaixa:1,tipo:'VENDA',valor:168.50,descricao:'Vendas de exemplo',dataHora:stamp(11,10),operador:'Operador Demo'},
+        {id:2,caixaId:1,numeroCaixa:1,tipo:'VENDA',valor:100,descricao:'Venda fictícia',dataHora:stamp(12,15),operador:'Operador Demo'}
+      ],
+      movimentacoes:[
       {id:1,tipo:'ENTRADA',produto:'Água mineral 500ml',quantidade:20,dataHora:stamp(9,15)},
       {id:2,tipo:'SAIDA',produto:'Queijo muçarela 1kg',quantidade:3,dataHora:stamp(10,40)},
       {id:3,tipo:'SAIDA',produto:'Refrigerante cola lata 350ml',quantidade:6,dataHora:stamp(12,5)}
@@ -36,7 +54,7 @@
   }
   let db;
   try { db=JSON.parse(localStorage.getItem(KEY)||'null'); } catch(e) {}
-  if (!db || !Array.isArray(db.produtos)) db=initial();
+  if (!db || !Array.isArray(db.produtos) || !Array.isArray(db.fornecedores) || !Array.isArray(db.movimentacoesCaixa)) db=initial();
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){console.warn('Preview: armazenamento indisponível',e);}};
   save();
   const respond=(value,status=200)=>Promise.resolve(new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}}));
@@ -81,13 +99,82 @@
       const n=db.caixas.filter(c=>c.status==='ABERTO').length;
       return respond({totalVendas:t,caixasAbertos:n,totalMovimentacoesVenda:12,ticketMedio: +(t/12).toFixed(2)});
     }
-    if(path==='/api/rentabilidade/ranking')return respond({itens:[]});
-    if(path==='/api/fornecedores'||path==='/api/fornecedores/ativos')return respond([]);
-    if(path==='/api/notas'||path==='/api/cotacoes'||path==='/api/funcionarios'||path==='/api/logs')return respond([]);
+    if(path==='/api/rentabilidade/ranking')return respond([]);
+    if(path==='/api/fornecedores' && method==='GET')return respond(db.fornecedores);
+    if(path==='/api/fornecedores/ativos' && method==='GET')return respond(db.fornecedores.filter(f=>f.ativo));
+    if(path==='/api/fornecedores' && method==='POST'){
+      const nome=String(body.nome||'').trim(),cnpj=String(body.cnpj||'').replace(/\D/g,'');
+      if(!nome||!cnpj)return respond({erro:'Informe nome e CNPJ.'},400);
+      if(db.fornecedores.some(f=>f.cnpj===cnpj))return respond({erro:'CNPJ já cadastrado.'},409);
+      const id=Math.max(0,...db.fornecedores.map(f=>f.id))+1;
+      const f={id,nome,cnpj,telefone:String(body.telefone||''),ativo:true,produtos:[]};
+      db.fornecedores.push(f);save();return respond(f);
+    }
+    const supplierAction=path.match(/^\/api\/fornecedores\/(\d+)\/(desativar|reativar|vincular-produto)$/);
+    if(supplierAction && (method==='PUT'||method==='POST')){
+      const f=db.fornecedores.find(v=>v.id===Number(supplierAction[1]));
+      if(!f)return respond({erro:'Fornecedor não encontrado.'},404);
+      if(supplierAction[2]==='desativar')f.ativo=false;
+      if(supplierAction[2]==='reativar')f.ativo=true;
+      if(supplierAction[2]==='vincular-produto'){
+        const id=Number(body.produtoId);
+        const p=db.produtos.find(v=>v.id===id);
+        if(!p)return respond({erro:'Produto não encontrado.'},404);
+        if(!f.produtos.some(v=>v.id===id))f.produtos.push(p);
+      }
+      save();return respond(f);
+    }
+    if(path==='/api/funcionarios' && method==='GET')return respond(db.funcionarios);
+    if(path==='/api/logs' && method==='GET')return respond(db.logs);
+    if(path==='/api/notas' && method==='GET')return respond(db.notas);
+    if(path==='/api/cardapio/admin/categorias')return respond([
+      {id:1,codigo:'PRATOS',nomeExibicao:'Pratos',ordemExibicao:1,ativo:true},
+      {id:2,codigo:'BEBIDAS',nomeExibicao:'Bebidas',ordemExibicao:2,ativo:true}
+    ]);
+    if(path==='/api/cardapio/admin/itens')return respond([]);
+    if(path==='/api/cardapio/grupos-modificadores')return respond([]);
+    if(path==='/api/unidades')return respond([{id:1,codigo:'UN',nome:'Unidade',sigla:'un'}]);
+    if(path==='/api/cardapio/disponibilidade')return respond({itens:[],variacoes:[]});
+    if(path==='/api/caixas/consolidado')return respond({data:today(),resumo:'Relatório de demonstração — valores fictícios.'});
+    if(path==='/api/caixas/abrir' && method==='POST'){
+      const numero=Number(body.numeroCaixa);
+      if(!Number.isInteger(numero)||numero<=0)return respond({erro:'Número do caixa inválido.'},400);
+      if(db.caixas.some(c=>c.numeroCaixa===numero&&c.status==='ABERTO'))return respond({erro:'Caixa já aberto.'},409);
+      const id=Math.max(0,...db.caixas.map(c=>c.id))+1;
+      const c={id,caixaId:id,numeroCaixa:numero,status:'ABERTO',totalVendas:0,totalEntradas:0,totalSaidas:0,saldoInicial:Number(body.saldoInicial)||0,saldoAtual:Number(body.saldoInicial)||0,nomeOperador:'Admin Demo',dataAbertura:new Date().toISOString()};
+      db.caixas.push(c);save();return respond(c);
+    }
+    if(path==='/api/caixas/encerrar' && method==='POST'){
+      const c=db.caixas.find(v=>v.numeroCaixa===Number(body.numeroCaixa)&&v.status==='ABERTO');
+      if(!c)return respond({erro:'Caixa não encontrado ou já encerrado.'},404);
+      c.status='ENCERRADO';c.dataEncerramento=new Date().toISOString();save();return respond({caixaId:c.id,numeroCaixa:c.numeroCaixa,status:c.status});
+    }
+    const cashChange=path.match(/^\/api\/caixas\/(sangria|suprimento|venda)$/);
+    if(cashChange && method==='POST'){
+      const c=db.caixas.find(v=>v.numeroCaixa===Number(body.numeroCaixa)&&v.status==='ABERTO');
+      const valor=Number(body.valor),tipo=cashChange[1];
+      if(!c||!Number.isFinite(valor)||valor<=0)return respond({erro:'Caixa ou valor inválido.'},400);
+      if(tipo==='sangria'&&c.saldoAtual<valor)return respond({erro:'Saldo insuficiente.'},400);
+      const direcao=tipo==='sangria'?-1:1;
+      c.saldoAtual=+(c.saldoAtual+valor*direcao).toFixed(2);
+      if(tipo==='venda')c.totalVendas=+(c.totalVendas+valor).toFixed(2);
+      else if(direcao>0)c.totalEntradas=+(c.totalEntradas+valor).toFixed(2);
+      else c.totalSaidas=+(c.totalSaidas+valor).toFixed(2);
+      db.movimentacoesCaixa.unshift({id:Date.now(),caixaId:c.id,numeroCaixa:c.numeroCaixa,tipo:tipo.toUpperCase(),valor,descricao:String(body.descricao||'Operação fictícia'),dataHora:new Date().toISOString(),operador:'Admin Demo'});
+      save();return respond(c);
+    }
+    const cashMov=path.match(/^\/api\/caixas\/sessoes\/(\d+)\/movimentacoes$/);
+    if(cashMov && method==='GET')return respond(db.movimentacoesCaixa.filter(m=>m.caixaId===Number(cashMov[1])));
     // Never pretend that unsupported workflows succeeded.
     return respond({erro:'Função indisponível nesta demonstração. Use o ambiente real para concluir esta operação.'},501);
   }
   window.fetch=function(input,init){return handle(input,init);};
+  // No deploy público, nunca confundir o preview com o backend real.
+  document.addEventListener('DOMContentLoaded',()=>{
+    if(location.pathname.endsWith('/caixas.html')) {
+      window.abrirPDV=()=>window.alert('O PDV completo é integrado ao backend. Esta prévia simula estoque e operação básica de caixa.');
+    }
+  });
   const banner=document.createElement('div');
   banner.setAttribute('role','status');
   banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:10px 14px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;pointer-events:none';
