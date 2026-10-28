@@ -55,6 +55,8 @@ jobs:
         run: |
           node --check src/main/resources/static/js/saas-comandas.js
           node --check src/main/resources/static/js/saas-admin.js
+      - name: Verify local launcher rejects incompatible Java before Docker
+        run: pwsh -NoProfile -File scripts/dev/start-local-legacy.ps1 -CheckJavaOnly
       - name: Compile and test JWT security foundation
         run: mvn -B -Dtest=ProductionSafetyGateTest,StagingSupabaseSettingsTest,StockOsStagingMigrationSafetyTest,StockOsFlywaySeparationTest,SupabaseJwtSignatureTest,SupabaseJwtEs256SignatureTest,ControllerUtilsJwtTest,SaasTenantAccessTest,SaasLicenseServiceTest,SaasAdminAccessTest test
 

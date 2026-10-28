@@ -10,8 +10,42 @@ A PR #3 ainda deve ficar em **draft**. Para abrir o aplicativo legado local,
 ## Pré-requisitos
 
 - Docker Desktop iniciado e Docker Compose funcionando
-- Java **25** e Maven instalados no Windows
+- **JDK 25 ou superior** e Maven instalados no Windows; o Java usado pelo Maven importa mais que `java -version`.
+  Confira com `mvn -version` (a linha `Java version:` deve mostrar **25** ou superior).
 - Clonar o repositório; nenhuma credencial Supabase necessária
+
+### Se aparecer `release version 25 not supported`
+
+O Docker e o banco local podem estar saudaveis, mas a compilacao para
+Java 25 falhara quando o **Maven estiver usando JDK anterior a 25**.
+Nao remova containers/volumes e nao faca merge por conta desse erro.
+
+No PowerShell execute:
+
+```powershell
+mvn -version
+winget install --id EclipseAdoptium.Temurin.25.JDK -e
+```
+
+Feche e abra novamente o PowerShell (e a IDE) e rode `mvn -version`.
+Se o Maven continuar com uma versao antiga, `JAVA_HOME` provavelmente
+ainda aponta para o JDK antigo. Escolha a **pasta exata** do JDK 25
+encontrada em `C:\Program Files\Eclipse Adoptium` e atualize sua
+variavel `JAVA_HOME`, sem adicionar `\\bin` ao final da pasta.
+
+Para a sessao atual do PowerShell, exemplo (ajuste o caminho pelo que
+aparecer em sua maquina):
+
+```powershell
+Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-25.x.x-hotspot'
+$env:Path = "$env:JAVA_HOME\\bin;$env:Path"
+mvn -version
+```
+
+O script agora realiza essa verificacao de JDK **antes de iniciar
+containers** e pode ser testado sem subir o banco:
+`powershell -NoProfile -File .\scripts\dev\start-local-legacy.ps1 -CheckJavaOnly`.
 
 Abra o PowerShell na pasta do projeto:
 

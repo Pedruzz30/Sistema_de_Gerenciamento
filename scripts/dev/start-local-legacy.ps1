@@ -1,5 +1,6 @@
 param(
-    [switch]$CheckOnly
+    [switch]$CheckOnly,
+    [switch]$CheckJavaOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +17,34 @@ function Require-Command([string]$Name) {
     }
 }
 
+# Fail before Docker startup if Maven is not using JDK 25+. java -version
+# alone is NOT sufficient: Maven may be launched from an older JAVA_HOME.
+if (-not $CheckOnly) {
+    Require-Command 'mvn'
+    Require-Command 'java'
+    $mavenVersion = (& mvn -version 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Nao foi possivel consultar mvn -version. Confira a instalacao do Maven.'
+    }
+    $jdkMatch = [regex]::Match($mavenVersion, '(?im)^\\s*Java version:\\s*(\\d+)')
+    if (-not $jdkMatch.Success) {
+        throw "Nao identifiquei a versao Java usada pelo Maven. Execute mvn -version e confira JAVA_HOME."
+    }
+    $javaMajor = [int]$jdkMatch.Groups[1].Value
+    if ($javaMajor -lt 25) {
+        throw ("O projeto requer JDK 25+, mas o Maven esta usando Java " + $javaMajor + ". " +
+            "Instale com: winget install --id EclipseAdoptium.Temurin.25.JDK -e. " +
+            "Abra novo PowerShell e confira 'mvn -version'. " +
+            "Se continuar antigo, ajuste JAVA_HOME para a pasta do JDK 25 (nao a bin).")
+    }
+    Write-Host ("PASS: Maven esta executando sob JDK " + $javaMajor + ".")
+}
+
+if ($CheckJavaOnly) {
+    # CI-only Java preflight: never creates containers, changes env or loads secrets.
+    exit 0
+}
+
 Require-Command 'docker'
 & docker compose version | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Docker Compose nao esta disponivel.' }
@@ -28,9 +57,6 @@ if ($CheckOnly) {
     Write-Host 'PASS: Docker Compose local validado (somente verificacao).'
     exit 0
 }
-
-Require-Command 'mvn'
-Require-Command 'java'
 
 Push-Location $root
 try {
