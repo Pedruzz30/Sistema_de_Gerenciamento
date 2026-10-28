@@ -29,8 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * migrations have already created both legacy and SaaS tables.
  * The test explicitly ensures legacy Spring beans are NOT registered.
  */
-@EnabledIfEnvironmentVariable(named="STOCKOS_TEST_DB_URL",
-  matches="jdbc:postgresql://(localhost|127\\.0\\.0\\.1):5432/stockos_ci_test")
+@EnabledIfEnvironmentVariable(named="STOCKOS_SAAS_ONLY_DB_URL",
+  matches="jdbc:postgresql://(localhost|127\\.0\\.0\\.1):5432/stockos_ci_saas")
 @SpringBootTest(classes=StockOsStagingApplication.class,properties={
    "spring.profiles.active=staging",
    "stockos.security.mode=supabase-jwt",
@@ -46,6 +46,19 @@ class SaasIsolatedStagingHttpIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired MockMvc mvc;
     @MockitoBean JwtDecoder jwtDecoder;
+
+    @Test
+    void noLegacyTablesExistInIsolatedSaasDatabase() {
+        assertEquals("stockos_ci_saas",jdbc.queryForObject("select current_database()",String.class));
+        assertEquals(0,jdbc.queryForObject("""
+            select count(*) from information_schema.tables
+            where table_schema='public'
+            """,Integer.class));
+        assertEquals(23,jdbc.queryForObject("""
+            select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+            where n.nspname='stockos_private' and c.relkind='r'
+            """,Integer.class));
+    }
 
     @Test
     void contextContainsOnlySaasBeansAndNoJpaOrFlywayOrLegacyRoutes() throws Exception {

@@ -82,7 +82,14 @@ jobs:
         run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test
       - name: Test real HTTP security and tenant boundaries with mocked JWT decoder
         run: mvn -B -Dtest=SaasHttpSecurityPostgresIntegrationTest test
-      - name: Verify isolated SaaS Spring context and HTTP without legacy tables
+      - name: Bootstrap SaaS-only schema in a second disposable database
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/verify-saas-only-bootstrap.sh
+      - name: Verify standalone SaaS Spring Boot HTTP on database without legacy tables
+        env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
+          STOCKOS_SAAS_ONLY_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
         run: mvn -B -Dtest=SaasIsolatedStagingHttpIntegrationTest test
       - name: Prove full database backup and restore on disposable PostgreSQL
         env:
