@@ -1,0 +1,49 @@
+name: StockOS mock preview checks
+
+on:
+  push:
+    branches:
+      - feat/stockos-preview-mock-performance-20261028
+  pull_request:
+    paths:
+      - 'src/main/resources/static/js/preview-mock.js'
+      - 'src/main/resources/static/js/dashboard.js'
+      - 'src/main/resources/static/js/estoque.js'
+      - 'scripts/build-preview.mjs'
+      - 'package.json'
+      - '.github/workflows/stockos-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/main/resources/static/js/preview-mock.js
+          node --check src/main/resources/static/js/dashboard.js
+          node --check src/main/resources/static/js/estoque.js
+          node --check scripts/build-preview.mjs
+      - name: Build isolated preview
+        run: npm run build:preview
+      - name: Smoke-test generated files and isolation
+        run: |
+          test -s dist-preview/index.html
+          test -s dist-preview/login.html
+          test -s dist-preview/js/preview-mock.js
+          test -s dist-preview/dashboard.html
+          grep -q 'preview-mock.js' dist-preview/dashboard.html
+          ! test -e dist-preview/saas-admin.html
+          ! test -e dist-preview/saas-comandas.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stockos-preview-static
+          path: dist-preview
+          retention-days: 7
