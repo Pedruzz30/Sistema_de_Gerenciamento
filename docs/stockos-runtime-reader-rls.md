@@ -61,3 +61,42 @@ operações de escrita com RLS, ou robustez em caso de injeção SQL.
 
 Referência:
 https://supabase.com/docs/guides/database/postgres/row-level-security
+
+## JWT → transação JDBC (implementado na PR, sem deploy)
+
+A classe `service.SaasRlsReadExecutor` estabelece, para **operações
+somente de leitura**, o contexto de identidade exclusivamente a partir de
+`JwtAuthenticationToken` autenticado pelo Spring Security. O token precisa
+ter `aud=authenticated`, `role=authenticated`, `sub` UUID válido e não
+pode ser anônimo. A verificação da assinatura JWT permanece
+responsabilidade do decoder ES256/RS256 já presente.
+
+A classe impede reutilizar uma transação pré-existente, abre sua própria
+transação `readOnly`, executa
+`select set_config('stockos.actor_id', ?, true)` via prepared statement,
+e roda a consulta no **mesmo** `JdbcTemplate`/conexão da transação.
+Isso permite que o PostgreSQL aplique RLS com `current_setting`,
+sem usar headers controlados pelo browser. O contexto é removido por
+COMMIT/ROLLBACK.
+
+O teste `SaasRlsReadExecutorPostgresIntegrationTest` usa **conta PostgreSQL
+de login diferente de postgres** (`stockos_ci_reader`, descartável,
+criada somente no CI, membro da `stockos_runtime_reader`). Testa leitura
+das empresas A/B, funcionário desativado, token ausente, rollback,
+reuso da conexão, negação de UPDATE e convites e proibição de
+transação ambiente. O usuário CI e sua senha fictícia não são credenciais
+do Supabase.
+
+### Importante: ainda NÃO está em uso pelos endpoints existentes
+
+Os serviços `SaasTenantAccess`, `SaasComandaService` etc. ainda
+fazem queries comuns com a configuração atual de JDBC. **Não** apontar
+esses serviços ao papel `stockos_ci_reader`, pois a role é somente leitura
+e falta cobertura RLS para a maioria das tabelas de negócio.
+Não interpretar a existência do executor como um backend de produção
+conectado ao Supabase.
+
+Próximos passos: criar operação de leitura dedicada usando este executor,
+revisar as regras de autorização em Java e desenhar o papel de escrita
+com isolamento por empresa/filial antes de provisionar credenciais
+reais de staging.
