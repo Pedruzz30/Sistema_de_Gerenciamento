@@ -15,6 +15,7 @@ on:
       - 'src/main/resources/application-staging.properties'
       - 'src/main/resources/application.properties'
       - 'src/main/resources/db/saas-migration/**'
+      - 'scripts/ci/verify-saas-runtime-reader-rls.sh'
       - 'src/test/java/app/StockOsFlywaySeparationTest.java'
       - 'src/test/java/integration/Fase46FlywayMigrationIntegrationTest.java'
       - 'src/test/java/app/ProductionSafetyGateTest.java'
@@ -96,6 +97,10 @@ jobs:
           DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
           STOCKOS_SAAS_ONLY_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci_saas
         run: mvn -B -Dtest=SaasIsolatedStagingHttpIntegrationTest test
+      - name: Enforce read-only runtime role and cross-tenant RLS on SaaS-only database
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/verify-saas-runtime-reader-rls.sh
       - name: Prove full database backup and restore on disposable PostgreSQL
         env:
           CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
