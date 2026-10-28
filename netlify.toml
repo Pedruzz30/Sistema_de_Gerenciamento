@@ -1,0 +1,11 @@
+# Dedicated StockOS demonstration build. Does not deploy or connect to Spring Boot.
+[build]
+  command = "npm run build:preview"
+  publish = "dist-preview"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[context.deploy-preview]
+  command = "npm run build:preview"
+  publish = "dist-preview"
