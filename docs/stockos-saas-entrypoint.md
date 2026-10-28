@@ -20,7 +20,9 @@ STOCKOS_SUPABASE_URL=https://hucfndwhaebvithtkovn.supabase.co
 STOCKOS_SUPABASE_AUTH_ISSUER=https://hucfndwhaebvithtkovn.supabase.co/auth/v1
 
 # After safe DB runtime roles/policies have been deployed and verified:
-java -cp target/classes:... saas.StockOsStagingApplication --spring.profiles.active=staging
+mvn -B spring-boot:run \
+  -Dspring-boot.run.main-class=saas.StockOsStagingApplication \
+  -Dspring-boot.run.profiles=staging
 ```
 
 **DO NOT start against the remote Supabase DB yet**:
@@ -28,9 +30,12 @@ runtime JDBC role with least privilege, policies and tenant-bound context
 are still being implemented. Startup blocks legacy auth mode even in staging.
 The previous default `Main` remains available for local legacy development.
 
-CI test: `SaasIsolatedStagingHttpIntegrationTest` checks that JPA, Flyway,
-legacy controllers/repositories are absent and SaaS HTTP+JWT routes work on
-disposable PostgreSQL. JWT decoder is mocked in this integration test; real
-JWKS signatures are verified in a separate test suite.
+CI boots a **second disposable PostgreSQL database** `stockos_ci_saas`
+using the 13 SaaS migrations only (not the legacy Flyway scripts), then
+runs `SaasIsolatedStagingHttpIntegrationTest` against it. The test checks
+zero public legacy tables, 23 private SaaS tables, no JPA or Flyway beans,
+no legacy controller/repository beans, and a real SaaS HTTP comanda operation.
+JWT decoder is mocked in this integration test; cryptographic JWKS
+signatures are verified in a separate unit test suite.
 
 No deploy, migrations or user provisioning are performed by this entrypoint.
