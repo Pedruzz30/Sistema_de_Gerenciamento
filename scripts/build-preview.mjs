@@ -6,6 +6,12 @@ const out = resolve('dist-preview');
 await rm(out, { recursive:true, force:true });
 await mkdir(out, {recursive:true});
 await cp(root, out, {recursive:true});
+// SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.
+const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html']);
+const { readdir } = await import('node:fs/promises');
+for (const entry of await readdir(out)) {
+  if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
+}
 const pages = ['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html'];
 const inject = '<script src="/js/preview-mock.js"></script>';
 for (const page of pages) {
