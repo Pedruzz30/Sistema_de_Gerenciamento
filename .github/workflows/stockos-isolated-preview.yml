@@ -1,0 +1,30 @@
+name: Isolated StockOS Netlify preview
+on:
+  push:
+    branches: [fix/stockos-netlify-isolated-preview-20261028]
+  pull_request:
+    paths: [preview-source/**, scripts/build-preview.mjs, netlify.toml, package.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check scripts/build-preview.mjs
+      - run: node --check preview-source/js/preview-mock.js
+      - run: npm run build:preview
+      - run: |
+          test -s dist-preview/index.html
+          test -s dist-preview/login.html
+          test -s dist-preview/dashboard.html
+          test -s dist-preview/js/preview-mock.js
+          grep -q 'preview-mock.js' dist-preview/dashboard.html
+          grep -q '^/login /login.html 200$' dist-preview/_redirects
+          ! test -e dist-preview/saas-admin.html
+          ! test -e dist-preview/saas-comandas.html
+          ! test -e dist-preview/application.properties

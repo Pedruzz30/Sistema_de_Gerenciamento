@@ -1,0 +1,9 @@
+{
+  "name": "stockos-preview-deploy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:preview": "node scripts/build-preview.mjs"
+  }
+}

@@ -1,0 +1,60 @@
+/* StockOS — Forno design tokens */
+:root {
+  --paper: oklch(0.975 0.008 75);
+  --paper-sunk: oklch(0.955 0.010 72);
+  --paper-raised: oklch(0.992 0.004 80);
+  --ink: oklch(0.22 0.015 60);
+  --ink-2: oklch(0.36 0.012 62);
+  --ink-3: oklch(0.52 0.012 65);
+  --ink-4: oklch(0.70 0.010 68);
+  --rule: oklch(0.88 0.012 70);
+  --rule-strong: oklch(0.82 0.014 68);
+
+  --accent: oklch(0.58 0.18 40);
+  --accent-ink: oklch(0.44 0.18 40);
+  --accent-soft: oklch(0.93 0.04 45);
+  --accent-soft-2: oklch(0.88 0.06 45);
+
+  --ok: oklch(0.56 0.11 155);
+  --ok-soft: oklch(0.93 0.035 155);
+  --warn: oklch(0.66 0.13 75);
+  --warn-soft: oklch(0.94 0.045 80);
+  --bad: oklch(0.56 0.16 25);
+  --bad-soft: oklch(0.93 0.04 30);
+  --info: oklch(0.55 0.09 240);
+  --info-soft: oklch(0.93 0.025 240);
+
+  --font-display: 'Fraunces', 'Times New Roman', serif;
+  --font-ui: 'Inter Tight', 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  --shadow-sm: 0 1px 0 oklch(0.85 0.01 70 / 0.5);
+  --shadow-md: 0 1px 2px oklch(0.22 0.015 60 / 0.04), 0 4px 12px oklch(0.22 0.015 60 / 0.04);
+  --shadow-lg: 0 1px 2px oklch(0.22 0.015 60 / 0.06), 0 10px 40px oklch(0.22 0.015 60 / 0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font: inherit; color: inherit; }
+input, select, textarea { font: inherit; color: inherit; }
+::selection { background: var(--accent-soft-2); color: var(--ink); }
+
+.mono { font-family: var(--font-mono); }
+.num  { font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.01em; }

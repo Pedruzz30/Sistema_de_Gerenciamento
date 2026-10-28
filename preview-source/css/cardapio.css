@@ -1,0 +1,171 @@
+.header-right--cardapio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cardapio-layout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.cardapio-panel {
+  position: relative;
+}
+
+.cardapio-panel--categories .table-wrap {
+  max-height: 720px;
+  overflow: auto;
+}
+
+.table-header--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.table-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar--cardapio {
+  margin-bottom: 0;
+}
+
+.cardapio-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cardapio-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.compact-control--order {
+  width: 76px;
+  text-align: center;
+}
+
+.ordem-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions-grid--stack {
+  max-width: 220px;
+}
+
+.action-chip {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.action-chip:hover {
+  color: var(--text-1);
+  transform: translateY(-1px);
+}
+
+.action-chip--muted:hover {
+  border-color: var(--border-light);
+}
+
+.action-chip--success {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.18);
+  color: var(--green-text);
+}
+
+.action-chip--danger {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.18);
+  color: var(--red-text);
+}
+
+.action-chip--warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.18);
+  color: var(--amber-text);
+}
+
+.field-help {
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.status-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+#cardapio-page-alert {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 1180px) {
+  .cardapio-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cardapio-panel--categories .table-wrap {
+    max-height: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .header-right--cardapio,
+  .table-header-row,
+  .ordem-editor {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cardapio-legend__item {
+    align-items: flex-start;
+  }
+
+  .compact-control--order {
+    width: 100%;
+  }
+
+  .actions-grid--stack {
+    max-width: none;
+  }
+}

@@ -1,0 +1,53 @@
+/* Toolbar / filtros */
+.toolbar {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+}
+.search-wrap { position: relative; min-width: 260px; flex: 0 1 320px; }
+.search-wrap svg {
+  position: absolute; left: var(--sp-3); top: 50%; transform: translateY(-50%);
+  width: 13px; height: 13px; color: var(--ink-4); pointer-events: none;
+}
+.input-search { padding-left: calc(var(--sp-3) + 13px + var(--sp-2)); }
+
+/* Segmented control */
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm);
+}
+.seg > button {
+  padding: 0 var(--sp-3); height: 26px;
+  font-size: var(--fs-12); font-weight: 500;
+  color: var(--ink-4);
+  border-radius: 4px;
+  font-family: inherit;
+  transition: background 0.1s, color 0.1s;
+}
+.seg > button:hover { color: var(--ink-2); }
+.seg > button.active { background: var(--paper-sunk); color: var(--ink); }
+
+/* Tabs */
+.tabs {
+  display: inline-flex;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: var(--sp-5);
+}
+.tabs > button {
+  padding: var(--sp-3) 0;
+  font-size: var(--fs-13);
+  font-weight: 500;
+  color: var(--ink-4);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+  transition: color 0.1s, border-color 0.1s;
+}
+.tabs > button:hover { color: var(--ink-2); }
+.tabs > button.active { color: var(--ink); border-bottom-color: var(--accent); }

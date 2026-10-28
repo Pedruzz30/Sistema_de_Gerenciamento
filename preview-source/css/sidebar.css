@@ -1,0 +1,61 @@
+/* Sidebar */
+.sidebar {
+  padding: var(--sp-5) var(--sp-3);
+  display: flex; flex-direction: column;
+  gap: var(--sp-5);
+  overflow: auto;
+}
+.sb-brand {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0 var(--sp-2);
+}
+.sb-brand .logo {
+  width: 28px; height: 28px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: var(--fs-14);
+}
+.sb-brand .name { font-size: var(--fs-15); font-weight: 600; letter-spacing: -0.2px; }
+.sb-brand .tag  { font-size: var(--fs-11); color: var(--ink-4); }
+
+.sb-group { display: flex; flex-direction: column; gap: 2px; }
+.sb-group .caps { padding: 0 var(--sp-2); margin-bottom: var(--sp-1); }
+
+.sb-link {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-2);
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+  font-size: var(--fs-13);
+  font-weight: 500;
+  transition: background 0.1s, color 0.1s;
+}
+.sb-link:hover { background: var(--paper-raised); color: var(--ink); }
+.sb-link svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--ink-4); }
+.sb-link.active { background: var(--accent-soft); color: var(--ink); }
+.sb-link.active svg { color: var(--accent); }
+.sb-link .count {
+  margin-left: auto;
+  font-size: var(--fs-11);
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-user {
+  margin-top: auto;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2);
+  border-top: 1px solid var(--rule);
+}
+.sb-user .avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--bad));
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: var(--fs-11);
+}
+.sb-user .who { display: flex; flex-direction: column; min-width: 0; }
+.sb-user .who .n { font-size: var(--fs-12); font-weight: 500; }
+.sb-user .who .r { font-size: var(--fs-11); color: var(--ink-4); }
