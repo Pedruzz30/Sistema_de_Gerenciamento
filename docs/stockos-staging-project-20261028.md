@@ -13,10 +13,10 @@ Este é o **único projeto autorizado para testes do StockOS**.
 | Issuer de tokens | `https://hucfndwhaebvithtkovn.supabase.co/auth/v1` |
 | JWT signing alg | **ECC P-256 / ES256 (ativo)**, confirmado no painel JWT Keys em 28/10/2026 |
 | Conta de usuário de testes | Nenhuma, na inspeção inicial |
-| Tabelas SaaS | Nenhuma, na inspeção inicial |
+| Tabelas SaaS | **23 tabelas privadas instaladas**; 13 migrations Supabase aplicadas em 28/10/2026 |
 | Chave publicável | Existe `sb_publishable_...`, obter diretamente no painel ou conectar por configuração privada |
 | Banco real conectado ao Java | **Ainda não** |
-| Migrations Flyway executadas | **Nenhuma** |
+| Migrations Flyway executadas | **Nenhuma** (as 13 migrations foram registradas no histórico Supabase, não Flyway) |
 
 Projeto recriado em São Paulo em 28/10/2026; a referência anterior foi desativada. As verificações foram somente leitura pelo conector Supabase. `get_advisors(security)`
 retornou zero alertas iniciais. Isso não equivale a auditoria completa ou
@@ -45,12 +45,8 @@ privado (SSL verificado). Os defaults do backend não são credenciais de stagin
 1. **Concluído no painel:** chave ECC P-256 assimétrica ativa (ES256); HS256 aparece apenas como chave anterior. O backend foi ajustado para aceitar ES256 e RS256, nunca HS256. Verificar o JWKS público e testar um token realmente emitido pelo Supabase antes de liberar login.
 2. Verificar *Settings > Data API* (se realmente desabilitada) e *Authentication >
    Providers > Email*: confirmação por e-mail, URLs de redirecionamento e políticas.
-3. Preparar os scripts Flyway com **separação do schema legado em `public`**.
-   Atualmente o jar executa migrações `V20260417_00`… que criam tabelas
-   legadas públicas, além das migrations `stockos_private`. **Não rodar
-   automaticamente todas em staging até resolver essa separação**.
-4. Depois de validar a estratégia Flyway, aplicar migrations no banco novo
-   usando papel de migração, sem misturar histórico do Supabase CLI.
+3. **Concluído o schema SaaS:** as 13 migrations `stockos_private` foram aplicadas sem migrations legadas. O perfil `staging` desabilita o Flyway automático para evitar execução duplicada ou criação de tabelas legadas. Ainda é necessário separar os componentes JPA antes de iniciar a API contra esse banco.
+4. O schema foi aplicado pelo conector Supabase, com histórico Supabase separado do Flyway. Novas alterações devem seguir um fluxo de migrations SaaS independente, sem duplicar SQL já executado.
 5. Criar contas fictícias e seed seguro por administrador autorizado; validar
    login e aceitação de convites com token e e-mail confirmados.
 6. Configurar usuário PostgreSQL de runtime com menor privilégio e revisar

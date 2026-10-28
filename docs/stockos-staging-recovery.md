@@ -1,7 +1,7 @@
 # StockOS — Staging, Auth, backups e restauração
 
 ## Estado atual
-**StockOS Staging agora existe**, na organização Space Underground, região `sa-east-1` (São Paulo), referência `hucfndwhaebvithtkovn`. O banco está vazio e não existe implantação nem backup de clientes configurado. Auth real ainda não foi testado.
+**StockOS Staging agora existe**, na organização Space Underground, região `sa-east-1` (São Paulo), referência `hucfndwhaebvithtkovn`. Existem 23 tabelas SaaS privadas vazias, sem dados de clientes, e não existe implantação nem backup de clientes configurado. Auth real ainda não foi testado.
 Perfil Spring `prod` bloqueado por código.
 
 ## Configuração isolada
@@ -20,9 +20,10 @@ Perfil Spring `prod` bloqueado por código.
    conforme certificado e connection string providos pelo projeto.
 4. O fluxo de convites com código de uso único está implementado; o envio de
    e-mails automáticos e testes de identidade com Supabase Auth real ainda faltam.
-5. Validar todas as rotas e políticas, papéis DB e logs ANTES de liberar
+5. As 13 migrations SaaS foram aplicadas em 28/10/2026 e o perfil `staging` agora desabilita Flyway automático. Ainda faltam separação das entidades JPA legadas, papel JDBC restrito e políticas tenant-scoped.
+6. Validar todas as rotas e políticas, papéis DB e logs ANTES de liberar
    portas externas; não usar credenciais de superuser em produção.
-6. **NÃO remover o bloqueio `prod`** por conta destas etapas.
+7. **NÃO remover o bloqueio `prod`** por conta destas etapas.
 
 ## Backup e recuperação
 - O CI usa contêiner PostgreSQL 17 **descartável**, faz `pg_dump -Fc`

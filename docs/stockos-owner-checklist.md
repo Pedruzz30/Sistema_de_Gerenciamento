@@ -16,6 +16,7 @@ até que a segurança e o fluxo comercial sejam auditados.
 ### 1. Novo Supabase SOMENTE para StockOS
 - **Concluído:** projeto `StockOS Staging` criado na organização Space Underground,
   com banco independente na região São Paulo (`sa-east-1`), ref `hucfndwhaebvithtkovn`.
+- **Concluído:** 13 migrations privadas aplicadas, 23 tabelas com RLS; nenhuma tabela legada. Ainda faltam papel JDBC de runtime e isolamento RLS por tenant.
 - Verificar plano/custos e política de recuperação antes da implantação.
 - Configurar Auth: confirmação de e-mail, URLs de redirect, domínio futuro e
   provedor SMTP transacional. Usar chave de assinatura JWT assimétrica.
