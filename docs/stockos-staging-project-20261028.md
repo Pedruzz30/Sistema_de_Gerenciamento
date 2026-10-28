@@ -6,11 +6,11 @@ Este é o **único projeto autorizado para testes do StockOS**.
 | --- | --- |
 | Organização | Space Underground |
 | Projeto | StockOS Staging |
-| Project ref | `earocdtfxtvcsfsfxbvt` |
-| Região existente | `us-east-1` (não São Paulo) |
+| Project ref | `hucfndwhaebvithtkovn` |
+| Região existente | `sa-east-1` (São Paulo, Brasil) |
 | PostgreSQL | 17.11 |
-| URL pública do projeto | `https://earocdtfxtvcsfsfxbvt.supabase.co` |
-| Issuer de tokens | `https://earocdtfxtvcsfsfxbvt.supabase.co/auth/v1` |
+| URL pública do projeto | `https://hucfndwhaebvithtkovn.supabase.co` |
+| Issuer de tokens | `https://hucfndwhaebvithtkovn.supabase.co/auth/v1` |
 | JWT signing alg | **Ainda não verificado no projeto real** |
 | Conta de usuário de testes | Nenhuma, na inspeção inicial |
 | Tabelas SaaS | Nenhuma, na inspeção inicial |
@@ -18,7 +18,7 @@ Este é o **único projeto autorizado para testes do StockOS**.
 | Banco real conectado ao Java | **Ainda não** |
 | Migrations Flyway executadas | **Nenhuma** |
 
-As verificações foram somente leitura pelo conector Supabase. `get_advisors(security)`
+Projeto recriado em São Paulo em 28/10/2026; a referência anterior foi desativada. As verificações foram somente leitura pelo conector Supabase. `get_advisors(security)`
 retornou zero alertas iniciais. Isso não equivale a auditoria completa ou
 confirmação das opções do Data API marcadas na criação.
 
@@ -27,9 +27,9 @@ confirmação das opções do Data API marcadas na criação.
 ```env
 STOCKOS_SECURITY_MODE=supabase-jwt
 STOCKOS_SERVER_ADDRESS=127.0.0.1
-STOCKOS_SUPABASE_EXPECTED_PROJECT_REF=earocdtfxtvcsfsfxbvt
-STOCKOS_SUPABASE_URL=https://earocdtfxtvcsfsfxbvt.supabase.co
-STOCKOS_SUPABASE_AUTH_ISSUER=https://earocdtfxtvcsfsfxbvt.supabase.co/auth/v1
+STOCKOS_SUPABASE_EXPECTED_PROJECT_REF=hucfndwhaebvithtkovn
+STOCKOS_SUPABASE_URL=https://hucfndwhaebvithtkovn.supabase.co
+STOCKOS_SUPABASE_AUTH_ISSUER=https://hucfndwhaebvithtkovn.supabase.co/auth/v1
 STOCKOS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_COLE_A_CHAVE_PUBLICA_NO_AMBIENTE
 SPRING_PROFILES_ACTIVE=staging
 FLYWAY_BASELINE_ON_MIGRATE=false

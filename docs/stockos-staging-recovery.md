@@ -1,11 +1,11 @@
 # StockOS — Staging, Auth, backups e restauração
 
 ## Estado atual
-**StockOS Staging agora existe**, na organização Space Underground, região `us-east-1`, referência `earocdtfxtvcsfsfxbvt`. O banco está vazio e não existe implantação nem backup de clientes configurado. Auth real ainda não foi testado.
+**StockOS Staging agora existe**, na organização Space Underground, região `sa-east-1` (São Paulo), referência `hucfndwhaebvithtkovn`. O banco está vazio e não existe implantação nem backup de clientes configurado. Auth real ainda não foi testado.
 Perfil Spring `prod` bloqueado por código.
 
 ## Configuração isolada
-1. Projeto criado: `StockOS Staging` (`earocdtfxtvcsfsfxbvt`). Não reutilizar
+1. Projeto criado: `StockOS Staging` (`hucfndwhaebvithtkovn`). Não reutilizar
    os bancos existentes da Space Underground.
 2. Selecionar assinatura assimétrica JWT com endpoint JWKS (não HS256 legado).
    Obter URL `https://<ref>.supabase.co` e **publishable key**
@@ -15,7 +15,7 @@ Perfil Spring `prod` bloqueado por código.
    `STOCKOS_SUPABASE_AUTH_ISSUER=https://<ref>.supabase.co/auth/v1`,
    `STOCKOS_SUPABASE_URL=https://<ref>.supabase.co`,
    `STOCKOS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` e
-   `STOCKOS_SUPABASE_EXPECTED_PROJECT_REF=earocdtfxtvcsfsfxbvt`.
+   `STOCKOS_SUPABASE_EXPECTED_PROJECT_REF=hucfndwhaebvithtkovn`.
    Config inválida impede inicialização. Habilitar SSL verificado no JDBC
    conforme certificado e connection string providos pelo projeto.
 4. O fluxo de convites com código de uso único está implementado; o envio de
