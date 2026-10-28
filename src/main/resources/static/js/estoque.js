@@ -2,6 +2,8 @@
 
 let todosOsProdutos = [];
 let produtosVisiveis = [];
+const MAX_LINHAS_ESTOQUE = 60;
+let paginaEstoque = 1;
 let filtroNivelAtivo = 'todos';
 let filtroCategoriaAtiva = 'todas';
 let produtoSelecionado = null;
@@ -164,6 +166,10 @@ function renderTabela() {
   const podeEditar = temPermissao(PERMISSOES.EDITAR_ESTOQUE);
   const produtos = getProdutosVisiveis();
   produtosVisiveis = produtos;
+  const totalPaginas = Math.max(1, Math.ceil(produtos.length / MAX_LINHAS_ESTOQUE));
+  paginaEstoque = Math.min(Math.max(1, paginaEstoque), totalPaginas);
+  const inicio = (paginaEstoque - 1) * MAX_LINHAS_ESTOQUE;
+  const paginaProdutos = produtos.slice(inicio, inicio + MAX_LINHAS_ESTOQUE);
 
   countEl.textContent = `${produtos.length} produto${produtos.length !== 1 ? 's' : ''}`;
   atualizarEstadoExportacao();
@@ -187,7 +193,7 @@ function renderTabela() {
     return;
   }
 
-  tbody.innerHTML = produtos.map(p => `
+  tbody.innerHTML = paginaProdutos.map(p => `
     <tr>
       <td>
         <div class="produto-nome">${escapeHtml(p.nome)}</div>
@@ -215,6 +221,17 @@ function renderTabela() {
         </td>
       </tr>
   `).join('');
+  if (totalPaginas > 1) {
+    const nav = document.createElement('tr');
+    nav.innerHTML = '<td colspan="7" style="padding:14px;text-align:center">' +
+      '<button type="button" id="stockos-page-prev" ' + (paginaEstoque<=1?'disabled':'') + '>Anterior</button> ' +
+      '<span style="padding:0 14px">Página ' + paginaEstoque + ' de ' + totalPaginas + '</span>' +
+      '<button type="button" id="stockos-page-next" ' + (paginaEstoque>=totalPaginas?'disabled':'') + '>Próxima</button>' +
+      '</td>';
+    tbody.appendChild(nav);
+    nav.querySelector('#stockos-page-prev').addEventListener('click',()=>{paginaEstoque--;renderTabela();});
+    nav.querySelector('#stockos-page-next').addEventListener('click',()=>{paginaEstoque++;renderTabela();});
+  }
 }
 
 function nivelLabel(nivel) {
