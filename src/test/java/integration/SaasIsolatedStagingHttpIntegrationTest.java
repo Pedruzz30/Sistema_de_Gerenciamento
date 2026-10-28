@@ -61,7 +61,13 @@ class SaasIsolatedStagingHttpIntegrationTest {
         mvc.perform(get("/api/saas/config"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.supabaseUrl").value("https://stockos-ci.supabase.co"));
-        // Legacy MVC routes are absent instead of accidentally reachable.
+        // Authenticate the test bearer before checking legacy API denial.
+        Jwt jwt=Jwt.withTokenValue("staging-test").header("alg","ES256")
+            .subject(UUID.randomUUID().toString()).claim("role","authenticated")
+            .audience(List.of("authenticated"))
+            .issuedAt(Instant.now().minusSeconds(10))
+            .expiresAt(Instant.now().plusSeconds(3600)).build();
+        when(jwtDecoder.decode(eq("staging-test"))).thenReturn(jwt);
         mvc.perform(get("/api/legacy/not-registered")
                 .header("Authorization","Bearer staging-test"))
                 .andExpect(status().isForbidden());
