@@ -41,6 +41,12 @@ class Fase46FlywayMigrationIntegrationTest {
                 assertTrue(tabelaExiste(st, "venda_item_partes"));
                 assertTrue(tabelaExiste(st, "flyway_schema_history"));
                 assertEquals(VERSAO_ATUAL_SCHEMA, versaoAtualFlyway(st));
+                try (ResultSet rs = st.executeQuery("""
+                    select count(*) from pg_namespace where nspname='stockos_private'
+                    """)) {
+                    rs.next();
+                    assertEquals(0, rs.getInt(1), "Legacy Flyway must not create StockOS schema");
+                }
             }
         } finally {
             removerBancoTemporario(target);

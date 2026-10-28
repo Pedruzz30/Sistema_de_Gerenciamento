@@ -81,6 +81,8 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Verify legacy Flyway never installs SaaS schema
+        run: mvn -B -Dtest=Fase46FlywayMigrationIntegrationTest test
       - name: Run PostgreSQL Flyway + SaaS transaction integration tests
         run: mvn -B -Dtest=SaasComandaPostgresIntegrationTest test
       - name: Test real HTTP security and tenant boundaries with mocked JWT decoder
