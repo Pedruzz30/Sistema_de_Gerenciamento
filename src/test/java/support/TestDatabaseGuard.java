@@ -30,7 +30,7 @@ public final class TestDatabaseGuard implements ApplicationListener<ApplicationE
         } catch (IllegalArgumentException ex) {
             throw unsafe("Invalid JDBC URL.");
         }
-        String host = uri.getHost(), path = uri.getPath();
+        String host = uri.getHost(), path = uri.getRawPath();
         if (!"postgresql".equalsIgnoreCase(uri.getScheme()) ||
                 host == null || !HOSTS.contains(host.toLowerCase(Locale.ROOT)) ||
                 uri.getPort() != 55432 || uri.getUserInfo() != null ||
