@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.mjs",
-    "dev:check": "node --check vite.config.mjs"
+    "dev:check": "node --check vite.config.mjs",
+    "build:preview": "node scripts/build-preview.mjs",
+    "check:preview": "node --check src/main/resources/static/js/preview-mock.js && node --check scripts/build-preview.mjs"
   },
   "devDependencies": {
     "vite": "8.3.5"
