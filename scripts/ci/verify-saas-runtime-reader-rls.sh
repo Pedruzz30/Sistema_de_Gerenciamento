@@ -33,7 +33,9 @@ INSERT INTO stockos_private.planos(codigo,nome,preco_mensal,max_filiais,max_usua
   VALUES ('rls_ci','Plano RLS',0,2,20);
 INSERT INTO stockos_private.licencas(empresa_id,plano_id,status,vigencia_inicio,vigencia_fim,valor_mensal_snapshot)
   SELECT e.id,p.id,'TRIAL',now(),now()+interval '1 day',0
-  FROM stockos_private.empresas e CROSS JOIN stockos_private.planos p WHERE p.codigo='rls_ci';
+  FROM stockos_private.empresas e CROSS JOIN stockos_private.planos p
+  WHERE p.codigo='rls_ci' AND e.id IN
+    ('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb');
 DO $$
 BEGIN
  IF (SELECT rolcanlogin OR rolsuper OR rolbypassrls OR rolcreatedb OR rolcreaterole
