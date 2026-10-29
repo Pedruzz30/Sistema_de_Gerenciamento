@@ -259,6 +259,9 @@ public class EstoqueService {
         return totalAtualizados;
     }
 
+    public Map<Integer,Integer> quantidadesVendidasPorProduto() {
+        return pedidoRepository.quantidadesVendidasPorProduto();
+    }
     public List<Pedido> listarPedidos() {
         return pedidoRepository.listarTodos();
     }

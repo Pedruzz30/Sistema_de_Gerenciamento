@@ -20,4 +20,15 @@ public interface JpaCotacaoRepository extends JpaRepository<CotacaoMensal, Long>
     List<CotacaoMensal> findAllByOrderByMesReferenciaDescIdDesc();
 
     Optional<CotacaoMensal> findTopByOrderByIdDesc();
+    interface UltimoCusto {
+        Integer getProdutoId();
+        java.math.BigDecimal getPrecoUnitario();
+    }
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT DISTINCT ON (produto_id) produto_id AS "produtoId",
+            preco_unitario AS "precoUnitario"
+        FROM cotacoes_mensais
+        ORDER BY produto_id, mes_referencia DESC, id DESC
+        """, nativeQuery = true)
+    List<UltimoCusto> buscarUltimosCustosPorProduto();
 }

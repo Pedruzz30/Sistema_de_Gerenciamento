@@ -39,6 +39,13 @@ public class CotacaoRepositoryAdapter implements CotacaoRepository {
     }
 
     @Override
+    public java.util.Map<Integer,java.math.BigDecimal> custosMaisRecentesPorProduto() {
+        java.util.Map<Integer,java.math.BigDecimal> map = new java.util.HashMap<>();
+        for (JpaCotacaoRepository.UltimoCusto row : delegate.buscarUltimosCustosPorProduto())
+            map.put(row.getProdutoId(),row.getPrecoUnitario());
+        return map;
+    }
+    @Override
     public List<CotacaoMensal> listarTodas() {
         return delegate.findAllByOrderByMesReferenciaDescIdDesc();
     }
