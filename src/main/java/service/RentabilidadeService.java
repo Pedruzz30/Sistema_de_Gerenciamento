@@ -30,7 +30,7 @@ public class RentabilidadeService {
     public AnaliseRentabilidade gerarRanking() {
         List<Produto> produtos = estoqueService.listarProdutos();
         Map<Integer, BigDecimal> custos = cotacaoRepository.custosMaisRecentesPorProduto();
-        Map<Integer, Integer> unidadesVendidas = unidadesVendidasPorProduto();
+        Map<Integer, Integer> unidadesVendidas = estoqueService.quantidadesVendidasPorProduto();
 
         List<ItemRentabilidade> itens = new ArrayList<>();
         for (Produto produto : produtos) {
