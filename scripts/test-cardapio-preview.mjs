@@ -15,7 +15,7 @@ async function call(path,method='GET',body){
 let r=await call('/api/cardapio/admin/categorias');assert.equal(r.data.length,2);
 r=await call('/api/cardapio/admin/categorias','POST',{codigo:'TESTE',nomeExibicao:'Novos testes',ordemExibicao:3});assert.equal(r.status,201);
 r=await call('/api/cardapio/admin/itens','POST',{nome:'Item demo',codigo:'ITEMDEMO',categoriaId:3,precoVenda:12,tipoItem:'PREPARADO_SOB_DEMANDA',ordemExibicao:1});assert.equal(r.status,201);const itemId=r.data.id;
-r=await call('/api/cardapio/admin/itens/'+itemId);assert.equal(r.status,400); // unsupported route methods fail closed
+r=await call('/api/cardapio/admin/itens/'+itemId);assert.equal(r.status,405); // unsupported route methods fail closed
 r=await call('/api/cardapio/admin/itens/'+itemId+'/disponibilidade','PATCH',{disponivelParaVenda:false});assert.equal(r.data.disponivelParaVenda,false);
 r=await call('/api/cardapio/itens/'+itemId+'/variacoes','POST',{nome:'Pequeno',precoVenda:12,padrao:true,ativa:true});assert.equal(r.status,201);const vId=r.data.id;
 r=await call('/api/cardapio/grupos-modificadores','POST',{nome:'Adicional teste',tipoSelecao:'UNICA',quantidadeMaxima:1,ativo:true});assert.equal(r.status,201);const gId=r.data.id;
