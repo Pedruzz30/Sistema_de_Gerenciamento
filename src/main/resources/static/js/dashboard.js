@@ -7,73 +7,37 @@ const PODE_VER_FINANCEIRO_DASH = temAlgumaPermissao([
 const PODE_VER_RENTABILIDADE_DASH = temPermissao(PERMISSOES.VER_FINANCAS);
 
 async function carregarDados() {
-  let produtos = [];
-  let caixas = [];
-  let movimentacoes = [];
-  let metricas = null;
-  let rentabilidade = null;
-
-  if (PODE_VER_ESTOQUE_DASH) {
+  const pedir = async (url, fallback) => {
+    const inicio = performance.now();
     try {
-      const resp = await fetch('/api/produtos');
+      const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      produtos = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar produtos:', err);
+      return await resp.json();
+    } catch (error) {
+      console.error('StockOS: falha em ' + url, error);
+      return fallback;
+    } finally {
+      console.debug('[StockOS] ' + url + ': ' + Math.round(performance.now() - inicio) + 'ms');
     }
-  }
-
-  if (PODE_VER_FINANCEIRO_DASH) {
-    try {
-      const resp = await fetch('/api/caixas');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      caixas = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar caixas:', err);
-    }
-  }
-
-  if (PODE_VER_ESTOQUE_DASH) {
-    try {
-      const resp = await fetch('/api/movimentacoes');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      movimentacoes = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar movimentações:', err);
-    }
-  }
-
-  if (PODE_VER_FINANCEIRO_DASH) {
-    // BUG 2 fix: use dedicated metrics endpoint for correct ticket médio
-    try {
-      const resp = await fetch('/api/caixas/metricas');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      metricas = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar métricas:', err);
-    }
-  }
-
-  if (PODE_VER_RENTABILIDADE_DASH) {
-    try {
-      const resp = await fetch('/api/rentabilidade/ranking');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      rentabilidade = await resp.json();
-    } catch (err) {
-      console.error('Erro ao carregar rentabilidade:', err);
-    }
-  }
+  };
+  // Consultas independentes devem rodar em paralelo, não em cascata.
+  const [produtos, caixas, movimentacoes, metricas, rentabilidade] = await Promise.all([
+    PODE_VER_ESTOQUE_DASH ? pedir('/api/produtos', []) : Promise.resolve([]),
+    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas', []) : Promise.resolve([]),
+    PODE_VER_ESTOQUE_DASH ? pedir('/api/movimentacoes', []) : Promise.resolve([]),
+    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas', null) : Promise.resolve(null),
+    PODE_VER_RENTABILIDADE_DASH ? pedir('/api/rentabilidade/ranking', null) : Promise.resolve(null)
+  ]);
 
   renderSummaryCards(produtos, caixas);
   renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
   renderFinanceiro(caixas, metricas);
-  // Salva dados para uso quando a aba de gráficos for aberta
   window._dadosProdutos = produtos;
-  window._dadosMov      = movimentacoes;
-  window._dadosCaixas   = caixas;
+  window._dadosMov = movimentacoes;
+  window._dadosCaixas = caixas;
   window._dadosRentabilidade = rentabilidade;
-  window._graficosRendered = false; // força re-render se dados recarregarem
+  window._graficosRendered = false;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
