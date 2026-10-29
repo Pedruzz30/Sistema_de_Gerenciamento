@@ -10,6 +10,7 @@ await cp(root, out, {recursive:true});
 await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
+await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
 // Keep already-tested visual performance patches pending their dedicated integration.
 await cp(resolve('preview-source/js/dashboard.js'),join(out,'js/dashboard.js'));
 await cp(resolve('preview-source/js/estoque.js'),join(out,'js/estoque.js'));
@@ -22,7 +23,7 @@ for (const entry of await readdir(out)) {
   if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
 }
 const pages = ['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html'];
-const inject = '<script src="/js/preview-mock.js"></script>\\n<script src="/js/preview-notes.js"></script>\\n<script src="/js/preview-pdv.js"></script>';
+const inject = '<script src="/js/preview-mock.js"></script>\\n<script src="/js/preview-notes.js"></script>\\n<script src="/js/preview-pdv.js"></script>\\n<script src="/js/preview-cardapio.js"></script>';
 for (const page of pages) {
   const p=join(out,page);
   let html=await readFile(p,'utf8');
