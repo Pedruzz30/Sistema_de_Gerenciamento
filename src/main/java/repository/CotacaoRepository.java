@@ -20,4 +20,12 @@ public interface CotacaoRepository {
     List<CotacaoMensal> buscarHistoricoPorProduto(int produtoId);
 
     List<CotacaoMensal> listarTodas();
+    default java.util.Map<Integer,java.math.BigDecimal> custosMaisRecentesPorProduto() {
+        java.util.Map<Integer,java.math.BigDecimal> map = new java.util.HashMap<>();
+        listarTodas().stream().filter(c->c.getProduto()!=null)
+            .sorted(java.util.Comparator.comparing(CotacaoMensal::getMesReferencia).reversed()
+                .thenComparing(java.util.Comparator.comparingLong(CotacaoMensal::getId).reversed()))
+            .forEach(c->map.putIfAbsent(c.getProduto().getId(),c.getPrecoUnitario()));
+        return map;
+    }
 }
