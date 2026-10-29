@@ -47,7 +47,7 @@ window.fetch=async (input,init={})=>{
    if(method==='POST'&&p.includes('/admin/')){if(!b.nome||!data.categories.some(c=>c.id===+b.categoriaId))return fail('Item/categoria inválido');let i={...b,id:next(data.items),categoriaId:+b.categoriaId,ativo:true,disponivelParaVenda:true};data.items.push(i);save();return reply(await enriched(i),201);}
  }
  m=match(/^\/api\/cardapio\/admin\/itens\/(\d+)(?:\/(ativo|disponibilidade|ordem))?$/);
- if(m){const id=+m[1];let i=patch(data.items,id,b);return i?reply(await enriched(i)):fail('Item inexistente',404);}
+ if(m){const id=+m[1];if(!['PUT','PATCH'].includes(method))return fail('Método não permitido',405);let i=patch(data.items,id,b);return i?reply(await enriched(i)):fail('Item inexistente',404);}
  if(p==='/api/cardapio/categorias'&&method==='GET')return reply(data.categories.filter(c=>c.ativo));
  if(p==='/api/cardapio/grupos-modificadores'){
    if(method==='GET')return reply(data.groups);
