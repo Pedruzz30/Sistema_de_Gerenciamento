@@ -1,11 +1,18 @@
 // Produces a static isolated demo; never deploys Java, database config or SaaS secrets.
 import { cp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-const root = resolve('preview-source');
+const root = resolve('src/main/resources/static');
 const out = resolve('dist-preview');
 await rm(out, { recursive:true, force:true });
 await mkdir(out, {recursive:true});
 await cp(root, out, {recursive:true});
+// The real Java frontend is the single source of truth. Mock is preview-only.
+await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
+// Keep already-tested visual performance patches pending their dedicated integration.
+await cp(resolve('preview-source/js/dashboard.js'),join(out,'js/dashboard.js'));
+await cp(resolve('preview-source/js/estoque.js'),join(out,'js/estoque.js'));
+await cp(resolve('preview-source/dashboard.html'),join(out,'dashboard.html'));
+
 // SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.
 const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html']);
 const { readdir } = await import('node:fs/promises');
