@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '22'
       - name: Static preview regression
-        run: npm run test:preview
+        run: npm run test:preview && npm run test:cardapio
       - uses: actions/upload-artifact@v4
         with:
           name: stockos-unified-preview

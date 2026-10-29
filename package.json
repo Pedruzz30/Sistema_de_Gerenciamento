@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs"
+    "test:preview": "node scripts/check-preview.mjs",
+    "test:cardapio": "node scripts/test-cardapio-preview.mjs"
   }
 }
