@@ -1,0 +1,30 @@
+name: StockOS preview regression
+on:
+  push:
+    branches: [feat/stockos-unified-preview-and-smoke-20261029]
+  pull_request:
+    paths:
+      - 'src/main/resources/static/**'
+      - 'preview-source/**'
+      - 'scripts/build-preview.mjs'
+      - 'scripts/check-preview.mjs'
+      - 'package.json'
+      - '.github/workflows/stockos-preview-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static preview regression
+        run: npm run test:preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stockos-unified-preview
+          path: dist-preview
+          retention-days: 7

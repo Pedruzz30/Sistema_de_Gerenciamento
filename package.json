@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:preview": "node scripts/build-preview.mjs"
+    "build:preview": "node scripts/build-preview.mjs",
+    "test:preview": "node scripts/check-preview.mjs"
   }
 }
