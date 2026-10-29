@@ -27,6 +27,13 @@ public class PedidoRepositoryAdapter implements PedidoRepository {
     }
 
     @Override
+    public java.util.Map<Integer,Integer> quantidadesVendidasPorProduto() {
+        java.util.Map<Integer,Integer> map = new java.util.HashMap<>();
+        for (JpaPedidoRepository.QuantidadeVendida row : delegate.somarQuantidadesVendidasPorProduto())
+            map.put(row.getProdutoId(),Math.toIntExact(row.getQuantidadeTotal()));
+        return map;
+    }
+    @Override
     public List<Pedido> listarTodos() {
         return delegate.findAll(
                 Sort.by(Sort.Direction.DESC, "dataHora")
