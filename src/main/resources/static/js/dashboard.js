@@ -6,6 +6,19 @@ const PODE_VER_FINANCEIRO_DASH = temAlgumaPermissao([
 ]);
 const PODE_VER_RENTABILIDADE_DASH = temPermissao(PERMISSOES.VER_FINANCAS);
 
+// Contagem e lista usam exatamente as mesmas regras de alerta.
+function obterAlertasEstoque(produtos) {
+  const ordem = { SEM_ESTOQUE: 0, CRITICO: 1, BAIXO: 2, MODERADO: 3 };
+  return (produtos || [])
+    .filter(p => p && p.ativo !== false && Object.prototype.hasOwnProperty.call(ordem, p.nivelEstoque))
+    .sort((a, b) => ordem[a.nivelEstoque] - ordem[b.nivelEstoque] || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+}
+
+function dataLocalHojeIso() {
+  const agora = new Date();
+  return [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
+}
+
 async function carregarDados() {
   const pedir = async (url, fallback) => {
     const inicio = performance.now();
@@ -25,11 +38,11 @@ async function carregarDados() {
     PODE_VER_ESTOQUE_DASH ? pedir('/api/produtos', []) : Promise.resolve([]),
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas', []) : Promise.resolve([]),
     PODE_VER_ESTOQUE_DASH ? pedir('/api/movimentacoes', []) : Promise.resolve([]),
-    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas', null) : Promise.resolve(null),
+    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null),
     PODE_VER_RENTABILIDADE_DASH ? pedir('/api/rentabilidade/ranking', null) : Promise.resolve(null)
   ]);
 
-  renderSummaryCards(produtos, caixas);
+  renderSummaryCards(produtos, caixas, metricas);
   renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
   renderFinanceiro(caixas, metricas);
@@ -48,6 +61,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ── Header ────────────────────────────────────────────────
 function renderHeader() {
+  const status = document.getElementById('dashboard-context-status');
+  if (status) status.textContent = 'Visão de hoje · ' + new Date().toLocaleDateString('pt-BR', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
   const hora = new Date().getHours();
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
   document.getElementById('header-title').textContent =
@@ -59,14 +76,12 @@ function renderHeader() {
 }
 
 // ── Summary cards (Improvement 5: clickable cards) ────────
-function renderSummaryCards(produtos, caixas) {
+function renderSummaryCards(produtos, caixas, metricasHoje) {
   var totalProdutos = produtos.length;
-  var alertas = produtos.filter(function (p) {
-    return p.nivelEstoque === 'CRITICO' || p.nivelEstoque === 'BAIXO';
-  }).length;
-  var vendasDia = caixas.reduce(function (s, c) { return s + (c.totalVendas || 0); }, 0);
+  var alertas = obterAlertasEstoque(produtos).length;
+  var vendasDia = metricasHoje ? Number(metricasHoje.totalVendas) : null;
   var caixasAbertos = caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
-  var totalCaixas = caixas.length || '—';
+  var totalCaixas = new Set(caixas.map(function (c) { return c.numeroCaixa; })).size || '—';
 
   var cards = [
     {
@@ -91,11 +106,11 @@ function renderSummaryCards(produtos, caixas) {
     },
     {
       label: 'Vendas do Dia',
-      value: 'R$' + vendasDia.toFixed(2),
+      value: Number.isFinite(vendasDia) ? 'R$' + vendasDia.toFixed(2) : '—',
       icon: 'wallet',
       tone: 'green',
       trend: 'up',
-      trendText: 'hoje',
+      trendText: Number.isFinite(vendasDia) ? 'hoje' : 'indisponível',
       permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS],
       href: '/caixas.html',
     },
@@ -147,8 +162,10 @@ function renderPermissionSections() {
 
 // ── Alertas de estoque ─────────────────────────────────────
 function renderAlertas(produtos) {
-  var alertas = produtos.filter(function (p) { return p.nivelEstoque !== 'ADEQUADO'; });
+  var alertas = obterAlertasEstoque(produtos);
   var list = document.getElementById('alerta-list');
+  var badge = document.getElementById('alerta-count');
+  if (badge) badge.textContent = alertas.length + (alertas.length === 1 ? ' alerta' : ' alertas');
 
   if (alertas.length === 0) {
     list.innerHTML = '<div class="empty"><span class="btn-inline-icon" aria-hidden="true">' +
@@ -157,33 +174,41 @@ function renderAlertas(produtos) {
     return;
   }
 
-  var nivelClass = { CRITICO: 'critico', BAIXO: 'baixo', MODERADO: 'moderado' };
-  var nivelLabel = { CRITICO: 'Crítico', BAIXO: 'Baixo', MODERADO: 'Moderado' };
+  var nivelClass = { SEM_ESTOQUE: 'critico', CRITICO: 'critico', BAIXO: 'baixo', MODERADO: 'moderado' };
+  var nivelLabel = { SEM_ESTOQUE: 'Sem estoque', CRITICO: 'Crítico', BAIXO: 'Baixo', MODERADO: 'Moderado' };
 
-  list.innerHTML = alertas.map(function (p) {
+  list.innerHTML = alertas.slice(0, 8).map(function (p) {
     return '<div class="alert-item ' + (nivelClass[p.nivelEstoque] || '') + '">' +
            '<div class="alert-dot"></div>' +
-           '<span class="alert-name">' + p.nome + '</span>' +
+           '<span class="alert-name">' + escapeHtml(p.nome) + '</span>' +
            '<span class="alert-qty">' + p.quantidadeAtual + '/' + p.quantidadeMinima + ' un.</span>' +
            '<span class="alert-level">' + (nivelLabel[p.nivelEstoque] || p.nivelEstoque) + '</span>' +
            '</div>';
   }).join('');
+  if (alertas.length > 8) {
+    list.innerHTML += '<div class="empty">Exibindo 8 de ' + alertas.length + ' alertas. Consulte Estoque para ver os demais.</div>';
+  }
 }
 
 // ── Movimentações recentes (Improvement 6) ────────────────
 function renderMovimentacoes(movimentacoes) {
   var list = document.getElementById('mov-list');
-  if (!movimentacoes || movimentacoes.length === 0) {
+  // Histórico preservado no banco: na visão geral entram apenas os registros de hoje.
+  var hoje = dataLocalHojeIso();
+  var recentesHoje = (movimentacoes || [])
+    .filter(m => m && String(m.dataHora || '').slice(0, 10) === hoje)
+    .sort((a, b) => String(b.dataHora).localeCompare(String(a.dataHora)));
+  if (recentesHoje.length === 0) {
     list.innerHTML = emptyStateMarkup({
       icon: 'box',
-      title: 'Nenhuma movimentação registrada',
-      copy: 'As entradas e saídas recentes aparecerão aqui ao longo do dia.',
+      title: 'Nenhuma movimentação hoje',
+      copy: 'O histórico permanece disponível na página de Estoque.',
       compact: true
     });
     return;
   }
 
-  list.innerHTML = movimentacoes.slice(0, 10).map(function (m) {
+  list.innerHTML = recentesHoje.slice(0, 10).map(function (m) {
     // Extract HH:mm directly from the LocalDateTime string (e.g. "2025-03-01T10:30:00")
     var hora = '—';
     try {
@@ -205,14 +230,14 @@ function renderMovimentacoes(movimentacoes) {
 }
 
 // ── Resumo financeiro (BUG 2: correct ticket médio) ───────
-function renderFinanceiro(caixas, metricas) {
-  var totalVendas    = metricas ? metricas.totalVendas    : caixas.reduce(function (s, c) { return s + (c.totalVendas || 0); }, 0);
-  var caixasAbertos  = metricas ? metricas.caixasAbertos  : caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
-  var ticketMedio    = metricas ? metricas.ticketMedio    : 0;
+function renderFinanceiro(caixas, metricasHoje) {
+  var totalVendas = metricasHoje ? Number(metricasHoje.totalVendas) : null;
+  var caixasAbertos = metricasHoje ? metricasHoje.caixasAbertos : caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
+  var ticketMedio = metricasHoje ? Number(metricasHoje.ticketMedio) : null;
 
-  document.getElementById('fin-total-vendas').textContent   = 'R$' + totalVendas.toFixed(2);
+  document.getElementById('fin-total-vendas').textContent = Number.isFinite(totalVendas) ? 'R$' + totalVendas.toFixed(2) : '—';
   document.getElementById('fin-caixas-abertos').textContent = caixasAbertos;
-  document.getElementById('fin-ticket-medio').textContent   = 'R$' + ticketMedio.toFixed(2);
+  document.getElementById('fin-ticket-medio').textContent = Number.isFinite(ticketMedio) ? 'R$' + ticketMedio.toFixed(2) : '—';
 
   var caixaList = document.getElementById('caixa-list');
   if (caixas.length === 0) {

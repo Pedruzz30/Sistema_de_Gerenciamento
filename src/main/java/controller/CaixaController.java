@@ -82,6 +82,31 @@ public class CaixaController {
         return ResponseEntity.ok(new MetricasResponse(totalVendas, caixasAbertos, totalMovimentacoesVenda, ticketMedio));
     }
 
+    @GetMapping("/metricas/hoje")
+    public ResponseEntity<MetricasResponse> metricasHoje(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader, usuarioRepository,
+                "Voce nao tem permissao para visualizar metricas de caixa.",
+                Permissao.VER_VENDAS, Permissao.VER_FINANCAS
+        );
+        return ResponseEntity.ok(calcularMetricasDia(caixaRepository.listarTodos(), LocalDate.now()));
+    }
+
+    static MetricasResponse calcularMetricasDia(List<Caixa> caixas, LocalDate dia) {
+        List<MovimentacaoCaixa> vendas = caixas.stream()
+                .flatMap(c -> c.getMovimentacoes().stream())
+                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+                .filter(m -> m.getDataHora() != null && dia.equals(m.getDataHora().toLocalDate()))
+                .toList();
+        BigDecimal total = vendas.stream().map(MovimentacaoCaixa::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+        long abertos = caixas.stream().filter(c -> c.getStatus() == Caixa.Status.ABERTO).count();
+        BigDecimal ticket = vendas.isEmpty() ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                : total.divide(BigDecimal.valueOf(vendas.size()), 2, RoundingMode.HALF_UP);
+        return new MetricasResponse(total, abertos, vendas.size(), ticket);
+    }
+
     @GetMapping("/{numero}")
     public ResponseEntity<?> buscarCaixaPorNumero(@PathVariable int numero,
                                                   @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {

@@ -20,7 +20,7 @@
             <div class="brand-mark">S</div>
             <div class="brand-text">
                 <span class="name">StockOS</span>
-                <span class="sub">Forno · V2</span>
+                <span class="sub">Gestão · Estoque</span>
             </div>
         </div>
 
@@ -53,7 +53,7 @@
             <div class="topbar-right header-right">
                 <div class="live-pill">
                     <span class="live-dot"></span>
-                    Turno ativo · 26 abr 2026
+                    <span id="dashboard-context-status">Visão do dia</span>
                 </div>
             </div>
         </header>
@@ -89,7 +89,7 @@
                         </div>
                         <div class="financial-grid">
                             <div class="fin-card">
-                                <div class="fin-label">Total Vendas</div>
+                                <div class="fin-label">Vendas de Hoje</div>
                                 <div class="fin-value green" id="fin-total-vendas">—</div>
                             </div>
                             <div class="fin-card">
@@ -257,16 +257,7 @@
 
 <script src="/js/shared.js"></script>
 <script src="/js/dashboard.js"></script>
-<script>
-    // Atualiza o badge de alertas após renderizar
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        const alertas = document.querySelectorAll('.alert-item').length;
-        const badge = document.getElementById('alerta-count');
-        if (badge) badge.textContent = alertas + ' alertas';
-      }, 100);
-    });
-</script>
+
 
 </body>
 </html>
