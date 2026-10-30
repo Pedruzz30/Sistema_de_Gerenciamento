@@ -12,6 +12,15 @@ public interface PedidoRepository {
     Optional<Pedido> buscarPorId(int id);
 
     List<Pedido> listarTodos();
+
+    /** Mantém o histórico completo disponível, mas evita carregar tudo no dashboard. */
+    default List<Pedido> listarRecentes(int limite) {
+        if (limite < 1 || limite > 500) throw new IllegalArgumentException("Limite deve estar entre 1 e 500.");
+        return listarTodos().stream()
+                .sorted(java.util.Comparator.comparing(Pedido::getDataHora).reversed()
+                        .thenComparing(java.util.Comparator.comparingInt(Pedido::getId).reversed()))
+                .limit(limite).toList();
+    }
     default java.util.Map<Integer,Integer> quantidadesVendidasPorProduto() {
         java.util.Map<Integer,Integer> map = new java.util.HashMap<>();
         for (Pedido p : listarTodos())
