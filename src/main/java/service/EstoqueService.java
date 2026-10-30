@@ -262,6 +262,10 @@ public class EstoqueService {
     public Map<Integer,Integer> quantidadesVendidasPorProduto() {
         return pedidoRepository.quantidadesVendidasPorProduto();
     }
+    public List<Pedido> listarPedidosRecentes(int limite) {
+        return pedidoRepository.listarRecentes(limite);
+    }
+
     public List<Pedido> listarPedidos() {
         return pedidoRepository.listarTodos();
     }
