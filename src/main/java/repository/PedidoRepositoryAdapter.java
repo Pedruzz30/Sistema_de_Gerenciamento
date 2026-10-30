@@ -34,6 +34,12 @@ public class PedidoRepositoryAdapter implements PedidoRepository {
         return map;
     }
     @Override
+    public List<Pedido> listarRecentes(int limite) {
+        if (limite < 1 || limite > 500) throw new IllegalArgumentException("Limite deve estar entre 1 e 500.");
+        return delegate.findAllByOrderByDataHoraDescIdDesc(org.springframework.data.domain.PageRequest.of(0, limite));
+    }
+
+    @Override
     public List<Pedido> listarTodos() {
         return delegate.findAll(
                 Sort.by(Sort.Direction.DESC, "dataHora")
