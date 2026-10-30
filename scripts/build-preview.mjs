@@ -11,9 +11,9 @@ await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
-// Keep already-tested visual performance patches pending their dedicated integration.
+// Keep the dashboard-only visual overlay pending its dedicated integration.
+// Stock inventory is sourced directly from canonical src/main/resources/static.
 await cp(resolve('preview-source/js/dashboard.js'),join(out,'js/dashboard.js'));
-await cp(resolve('preview-source/js/estoque.js'),join(out,'js/estoque.js'));
 await cp(resolve('preview-source/dashboard.html'),join(out,'dashboard.html'));
 
 // SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.

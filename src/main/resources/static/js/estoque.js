@@ -2,6 +2,8 @@
 
 let todosOsProdutos = [];
 let produtosVisiveis = [];
+const PRODUTOS_POR_PAGINA = 60;
+let paginaEstoque = 1;
 let filtroNivelAtivo = 'todos';
 let filtroCategoriaAtiva = 'todas';
 let produtoSelecionado = null;
@@ -159,11 +161,17 @@ async function confirmarMovimentacao() {
 }
 
 function renderTabela() {
+  const oldNav = document.getElementById('paginacao-estoque');
+  if (oldNav) oldNav.remove();
   const tbody = document.getElementById('tabela-produtos');
   const countEl = document.getElementById('table-count');
   const podeEditar = temPermissao(PERMISSOES.EDITAR_ESTOQUE);
   const produtos = getProdutosVisiveis();
   produtosVisiveis = produtos;
+  const paginas = Math.max(1, Math.ceil(produtos.length / PRODUTOS_POR_PAGINA));
+  paginaEstoque = Math.min(Math.max(1, paginaEstoque), paginas);
+  const inicio = (paginaEstoque - 1) * PRODUTOS_POR_PAGINA;
+  const itensPagina = produtos.slice(inicio, inicio + PRODUTOS_POR_PAGINA);
 
   countEl.textContent = `${produtos.length} produto${produtos.length !== 1 ? 's' : ''}`;
   atualizarEstadoExportacao();
@@ -187,7 +195,7 @@ function renderTabela() {
     return;
   }
 
-  tbody.innerHTML = produtos.map(p => `
+  tbody.innerHTML = itensPagina.map(p => `
     <tr>
       <td>
         <div class="produto-nome">${escapeHtml(p.nome)}</div>
@@ -215,6 +223,22 @@ function renderTabela() {
         </td>
       </tr>
   `).join('');
+  if (paginas > 1) {
+    const nav = document.createElement('div');
+    nav.id = 'paginacao-estoque';
+    nav.className = 'table-pagination';
+    nav.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:16px;padding:16px';
+    const anterior = document.createElement('button');
+    anterior.type = 'button'; anterior.textContent = 'Anterior'; anterior.disabled = paginaEstoque <= 1;
+    anterior.addEventListener('click', () => { paginaEstoque--; renderTabela(); });
+    const info = document.createElement('span');
+    info.textContent = 'Página ' + paginaEstoque + ' de ' + paginas;
+    const proximo = document.createElement('button');
+    proximo.type = 'button'; proximo.textContent = 'Próxima'; proximo.disabled = paginaEstoque >= paginas;
+    proximo.addEventListener('click', () => { paginaEstoque++; renderTabela(); });
+    nav.append(anterior, info, proximo);
+    tbody.closest('table').insertAdjacentElement('afterend', nav);
+  }
 }
 
 function nivelLabel(nivel) {
@@ -378,6 +402,7 @@ function preencherSelectCategorias(selectId) {
 }
 
 function filtrar(tipo, btn) {
+  paginaEstoque = 1;
   filtroNivelAtivo = tipo;
   document.querySelectorAll('[data-filter-group="nivel"] .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -385,6 +410,7 @@ function filtrar(tipo, btn) {
 }
 
 function filtrarCategoria(tipo, btn) {
+  paginaEstoque = 1;
   filtroCategoriaAtiva = tipo;
   document.querySelectorAll('[data-filter-group="categoria"] .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -392,6 +418,7 @@ function filtrarCategoria(tipo, btn) {
 }
 
 function filtrarProdutos() {
+  paginaEstoque = 1;
   renderTabela();
 }
 
