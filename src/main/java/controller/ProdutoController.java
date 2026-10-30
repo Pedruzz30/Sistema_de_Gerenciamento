@@ -64,7 +64,7 @@ public class ProdutoController {
                 Permissao.VER_ESTOQUE,
                 "Voce nao tem permissao para visualizar produtos."
         );
-        Map<Integer, BigDecimal> custos = custoMaisRecentePorProduto();
+        Map<Integer, BigDecimal> custos = cotacaoRepository.custosMaisRecentesPorProduto();
         List<ProdutoResponse> resposta = estoqueService.listarProdutos().stream()
                 .map(p -> ProdutoResponse.from(p, estoqueService.calcularNivelEstoque(p), custos.get(p.getId())))
                 .toList();
@@ -201,9 +201,7 @@ public class ProdutoController {
                 Permissao.VER_ESTOQUE,
                 "Voce nao tem permissao para visualizar movimentacoes de estoque."
         );
-        List<PedidoResponse> resp = estoqueService.listarPedidos().stream()
-                .sorted(Comparator.comparing(Pedido::getDataHora).reversed())
-                .limit(100)
+        List<PedidoResponse> resp = estoqueService.listarPedidosRecentes(100).stream()
                 .map(PedidoResponse::from)
                 .toList();
         return ResponseEntity.ok(resp);
