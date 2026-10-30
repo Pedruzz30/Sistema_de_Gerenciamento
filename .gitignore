@@ -25,3 +25,18 @@ Json/
 # OS
 .DS_Store
 Thumbs.db
+# Node / Netlify local preview artifacts
+node_modules/
+dist/
+dist-preview/
+.netlify/
+.vite/
+*.tsbuildinfo
+
+# Private environment overrides
+.env.local
+.env.*.local
+
+# Coverage
+coverage/
+.nyc_output/
