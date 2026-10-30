@@ -1,0 +1,55 @@
+name: StockOS Inventory Performance
+
+on:
+  push:
+    branches: [perf/stockos-inventory-recent-20261029]
+  pull_request:
+    paths:
+      - 'src/main/java/controller/ProdutoController.java'
+      - 'src/main/java/repository/**'
+      - 'src/main/java/service/EstoqueService.java'
+      - 'src/main/resources/static/js/estoque.js'
+      - 'scripts/build-preview.mjs'
+      - 'src/test/java/integration/MovimentacoesRecentesPostgresIntegrationTest.java'
+      - '.github/workflows/stockos-inventory-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: stockos_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: stockos_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stockos_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/stockos_ci
+      DB_USERNAME: postgres
+      DB_PASSWORD: stockos_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test actual PostgreSQL queries
+        run: mvn -B -Dtest=MovimentacoesRecentesPostgresIntegrationTest,RentabilidadeServiceTest test
+      - name: Verify frontend syntax, preview and isolation
+        run: |
+          node --check src/main/resources/static/js/estoque.js
+          npm run test:preview
+          npm run test:cardapio
