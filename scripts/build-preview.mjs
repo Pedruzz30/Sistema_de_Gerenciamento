@@ -23,7 +23,12 @@ for (const entry of await readdir(out)) {
   if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
 }
 const pages = ['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html'];
-const inject = '<script src="/js/preview-mock.js"></script>\\n<script src="/js/preview-notes.js"></script>\\n<script src="/js/preview-pdv.js"></script>\\n<script src="/js/preview-cardapio.js"></script>';
+const inject = [
+  '<script src="/js/preview-mock.js"></script>',
+  '<script src="/js/preview-notes.js"></script>',
+  '<script src="/js/preview-pdv.js"></script>',
+  '<script src="/js/preview-cardapio.js"></script>'
+].join('\n');
 for (const page of pages) {
   const p=join(out,page);
   let html=await readFile(p,'utf8');
