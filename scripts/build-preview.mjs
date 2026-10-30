@@ -11,10 +11,8 @@ await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
-// Keep the dashboard-only visual overlay pending its dedicated integration.
-// Stock inventory is sourced directly from canonical src/main/resources/static.
-await cp(resolve('preview-source/js/dashboard.js'),join(out,'js/dashboard.js'));
-await cp(resolve('preview-source/dashboard.html'),join(out,'dashboard.html'));
+// Dashboard and inventory both use their canonical source files in src/main/resources/static.
+// Preview-only mock modules remain in preview-source/js/.
 
 // SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.
 const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html']);
