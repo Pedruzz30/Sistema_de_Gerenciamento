@@ -52,7 +52,7 @@ class MovimentacoesRecentesPostgresIntegrationTest {
         List<Pedido> viaPort = repository.listarRecentes(100);
         assertEquals(rows.stream().map(Pedido::getId).toList(),
                 viaPort.stream().map(Pedido::getId).toList());
-        assertThrows(IllegalArgumentException.class, () -> repository.listarRecentes(0));
-        assertThrows(IllegalArgumentException.class, () -> repository.listarRecentes(501));
+        assertThrows(org.springframework.dao.InvalidDataAccessApiUsageException.class, () -> repository.listarRecentes(0));
+        assertThrows(org.springframework.dao.InvalidDataAccessApiUsageException.class, () -> repository.listarRecentes(501));
     }
 }
