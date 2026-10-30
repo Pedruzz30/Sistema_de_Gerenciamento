@@ -223,8 +223,6 @@ function renderTabela() {
         </td>
       </tr>
   `).join('');
-  const antigaPaginacao = document.getElementById('paginacao-estoque');
-  if (antigaPaginacao) antigaPaginacao.remove();
   if (paginas > 1) {
     const nav = document.createElement('div');
     nav.id = 'paginacao-estoque';
@@ -404,6 +402,7 @@ function preencherSelectCategorias(selectId) {
 }
 
 function filtrar(tipo, btn) {
+  paginaEstoque = 1;
   filtroNivelAtivo = tipo;
   document.querySelectorAll('[data-filter-group="nivel"] .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -411,6 +410,7 @@ function filtrar(tipo, btn) {
 }
 
 function filtrarCategoria(tipo, btn) {
+  paginaEstoque = 1;
   filtroCategoriaAtiva = tipo;
   document.querySelectorAll('[data-filter-group="categoria"] .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -418,6 +418,7 @@ function filtrarCategoria(tipo, btn) {
 }
 
 function filtrarProdutos() {
+  paginaEstoque = 1;
   renderTabela();
 }
 
