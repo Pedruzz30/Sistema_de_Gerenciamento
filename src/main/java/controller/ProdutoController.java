@@ -449,15 +449,6 @@ public class ProdutoController {
 
     public record ErroResponse(String erro) {}
 
-    private Map<Integer, BigDecimal> custoMaisRecentePorProduto() {
-        Map<Integer, BigDecimal> custos = new LinkedHashMap<>();
-        // listarTodas() retorna ordenado por mesReferencia DESC — primeira ocorrência por produto é a mais recente
-        for (CotacaoMensal c : cotacaoRepository.listarTodas()) {
-            custos.putIfAbsent(c.getProduto().getId(), c.getPrecoUnitario());
-        }
-        return custos;
-    }
-
     private BigDecimal ultimoCustoOuNulo(int produtoId) {
         List<CotacaoMensal> historico = cotacaoRepository.buscarHistoricoPorProduto(produtoId);
         if (historico.isEmpty()) return null;
