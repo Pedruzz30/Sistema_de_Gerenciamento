@@ -2,6 +2,10 @@ package controller;
 
 import model.ClasseFuncionario;
 import model.Usuario;
+import repository.UsuarioRepository;
+import app.security.LinkedStockosUserFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import service.AutenticacaoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +19,43 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final AutenticacaoService autenticacaoService;
+    private final UsuarioRepository usuarioRepository;
 
-    public AuthController(AutenticacaoService autenticacaoService) {
+    @Value("${stockos.auth.mode:legacy}")
+    private String authMode;
+
+    @Value("${stockos.auth.supabase-url:}")
+    private String supabaseUrl;
+
+    @Value("${stockos.auth.publishable-key:}")
+    private String publishableKey;
+
+    public AuthController(AutenticacaoService autenticacaoService, UsuarioRepository usuarioRepository) {
         this.autenticacaoService = autenticacaoService;
+        this.usuarioRepository = usuarioRepository;
     }
+
+    @GetMapping("/config")
+    public AuthConfig authConfig() {
+        if ("supabase".equals(authMode)) {
+            if (supabaseUrl.isBlank() || publishableKey.isBlank()) {
+                throw new IllegalStateException("Supabase Auth nao configurado.");
+            }
+            return new AuthConfig("supabase", supabaseUrl, publishableKey);
+        }
+        return new AuthConfig("legacy", null, null);
+    }
+
+    @GetMapping("/me")
+    public UsuarioResponse me(HttpServletRequest request) {
+        Object verified = request.getAttribute(LinkedStockosUserFilter.VERIFIED_USER_ATTRIBUTE);
+        if (!(verified instanceof Usuario usuario)) {
+            throw new SecurityException("Sessao Supabase nao vinculada.");
+        }
+        return UsuarioResponse.from(usuario);
+    }
+
+    public record AuthConfig(String mode, String supabaseUrl, String publishableKey) {}
 
     @PostMapping("/login")
     public ResponseEntity<UsuarioResponse> login(@RequestBody LoginRequest request) {
