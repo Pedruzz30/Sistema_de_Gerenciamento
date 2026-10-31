@@ -53,8 +53,8 @@ assert.equal(result.window.StockOsDesignReview.mode,'novo');
 const paletteCss=await readFile('dist-preview/css/palette-original.css','utf8');
 const oldCss=await readFile('src/main/resources/static/tokens.css','utf8');
 for(const name of ['paper','paper-sunk','paper-raised','ink','accent']) {
-  const reg=new RegExp('--'+name+':\\\\s*([^;]+);');
-  assert.equal(paletteCss.match(reg)?.[1]?.trim(),oldCss.match(reg)?.[1]?.trim(),name+' must preserve original palette');
+  const key='--'+name+':';
+  assert.equal(paletteCss.split(key)[1]?.split(';')[0].trim(),oldCss.split(key)[1]?.split(';')[0].trim(),name+' must preserve original palette');
 }
 const javaLogin=await readFile('src/main/resources/static/login.html','utf8');
 assert.doesNotMatch(javaLogin,/preview-design-review/);
