@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = Main.class, webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
                 "spring.jpa.show-sql=false",
-                "stockos.seed.demo-menu.enabled=false",
+                "stockos.seed.demo-catalog.enabled=false",
                 "stockos.schema-compatibility-runner.enabled=false"
         })
 @Transactional

@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.text.Normalizer;
 
 @Transactional(readOnly = true)
 public class EstoqueService {
@@ -85,7 +84,6 @@ public class EstoqueService {
         if (preco == null || preco.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Quantidade e preco devem ser nao negativos.");
         }
-        validarProdutoDeEstoque(nome);
 
         Produto produto = produtoRepository.salvar(
                 new Produto(
@@ -149,7 +147,6 @@ public class EstoqueService {
         if (preco == null || preco.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Quantidade minima e preco devem ser nao negativos.");
         }
-        validarProdutoDeEstoque(nome);
 
         Produto produtoAtual = buscarProdutoPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produto nao encontrado com ID: " + id));
@@ -239,26 +236,6 @@ public class EstoqueService {
                 .toList();
     }
 
-    @Transactional
-    public int desativarProdutosPizzaSobDemanda(Usuario usuario) {
-        validarPermissaoEdicaoEstoque(usuario);
-
-        int totalAtualizados = 0;
-        for (Produto produto : produtoRepository.listarTodos()) {
-            if (!produto.isControladoPorEstoque()) {
-                continue;
-            }
-            if (!ehPizzaSobDemanda(produto.getNome())) {
-                continue;
-            }
-
-            produto.desativarControleDeEstoque();
-            produtoRepository.salvar(produto);
-            totalAtualizados++;
-        }
-        return totalAtualizados;
-    }
-
     public Map<Integer,Integer> quantidadesVendidasPorProduto() {
         return pedidoRepository.quantidadesVendidasPorProduto();
     }
@@ -327,27 +304,6 @@ public class EstoqueService {
             throw new IllegalArgumentException("Produto nao e controlado por estoque.");
         }
         return produto;
-    }
-
-    private void validarProdutoDeEstoque(String nome) {
-        if (ehPizzaSobDemanda(nome)) {
-            throw new IllegalArgumentException(
-                    "Pizzas do cardapio sao itens sob demanda e nao devem ser cadastradas como produto de estoque."
-            );
-        }
-    }
-
-    private boolean ehPizzaSobDemanda(String nome) {
-        if (nome == null || nome.isBlank()) {
-            return false;
-        }
-
-        String nomeNormalizado = Normalizer.normalize(nome, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "")
-                .toLowerCase()
-                .replaceAll("\\s+", " ")
-                .trim();
-        return nomeNormalizado.equals("pizza") || nomeNormalizado.startsWith("pizza ");
     }
 
     private void validarPermissaoEdicaoEstoque(Usuario usuario) {
