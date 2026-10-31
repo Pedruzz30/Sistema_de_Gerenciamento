@@ -17,7 +17,7 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
-  if (!active) {
+  if (!active && /\/(?:dashboard|dashboard\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/dashboard-refinement.css"]').forEach(link => link.remove());
   }
 
