@@ -17,6 +17,10 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active && /\/(?:notas|notas\.html)$/.test(location.pathname)) {
+    document.querySelectorAll('link[href="/css/notas-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (!active && /\/(?:fornecedores|fornecedores\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/fornecedores-refinement.css"]').forEach(link => link.remove());
   }
@@ -49,6 +53,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Notas: CSS só desta página, após a paleta de comparação.
+    if (/\/(?:notas|notas\.html)$/.test(location.pathname)) {
+      const notes = document.createElement('link');
+      notes.rel = 'stylesheet';
+      notes.href = '/css/notas-refinement.css';
+      notes.dataset.stockosNotasRefinement = 'true';
+      document.head.appendChild(notes);
+    }
     // Fornecedores: refinamento apenas nesta tela, depois da paleta restaurada.
     if (/\/(?:fornecedores|fornecedores\.html)$/.test(location.pathname)) {
       const suppliers = document.createElement('link');

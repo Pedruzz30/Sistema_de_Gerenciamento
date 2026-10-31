@@ -9,8 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="/css/notas-refinement.css">
 </head>
-<body>
+<body class="notas-page">
 
 <div class="app">
   <aside class="sidebar">
@@ -274,7 +275,7 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-detalhe-titulo">Nota Fiscal</h3>
-      <button class="modal-close" onclick="fecharModal('modal-detalhe')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar detalhes" onclick="fecharModal('modal-detalhe')">✕</button>
     </div>
     <div class="modal-body">
       <div id="detalhe-info" class="detail-block"></div>

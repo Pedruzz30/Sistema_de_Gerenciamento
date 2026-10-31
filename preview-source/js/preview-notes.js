@@ -79,7 +79,7 @@
   // A public preview must never suggest that payment or invoice issuance was real.
   document.addEventListener('DOMContentLoaded',()=>{
     if(!location.pathname.endsWith('notas.html'))return;
-    const banner=document.createElement('div');banner.setAttribute('role','note');
+    const banner=document.createElement('div');banner.setAttribute('role','note');banner.className='notes-demo-banner';
     banner.style.cssText='padding:10px 15px;margin:8px 16px;border:1px solid #a7bdd8;border-radius:8px;background:#122436;color:#e6f1ff;font:500 12px system-ui';
     banner.textContent='DEMO: notas, confirmação, estoque e pagamentos são apenas simulações locais. Nenhum documento fiscal é emitido.';
     document.querySelector('.main-content,main,.content')?.prepend(banner);
