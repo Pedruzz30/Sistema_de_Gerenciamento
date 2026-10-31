@@ -58,4 +58,34 @@ const demo = await readFile('dist-preview/js/preview-mock.js','utf8');
 for (const route of ["dashboard","estoque","cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) assert.match(demo,new RegExp(route));
 assert.match(await readFile('dist-preview/js/preview-notes.js','utf8'),/StockOSPreviewHooks\.notas/);
 assert.match(await readFile('dist-preview/js/preview-pdv.js','utf8'),/StockOSPreviewHooks\.caixas/);
+
+// Simulate all seven legacy controllers in one JS realm. They must not collide
+// on top-level lexical names, and each route must reactivate its own actions.
+const ctx = {
+  window: { StockOSPages: {} },
+  document: { addEventListener() {} },
+  location: { pathname: '/dashboard.html' },
+  console,
+  temPermissao: () => true,
+  PERMISSOES: {VER_VENDAS: 'VER_VENDAS', VER_FINANCAS: 'VER_FINANCAS'},
+  setTimeout,
+  clearTimeout
+};
+vm.createContext(ctx);
+for (const route of ["cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) {
+  vm.runInContext(await readFile('dist-preview/js/'+route+'.js','utf8'),ctx,{filename:route+'.js'});
+  assert.equal(typeof ctx.window.StockOSPages[route]?.mount,'function',route+' missing mount');
+  assert.equal(typeof ctx.window.StockOSPages[route]?.activate,'function',route+' missing activation');
+}
+ctx.window.StockOSPages.fornecedores.activate();
+const supplierTable = ctx.window.renderTabela;
+ctx.window.StockOSPages.funcionarios.activate();
+assert.notEqual(ctx.window.renderTabela,supplierTable,'Duplicate table renderer was not switched');
+ctx.window.StockOSPages.fornecedores.activate();
+assert.equal(ctx.window.renderTabela,supplierTable,'Supplier handlers failed to restore');
+vm.runInContext(await readFile('dist-preview/js/pdv.js','utf8'),ctx,{filename:'pdv.js'});
+assert.equal(typeof ctx.window.StockOSPDV.activate,'function');
+ctx.window.StockOSPDV.activate();
+assert.equal(typeof ctx.window.finalizarVendaPDV,'function');
+
 console.log('PASS SPA: 9 routes, modular controllers, POS bridge, mocks, fallback and syntax');
