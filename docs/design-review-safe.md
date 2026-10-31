@@ -1,6 +1,6 @@
 # StockOS — revisão segura do redesign
 
-Esta branch contém os **21 arquivos CSS** do patch local `99bf0f2`, sobre a `main` atual, sem sobrescrever o HTML ou JavaScript do sistema em produção.
+Esta branch contém os **21 arquivos CSS** do patch local `99bf0f2`, sobre a `main` atual, sem sobrescrever o HTML ou JavaScript do sistema Spring real. O preview público abre com o novo CSS por padrão.
 
 ## Como testar no VS Code
 
@@ -10,10 +10,9 @@ git switch -c teste-redesign --track origin/feat/stockos-design-review-safe-2026
 npm run dev
 ```
 
-Abra `http://127.0.0.1:5173/login.html` e clique no botão **Testar visual novo** no canto superior direito.
-Também é possível ativar com `http://127.0.0.1:5173/login.html?design=novo`.
+Abra `http://127.0.0.1:5173/login.html`: **o novo CSS é carregado por padrão no preview**. Para comparar com o design antigo, use o botão **Visual novo · Ver original** no canto superior direito ou abra `?design=original`. Para forçar o novo, use `?design=novo`.
 
-Para voltar, clique no mesmo botão ou acesse `?design=original`. A escolha fica no `localStorage` do navegador e funciona ao trocar entre as páginas do preview. O teste utiliza somente dados fictícios.
+A escolha fica no `localStorage` do navegador e funciona ao trocar entre as páginas do preview. Para restaurar o design atualizado, acesse `?design=novo`. O teste utiliza somente dados fictícios.
 
 **Não use senhas reais no preview.** O modo mock é isolado do PostgreSQL e Supabase, e não valida autenticação real.
 
@@ -22,7 +21,7 @@ Para voltar, clique no mesmo botão ou acesse `?design=original`. A escolha fica
 - O patch move `scripts/build-preview.mjs` para `scripts/build/preview.mjs`, mas o `npm run dev` do PR #14 chama o caminho original. A alteração quebraria o fluxo local sem atualizar dependências.
 - Vários workflows também dependem dos caminhos antigos.
 - O patch adiciona `vite` e um `package-lock.json` de outra configuração do `package.json` atual. Não foram incorporados por enquanto.
-- O CSS existente carregado por padrão nas páginas (`tokens.css` e `app.css` na raiz) não usa automaticamente os novos módulos de `css/`. Eles são carregados **somente no preview e por opção**, para comparação visual segura.
+- O CSS existente carregado por padrão nas páginas (`tokens.css` e `app.css` na raiz) não usa automaticamente os novos módulos de `css/`. Eles são carregados **automaticamente no preview**, com opção de voltar ao original; o aplicativo Spring real não é alterado.
 - A documentação atual de Netlify foi atualizada na `main`; não substituímos por cópia antiga do patch.
 
 ## Checklist antes de integrar o visual como padrão
@@ -39,4 +38,4 @@ Para voltar, clique no mesmo botão ou acesse `?design=original`. A escolha fica
 - Scripts e comandos existentes do projeto.
 - Os arquivos HTML/JS das páginas reais.
 
-O build Netlify continua gerando `dist-preview/` a partir do frontend real, com os mocks exclusivos da demonstração. A integração está protegida por um **PR de revisão**; não faça merge até validar o novo tema visualmente.
+O build Netlify continua gerando `dist-preview/` a partir do frontend real, com os mocks exclusivos da demonstração. O **backup imutável do design original** está na branch `backup/stockos-design-original-20261030` (commit `54ebadd7`). A integração está protegida por um **PR de revisão**; não faça merge até validar o novo tema visualmente.
