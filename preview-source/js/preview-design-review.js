@@ -17,6 +17,10 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active && /\/(?:logs|logs\.html)$/.test(location.pathname)) {
+    document.querySelectorAll('link[href="/css/logs-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (!active && /\/(?:funcionarios|funcionarios\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/funcionarios-refinement.css"]').forEach(link => link.remove());
   }
@@ -65,6 +69,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Logs: camada exclusiva desta tela, após a paleta original.
+    if (/\/(?:logs|logs\.html)$/.test(location.pathname)) {
+      const logsStyles = document.createElement('link');
+      logsStyles.rel = 'stylesheet';
+      logsStyles.href = '/css/logs-refinement.css';
+      logsStyles.dataset.stockosLogsRefinement = 'true';
+      document.head.appendChild(logsStyles);
+    }
     // Funcionários: refinamento isolado carregado após a paleta original.
     if (/\/(?:funcionarios|funcionarios\.html)$/.test(location.pathname)) {
       const employees = document.createElement('link');

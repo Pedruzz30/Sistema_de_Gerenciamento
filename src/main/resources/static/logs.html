@@ -9,8 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="/css/logs-refinement.css">
 </head>
-<body>
+<body class="logs-page">
 
 <div class="app">
 
@@ -49,7 +50,7 @@
         <p class="page-sub header-sub" id="header-sub">Auditoria de ações realizadas no sistema.</p>
       </div>
       <div class="topbar-right header-right">
-      <button class="btn btn-secondary btn-secondary--compact" onclick="carregarLogs()">
+      <button type="button" class="btn btn-secondary btn-secondary--compact" onclick="carregarLogs()">
         <span class="btn-inline-icon" data-icon="refresh"></span>
         Atualizar
       </button>
@@ -60,18 +61,17 @@
 
     <div class="page-summary-grid fade-up" id="logs-summary"></div>
 
-    <!-- Filtro de busca -->
-    <div class="toolbar fade-up">
-      <div class="search-wrap">
-        <input class="input input-search" type="text" id="busca" placeholder="Buscar por ação ou descrição..." oninput="filtrar()">
-      </div>
-    </div>
-
-    <!-- Tabela de logs -->
-    <div class="table-card fade-up fade-up-1">
+    <!-- Histórico e filtro ficam no mesmo painel -->
+    <div class="table-card logs-history-card fade-up fade-up-1">
       <div class="table-header">
-        <span class="table-title">Histórico de Ações</span>
-        <span class="table-count" id="table-count">—</span>
+        <div class="logs-history-heading">
+          <span class="table-title">Histórico de Ações</span>
+          <span class="table-count" id="table-count" aria-live="polite">—</span>
+        </div>
+        <div class="search-wrap logs-history-search">
+          <label class="logs-visually-hidden" for="busca">Buscar por ação, descrição ou usuário</label>
+          <input class="input input-search" type="search" id="busca" placeholder="Buscar por ação, descrição ou RU..." oninput="filtrar()" autocomplete="off">
+        </div>
       </div>
       <div class="table-wrap">
         <table class="table">
