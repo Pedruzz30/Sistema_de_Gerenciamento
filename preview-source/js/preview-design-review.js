@@ -17,6 +17,10 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active && /\/(?:cardapio|cardapio\.html)$/.test(location.pathname)) {
+    document.querySelectorAll('link[href="/css/cardapio-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (!active && /\/(?:estoque|estoque\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/estoque-refinement.css"]').forEach(link => link.remove());
   }
@@ -41,6 +45,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Cardápio: CSS localizado após a paleta para comparar sem alterar outras telas.
+    if (/\/(?:cardapio|cardapio\.html)$/.test(location.pathname)) {
+      const menuStyle = document.createElement('link');
+      menuStyle.rel = 'stylesheet';
+      menuStyle.href = '/css/cardapio-refinement.css';
+      menuStyle.dataset.stockosCardapioRefinement = 'true';
+      document.head.appendChild(menuStyle);
+    }
     // Estoque: styles after preview palette, preserving original comparison.
     if (/\/(?:estoque|estoque\.html)$/.test(location.pathname)) {
       const stock = document.createElement('link');

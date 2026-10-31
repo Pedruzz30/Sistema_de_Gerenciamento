@@ -9,8 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="/css/cardapio-refinement.css">
 </head>
-<body>
+<body class="cardapio-page">
 
 <div class="app">
   <aside class="sidebar">
@@ -105,7 +106,9 @@
               <option value="">Todas as categorias</option>
             </select>
           </div>
-          <div class="cardapio-legend">
+          <details class="cardapio-help">
+            <summary>Entenda os tipos de item e os estados de disponibilidade</summary>
+            <div class="cardapio-legend">
             <span class="cardapio-legend__item">
               <span class="badge badge-cyan">Estoque direto</span>
               <span>Item que pode operar manualmente ou vinculado a um Produto.</span>
@@ -118,7 +121,8 @@
               <span class="badge badge-amber">Pausa manual</span>
               <span>Estado bruto definido no admin; a disponibilidade efetiva continua sendo calculada pelo backend.</span>
             </span>
-          </div>
+            </div>
+          </details>
         </div>
         <div class="table-wrap">
           <table class="table cardapio-items-table">
@@ -198,7 +202,7 @@
   <div class="modal modal--narrow">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-categoria-titulo">Nova Categoria</h3>
-      <button class="modal-close" onclick="fecharModal('modal-categoria')">x</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-categoria')">×</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="categoria-id">
@@ -227,7 +231,7 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-item-titulo">Novo Item</h3>
-      <button class="modal-close" onclick="fecharModal('modal-item')">x</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-item')">×</button>
     </div>
     <div class="modal-body modal-body--scroll">
       <input type="hidden" id="item-id">
@@ -286,7 +290,7 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-grupo-modificador-titulo">Grupo de Modificador</h3>
-      <button class="modal-close" onclick="fecharModal('modal-grupo-modificador')">x</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-grupo-modificador')">×</button>
     </div>
     <div class="modal-body modal-body--scroll">
       <input type="hidden" id="grupo-modificador-id">
@@ -344,7 +348,7 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-opcoes-modificador-titulo">Opcoes do grupo</h3>
-      <button class="modal-close" onclick="fecharModal('modal-opcoes-modificador')">x</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-opcoes-modificador')">×</button>
     </div>
     <div class="modal-body modal-body--scroll">
       <input type="hidden" id="opcao-grupo-id">
@@ -385,7 +389,7 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-componente-titulo">Componentes da opcao</h3>
-      <button class="modal-close" onclick="fecharModal('modal-componente-modificador')">x</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-componente-modificador')">×</button>
     </div>
     <div class="modal-body modal-body--scroll">
       <input type="hidden" id="componente-opcao-id">
@@ -448,7 +452,7 @@
   <div class="modal modal--narrow">
     <div class="modal-header">
       <h3 class="modal-title">Associar grupo a variacao</h3>
-      <button class="modal-close" onclick="fecharModal('modal-associar-modificador')">x</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-associar-modificador')">×</button>
     </div>
     <div class="modal-body">
       <div class="form-group">

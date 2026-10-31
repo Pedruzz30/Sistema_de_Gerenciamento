@@ -1,0 +1,745 @@
+
+/* StockOS — Cardápio: refinamento visual isolado.
+   Aplicar após palette-original.css no Netlify.
+   Escopo exclusivo: body.cardapio-page. */
+
+/* Estrutura: a topbar pertence à coluna main, não a uma segunda linha do grid. */
+body.cardapio-page .app {
+  display: grid;
+  grid-template-areas: "sidebar main";
+  grid-template-columns: var(--sidebar-w, 250px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 100dvh;
+}
+body.cardapio-page .sidebar {
+  grid-area: sidebar;
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  padding: 16px 12px 14px;
+  overflow-y: auto;
+  box-shadow: none;
+}
+body.cardapio-page .sidebar-brand { padding: 6px 8px 16px; margin-bottom: 12px; }
+body.cardapio-page .nav { gap: 3px; }
+body.cardapio-page .nav-item { min-height: 40px; padding: 10px 11px; border-radius: 10px; }
+body.cardapio-page .nav-item.active { box-shadow: none; }
+body.cardapio-page .sidebar .user-chip {
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 8px;
+}
+body.cardapio-page .main.page {
+  grid-area: main;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+}
+body.cardapio-page .topbar.header {
+  position: relative;
+  top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 94px;
+  padding: 20px clamp(20px, 2.3vw, 36px) 18px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+body.cardapio-page .topbar-left { min-width: 0; gap: 5px; }
+body.cardapio-page .crumbs { font-size: 11px; letter-spacing: .015em; }
+body.cardapio-page .crumbs .cur { color: var(--ink-2); font-weight: 650; }
+body.cardapio-page .page-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(21px, 1.7vw, 26px);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.045em;
+}
+body.cardapio-page .page-sub { font-size: 12px; line-height: 1.5; }
+body.cardapio-page .header-right--cardapio {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: auto;
+}
+body.cardapio-page .header-right--cardapio .btn {
+  min-height: 38px;
+  padding: 9px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 750;
+}
+body.cardapio-page .main-body.content {
+  width: 100%;
+  max-width: 1680px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 20px clamp(20px, 2.3vw, 36px) 40px;
+}
+body.cardapio-page #cardapio-page-alert:empty { display: none; margin: 0; }
+
+/* Resumo compacto, coerente com Dashboard e Estoque. */
+body.cardapio-page #cardapio-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+body.cardapio-page .cardapio-summary-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: start;
+  gap: 7px 10px;
+  min-width: 0;
+  min-height: 112px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(27,24,21,.035) !important;
+}
+body.cardapio-page .cardapio-summary-card .page-summary-label {
+  margin: 0 0 7px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: .075em;
+}
+body.cardapio-page .cardapio-summary-card .page-summary-value {
+  font-family: var(--font-ui);
+  font-size: clamp(23px, 1.9vw, 29px);
+  line-height: 1.1;
+  font-weight: 750;
+  letter-spacing: -.05em;
+  font-variant-numeric: tabular-nums;
+}
+body.cardapio-page .cardapio-summary-card .page-summary-sub {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+body.cardapio-page .cardapio-summary-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+/* Categorias e itens em seções completas. O layout anterior
+   deixava os botões da tabela da esquerda cortados. */
+body.cardapio-page .cardapio-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+  width: 100%;
+}
+body.cardapio-page .cardapio-panel {
+  min-width: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(27,24,21,.035) !important;
+}
+body.cardapio-page .cardapio-panel--categories {
+  position: static;
+  top: auto;
+}
+body.cardapio-page .cardapio-panel--categories .table-wrap,
+body.cardapio-page .cardapio-panel--items .table-wrap {
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  border-radius: 0;
+}
+body.cardapio-page .cardapio-panel .table-header {
+  padding: 17px 20px;
+  margin: 0;
+  min-width: 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-sunk);
+}
+body.cardapio-page .cardapio-panel .table-title {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+body.cardapio-page .cardapio-panel .inline-note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+body.cardapio-page .cardapio-panel .table-count {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Tabela de categorias: conteúdo sem rolagem lateral no desktop. */
+body.cardapio-page .cardapio-category-table {
+  width: 100%;
+  min-width: 610px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+}
+body.cardapio-page .cardapio-category-table th:first-child,
+body.cardapio-page .cardapio-category-table td:first-child { width: 116px; }
+body.cardapio-page .cardapio-category-table th:nth-child(3),
+body.cardapio-page .cardapio-category-table td:nth-child(3) { width: 115px; }
+body.cardapio-page .cardapio-category-table th:last-child,
+body.cardapio-page .cardapio-category-table td:last-child { width: 115px; }
+body.cardapio-page .cardapio-category-table .ordem-editor {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: max-content;
+}
+body.cardapio-page .compact-control--order {
+  flex: 0 0 60px;
+  width: 60px;
+  min-width: 60px;
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  text-align: center;
+}
+body.cardapio-page .cardapio-category-table .actions-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+body.cardapio-page .action-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+/* Tabela de itens: prioridade à informação operacional. */
+body.cardapio-page .cardapio-items-table {
+  width: 100%;
+  min-width: 980px;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+body.cardapio-page :is(.cardapio-category-table,.cardapio-items-table) thead th,
+body.cardapio-page .cardapio-panel--modifiers thead th {
+  padding: 11px 14px;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .065em;
+  white-space: nowrap;
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--rule);
+}
+body.cardapio-page :is(.cardapio-category-table,.cardapio-items-table) tbody td,
+body.cardapio-page .cardapio-panel--modifiers tbody td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+body.cardapio-page :is(.cardapio-category-table,.cardapio-items-table) tbody tr:hover td,
+body.cardapio-page .cardapio-panel--modifiers tbody tr:hover td {
+  background: var(--paper-sunk);
+}
+body.cardapio-page .table-cell-stack { gap: 3px; min-width: 0; }
+body.cardapio-page .table-cell-strong {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+body.cardapio-page .table-cell-caption,
+body.cardapio-page .table-cell-subtle {
+  color: var(--ink-3);
+  font-size: 10px;
+  line-height: 1.4;
+}
+body.cardapio-page .status-pill-row { gap: 5px; margin-top: 4px; }
+body.cardapio-page :is(.badge,.table-count) {
+  font-family: var(--font-ui);
+  letter-spacing: .02em;
+}
+body.cardapio-page .cardapio-items-table .actions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 100%;
+}
+body.cardapio-page .cardapio-items-table .compact-control--order {
+  width: 56px;
+  min-width: 56px;
+}
+
+/* Filtros alinhados à esquerda e sem caixas soltas no meio do painel. */
+body.cardapio-page .cardapio-panel--items .table-header--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+body.cardapio-page .cardapio-panel--items .table-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+body.cardapio-page .cardapio-panel--items .toolbar--cardapio {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.cardapio-page .cardapio-panel--items .toolbar--cardapio .search-wrap {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+body.cardapio-page .cardapio-panel--items .toolbar--cardapio .compact-control--select {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  flex: auto;
+}
+body.cardapio-page .cardapio-panel--items .toolbar--cardapio :is(input,select) {
+  min-height: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  font-size: 12px;
+}
+
+/* Legenda virou uma seção explicativa recolhível no HTML.
+   Continua acessível pelo teclado, sem poluir a visão inicial. */
+body.cardapio-page .cardapio-help {
+  width: 100%;
+  min-width: 0;
+}
+body.cardapio-page .cardapio-help > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  list-style: none;
+}
+body.cardapio-page .cardapio-help > summary::-webkit-details-marker { display: none; }
+body.cardapio-page .cardapio-help > summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+}
+body.cardapio-page .cardapio-help[open] > summary::before { content: "−"; }
+body.cardapio-page .cardapio-help > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+body.cardapio-page .cardapio-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+body.cardapio-page .cardapio-legend__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  color: var(--ink-2);
+  background: var(--paper-raised);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* Modificadores: não ocupar a altura de um quadro vazio. */
+body.cardapio-page .cardapio-panel--modifiers { margin-top: 14px; }
+body.cardapio-page .cardapio-panel--modifiers .table-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+body.cardapio-page .cardapio-panel--modifiers .actions-grid { gap: 7px; }
+body.cardapio-page .cardapio-panel--modifiers .toolbar--cardapio {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+body.cardapio-page .cardapio-panel--modifiers .toolbar--cardapio .compact-control--select {
+  flex: 0 1 340px;
+  min-width: 220px;
+  width: auto;
+  max-width: 100%;
+  min-height: 38px;
+}
+body.cardapio-page .cardapio-modifier-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, .75fr);
+  align-items: start;
+  gap: 14px;
+  padding: 16px 20px 20px;
+  min-width: 0;
+}
+body.cardapio-page .cardapio-panel--modifiers .table-wrap {
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+body.cardapio-page .cardapio-panel--modifiers .table { min-width: 590px; }
+body.cardapio-page .cardapio-preview-panel {
+  min-width: 0;
+  min-height: 155px;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+body.cardapio-page #modificador-preview .empty-state {
+  min-height: 132px;
+  padding: 14px;
+  gap: 6px;
+}
+body.cardapio-page #modificador-preview .empty-state__icon {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+}
+body.cardapio-page #modificador-preview .empty-state__title {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+body.cardapio-page #modificador-preview .empty-state__copy {
+  max-width: 45ch;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Modais com limites proporcionais: Categoria 480px, Item e grupo 760px.
+   Neutraliza a regra de compatibilidade max-width:100% do modal filho. */
+body.cardapio-page .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  background: rgba(26,24,23,.48);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+body.cardapio-page .modal-overlay.open { display: flex; }
+body.cardapio-page .modal-overlay > .modal {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 760px;
+  width: 100%;
+  min-width: 0;
+  max-width: min(760px, 100%) !important;
+  max-height: min(780px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule-strong);
+  border-radius: 16px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 20px 68px rgba(20,17,15,.19);
+  animation: none;
+}
+body.cardapio-page .modal-overlay > .modal.modal--narrow {
+  flex-basis: 480px;
+  max-width: min(480px, 100%) !important;
+}
+body.cardapio-page .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  min-height: 62px;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+body.cardapio-page .modal-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+body.cardapio-page .modal-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 22px;
+}
+body.cardapio-page .modal-close:hover {
+  color: var(--ink);
+  background: var(--paper-sunk);
+  border-color: var(--rule);
+}
+body.cardapio-page .modal-body,
+body.cardapio-page .modal-body--scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  min-width: 0;
+  max-height: none;
+  padding: 20px 22px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+body.cardapio-page .modal-body > .form-group,
+body.cardapio-page .modal-body > .form-row-2 { margin: 0; }
+body.cardapio-page .modal-body .form-row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+body.cardapio-page .modal-body .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+body.cardapio-page .modal-body .form-group label {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+body.cardapio-page .modal-body .form-group :is(input,select,textarea) {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 12px;
+}
+body.cardapio-page .modal-body .form-group :is(input,select,textarea):focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: var(--focus-ring);
+}
+body.cardapio-page .modal-body .field-help {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+body.cardapio-page .modal-body .check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+body.cardapio-page .modal-body .check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+body.cardapio-page .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 62px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper-sunk);
+}
+body.cardapio-page .modal-footer > button {
+  min-height: 37px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+}
+body.cardapio-page .modal-close:focus-visible,
+body.cardapio-page .modal-footer button:focus-visible,
+body.cardapio-page .action-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Responsividade */
+@media (max-width: 1150px) {
+  body.cardapio-page .cardapio-modifier-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.cardapio-page .cardapio-preview-panel { min-height: 0; }
+}
+@media (max-width: 980px) {
+  body.cardapio-page .app,
+  body.cardapio-page .app.is-collapsed {
+    grid-template-areas: "main";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  body.cardapio-page .sidebar {
+    grid-area: auto;
+    grid-row: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    width: min(280px, 82vw);
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+  }
+  body.cardapio-page .sidebar.open { transform: translateX(0); }
+  body.cardapio-page .main.page { grid-area: main; grid-column: 1; grid-row: 1; }
+}
+@media (max-width: 760px) {
+  body.cardapio-page .topbar.header {
+    min-height: 86px;
+    padding: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  body.cardapio-page .header-right--cardapio {
+    width: 100%;
+    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  body.cardapio-page .header-right--cardapio .btn { flex: 1 1 170px; }
+  body.cardapio-page .main-body.content { padding: 16px 14px 28px; }
+  body.cardapio-page #cardapio-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.cardapio-page .cardapio-panel .table-header { padding: 15px 16px; }
+  body.cardapio-page .cardapio-panel--items .toolbar--cardapio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.cardapio-page .cardapio-legend { grid-template-columns: minmax(0, 1fr); }
+  body.cardapio-page .cardapio-modifier-grid { padding: 14px 16px 16px; }
+  body.cardapio-page .modal-body .form-row-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.cardapio-page .modal-body { padding: 16px; }
+  body.cardapio-page .modal-header,
+  body.cardapio-page .modal-footer { padding: 13px 16px; }
+}
+@media (max-width: 480px) {
+  body.cardapio-page #cardapio-summary {
+    grid-template-columns: minmax(0,1fr);
+  }
+  body.cardapio-page .cardapio-summary-card { min-height: 98px; }
+  body.cardapio-page .modal-overlay { padding: 10px; }
+  body.cardapio-page .modal-overlay > .modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+  body.cardapio-page .modal-footer > button { flex: 1 1 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.cardapio-page .sidebar,
+  body.cardapio-page .cardapio-summary-card,
+  body.cardapio-page .action-icon { transition: none; }
+}
