@@ -1,0 +1,164 @@
+/*
+ * StockOS preview — original warm/paper palette on top of the revised CSS layout.
+ * Source of truth for core colors: src/main/resources/static/tokens.css
+ * (preserved in backup/stockos-design-original-20261030).
+ * Only loaded in the mock preview with the updated layout.
+ * Deliberately overrides COLORS, not spacing, typography or component geometry.
+ */
+:root {
+  color-scheme: light;
+  /* Exact colors from the originally published StockOS theme. */
+  --paper: oklch(0.975 0.008 75);
+  --paper-sunk: oklch(0.955 0.010 72);
+  --paper-raised: oklch(0.992 0.004 80);
+  --paper-inset: oklch(0.955 0.010 72);
+  --ink: oklch(0.22 0.015 60);
+  --ink-2: oklch(0.36 0.012 62);
+  --ink-3: oklch(0.52 0.012 65);
+  --ink-4: oklch(0.70 0.010 68);
+  --rule: oklch(0.88 0.012 70);
+  --rule-strong: oklch(0.82 0.014 68);
+  --rule-focus: oklch(0.58 0.18 40 / 0.5);
+
+  --accent: oklch(0.58 0.18 40);
+  --accent-ink: oklch(0.44 0.18 40);
+  --accent-hover: oklch(0.52 0.18 40);
+  --accent-pressed: oklch(0.45 0.18 40);
+  --accent-soft: oklch(0.93 0.04 45);
+  --accent-soft-2: oklch(0.88 0.06 45);
+  --accent-border: oklch(0.78 0.09 45);
+  --accent-cool: oklch(0.55 0.09 240);
+  --accent-cool-soft: oklch(0.93 0.025 240);
+  --accent-cool-border: oklch(0.78 0.04 240);
+
+  --ok: oklch(0.56 0.11 155);
+  --ok-soft: oklch(0.93 0.035 155);
+  --ok-border: oklch(0.78 0.05 155);
+  --warn: oklch(0.66 0.13 75);
+  --warn-soft: oklch(0.94 0.045 80);
+  --warn-border: oklch(0.80 0.07 75);
+  --bad: oklch(0.56 0.16 25);
+  --bad-soft: oklch(0.93 0.04 30);
+  --bad-border: oklch(0.77 0.07 25);
+  --info: oklch(0.55 0.09 240);
+  --info-soft: oklch(0.93 0.025 240);
+  --info-border: oklch(0.79 0.04 240);
+
+  /* Modern aliases and compatibility names must share the same palette. */
+  --surface-overlay: oklch(0.992 0.004 80 / 0.98);
+  --surface-hover: oklch(0.955 0.010 72);
+  --surface-active: oklch(0.93 0.04 45);
+  --bg-base: var(--paper);
+  --bg-card: var(--paper-raised);
+  --bg-input: var(--paper-raised);
+  --bg-hover: var(--paper-sunk);
+  --bg-elevated: var(--paper-raised);
+  --bg-overlay: oklch(0.22 0.015 60 / 0.38);
+  --border: var(--rule);
+  --border-light: var(--rule-strong);
+  --border-strong: var(--rule-strong);
+  --text-1: var(--ink);
+  --text-2: var(--ink-2);
+  --text-3: var(--ink-3);
+  --purple: var(--accent);
+  --purple-light: var(--accent-ink);
+  --pink: var(--bad);
+  --cyan: var(--info);
+  --amber: var(--warn);
+  --green: var(--ok);
+  --red: var(--bad);
+  --green-text: var(--ok);
+  --red-text: var(--bad);
+  --amber-text: var(--accent-ink);
+  --sky-text: var(--info);
+  --slate-text: var(--ink-2);
+  --focus-ring: 0 0 0 3px oklch(0.58 0.18 40 / 0.15);
+}
+
+/* The redesign includes dark backgrounds hardcoded in some components.
+ * These color-only overrides are intentionally AFTER its 21 CSS files. */
+html, body {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+body::before,
+body::after {
+  background: none !important;
+  opacity: 0 !important;
+}
+
+/* App chrome */
+.app, .app-shell, .main-content, .page-content {
+  background-color: var(--paper) !important;
+}
+.sidebar, .topbar, .header {
+  background: var(--paper-raised) !important;
+  color: var(--ink) !important;
+  border-color: var(--rule) !important;
+}
+.sidebar-logo-icon, .sb-brand .logo {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* Cards, dashboards, POS, notes and dialog surfaces. No changes to sizing. */
+.summary-card, .card, .table-card, .fin-card, .kpi,
+.page-summary-card, .info-card, .caixa-card, .fechamento-card,
+.nota-panel, .nota-inline-card, .profit-summary-card,
+.categoria-summary-card, .chart-card, .produto-info-card,
+.table-wrap, .modal, .toast {
+  background: var(--paper-raised) !important;
+  color: var(--ink) !important;
+  border-color: var(--rule) !important;
+  box-shadow: 0 1px 2px oklch(0.22 0.015 60 / 0.04),
+              0 4px 12px oklch(0.22 0.015 60 / 0.04) !important;
+}
+.summary-card::before, .card::before, .table-card::before,
+.kpi::before, .page-summary-card::before, .info-card::before,
+.caixa-card::before, .nota-panel::before, .nota-inline-card::before,
+.profit-summary-card::before, .categoria-summary-card::before,
+.chart-card::before, .produto-info-card::before {
+  background: none !important;
+}
+.fin-card, .alert-item, .mov-item, .caixa-item, .comparacao-item,
+.nota-inline-head, .modal-head, .modal-header, .modal-footer, .modal-foot {
+  background: var(--paper-sunk) !important;
+  color: var(--ink) !important;
+}
+.table thead th, .table-header, .table th {
+  background: var(--paper-sunk) !important;
+  color: var(--ink-2) !important;
+}
+.table tbody td, .table td { color: var(--ink-2) !important; }
+.table tbody tr:hover td { background: var(--paper-sunk) !important; }
+
+/* Form contrast and native dropdowns */
+.input, .select, .textarea, .compact-control,
+.form-group input, .form-group textarea, .form-group select,
+.search-wrap input, select option {
+  background-color: var(--paper-raised) !important;
+  color: var(--ink) !important;
+  border-color: var(--rule-strong) !important;
+}
+.form-group select option { background: var(--paper-raised) !important; }
+
+/* Keep primary and status actions legible on the warm orange palette. */
+.btn-primary, .btn-accent, .sidebar-logo-icon, .sb-brand .logo {
+  color: #fff !important;
+}
+.btn-primary, .btn-accent {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.btn-ghost, .btn-secondary, .btn-sm:not(.btn), .iconbtn, .action-chip {
+  background-color: var(--paper-raised) !important;
+  color: var(--ink-2) !important;
+}
+/* Status colors remain semantically distinct. */
+.alert-item.critico, .comparacao-item.subiu { background: var(--bad-soft) !important; }
+.alert-item.baixo, .alert-inline { background: var(--warn-soft) !important; }
+.alert-item.moderado, .comparacao-item.estavel { background: var(--info-soft) !important; }
+.comparacao-item.caiu { background: var(--ok-soft) !important; }
+.modal-backdrop, .modal-overlay, .sidebar-overlay {
+  background: oklch(0.22 0.015 60 / 0.45) !important;
+}
