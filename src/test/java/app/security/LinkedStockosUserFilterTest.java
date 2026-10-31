@@ -49,11 +49,28 @@ class LinkedStockosUserFilterTest {
     }
 
     @Test
+    void unauthenticatedJwtTokenIsRejected() throws Exception {
+        UUID subject = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("test-only")
+                .header("alg", "RS256").subject(subject.toString()).build();
+        // A JwtAuthenticationToken created with the one-argument constructor is
+        // deliberately NOT authenticated. It must never reach the user repository.
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        UsuarioRepository users = mock(UsuarioRepository.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        new LinkedStockosUserFilter(users).doFilter(request(), response, (req, res) -> {
+            throw new AssertionError("Unauthenticated token must not reach API");
+        });
+        assertEquals(401, response.getStatus());
+        org.mockito.Mockito.verifyNoInteractions(users);
+    }
+
+    @Test
     void unlinkedSubjectIsRejected() throws Exception {
         UUID subject = UUID.randomUUID();
         Jwt jwt = Jwt.withTokenValue("test-only")
                 .header("alg", "RS256").subject(subject.toString()).build();
-        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, java.util.List.of()));
         UsuarioRepository users = mock(UsuarioRepository.class);
         when(users.buscarPorSupabaseAuthUserId(subject)).thenReturn(Optional.empty());
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -68,7 +85,7 @@ class LinkedStockosUserFilterTest {
         UUID subject = UUID.randomUUID();
         Jwt jwt = Jwt.withTokenValue("test-only")
                 .header("alg", "RS256").subject(subject.toString()).build();
-        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, java.util.List.of()));
         Usuario linked = new Usuario(88, "Operador", "Vinculado", "52998224725",
                 "unused-local-password", null, Usuario.Perfil.OPERADOR);
         UsuarioRepository users = mock(UsuarioRepository.class);
@@ -95,7 +112,7 @@ class LinkedStockosUserFilterTest {
         UUID subject = UUID.randomUUID();
         Jwt jwt = Jwt.withTokenValue("test-only")
                 .header("alg", "RS256").subject(subject.toString()).build();
-        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, java.util.List.of()));
         Usuario linked = new Usuario(88, "Operador", "Desativado", "52998224725",
                 "unused-local-password", null, Usuario.Perfil.OPERADOR);
         linked.desativar();
