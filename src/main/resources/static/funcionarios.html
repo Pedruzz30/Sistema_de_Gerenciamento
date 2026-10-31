@@ -9,8 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="/css/funcionarios-refinement.css">
 </head>
-<body>
+<body class="funcionarios-page">
 
 <div class="app">
 
@@ -63,9 +64,9 @@
         <input class="input input-search" type="text" id="busca" placeholder="Buscar funcionário..." oninput="filtrar()">
       </div>
       <div class="seg filter-group">
-        <button class="filter-btn active" onclick="setFiltro('todos', this)">Todos</button>
-        <button class="filter-btn" onclick="setFiltro('ativos', this)">Ativos</button>
-        <button class="filter-btn" onclick="setFiltro('inativos', this)">Inativos</button>
+        <button type="button" class="filter-btn active" onclick="setFiltro('todos', this)">Todos</button>
+        <button type="button" class="filter-btn" onclick="setFiltro('ativos', this)">Ativos</button>
+        <button type="button" class="filter-btn" onclick="setFiltro('inativos', this)">Inativos</button>
       </div>
     </div>
 
@@ -103,7 +104,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Novo Funcionário</h3>
-      <button class="modal-close" onclick="fecharModal('modal-cadastro')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-cadastro')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-row-2">
@@ -148,7 +149,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Alterar Classe</h3>
-      <button class="modal-close" onclick="fecharModal('modal-classe')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-classe')">✕</button>
     </div>
     <div class="modal-body">
       <div class="produto-info-card">

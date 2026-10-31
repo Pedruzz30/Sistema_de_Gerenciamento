@@ -17,6 +17,10 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active && /\/(?:funcionarios|funcionarios\.html)$/.test(location.pathname)) {
+    document.querySelectorAll('link[href="/css/funcionarios-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (!active && /\/(?:cotacoes|cotacoes\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/cotacoes-refinement.css"]').forEach(link => link.remove());
   }
@@ -61,6 +65,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Funcionários: refinamento isolado carregado após a paleta original.
+    if (/\/(?:funcionarios|funcionarios\.html)$/.test(location.pathname)) {
+      const employees = document.createElement('link');
+      employees.rel = 'stylesheet';
+      employees.href = '/css/funcionarios-refinement.css';
+      employees.dataset.stockosFuncionariosRefinement = 'true';
+      document.head.appendChild(employees);
+    }
     // Cotações: CSS específico desta tela, após a paleta original.
     if (/\/(?:cotacoes|cotacoes\.html)$/.test(location.pathname)) {
       const quotes = document.createElement('link');
