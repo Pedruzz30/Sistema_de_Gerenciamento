@@ -28,8 +28,8 @@ assert.ok(!original.includes('/js/preview-pdv.js'),'PDV mock leaked into Java fr
 assert.ok(!original.includes('/js/preview-cardapio.js'),'Menu mock leaked into Java frontend');
 assert.ok(!original.includes('/js/preview-design-review.js'),'Design preview leaked into Java frontend');
 const palette=await readFile('dist-preview/css/palette-original.css','utf8');
-assert.match(palette,/--paper:\\s*oklch/);
-assert.match(palette,/--accent:\\s*oklch/);
+assert.ok(palette.includes('--paper: oklch('));
+assert.ok(palette.includes('--accent: oklch('));
 assert.ok(!html.includes('Turno ativo · 26 abr 2026'),'Stale dashboard date');
 const routes=await readFile('dist-preview/_redirects','utf8');
 assert.match(routes,/^\/dashboard \/dashboard.html 200$/m);
