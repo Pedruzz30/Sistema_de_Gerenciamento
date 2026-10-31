@@ -40,6 +40,9 @@ function abrirAba(abaId) {
   document.getElementById(abaId).classList.add('active');
   if (abaId === 'aba-relatorio') document.getElementById('tab-relatorio').classList.add('active');
   if (abaId === 'aba-historico') document.getElementById('tab-historico').classList.add('active');
+  document.querySelectorAll('.tabs [role="tab"]').forEach(tab => {
+    tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
+  });
   renderResumo();
 }
 

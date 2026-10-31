@@ -9,8 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="/css/cotacoes-refinement.css">
 </head>
-<body>
+<body class="cotacoes-page">
 
 <div class="app">
 
@@ -58,13 +59,13 @@
     <div class="page-summary-grid fade-up" id="cotacao-summary"></div>
 
     <!-- Tabs -->
-    <div class="tabs fade-up">
-      <button class="tab-btn active" id="tab-relatorio" onclick="abrirAba('aba-relatorio')">Relatório Mensal</button>
-      <button class="tab-btn" id="tab-historico" onclick="abrirAba('aba-historico')">Histórico por Produto</button>
+    <div class="tabs fade-up" role="tablist" aria-label="Visualização de cotações">
+      <button type="button" class="tab-btn active" id="tab-relatorio" role="tab" aria-controls="aba-relatorio" aria-selected="true" onclick="abrirAba('aba-relatorio')">Relatório Mensal</button>
+      <button type="button" class="tab-btn" id="tab-historico" role="tab" aria-controls="aba-historico" aria-selected="false" onclick="abrirAba('aba-historico')">Histórico por Produto</button>
     </div>
 
     <!-- Aba: Relatório -->
-    <div class="tab-panel active" id="aba-relatorio">
+    <div class="tab-panel active" id="aba-relatorio" role="tabpanel" aria-labelledby="tab-relatorio">
       <div class="card fade-up">
         <div class="card-header">
           <span class="card-title">Comparação com Mês Anterior</span>
@@ -80,7 +81,7 @@
     </div>
 
     <!-- Aba: Histórico por produto -->
-    <div class="tab-panel" id="aba-historico">
+    <div class="tab-panel" id="aba-historico" role="tabpanel" aria-labelledby="tab-historico">
       <div class="card fade-up">
         <div class="card-header">
           <span class="card-title">Histórico de Preços</span>
@@ -106,7 +107,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Registrar Cotação</h3>
-      <button class="modal-close" onclick="fecharModal('modal-cotacao')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar cotação" onclick="fecharModal('modal-cotacao')">✕</button>
     </div>
     <div class="modal-body">
       <div class="field form-group">
