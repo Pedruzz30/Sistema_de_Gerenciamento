@@ -9,8 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="/css/caixas-refinement.css">
 </head>
-<body>
+<body class="caixas-page">
 
 <div class="app">
 
@@ -97,7 +98,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Abrir Caixa</h3>
-      <button class="modal-close" onclick="fecharModal('modal-abrir')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-abrir')">✕</button>
     </div>
     <div class="modal-body">
       <div class="field form-group">
@@ -122,7 +123,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-mov-titulo">Registrar Movimentação</h3>
-      <button class="modal-close" onclick="fecharModal('modal-mov')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-mov')">✕</button>
     </div>
     <div class="modal-body">
       <div class="produto-info-card">
@@ -151,7 +152,7 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <h3 class="modal-title" id="modal-movs-titulo">Movimentações</h3>
-      <button class="modal-close" onclick="fecharModal('modal-movs-lista')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-movs-lista')">✕</button>
     </div>
     <div class="modal-body modal-body--scroll">
       <div class="mov-caixa-list" id="movs-lista"></div>
@@ -167,7 +168,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Encerrar Caixa</h3>
-      <button class="modal-close" onclick="fecharModal('modal-encerrar')">✕</button>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-encerrar')">✕</button>
     </div>
     <div class="modal-body">
       <div class="alert-modal error alert-modal--static" id="alert-encerrar-warn">

@@ -1,0 +1,446 @@
+/* StockOS — Caixas PDV: redesign isolado por body.caixas-page.
+   A prévia Netlify aplica esta camada após palette-original.css.
+   Nenhuma lógica de transação ou API é alterada. */
+
+/* App shell + topo */
+body.caixas-page .app {
+  display:grid;
+  grid-template-areas:"sidebar main";
+  grid-template-columns:var(--sidebar-w,250px) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);
+  min-height:100dvh;
+}
+body.caixas-page .sidebar {
+  grid-area:sidebar;grid-row:1;grid-column:1;position:sticky;top:0;
+  height:100dvh;min-height:0;overflow-y:auto;
+  padding:16px 12px 14px;box-shadow:none;
+}
+body.caixas-page .sidebar-brand {padding:6px 8px 16px;margin-bottom:12px;}
+body.caixas-page .sidebar .nav {gap:3px;}
+body.caixas-page .sidebar .nav-item {min-height:40px;padding:10px 11px;border-radius:10px;}
+body.caixas-page .sidebar .nav-item.active {box-shadow:none;}
+body.caixas-page .sidebar .user-chip {border:1px solid var(--rule);border-radius:12px;padding:8px;}
+body.caixas-page .main.page {
+  grid-area:main;grid-row:1;grid-column:2;
+  display:flex;flex-direction:column;min-width:0;min-height:100dvh;
+  width:100%;padding:0;overflow:visible;background:transparent;
+}
+body.caixas-page .topbar.header {
+  position:relative;top:auto;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;min-height:94px;
+  padding:20px clamp(20px,2.3vw,36px) 18px;
+  border:0;border-bottom:1px solid var(--rule);
+  border-radius:0;box-shadow:none;backdrop-filter:none;
+}
+body.caixas-page .topbar-left {min-width:0;gap:5px;}
+body.caixas-page .crumbs {gap:7px;font-size:11px;letter-spacing:.015em;}
+body.caixas-page .crumbs .cur {color:var(--ink-2);font-weight:650;}
+body.caixas-page .page-title {
+  margin:0;color:var(--ink);font-family:var(--font-ui);
+  font-size:clamp(21px,1.7vw,26px);font-weight:750;
+  letter-spacing:-.045em;line-height:1.2;
+}
+body.caixas-page .page-sub {margin:0;color:var(--ink-3);font-size:12px;line-height:1.5;}
+body.caixas-page .topbar-right {flex:0 0 auto;}
+body.caixas-page .topbar-right .btn {
+  min-height:38px;padding:9px 15px;border-radius:9px;
+  font-size:12px;font-weight:750;
+}
+body.caixas-page .main-body.content {
+  width:100%;max-width:1680px;min-width:0;margin:0 auto;
+  padding:20px clamp(20px,2.3vw,36px) 40px;
+}
+
+/* Três indicadores: número proeminente sem card excessivamente alto. */
+body.caixas-page #resumo-dia.info-grid {
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:stretch;gap:12px;margin:0 0 18px;
+}
+body.caixas-page #resumo-dia .info-card {
+  display:flex;flex-direction:column;justify-content:center;
+  gap:7px;min-width:0;min-height:112px;padding:16px 18px;
+  border-radius:14px;transform:none;
+  box-shadow:0 2px 8px rgba(27,24,21,.035) !important;
+}
+body.caixas-page #resumo-dia .info-card::before {content:none;}
+body.caixas-page #resumo-dia .info-card:hover {
+  transform:none;box-shadow:0 3px 11px rgba(27,24,21,.06) !important;
+}
+body.caixas-page #resumo-dia .info-label {
+  margin:0;color:var(--ink-3);font:750 10px/1.4 var(--font-ui);
+  letter-spacing:.07em;text-transform:uppercase;
+}
+body.caixas-page #resumo-dia .info-value {
+  margin:0;font:750 clamp(24px,2vw,31px)/1.12 var(--font-ui);
+  letter-spacing:-.055em;font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+
+/* Caixa aberto e encerrado: ocupar toda a região disponível com duas colunas.
+   Estado encerrado permanece visível, mas menos chamativo. */
+body.caixas-page #caixas-grid.caixas-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;gap:14px;margin:0 0 18px;min-width:0;
+}
+body.caixas-page #caixas-grid .caixa-card {
+  display:flex;flex-direction:column;gap:0;
+  min-width:0;min-height:276px;padding:19px 20px;
+  border:1px solid var(--rule);border-radius:14px;
+  background:var(--paper-raised) !important;
+  box-shadow:0 2px 8px rgba(27,24,21,.035) !important;
+  transform:none;opacity:1;
+}
+body.caixas-page #caixas-grid .caixa-card::before {content:none;}
+body.caixas-page #caixas-grid .caixa-card:hover {
+  transform:none;box-shadow:0 5px 14px rgba(27,24,21,.065) !important;
+}
+body.caixas-page #caixas-grid .caixa-card.aberto {
+  border-color:var(--rule-strong);
+}
+body.caixas-page #caixas-grid .caixa-card.encerrado {
+  opacity:.83;
+}
+body.caixas-page #caixas-grid .caixa-card.encerrado:hover {opacity:1;}
+body.caixas-page .caixa-card-header {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin:0 0 13px;
+}
+body.caixas-page .caixa-num {
+  color:var(--ink);font:750 20px/1.2 var(--font-ui);
+  letter-spacing:-.035em;
+}
+body.caixas-page .caixa-card-header .badge {
+  flex:0 0 auto;padding:5px 10px;border-radius:999px;
+  font:750 10px/1.2 var(--font-ui);letter-spacing:.04em;
+  text-transform:uppercase;
+}
+body.caixas-page .caixa-details {
+  display:flex;flex-direction:column;gap:8px;margin-bottom:15px;
+}
+body.caixas-page .caixa-detail-row {
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;min-width:0;
+  font:500 12px/1.4 var(--font-ui);
+}
+body.caixas-page .caixa-detail-label {color:var(--ink-3);}
+body.caixas-page .caixa-detail-value {
+  min-width:0;color:var(--ink);font-weight:700;
+  text-align:right;overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;
+}
+body.caixas-page .caixa-detail-value.text-success {color:#1b8758;}
+body.caixas-page #caixas-grid .caixa-actions {
+  display:flex;flex-wrap:wrap;align-items:center;
+  gap:7px;margin-top:auto;padding-top:14px;
+  border-top:1px solid var(--rule);
+}
+body.caixas-page #caixas-grid .caixa-actions .btn-sm {
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:6px;min-height:34px;padding:8px 12px;
+  border:1px solid var(--rule-strong);border-radius:8px;
+  background:var(--paper-raised);color:var(--ink-2);
+  font:700 11px/1.25 var(--font-ui);
+  white-space:nowrap;box-shadow:none;transform:none;
+}
+body.caixas-page #caixas-grid .caixa-actions .btn-sm:hover {
+  border-color:var(--rule-strong);background:var(--paper-sunk);
+  color:var(--ink);transform:none;
+}
+body.caixas-page #caixas-grid .caixa-actions .btn-sm.success {
+  border-color:#d6eadd;background:#edf9f1;color:#1b7650;
+}
+body.caixas-page #caixas-grid .caixa-actions .btn-sm.danger {
+  border-color:#f5d7d3;background:#fff1ef;color:#ab352d;
+}
+body.caixas-page #caixas-grid .caixa-actions .btn-sm:focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+body.caixas-page .caixa-actions .btn-inline-icon svg {width:14px;height:14px;}
+
+/* Consolidado: título alinhado, relatório de texto contido. */
+body.caixas-page #consolidado-card {
+  min-width:0;margin:0;padding:19px 21px;
+  border:1px solid var(--rule);border-radius:14px;
+  box-shadow:0 2px 8px rgba(27,24,21,.035) !important;
+}
+body.caixas-page #consolidado-card::before {content:none;}
+body.caixas-page #consolidado-card .card-header {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin:0 0 12px;
+}
+body.caixas-page #consolidado-card .card-title {
+  color:var(--ink);font:750 14px/1.35 var(--font-ui);letter-spacing:-.02em;
+}
+body.caixas-page #consolidado-card .btn {
+  min-height:34px;border-radius:8px;font-size:11px;
+}
+body.caixas-page #consolidado-texto {
+  margin:0;padding:13px 14px;border:1px solid var(--rule);
+  border-radius:9px;background:var(--paper-sunk);
+  color:var(--ink-2);font:500 12px/1.55 var(--font-ui);
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+body.caixas-page #fechamento-container {margin-bottom:16px;}
+body.caixas-page #fechamento-container .fechamento-card {
+  border-radius:14px;padding:18px 20px;
+}
+body.caixas-page #fechamento-container .fechamento-rows {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 20px;
+}
+
+/* Sangria, suprimento, abrir, encerrar e movimentações.
+   A compatibilidade forçava max-width:100% nos modais. */
+body.caixas-page .modal-overlay {
+  display:none;position:fixed;inset:0;z-index:100;
+  align-items:center;justify-content:center;
+  padding:clamp(12px,3vw,28px);overflow-y:auto;
+  overscroll-behavior:contain;
+  background:rgba(26,24,23,.5);backdrop-filter:blur(5px);
+}
+body.caixas-page .modal-overlay.open {display:flex;}
+body.caixas-page .modal-overlay > .modal {
+  display:flex;flex:0 1 520px;flex-direction:column;
+  width:100%;min-width:0;max-width:min(520px,100%) !important;
+  max-height:min(700px,calc(100dvh - 32px));
+  margin:auto;padding:0;overflow:hidden;
+  border:1px solid var(--rule-strong);border-radius:16px;
+  background:var(--paper-raised) !important;color:var(--ink);
+  box-shadow:0 18px 65px rgba(20,17,15,.19) !important;
+  animation:none;
+}
+body.caixas-page #modal-movs-lista > .modal {
+  flex-basis:720px;max-width:min(720px,100%) !important;
+}
+body.caixas-page .modal-header {
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;gap:12px;min-height:61px;margin:0;padding:15px 20px;
+  border-bottom:1px solid var(--rule);background:var(--paper-sunk);
+}
+body.caixas-page .modal-title {
+  margin:0;color:var(--ink);font:750 16px/1.35 var(--font-ui);
+}
+body.caixas-page .modal-close {
+  display:grid;place-items:center;flex:0 0 34px;
+  width:34px;height:34px;padding:0;
+  border:1px solid transparent;border-radius:8px;
+  background:transparent;color:var(--ink-3);font-size:20px;
+}
+body.caixas-page .modal-close:hover {
+  background:var(--paper-sunk);color:var(--ink);border-color:var(--rule);
+}
+body.caixas-page .modal-body {
+  display:flex;flex-direction:column;gap:14px;
+  min-height:0;max-height:none;padding:19px 20px;
+  overflow-x:hidden;overflow-y:auto;
+}
+body.caixas-page .modal-body .field,
+body.caixas-page .modal-body .form-group {
+  display:flex;flex-direction:column;gap:6px;min-width:0;margin:0;
+}
+body.caixas-page .modal-body .field label {
+  color:var(--ink-3);font:750 10px/1.4 var(--font-ui);
+  letter-spacing:.055em;text-transform:uppercase;
+}
+body.caixas-page .modal-body .input {
+  display:block;width:100%;height:41px;min-height:41px;
+  padding:9px 12px;border:1px solid var(--rule-strong);
+  border-radius:8px;background:var(--paper-raised);color:var(--ink);
+  font:500 12px/1.4 var(--font-ui);
+}
+body.caixas-page .modal-body .input:focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+body.caixas-page .modal-body .produto-info-card {
+  display:flex;flex-direction:column;gap:5px;
+  min-height:0;margin:0;padding:12px 14px;
+  border:1px solid var(--rule);border-radius:10px;
+  background:var(--paper-sunk) !important;
+}
+body.caixas-page .modal-body .produto-info-nome {
+  font:750 13px/1.4 var(--font-ui);color:var(--ink);
+}
+body.caixas-page .modal-body .produto-info-qtd {
+  font:500 12px/1.5 var(--font-ui);color:var(--ink-3);
+}
+body.caixas-page .modal-body .produto-info-qtd strong {
+  color:var(--ink);font-variant-numeric:tabular-nums;
+}
+body.caixas-page .modal-body .alert-modal:not(.alert-modal--static):empty {display:none;}
+body.caixas-page .modal-footer {
+  display:flex;align-items:center;justify-content:flex-end;
+  flex-wrap:wrap;flex-shrink:0;gap:8px;
+  min-height:61px;padding:13px 20px;
+  border-top:1px solid var(--rule);background:var(--paper-sunk);
+}
+body.caixas-page .modal-footer .btn {
+  min-height:37px;padding:8px 14px;border-radius:8px;
+  font:700 12px/1.4 var(--font-ui);
+}
+body.caixas-page .modal-close:focus-visible,
+body.caixas-page .modal-footer button:focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+body.caixas-page #modal-movs-lista .mov-caixa-list {gap:8px;}
+body.caixas-page #modal-movs-lista .mov-caixa-item {
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;
+  align-items:center;gap:10px;min-width:0;
+  padding:11px 12px;border:1px solid var(--rule);
+  border-radius:9px;background:var(--paper-sunk);
+  box-shadow:none;transform:none;
+}
+body.caixas-page #modal-movs-lista .mov-caixa-desc {
+  min-width:0;color:var(--ink);font:600 12px/1.4 var(--font-ui);
+  overflow-wrap:anywhere;
+}
+body.caixas-page #modal-movs-lista .mov-caixa-val {
+  font:750 12px/1.3 var(--font-ui);white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+body.caixas-page #modal-movs-lista .mov-caixa-time {
+  color:var(--ink-3);font-size:11px;white-space:nowrap;
+}
+
+/* Netlify only: CSS for PDV demonstration dialog, separate from the
+   production PDV modal. Original mode keeps the original inline styles. */
+body.caixas-page #stockos-preview-pdv.stockos-preview-pdv {
+  display:grid !important;place-items:center !important;
+  padding:20px !important;overflow-y:auto !important;
+  background:rgba(14,23,34,.62) !important;
+  -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+  font:500 13px/1.5 var(--font-ui) !important;
+}
+body.caixas-page #stockos-preview-pdv .stockos-preview-pdv__dialog {
+  display:flex !important;flex-direction:column;gap:14px;
+  width:min(560px,100%) !important;
+  max-height:min(720px,calc(100dvh - 36px)) !important;
+  margin:auto;padding:22px !important;overflow-y:auto !important;
+  border:1px solid var(--rule-strong) !important;
+  border-radius:16px !important;
+  background:var(--paper-raised) !important;color:var(--ink) !important;
+  box-shadow:0 20px 70px rgba(20,17,15,.22) !important;
+}
+body.caixas-page .stockos-preview-pdv__head {
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding:0 0 12px;border-bottom:1px solid var(--rule);
+}
+body.caixas-page .stockos-preview-pdv__title {
+  margin:0 !important;color:var(--ink) !important;
+  font:750 19px/1.3 var(--font-ui) !important;letter-spacing:-.035em;
+}
+body.caixas-page .stockos-preview-pdv__close {
+  flex-shrink:0;min-height:32px;padding:6px 10px;
+  border:1px solid var(--rule-strong);border-radius:8px;
+  background:var(--paper-sunk);color:var(--ink-2);
+  font:650 11px var(--font-ui);
+}
+body.caixas-page .stockos-preview-pdv__info {
+  margin:0 !important;opacity:1 !important;
+  color:var(--ink-3);font-size:12px;line-height:1.5;
+}
+body.caixas-page .stockos-preview-pdv__select {
+  display:block;width:100% !important;min-height:42px;
+  margin:0 !important;padding:9px 12px !important;
+  border:1px solid var(--rule-strong);border-radius:8px;
+  background:var(--paper-raised);color:var(--ink);
+  font:500 12px var(--font-ui);
+}
+body.caixas-page .stockos-preview-pdv__controls {
+  display:flex;align-items:center;flex-wrap:wrap;gap:9px;
+}
+body.caixas-page .stockos-preview-pdv__qty {
+  width:85px !important;min-height:40px;
+  margin:0 !important;padding:9px 10px !important;
+  border:1px solid var(--rule-strong);border-radius:8px;
+  background:var(--paper-raised);color:var(--ink);font-size:12px;
+}
+body.caixas-page .stockos-preview-pdv__add,
+body.caixas-page .stockos-preview-pdv__finish {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:40px;padding:9px 15px;
+  border:1px solid var(--accent);border-radius:8px;
+  background:var(--accent);color:#fff;
+  font:750 12px/1.3 var(--font-ui);cursor:pointer;
+}
+body.caixas-page .stockos-preview-pdv__rows {
+  min-height:78px;margin:0 !important;padding:10px 12px;
+  border:1px dashed var(--rule-strong);border-radius:10px;
+  background:var(--paper-sunk);
+}
+body.caixas-page .stockos-preview-pdv__rows:empty::before {
+  content:"Nenhum produto adicionado ao carrinho.";
+  color:var(--ink-3);font-size:12px;
+}
+body.caixas-page .stockos-preview-pdv__item {
+  padding:6px 0 !important;
+  border-bottom:1px solid var(--rule);
+  color:var(--ink-2);font-size:12px;
+}
+body.caixas-page .stockos-preview-pdv__item:last-child {border-bottom:0;}
+body.caixas-page .stockos-preview-pdv__total {
+  display:block !important;padding-top:13px;
+  border-top:1px solid var(--rule);
+  color:var(--ink) !important;
+  font:750 20px/1.2 var(--font-ui);
+  font-variant-numeric:tabular-nums;letter-spacing:-.025em;
+}
+body.caixas-page .stockos-preview-pdv__finish {
+  width:100%;margin:0 !important;
+  background:#24754f !important;border-color:#24754f !important;
+  color:#fff !important;
+}
+body.caixas-page .stockos-preview-pdv__finish:disabled {opacity:.55;cursor:not-allowed;}
+body.caixas-page .stockos-preview-pdv__feedback {
+  margin:0;color:var(--ink-2);font-size:12px;
+}
+body.caixas-page #stockos-preview-pdv :is(button,select,input):focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+
+@media (max-width:980px) {
+  body.caixas-page .app,body.caixas-page .app.is-collapsed {
+    grid-template-areas:"main";grid-template-columns:minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr);
+  }
+  body.caixas-page .sidebar {
+    grid-area:auto;grid-row:auto;position:fixed;top:0;left:0;bottom:0;
+    width:min(280px,82vw);height:100dvh;z-index:50;
+    transform:translateX(-100%);transition:transform 200ms ease;
+  }
+  body.caixas-page .sidebar.open {transform:translateX(0);}
+  body.caixas-page .main.page {grid-area:main;grid-column:1;grid-row:1;}
+}
+@media (max-width:760px) {
+  body.caixas-page .topbar.header {min-height:86px;padding:16px;flex-wrap:wrap;gap:9px;}
+  body.caixas-page .topbar-right {width:auto;}
+  body.caixas-page .main-body.content {padding:16px 14px 28px;}
+  body.caixas-page #resumo-dia.info-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  }
+  body.caixas-page #resumo-dia .info-card {min-height:95px;padding:14px;}
+  body.caixas-page #caixas-grid.caixas-grid {grid-template-columns:minmax(0,1fr);}
+  body.caixas-page .modal-header,body.caixas-page .modal-footer {padding:13px 16px;}
+  body.caixas-page .modal-body {padding:16px;}
+  body.caixas-page #modal-movs-lista .mov-caixa-item {
+    grid-template-columns:auto minmax(0,1fr) auto;
+  }
+  body.caixas-page #modal-movs-lista .mov-caixa-time {grid-column:2 / -1;}
+  body.caixas-page #fechamento-container .fechamento-rows {grid-template-columns:1fr;}
+}
+@media (max-width:480px) {
+  body.caixas-page .topbar-right {width:100%;}
+  body.caixas-page .topbar-right .btn {width:100%;}
+  body.caixas-page #resumo-dia.info-grid {grid-template-columns:1fr;}
+  body.caixas-page #resumo-dia .info-card {min-height:86px;}
+  body.caixas-page .modal-overlay {padding:10px;}
+  body.caixas-page .modal-overlay > .modal {max-height:calc(100dvh - 20px);}
+  body.caixas-page .modal-footer > button {flex:1 1 0;}
+  body.caixas-page #stockos-preview-pdv.stockos-preview-pdv {padding:10px !important;}
+  body.caixas-page #stockos-preview-pdv .stockos-preview-pdv__dialog {
+    padding:16px !important;max-height:calc(100dvh - 20px) !important;
+  }
+  body.caixas-page .stockos-preview-pdv__controls > button {flex:1 1 auto;}
+}
+@media (prefers-reduced-motion:reduce) {
+  body.caixas-page .sidebar,body.caixas-page .caixa-card,
+  body.caixas-page .info-card,body.caixas-page .modal {animation:none;transition:none;}
+}
