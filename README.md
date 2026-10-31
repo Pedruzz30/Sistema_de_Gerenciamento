@@ -1,11 +1,11 @@
-# Sistema Gerenciamento
+# StockOS — Gestao Operacional e Estoque
 
-Sistema web para operacao de estoque, compras, fornecedores, notas fiscais, cotacoes, caixas e gestao de cardapio para uma operacao de pizzaria/restaurante. A aplicacao usa Spring Boot no backend, PostgreSQL para persistencia e paginas HTML/CSS/JS servidas pelo proprio projeto.
+Sistema web para operacao de estoque, compras, fornecedores, notas fiscais, cotacoes, caixas e cardapio configuravel para restaurantes, bares, hamburguerias, pizzarias, sushi e outros estabelecimentos. Backend Spring Boot e PostgreSQL, com frontend HTML/CSS/JS e navegacao SPA progressiva.
 
 ## Stack
 
 - Java 17
-- Spring Boot 3.3
+- Spring Boot 3.5.16
 - Spring Web
 - Spring Data JPA
 - Thymeleaf
@@ -21,7 +21,7 @@ Sistema web para operacao de estoque, compras, fornecedores, notas fiscais, cota
 - Operacao de caixas com abertura, venda, suprimento, sangria e fechamento
 - Cardapio unificado para PDV e administracao
 - Gestao de funcionarios, perfis e logs de auditoria
-- Seed automatico de usuarios padrao, categorias e itens de cardapio
+- Cadastro de categorias e itens por estabelecimento; catalogo demonstrativo generico opcional
 
 ## Requisitos
 
@@ -69,6 +69,16 @@ Depois acesse:
 
 - `http://localhost:8080`
 - `http://localhost:8080/login`
+
+## Catalogo demonstrativo (somente desenvolvimento)
+
+O exemplo de catalogo foi reduzido a duas categorias (Preparados e Bebidas), um prato preparado sob demanda e dois produtos de venda direta. O seed e desligado por padrao. Para habilitar em um banco de desenvolvimento isolado:
+
+```powershell
+$env:STOCKOS_SEED_DEMO_CATALOG_ENABLED="true"
+```
+
+Nao ative esse seed em bancos de clientes. Nao ha limpeza automatica de dados antigos. A definicao de produtos controlados por estoque nao depende do nome: pizzas congeladas podem ser itens de estoque e pizzas preparadas podem ser itens de cardapio sob demanda.
 
 ## Usuarios iniciais
 
@@ -162,3 +172,4 @@ src/test/java
 - A classe principal da aplicacao web e `app.Main`.
 - Existe uma implementacao legada de console em `app.SistemaGerenciamentoEstoque`.
 - Senhas ainda sao armazenadas em texto simples e a autorizacao HTTP usa `X-User-RU`; isso serve para desenvolvimento e estudo, nao para producao.
+- A limpeza de catalogo nao implementa multitenancy, isolamento por estabelecimento ou onboarding; esses pontos continuam pendentes antes da comercializacao.

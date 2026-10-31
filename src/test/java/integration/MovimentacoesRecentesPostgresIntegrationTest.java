@@ -17,7 +17,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(classes = Main.class, webEnvironment = SpringBootTest.WebEnvironment.NONE,
-        properties = {"spring.jpa.show-sql=false", "stockos.seed.demo-menu.enabled=false"})
+        properties = {"spring.jpa.show-sql=false", "stockos.seed.demo-catalog.enabled=false"})
 @Transactional
 class MovimentacoesRecentesPostgresIntegrationTest {
     @Autowired JdbcTemplate jdbc;

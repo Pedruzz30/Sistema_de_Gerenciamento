@@ -49,39 +49,24 @@ class PdvMenuCatalogIntegrationTest {
         ResponseEntity<String> produtos = get("/api/produtos");
         ResponseEntity<String> categorias = get("/api/cardapio/categorias");
         ResponseEntity<String> itens = get("/api/cardapio/itens");
-        ResponseEntity<String> pizzas = get("/api/cardapio/itens?categoria=pizzas_artesanais");
-        ResponseEntity<String> massasClassicas = get("/api/cardapio/itens?categoria=massas_classicas");
+        ResponseEntity<String> preparados = get("/api/cardapio/itens?categoria=preparados");
+        ResponseEntity<String> bebidas = get("/api/cardapio/itens?categoria=bebidas");
 
         assertEquals(HttpStatus.OK, produtos.getStatusCode());
-        assertTrue(produtos.getBody() != null && produtos.getBody().contains("Coca-Cola Lata 350ml"));
-        assertTrue(produtos.getBody() != null && !produtos.getBody().contains("\"nome\":\"Pizza Calabresa Broto\""));
-
+        assertTrue(produtos.getBody() != null && produtos.getBody().contains("Agua mineral 500ml"));
         assertEquals(HttpStatus.OK, categorias.getStatusCode());
-        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"entradas\""));
-        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"massas_classicas\""));
-        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"massas_especiais\""));
-        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"pizzas_artesanais\""));
-        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"pratos_executivos\""));
-        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"sobremesas\""));
+        assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"preparados\""));
         assertTrue(categorias.getBody() != null && categorias.getBody().contains("\"codigo\":\"bebidas\""));
-
         assertEquals(HttpStatus.OK, itens.getStatusCode());
-        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Spaghetti a Carbonara\""));
-        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Nhoque da Casa\""));
-        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Tiramisu tradicional\""));
-        assertTrue(itens.getBody() != null && itens.getBody().contains("\"nome\":\"Pizza Calabresa Broto\""));
-        assertTrue(itens.getBody() != null && itens.getBody().contains("\"codigo\":\"pizza_calabresa_broto\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"codigo\":\"demo_prato_da_casa\""));
         assertTrue(itens.getBody() != null && itens.getBody().contains("\"tipoItem\":\"PREPARADO_SOB_DEMANDA\""));
-        assertTrue(itens.getBody() != null && itens.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
-
-        assertEquals(HttpStatus.OK, pizzas.getStatusCode());
-        assertTrue(pizzas.getBody() != null && pizzas.getBody().contains("\"categoriaCodigo\":\"pizzas_artesanais\""));
-        assertTrue(pizzas.getBody() != null && !pizzas.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
-
-        assertEquals(HttpStatus.OK, massasClassicas.getStatusCode());
-        assertTrue(massasClassicas.getBody() != null && massasClassicas.getBody().contains("\"categoriaCodigo\":\"massas_classicas\""));
-        assertTrue(massasClassicas.getBody() != null && massasClassicas.getBody().contains("\"nome\":\"Spaghetti a Carbonara\""));
-        assertTrue(massasClassicas.getBody() != null && !massasClassicas.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
+        assertTrue(itens.getBody() != null && itens.getBody().contains("\"tipoItem\":\"ESTOQUE_DIRETO\""));
+        assertEquals(HttpStatus.OK, preparados.getStatusCode());
+        assertTrue(preparados.getBody() != null && preparados.getBody().contains("\"categoriaCodigo\":\"preparados\""));
+        assertTrue(preparados.getBody() != null && !preparados.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
+        assertEquals(HttpStatus.OK, bebidas.getStatusCode());
+        assertTrue(bebidas.getBody() != null && bebidas.getBody().contains("\"categoriaCodigo\":\"bebidas\""));
+        assertTrue(bebidas.getBody() != null && !bebidas.getBody().contains("\"categoriaCodigo\":\"preparados\""));
     }
 
     private ResponseEntity<String> get(String path) {

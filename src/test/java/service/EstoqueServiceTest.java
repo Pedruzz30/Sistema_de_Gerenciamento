@@ -148,11 +148,14 @@ class EstoqueServiceTest {
     }
 
     @Test
-    void cadastrarProduto_dePizzaSobDemanda_lancaIllegalArgument() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.cadastrarProduto(operador, "Pizza Calabresa Broto", 10, 1, 29.90));
-
-        assertTrue(ex.getMessage().contains("sob demanda"));
+    void cadastrarProduto_naoDependeDoNomeDoAlimento() {
+        Produto pizzaCongelada = service.cadastrarProduto(
+                operador, "Pizza Calabresa congelada", 10, 1, 29.90, CategoriaEstoque.CONGELADO);
+        Produto hamburguer = service.cadastrarProduto(
+                operador, "Hamburguer congelado", 5, 1, 19.90, CategoriaEstoque.CONGELADO);
+        assertTrue(pizzaCongelada.isControladoPorEstoque());
+        assertTrue(hamburguer.isControladoPorEstoque());
+        assertEquals(2, service.listarProdutos().size());
     }
 
     @Test
