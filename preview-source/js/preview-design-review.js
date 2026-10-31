@@ -17,6 +17,10 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active && /\/(?:estoque|estoque\.html)$/.test(location.pathname)) {
+    document.querySelectorAll('link[href="/css/estoque-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (!active && /\/(?:dashboard|dashboard\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/dashboard-refinement.css"]').forEach(link => link.remove());
   }
@@ -37,6 +41,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Estoque: styles after preview palette, preserving original comparison.
+    if (/\/(?:estoque|estoque\.html)$/.test(location.pathname)) {
+      const stock = document.createElement('link');
+      stock.rel = 'stylesheet';
+      stock.href = '/css/estoque-refinement.css';
+      stock.dataset.stockosEstoqueRefinement = 'true';
+      document.head.appendChild(stock);
+    }
     // Refinamento específico do Dashboard, após a paleta restaurada.
     if (/\/(?:dashboard|dashboard\.html)$/.test(location.pathname)) {
       const sheet = document.createElement('link');
