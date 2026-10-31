@@ -1,38 +1,318 @@
-/* KPI cards */
-.kpi {
-  padding: var(--sp-5);
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-md);
-  display: flex; flex-direction: column; gap: var(--sp-2);
-  position: relative; overflow: hidden;
-  transition: border-color 0.12s;
-}
-.kpi:hover { border-color: var(--rule-strong); }
-.kpi-label {
-  font-size: var(--fs-11);
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-  font-weight: 500;
-}
-.kpi-value {
-  font-size: var(--fs-32);
-  line-height: 1;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  font-weight: 700;
-}
-.kpi-value .unit { font-size: 0.55em; color: var(--ink-4); margin-left: 2px; font-weight: 400; }
-.kpi-meta {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: var(--fs-12); color: var(--ink-4);
-}
-.kpi-delta { font-weight: 500; font-variant-numeric: tabular-nums; }
-.kpi-delta.up   { color: var(--ok); }
-.kpi-delta.down { color: var(--bad); }
-.kpi-spark { width: 100%; height: 30px; margin-top: var(--sp-1); }
 
-.kpi.small { padding: var(--sp-4); }
-.kpi.small .kpi-value { font-size: var(--fs-24); }
+/* ============================================
+   STOCKOS — KPI CARDS
+   Dashboard & Performance Indicators
+   ============================================ */
+
+/* ---------- CARD BASE ---------- */
+
+.kpi {
+  position: relative;
+  isolation: isolate;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+
+  width: 100%;
+  min-width: 0;
+  min-height: 150px;
+  padding: var(--sp-5, 20px);
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.035),
+      transparent 65%
+    ),
+    var(--paper-sunk);
+
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md, 14px);
+
+  color: var(--ink);
+
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease;
+}
+
+/* ---------- DETALHE SUPERIOR ---------- */
+
+.kpi::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+
+  pointer-events: none;
+}
+
+/* ---------- HOVER ---------- */
+
+@media (hover: hover) {
+  .kpi:hover {
+    border-color: var(--rule-strong);
+
+    box-shadow:
+      0 6px 18px rgba(0, 0, 0, 0.09),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+}
+
+/* ---------- LABEL ---------- */
+
+.kpi-label {
+  display: block;
+  min-width: 0;
+
+  color: var(--ink-3, var(--ink-4));
+
+  font-size: var(--fs-11, 11px);
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------- VALOR PRINCIPAL ---------- */
+
+.kpi-value {
+  display: block;
+  min-width: 0;
+  margin-top: 4px;
+
+  color: var(--ink);
+
+  font-family: var(--font-display, inherit);
+  font-size: clamp(25px, 2.5vw, 34px);
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------- UNIDADE DO VALOR ---------- */
+
+.kpi-value .unit {
+  display: inline;
+  margin-left: 4px;
+
+  color: var(--ink-3, var(--ink-4));
+
+  font-family: inherit;
+  font-size: 0.48em;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/* ---------- METADADOS ---------- */
+
+.kpi-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 6px 10px;
+  min-width: 0;
+  margin-top: auto;
+
+  color: var(--ink-3, var(--ink-4));
+  font-size: var(--fs-12, 12px);
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.kpi-meta > * {
+  min-width: 0;
+}
+
+/* ---------- VARIAÇÃO / DELTA ---------- */
+
+.kpi-delta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  width: fit-content;
+  max-width: 100%;
+
+  padding: 4px 7px;
+
+  border: 1px solid transparent;
+  border-radius: 7px;
+
+  font-size: var(--fs-11, 11px);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- VARIAÇÃO POSITIVA ---------- */
+
+.kpi-delta.up {
+  color: var(--ok);
+  background: var(--ok-soft);
+
+  border-color: color-mix(
+    in srgb,
+    var(--ok) 18%,
+    transparent
+  );
+}
+
+/* ---------- VARIAÇÃO NEGATIVA ---------- */
+
+.kpi-delta.down {
+  color: var(--bad);
+  background: var(--bad-soft);
+
+  border-color: color-mix(
+    in srgb,
+    var(--bad) 18%,
+    transparent
+  );
+}
+
+/* ---------- SPARKLINE ---------- */
+
+.kpi-spark {
+  display: block;
+
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  margin-top: var(--sp-2, 8px);
+
+  overflow: hidden;
+}
+
+.kpi-spark svg,
+.kpi-spark canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- CARD COMPACTO ---------- */
+
+.kpi.small {
+  min-height: 118px;
+  padding: var(--sp-4, 16px);
+  gap: 7px;
+}
+
+.kpi.small .kpi-label {
+  font-size: var(--fs-11, 11px);
+}
+
+.kpi.small .kpi-value {
+  margin-top: 2px;
+  font-size: var(--fs-24, 24px);
+  line-height: 1.15;
+}
+
+.kpi.small .kpi-meta {
+  font-size: var(--fs-11, 11px);
+}
+
+.kpi.small .kpi-spark {
+  height: 26px;
+  min-height: 26px;
+  margin-top: 4px;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 1100px) {
+  .kpi {
+    min-height: 140px;
+    padding: 18px;
+  }
+
+  .kpi-value {
+    font-size: clamp(25px, 3vw, 32px);
+  }
+}
+
+@media (max-width: 720px) {
+  .kpi {
+    min-height: 130px;
+    padding: 16px;
+    gap: 7px;
+  }
+
+  .kpi-value {
+    font-size: clamp(24px, 5vw, 30px);
+  }
+
+  .kpi-label {
+    font-size: 10px;
+    letter-spacing: 0.065em;
+  }
+
+  .kpi-meta {
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .kpi-spark {
+    height: 28px;
+    min-height: 28px;
+  }
+}
+
+@media (max-width: 420px) {
+  .kpi {
+    padding: 15px;
+    border-radius: 12px;
+  }
+
+  .kpi-value {
+    font-size: 26px;
+  }
+
+  .kpi.small {
+    min-height: 108px;
+    padding: 14px;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi {
+    transition: none;
+  }
+}
+
