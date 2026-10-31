@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+node_modules
+target
+dist
+dist-preview
+.netlify
+.vite
+coverage
+backups_auditoria
+*.log
+*.patch
