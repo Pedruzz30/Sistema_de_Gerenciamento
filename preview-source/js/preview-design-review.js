@@ -24,6 +24,13 @@
       link.dataset.stockosDesign = 'novo';
       document.head.appendChild(link);
     }
+    // Restore the warm/paper color scheme from the original site without losing
+    // the redesigned layout, spacing or components.
+    const palette = document.createElement('link');
+    palette.rel = 'stylesheet';
+    palette.href = '/css/palette-original.css';
+    palette.dataset.stockosPalette = 'original';
+    document.head.appendChild(palette);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
