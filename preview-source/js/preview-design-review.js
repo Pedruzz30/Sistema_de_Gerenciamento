@@ -55,13 +55,12 @@
 
   if (active) {
     // Redesign CSS loads after the classic styles only in the preview; it remains reversible.
-    for (const file of files) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/css/' + file + '.css';
-      link.dataset.stockosDesign = 'novo';
-      document.head.appendChild(link);
-    }
+    // Single ordered bundle: fewer requests and no incremental CSS cascade.
+    const designSheet = document.createElement('link');
+    designSheet.rel = 'stylesheet';
+    designSheet.href = '/css/stockos-design.bundle.css';
+    designSheet.dataset.stockosDesign = 'novo';
+    document.head.appendChild(designSheet);
     // Restore the warm/paper color scheme from the original site without losing
     // the redesigned layout, spacing or components.
     const palette = document.createElement('link');
