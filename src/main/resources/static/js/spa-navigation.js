@@ -1,7 +1,7 @@
-/* StockOS — SPA pilot: Dashboard <-> Estoque only.
+/* StockOS — SPA shell: the nine management views.
  * Keep the authenticated sidebar/header alive, reuse DOM per route,
  * and never evaluate scripts fetched from an HTML response.
- * All other routes intentionally retain traditional navigation.
+ * Authentication, login and unknown routes retain traditional navigation.
  */
 (() => {
   'use strict';
@@ -178,7 +178,7 @@
     for (const modal of previous.modals) modal.remove();
     for (const modal of entry.modals) document.body.appendChild(modal);
 
-    document.body.classList.remove('dashboard-page', 'estoque-page');
+    document.body.classList.remove('dashboard-page', 'estoque-page', 'cardapio-page', 'fornecedores-page', 'notas-page', 'caixas-page', 'cotacoes-page', 'funcionarios-page', 'logs-page');
     document.body.classList.add(ROUTES[route].bodyClass);
     document.title = entry.title;
     active = route;

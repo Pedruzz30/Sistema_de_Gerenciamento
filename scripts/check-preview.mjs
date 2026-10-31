@@ -50,7 +50,7 @@ for(const f of ['saas-admin.html','saas-comandas.html','application.properties']
 const mock=await readFile('dist-preview/js/preview-mock.js','utf8');
 assert.ok(mock.includes('DEMONSTRAÇÃO · dados fictícios'));
 assert.ok(mock.includes('Função indisponível nesta demonstração'));
-for(const file of ['scripts/build-preview.mjs','dist-preview/js/preview-mock.js','dist-preview/js/preview-notes.js','dist-preview/js/preview-pdv.js','dist-preview/js/preview-cardapio.js','dist-preview/js/preview-design-review.js','dist-preview/js/dashboard.js','dist-preview/js/estoque.js']) {
+for(const file of ['scripts/build-preview.mjs','dist-preview/js/preview-mock.js','dist-preview/js/preview-notes.js','dist-preview/js/preview-pdv.js','dist-preview/js/preview-cardapio.js','dist-preview/js/preview-design-review.js','dist-preview/js/dashboard.js','dist-preview/js/estoque.js', 'dist-preview/js/spa-navigation.js']) {
   execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
 }
 console.log('PASS: preview isolado, navegação, fontes canônicas e JS');

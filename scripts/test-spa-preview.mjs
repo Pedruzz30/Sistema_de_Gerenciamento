@@ -7,10 +7,11 @@ execFileSync(process.execPath,['scripts/build-preview.mjs'],{stdio:'inherit'});
 const script = await readFile('dist-preview/js/spa-navigation.js','utf8');
 const dashboardHtml = await readFile('dist-preview/dashboard.html','utf8');
 const estoqueHtml = await readFile('dist-preview/estoque.html','utf8');
-for (const [html,page] of [[dashboardHtml,'dashboard'],[estoqueHtml,'estoque']]) {
+for (const page of ["dashboard","estoque","cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) {
+  const html = await readFile('dist-preview/'+page+'.html','utf8');
   assert.ok(html.includes('/js/spa-navigation.js'),page+' missing SPA router');
 }
-for (const route of ['dashboard','estoque']) {
+for (const route of ["dashboard","estoque","cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) {
   assert.ok(script.includes(route+'.html'),route+' route missing');
 }
 assert.ok(script.includes('history.pushState'));
@@ -43,4 +44,18 @@ assert.equal(sandbox.window.StockOSSPA,undefined,'No router when header missing'
 execFileSync(process.execPath,['--check','dist-preview/js/spa-navigation.js'],{stdio:'inherit'});
 execFileSync(process.execPath,['--check','dist-preview/js/dashboard.js'],{stdio:'inherit'});
 execFileSync(process.execPath,['--check','dist-preview/js/estoque.js'],{stdio:'inherit'});
-console.log('PASS StockOS SPA pilot: two routes, navigation API, preview and syntax');
+for (const route of ["cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) {
+  const js = await readFile('dist-preview/js/'+route+'.js','utf8');
+  assert.match(js,new RegExp('StockOSPages\\.'+route));
+  assert.match(js,/activate\(\)/);
+  assert.match(js,/mount:/);
+  execFileSync(process.execPath,['--check','dist-preview/js/'+route+'.js'],{stdio:'inherit'});
+}
+const pdv = await readFile('dist-preview/js/pdv.js','utf8');
+assert.match(pdv,/window\\.StockOSPDV/);
+execFileSync(process.execPath,['--check','dist-preview/js/pdv.js'],{stdio:'inherit'});
+const demo = await readFile('dist-preview/js/preview-mock.js','utf8');
+for (const route of ["dashboard","estoque","cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) assert.match(demo,new RegExp(route));
+assert.match(await readFile('dist-preview/js/preview-notes.js','utf8'),/StockOSPreviewHooks\\.notas/);
+assert.match(await readFile('dist-preview/js/preview-pdv.js','utf8'),/StockOSPreviewHooks\\.caixas/);
+console.log('PASS SPA: 9 routes, modular controllers, POS bridge, mocks, fallback and syntax');
