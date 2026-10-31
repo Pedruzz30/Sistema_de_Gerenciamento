@@ -1,3 +1,6 @@
+/* SPA-isolated screen: estoque. Prevent cross-page handler overwrites. */
+(() => {
+'use strict';
 // Stock screen: listing, category filtering, product create/edit, and movements.
 
 let todosOsProdutos = [];
@@ -521,3 +524,8 @@ function mostrarAlertaModal(el, tipo, msg) {
   el.className = `alert-modal ${tipo}`;
   el.textContent = msg;
 }
+// Expose inline HTML handlers for direct navigation as well as SPA mounts.
+if (/^\/estoque(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.estoque.activate();
+}
+})();

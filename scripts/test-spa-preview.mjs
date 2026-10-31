@@ -77,6 +77,44 @@ for (const route of ["cardapio","fornecedores","notas","caixas","cotacoes","func
   assert.equal(typeof ctx.window.StockOSPages[route]?.mount,'function',route+' missing mount');
   assert.equal(typeof ctx.window.StockOSPages[route]?.activate,'function',route+' missing activation');
 }
+// Dashboard and Estoque must also be lexically isolated. Without this,
+ // their original global function declarations are overwritten by other pages.
+const coreCtx = {
+  window: { StockOSPages: {} },
+  document: { addEventListener() {} },
+  location: { pathname: '/logs.html' },
+  temPermissao: () => true,
+  temAlgumaPermissao: () => true,
+  PERMISSOES: { VER_ESTOQUE: 'VER_ESTOQUE', VER_VENDAS: 'VER_VENDAS', VER_FINANCAS: 'VER_FINANCAS' },
+  console, setTimeout, clearTimeout
+};
+vm.createContext(coreCtx);
+vm.runInContext(await readFile('dist-preview/js/dashboard.js','utf8'),coreCtx,{filename:'dashboard.js'});
+vm.runInContext(await readFile('dist-preview/js/estoque.js','utf8'),coreCtx,{filename:'estoque.js'});
+vm.runInContext(await readFile('dist-preview/js/fornecedores.js','utf8'),coreCtx,{filename:'fornecedores.js'});
+for (const route of ['dashboard','estoque','fornecedores']) {
+  assert.equal(typeof coreCtx.window.StockOSPages[route].activate,'function');
+}
+coreCtx.window.StockOSPages.estoque.activate();
+const originalStockRender = coreCtx.window.renderTabela;
+const originalStockLoad = coreCtx.window.carregarProdutos;
+coreCtx.window.StockOSPages.fornecedores.activate();
+assert.notEqual(coreCtx.window.renderTabela,originalStockRender,
+  'Supplier renderer must become active on Fornecedores');
+assert.notEqual(coreCtx.window.carregarProdutos,originalStockLoad,
+  'Supplier module must not use Estoque loading handler');
+coreCtx.window.StockOSPages.estoque.activate();
+assert.equal(coreCtx.window.renderTabela,originalStockRender,
+  'Returning to Estoque must restore inventory table renderer');
+assert.equal(coreCtx.window.carregarProdutos,originalStockLoad,
+  'Returning to Estoque must restore inventory API loader');
+coreCtx.window.StockOSPages.dashboard.activate();
+const originalDashboardRender = coreCtx.window.renderAlertas;
+coreCtx.window.StockOSPages.fornecedores.activate();
+coreCtx.window.StockOSPages.dashboard.activate();
+assert.equal(coreCtx.window.renderAlertas,originalDashboardRender,
+  'Dashboard must restore its own handlers after another view');
+
 ctx.window.StockOSPages.fornecedores.activate();
 const supplierTable = ctx.window.renderTabela;
 ctx.window.StockOSPages.funcionarios.activate();

@@ -1,3 +1,6 @@
+/* SPA-isolated screen: dashboard. Prevent cross-page handler overwrites. */
+(() => {
+'use strict';
 // ── Inicialização ──────────────────────────────────────────
 const PODE_VER_ESTOQUE_DASH = temPermissao(PERMISSOES.VER_ESTOQUE);
 const PODE_VER_FINANCEIRO_DASH = temAlgumaPermissao([
@@ -1233,3 +1236,8 @@ function renderGraficoAlertas(produtos) {
     }).join('');
   }
 }
+// Expose inline HTML handlers for direct navigation as well as SPA mounts.
+if (/^\/dashboard(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.dashboard.activate();
+}
+})();
