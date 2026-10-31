@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 execFileSync(process.execPath,['scripts/build-preview.mjs'],{stdio:'inherit'});
-for (const p of ['login.html','dashboard.html','estoque.html','cardapio.html','caixas.html','js/preview-mock.js','js/preview-notes.js','js/preview-pdv.js','js/preview-cardapio.js','js/preview-design-review.js','_redirects','_headers']) {
+for (const p of ['login.html','dashboard.html','estoque.html','cardapio.html','caixas.html','js/preview-mock.js','js/preview-notes.js','js/preview-pdv.js','js/preview-cardapio.js','js/preview-design-review.js','css/palette-original.css','_redirects','_headers']) {
   await access(join('dist-preview',p));
 }
 const html=await readFile('dist-preview/dashboard.html','utf8');
@@ -27,6 +27,9 @@ assert.ok(!original.includes('/js/preview-notes.js'),'Invoice mock leaked into J
 assert.ok(!original.includes('/js/preview-pdv.js'),'PDV mock leaked into Java frontend');
 assert.ok(!original.includes('/js/preview-cardapio.js'),'Menu mock leaked into Java frontend');
 assert.ok(!original.includes('/js/preview-design-review.js'),'Design preview leaked into Java frontend');
+const palette=await readFile('dist-preview/css/palette-original.css','utf8');
+assert.match(palette,/--paper:\\s*oklch/);
+assert.match(palette,/--accent:\\s*oklch/);
 assert.ok(!html.includes('Turno ativo · 26 abr 2026'),'Stale dashboard date');
 const routes=await readFile('dist-preview/_redirects','utf8');
 assert.match(routes,/^\/dashboard \/dashboard.html 200$/m);
