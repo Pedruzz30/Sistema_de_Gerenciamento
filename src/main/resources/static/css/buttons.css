@@ -1,47 +1,350 @@
-/* Botões */
+
+/* ============================================
+   STOCKOS — SISTEMA DE BOTÕES
+   ============================================ */
+
+/* ---------- BOTÃO BASE ---------- */
+
 .btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  gap: var(--sp-2);
-  height: 36px; padding: 0 var(--sp-4);
-  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  gap: var(--sp-2, 8px);
+
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px var(--sp-4, 16px);
+
+  appearance: none;
   border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm, 8px);
+
   background: var(--paper-raised);
   color: var(--ink-2);
-  font-size: var(--fs-13); font-weight: 500;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  font-family: inherit;
+  font-size: var(--fs-13, 13px);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.005em;
+  text-align: center;
+  text-decoration: none;
   white-space: nowrap;
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
 }
-.btn:hover { background: oklch(0.20 0.005 250); color: var(--ink); border-color: var(--rule-strong); }
-.btn:active { opacity: .85; }
-.btn:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn svg { width: 14px; height: 14px; }
 
-.btn-accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.btn-accent:hover { background: #4f52e8; border-color: #4f52e8; color: #fff; }
+/* ---------- INTERAÇÕES ---------- */
 
-.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-primary:hover { background: #4f52e8; border-color: #4f52e8; }
+@media (hover: hover) {
+  .btn:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(
+      in srgb,
+      var(--paper-raised) 88%,
+      white
+    );
+    color: var(--ink);
+    border-color: var(--rule-strong);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  }
+}
 
-.btn-ghost { background: transparent; border-color: transparent; }
-.btn-ghost:hover { background: var(--paper-raised); border-color: var(--rule); }
+.btn:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(0.98);
+  box-shadow: none;
+}
 
-.btn-danger { color: var(--bad); border-color: var(--rule); background: transparent; }
-.btn-danger:hover { background: var(--bad-soft); border-color: var(--bad); }
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
 
-.btn-sm { height: 28px; padding: 0 var(--sp-3); font-size: var(--fs-12); }
-.btn-lg { height: 44px; padding: 0 var(--sp-5); font-size: var(--fs-14); }
-.btn-block { width: 100%; }
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 
-/* Icon-only button */
+.btn[aria-disabled="true"] {
+  pointer-events: none;
+}
+
+/* ---------- ÍCONES ---------- */
+
+.btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  stroke-width: 1.9;
+}
+
+.btn svg,
+.iconbtn svg {
+  transition: transform 180ms ease;
+}
+
+/* ---------- BOTÃO ACCENT ---------- */
+
+.btn-accent,
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  border-color: var(--accent);
+  font-weight: 650;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+@media (hover: hover) {
+  .btn-accent:hover:not(:disabled),
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 85%, white);
+    border-color: color-mix(in srgb, var(--accent) 85%, white);
+    color: var(--accent-ink, #fff);
+    box-shadow:
+      0 4px 14px color-mix(
+        in srgb,
+        var(--accent) 22%,
+        transparent
+      );
+  }
+}
+
+.btn-accent:active:not(:disabled),
+.btn-primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+
+/* ---------- BOTÃO GHOST ---------- */
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-2);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--paper-raised);
+    color: var(--ink);
+    border-color: var(--rule);
+    box-shadow: none;
+  }
+}
+
+/* ---------- BOTÃO DE PERIGO ---------- */
+
+.btn-danger {
+  background: transparent;
+  color: var(--bad);
+  border-color: var(--rule);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .btn-danger:hover:not(:disabled) {
+    background: var(--bad-soft);
+    color: var(--bad);
+    border-color: var(--bad);
+    box-shadow: 0 0 0 1px color-mix(
+      in srgb,
+      var(--bad) 8%,
+      transparent
+    );
+  }
+}
+
+.btn-danger:active:not(:disabled) {
+  background: var(--bad-soft);
+}
+
+/* ---------- TAMANHOS ---------- */
+
+.btn-sm {
+  min-height: 30px;
+  padding: 5px var(--sp-3, 12px);
+  font-size: var(--fs-12, 12px);
+  gap: 6px;
+}
+
+.btn-sm svg {
+  width: 13px;
+  height: 13px;
+}
+
+.btn-lg {
+  min-height: 46px;
+  padding: 11px var(--sp-5, 20px);
+  font-size: var(--fs-14, 14px);
+  gap: 10px;
+  border-radius: 10px;
+}
+
+.btn-lg svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------- LARGURA TOTAL ---------- */
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* ---------- BOTÃO SOMENTE ÍCONE ---------- */
+
 .iconbtn {
-  width: 32px; height: 32px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 34px;
+  height: 34px;
+  padding: 0;
+
+  appearance: none;
   border: 1px solid var(--rule);
+  border-radius: var(--r-sm, 8px);
+
   background: var(--paper-raised);
   color: var(--ink-3);
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
-.iconbtn:hover { background: var(--paper-raised); color: var(--ink); border-color: var(--rule-strong); }
-.iconbtn svg { width: 14px; height: 14px; }
+
+.iconbtn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.9;
+}
+
+@media (hover: hover) {
+  .iconbtn:hover:not(:disabled) {
+    background: color-mix(
+      in srgb,
+      var(--paper-raised) 88%,
+      white
+    );
+    color: var(--ink);
+    border-color: var(--rule-strong);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.iconbtn:active:not(:disabled) {
+  transform: scale(0.94);
+  box-shadow: none;
+}
+
+.iconbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.iconbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- CARREGAMENTO (OPCIONAL) ---------- */
+
+.btn.is-loading {
+  position: relative;
+  cursor: progress;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.btn.is-loading::after {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+
+  animation: stockos-btn-spin 700ms linear infinite;
+}
+
+@keyframes stockos-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- RESPONSIVIDADE ---------- */
+
+@media (max-width: 480px) {
+  .btn {
+    min-height: 40px;
+    padding: 9px 14px;
+  }
+
+  .btn-sm {
+    min-height: 34px;
+    padding: 7px 10px;
+  }
+
+  .btn-lg {
+    min-height: 46px;
+    padding: 11px 18px;
+  }
+
+  .iconbtn {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .iconbtn,
+  .btn svg,
+  .iconbtn svg {
+    transition: none;
+  }
+
+  .btn:active,
+  .iconbtn:active {
+    transform: none;
+  }
+
+  .btn.is-loading::after {
+    animation-duration: 1.5s;
+  }
+}
+
