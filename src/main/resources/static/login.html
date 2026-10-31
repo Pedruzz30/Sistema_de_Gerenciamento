@@ -140,6 +140,7 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     renderLoginIcons();
+    if (window.STOCKOS_PREVIEW) return;
     try {
       const cfg = await window.StockosAuth.discover();
       if (cfg.mode === 'supabase') {
