@@ -281,3 +281,16 @@ body.estoque-page .modal-body .tipo-toggle {gap:8px;}
   body.estoque-page .categoria-summary-card,
   body.estoque-page .categoria-chart-fill {transition:none;}
 }
+
+/* Refinamento de acessibilidade: botões e ações de modal navegáveis por teclado. */
+body.estoque-page .modal-close:focus-visible,
+body.estoque-page .modal-footer .btn:focus-visible,
+body.estoque-page .acoes .btn-acao:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+body.estoque-page .modal-footer .btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink, #211403);
+}
