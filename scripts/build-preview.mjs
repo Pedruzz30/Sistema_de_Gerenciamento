@@ -12,6 +12,8 @@ await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-note
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
 await cp(resolve('preview-source/js/preview-design-review.js'),join(out,'js/preview-design-review.js'));
+await mkdir(join(out,'css'),{recursive:true});
+await cp(resolve('preview-source/css/palette-original.css'),join(out,'css/palette-original.css'));
 // Dashboard and inventory both use their canonical source files in src/main/resources/static.
 // Preview-only mock modules remain in preview-source/js/.
 
