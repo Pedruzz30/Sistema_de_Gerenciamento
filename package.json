@@ -10,6 +10,7 @@
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
     "test:local-preview": "node scripts/test-local-preview.mjs",
-    "test:design": "node scripts/test-design-review.mjs"
+    "test:design": "node scripts/test-design-review.mjs",
+    "test:performance": "node scripts/test-preview-performance.mjs"
   }
 }

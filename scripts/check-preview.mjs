@@ -18,10 +18,18 @@ assert.equal(original.slice(original.indexOf('<body')),
   html.slice(html.indexOf('<body')),
   'Dashboard HTML body must come from canonical frontend');
 assert.ok(html.includes('/js/preview-mock.js'),'Mock injection absent');
-assert.ok(html.includes('/js/preview-notes.js'),'Invoice demo injection absent');
-assert.ok(html.includes('/js/preview-pdv.js'),'PDV demo injection absent');
-assert.ok(html.includes('/js/preview-cardapio.js'),'Menu demo injection absent');
+assert.ok(!html.includes('/js/preview-notes.js'),'Notes demo should not run on dashboard');
+assert.ok(!html.includes('/js/preview-pdv.js'),'PDV demo should not run on dashboard');
+assert.ok(!html.includes('/js/preview-cardapio.js'),'Cardápio demo should not run on dashboard');
+for (const [page, mock] of [
+  ['notas.html','preview-notes.js'],
+  ['caixas.html','preview-pdv.js'],
+  ['cardapio.html','preview-cardapio.js']
+]) assert.match(await readFile('dist-preview/'+page,'utf8'),new RegExp('/js/'+mock.replace('.','\\.') ));
+assert.doesNotMatch(html,/chart\.umd\.min\.js/,'Chart.js must load on demand');
 assert.ok(html.includes('/js/preview-design-review.js'),'Design review injection absent');
+assert.ok(!html.includes('/css/dashboard-refinement.css'),'Preview should only apply refinements in new design');
+assert.ok((await readFile('dist-preview/css/stockos-design.bundle.css','utf8')).includes('/* StockOS CSS: compat.css */'));
 assert.ok(!original.includes('/js/preview-mock.js'),'Mock leaked into real Java frontend');
 assert.ok(!original.includes('/js/preview-notes.js'),'Invoice mock leaked into Java frontend');
 assert.ok(!original.includes('/js/preview-pdv.js'),'PDV mock leaked into Java frontend');

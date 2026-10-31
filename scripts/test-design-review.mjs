@@ -10,6 +10,7 @@ const files = ['tokens','reset','typography','global','layout','sidebar','topbar
   'buttons','forms','table','badges','sheet','modal','toolbar','kpi','pages',
   'estoque','cardapio','pdv','react-app','compat'];
 for (const name of files) await access(join('dist-preview','css', name+'.css'));
+await access(join('dist-preview','css','stockos-design.bundle.css'));
 await access(join('dist-preview','css','palette-original.css'));
 
 function run(query, previouslyEnabled=false) {
@@ -34,12 +35,12 @@ function run(query, previouslyEnabled=false) {
   return {links,storage,window,events};
 }
 let result=run('');
-assert.equal(result.links.length,files.length + 1,'Default must enable updated CSS plus original palette');
+assert.equal(result.links.length,2,'Default must load only one design bundle plus the palette');
 assert.equal(result.window.StockOsDesignReview.mode,'novo');
 result=run('?design=novo');
-assert.equal(result.links.length,files.length + 1);
-assert.deepEqual(result.links.map(l=>l.href),[...files.map(n=>'/css/'+n+'.css'), '/css/palette-original.css']);
-assert.equal(result.links.at(-2).href,'/css/compat.css');
+assert.equal(result.links.length,2);
+assert.deepEqual(result.links.map(l=>l.href),['/css/stockos-design.bundle.css', '/css/palette-original.css']);
+assert.equal(result.links.at(-2).href,'/css/stockos-design.bundle.css');
 assert.equal(result.links.at(-1).href,'/css/palette-original.css');
 assert.equal(result.storage.get('stockos-preview-design-review-v1'),'novo');
 result=run('',true);
@@ -58,4 +59,7 @@ for(const name of ['paper','paper-sunk','paper-raised','ink','accent']) {
 }
 const javaLogin=await readFile('src/main/resources/static/login.html','utf8');
 assert.doesNotMatch(javaLogin,/preview-design-review/);
-console.log('PASS design preview: updated default, stylesheet order, persistence, revert, Java isolation');
+const bundle = await readFile('dist-preview/css/stockos-design.bundle.css','utf8');
+assert.ok(bundle.indexOf('/* StockOS CSS: tokens.css */') < bundle.indexOf('/* StockOS CSS: compat.css */'));
+assert.equal((bundle.match(/@import/g)||[]).length,1);
+console.log('PASS design preview: bundled CSS, palette, persistence, revert, Java isolation');
