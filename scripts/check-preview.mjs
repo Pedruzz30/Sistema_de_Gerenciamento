@@ -11,6 +11,12 @@ const original=await readFile('src/main/resources/static/dashboard.html','utf8')
 const canonicalCss=await readFile('src/main/resources/static/app.css','utf8');
 const previewCss=await readFile('dist-preview/app.css','utf8');
 assert.equal(canonicalCss,previewCss,'CSS must use canonical frontend');
+assert.equal(await readFile('src/main/resources/static/js/dashboard.js','utf8'),
+  await readFile('dist-preview/js/dashboard.js','utf8'),
+  'Dashboard JS must come from canonical frontend');
+assert.equal(original.slice(original.indexOf('<body')),
+  html.slice(html.indexOf('<body')),
+  'Dashboard HTML body must come from canonical frontend');
 assert.ok(html.includes('/js/preview-mock.js'),'Mock injection absent');
 assert.ok(html.includes('/js/preview-notes.js'),'Invoice demo injection absent');
 assert.ok(html.includes('/js/preview-pdv.js'),'PDV demo injection absent');

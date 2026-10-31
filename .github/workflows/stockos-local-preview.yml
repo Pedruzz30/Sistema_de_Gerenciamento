@@ -1,0 +1,28 @@
+name: StockOS local preview
+
+on:
+  push:
+    branches: [feat/stockos-local-live-preview-20261030]
+  pull_request:
+    paths:
+      - 'scripts/dev-preview.mjs'
+      - 'scripts/test-local-preview.mjs'
+      - 'scripts/build-preview.mjs'
+      - 'package.json'
+      - '.github/workflows/stockos-local-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check scripts/dev-preview.mjs
+      - run: npm run test:preview
+      - run: npm run test:local-preview

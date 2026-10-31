@@ -1,12 +1,16 @@
 # StockOS Preview — Netlify
-A branch de deploy é isolada da base Java. Os arquivos públicos de demonstração ficam em `preview-source/` e não alteram `src/main`.
 
-O `netlify.toml` determina:
+O frontend canônico fica em `src/main/resources/static/`. O build publicado copia as páginas HTML, CSS e JavaScript desse diretório, injeta as simulações isoladas de `preview-source/js/preview-*.js` e escreve `dist-preview/`. A árvore `src/main/` da aplicação Java nunca recebe os mocks.
+
+O `netlify.toml` configura:
 - Build: `npm run build:preview`
 - Publish: `dist-preview`
 - Node: 22
 
-No Netlify `spacestocklab`, a branch de produção configurada é `main`. Após a revisão e merge do PR de deploy para main, o Netlify usará o build isolado e os próximos pushes na main republicarão o preview.
+O site Netlify `spacestocklab` acompanha a branch `main`. A demonstração não usa API Java real, PostgreSQL, Supabase ou autenticação real: o login e as operações são simulados localmente no navegador com dados fictícios.
 
-Login e autorização são *simulados*; nunca use dados reais, não compartilhe senhas e não trate o ambiente como sistema operacional.
-Nenhuma API, banco de dados ou backend de produção são utilizados. Parte dos módulos oferece somente leitura ou operações simplificadas.
+## Trabalhar sem commit e push
+
+Consulte [Desenvolvimento local](desenvolvimento-local.md): `npm run dev` fornece a mesma demonstração na porta 5173, com reconstrução automática a cada alteração dos arquivos do frontend. Nenhum push é necessário para visualizar uma mudança local. Para publicar no Netlify, faça commit e push normalmente.
+
+**Atenção:** o preview é apenas uma demonstração de interface e não substitui os testes de integração do backend.

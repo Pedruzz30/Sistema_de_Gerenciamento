@@ -11,10 +11,8 @@ await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
-// Keep the dashboard-only visual overlay pending its dedicated integration.
-// Stock inventory is sourced directly from canonical src/main/resources/static.
-await cp(resolve('preview-source/js/dashboard.js'),join(out,'js/dashboard.js'));
-await cp(resolve('preview-source/dashboard.html'),join(out,'dashboard.html'));
+// Dashboard and inventory both use their canonical source files in src/main/resources/static.
+// Preview-only mock modules remain in preview-source/js/.
 
 // SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.
 const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html']);
@@ -23,7 +21,12 @@ for (const entry of await readdir(out)) {
   if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
 }
 const pages = ['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html'];
-const inject = '<script src="/js/preview-mock.js"></script>\\n<script src="/js/preview-notes.js"></script>\\n<script src="/js/preview-pdv.js"></script>\\n<script src="/js/preview-cardapio.js"></script>';
+const inject = [
+  '<script src="/js/preview-mock.js"></script>',
+  '<script src="/js/preview-notes.js"></script>',
+  '<script src="/js/preview-pdv.js"></script>',
+  '<script src="/js/preview-cardapio.js"></script>'
+].join('\n');
 for (const page of pages) {
   const p=join(out,page);
   let html=await readFile(p,'utf8');

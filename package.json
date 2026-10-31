@@ -6,6 +6,9 @@
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
     "test:preview": "node scripts/check-preview.mjs",
-    "test:cardapio": "node scripts/test-cardapio-preview.mjs"
+    "test:cardapio": "node scripts/test-cardapio-preview.mjs",
+    "dev": "node scripts/dev-preview.mjs",
+    "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
+    "test:local-preview": "node scripts/test-local-preview.mjs"
   }
 }
