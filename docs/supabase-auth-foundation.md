@@ -34,8 +34,9 @@ STOCKOS_CORS_ORIGIN=http://127.0.0.1:8080
 
 As informações de projeto/token **não devem ser reutilizadas** do Space Underground. No Compose, o JDBC continua apontando para `stockos_dev` local — nada conecta o banco remoto.
 
-5. Cadastre/invite uma conta de teste via Supabase Auth e obtenha o UUID a partir da ferramenta **Users** do próprio projeto StockOS.
-6. Ligue esse UUID **manualmente**, sem fazer correspondência por e-mail, CPF ou outros dados editáveis. Em um SQL editor ligado ao banco `stockos_dev` local, execute **após revisar o RU correto**:
+5. Na primeira utilização do PostgreSQL Docker novo, os usuários de demonstração podem ainda não existir. Inicie o aplicativo em modo `legacy` **apenas localmente** uma vez para provisionar as contas legadas de desenvolvimento; confirme os RUs no próprio banco. Desative o aplicativo antes de mudar de modo. Nunca expor este modo à Internet.
+6. Cadastre/invite uma conta de teste via Supabase Auth e obtenha o UUID a partir da ferramenta **Users** do próprio projeto StockOS.
+7. Ligue esse UUID **manualmente**, sem fazer correspondência por e-mail, CPF ou outros dados editáveis. Em um SQL editor ligado ao banco `stockos_dev` local, execute **após revisar o RU correto**:
 
 ```sql
 UPDATE public.usuarios
@@ -45,8 +46,8 @@ WHERE ru = <RU-DO-USUARIO-EXISTENTE>;
 
 Revise o resultado com `SELECT ru, nome, ativo, supabase_auth_user_id FROM public.usuarios` sem expor CPF/senha.
 
-7. Execute `docker compose --profile app up -d --build app`. Navegue para `http://127.0.0.1:8080/login.html` e use o login do Supabase.
-8. Verifique que uma conta **sem vínculo** recebe 403 e que um token ausente ou inválido recebe 401 em `/api/auth/me` e nos demais endpoints de negócio.
+8. Execute `docker compose --profile app up -d --build app`. Navegue para `http://127.0.0.1:8080/login.html` e use o login do Supabase.
+9. Verifique que uma conta **sem vínculo** recebe 403 e que um token ausente ou inválido recebe 401 em `/api/auth/me` e nos demais endpoints de negócio.
 
 ### Manter histórico e dados separados
 
