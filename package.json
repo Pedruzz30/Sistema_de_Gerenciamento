@@ -9,6 +9,7 @@
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
-    "test:local-preview": "node scripts/test-local-preview.mjs"
+    "test:local-preview": "node scripts/test-local-preview.mjs",
+    "test:design": "node scripts/test-design-review.mjs"
   }
 }
