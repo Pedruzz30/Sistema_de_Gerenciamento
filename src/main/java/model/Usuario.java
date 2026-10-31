@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Representa um usuário do sistema — seja um administrador ou um operador.
@@ -78,6 +79,9 @@ public class Usuario {
 
     @Column(nullable = false, length = 11, unique = true)
     private String cpf;      // 11 dígitos sem formatação, validado
+
+    @Column(name = "supabase_auth_user_id", columnDefinition = "uuid", unique = true)
+    private UUID supabaseAuthUserId;
 
     @Column(nullable = false, length = 120)
     private String senha;    // ⚠ texto simples — hash em produção
@@ -181,7 +185,9 @@ public class Usuario {
      */
     public Usuario comRu(long novoRu) {
         validar(novoRu > 0, "Novo RU deve ser maior que zero.");
-        return new Usuario(novoRu, nome, sobrenome, cpf, senha, classe, perfil, ativo);
+        Usuario copia = new Usuario(novoRu, nome, sobrenome, cpf, senha, classe, perfil, ativo);
+        copia.supabaseAuthUserId = supabaseAuthUserId;
+        return copia;
     }
 
     // ── Autenticação ──────────────────────────────────────────────────────────
@@ -241,6 +247,8 @@ public class Usuario {
     }
 
     // ── Getters ───────────────────────────────────────────────────────────────
+
+    public UUID getSupabaseAuthUserId() { return supabaseAuthUserId; }
 
     public long             getRu()        { return ru;        }
     public String           getNome()      { return nome;      }

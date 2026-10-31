@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class UsuarioRepositoryAdapter implements UsuarioRepository {
@@ -35,6 +36,11 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
     @Override
     public Optional<Usuario> buscarPorRu(long ru) {
         return delegate.findById(ru);
+    }
+
+    @Override
+    public Optional<Usuario> buscarPorSupabaseAuthUserId(UUID userId) {
+        return userId == null ? Optional.empty() : delegate.findBySupabaseAuthUserId(userId);
     }
 
     @Override
