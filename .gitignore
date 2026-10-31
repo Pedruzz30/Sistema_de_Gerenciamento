@@ -40,3 +40,8 @@ dist-preview/
 # Coverage
 coverage/
 .nyc_output/
+
+# StockOS private local settings and backups
+.stockos-local.env
+src/test/resources/application-test-local.properties
+backups_auditoria/
