@@ -2,8 +2,8 @@
 (() => {
   'use strict';
   const create=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
-  document.addEventListener('DOMContentLoaded',()=>{
-    if(!location.pathname.endsWith('/caixas.html'))return;
+  function mountPreviewPdv(){
+    if(!/\/caixas(?:\.html)?\/?$/.test(location.pathname))return;
     window.abrirPDV=async numero=>{
       const boxes=await (await fetch('/api/caixas')).json();
       if(!boxes.some(c=>c.numeroCaixa===numero&&c.status==='ABERTO')){alert('Abra o caixa antes de simular uma venda.');return;}
@@ -56,5 +56,9 @@
       };
       overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
     };
-  });
+  }
+  window.StockOSPreviewHooks=window.StockOSPreviewHooks||{};
+  window.StockOSPreviewHooks.caixas=mountPreviewPdv;
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mountPreviewPdv);
+  else mountPreviewPdv();
 })();

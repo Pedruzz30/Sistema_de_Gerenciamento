@@ -1,3 +1,6 @@
+/* SPA-isolated screen: estoque. Prevent cross-page handler overwrites. */
+(() => {
+'use strict';
 // Stock screen: listing, category filtering, product create/edit, and movements.
 
 let todosOsProdutos = [];
@@ -18,7 +21,8 @@ const CATEGORIAS_ESTOQUE = [
   { value: 'CONGELADO', label: 'Estoque congelado' }
 ];
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function iniciarEstoqueSPA() {
+  if (paginaAtual() !== 'estoque') return;
   if (!temPermissao(PERMISSOES.EDITAR_ESTOQUE)) {
     const btn = document.getElementById('btn-novo-produto');
     if (btn) btn.hidden = true;
@@ -27,15 +31,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   preencherSelectCategorias('c-categoria');
   preencherSelectCategorias('e-categoria');
   await carregarProdutos();
-});
+}
+
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.estoque = {
+  mount: iniciarEstoqueSPA,
+  activate() {
+    Object.assign(window, {
+      carregarProdutos,
+      cadastrarProduto,
+      atualizarProduto,
+      confirmarMovimentacao,
+      renderTabela,
+      nivelLabel,
+      getProdutosVisiveis,
+      categoriaLabel,
+      renderCategoriaBadge,
+      calcularMetricasCategorias,
+      renderResumoCategorias,
+      renderGraficoCategorias,
+      atualizarEstadoExportacao,
+      exportarCsvProdutos,
+      preencherSelectCategorias,
+      filtrar,
+      filtrarCategoria,
+      filtrarProdutos,
+      abrirModalCadastro,
+      abrirModalEdicao,
+      abrirModalMov,
+      fecharModal,
+      fecharModalSeClicouFora,
+      setTipo,
+      limparFormCadastro,
+      mostrarAlertaModal,
+    });
+  }
+};
+document.addEventListener('DOMContentLoaded', iniciarEstoqueSPA);
 
 async function carregarProdutos() {
   try {
     const res = await fetch('/api/produtos');
     if (!res.ok) throw new Error('Falha ao carregar produtos');
-    todosOsProdutos = await res.json();
+    const produtos = await res.json();
+    if (paginaAtual() !== 'estoque') return;
+    todosOsProdutos = produtos;
     renderTabela();
   } catch (e) {
+    if (paginaAtual() !== 'estoque') return;
     document.getElementById('tabela-produtos').innerHTML =
       '<tr><td colspan="7" class="empty">Erro ao carregar produtos. Verifique a conexão.</td></tr>';
   }
@@ -455,7 +498,8 @@ function abrirModalMov(idProduto, tipo) {
 }
 
 function fecharModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove('open');
 }
 
 function fecharModalSeClicouFora(event, id) {
@@ -480,3 +524,8 @@ function mostrarAlertaModal(el, tipo, msg) {
   el.className = `alert-modal ${tipo}`;
   el.textContent = msg;
 }
+// Expose inline HTML handlers for direct navigation as well as SPA mounts.
+if (/^\/estoque(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.estoque.activate();
+}
+})();

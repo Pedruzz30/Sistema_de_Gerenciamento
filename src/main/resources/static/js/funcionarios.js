@@ -1,3 +1,6 @@
+/* SPA-isolated screen: funcionarios. Retains direct HTML navigation. */
+(() => {
+'use strict';
 // ── funcionarios.js ────────────────────────────────────────────────────────
 // Employee management: list, create, change class, deactivate.
 
@@ -21,9 +24,10 @@ const CLASSE_BADGE = {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+async function stockOSMount_funcionarios() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'funcionarios') return;
   carregarFuncionarios();
-});
+}
 
 // ── API ───────────────────────────────────────────────────────────────────
 
@@ -237,3 +241,34 @@ function limparAlert(id) {
   const el = document.getElementById(id);
   if (el) { el.textContent = ''; el.className = 'alert-modal'; }
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.funcionarios = {
+  mount: stockOSMount_funcionarios,
+  activate() {
+    Object.assign(window, {
+    carregarFuncionarios,
+    renderResumo,
+    renderTabela,
+    setFiltro,
+    filtrar,
+    cadastrarFuncionario,
+    abrirModalClasse,
+    confirmarMudarClasse,
+    desativar,
+    abrirModalCadastro,
+    abrirModal,
+    fecharModal,
+    fecharModalSeClicouFora,
+    mostrarAlert,
+    limparAlert,
+  });
+  }
+};
+if (/^\/funcionarios(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.funcionarios.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_funcionarios);
+
+})();

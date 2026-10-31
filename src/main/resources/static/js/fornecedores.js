@@ -1,3 +1,6 @@
+/* SPA-isolated screen: fornecedores. Retains direct HTML navigation. */
+(() => {
+'use strict';
 // ── fornecedores.js ────────────────────────────────────────────────────────
 // Supplier management: CRUD, activate/deactivate, link products.
 
@@ -8,9 +11,10 @@ let fornecedorVincularId = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+async function stockOSMount_fornecedores() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'fornecedores') return;
   carregarTudo();
-});
+}
 
 async function carregarTudo() {
   await Promise.all([carregarFornecedores(), carregarProdutos()]);
@@ -286,3 +290,38 @@ function limparAlert(id) {
   el.textContent = '';
   el.className = 'alert-modal';
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.fornecedores = {
+  mount: stockOSMount_fornecedores,
+  activate() {
+    Object.assign(window, {
+    carregarTudo,
+    carregarFornecedores,
+    carregarProdutos,
+    renderResumo,
+    renderTabela,
+    setFiltro,
+    filtrar,
+    cadastrarFornecedor,
+    desativar,
+    reativar,
+    abrirModalVincular,
+    confirmarVincular,
+    verProdutos,
+    abrirModalCadastro,
+    abrirModal,
+    fecharModal,
+    fecharModalSeClicouFora,
+    mostrarAlert,
+    limparAlert,
+  });
+  }
+};
+if (/^\/fornecedores(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.fornecedores.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_fornecedores);
+
+})();

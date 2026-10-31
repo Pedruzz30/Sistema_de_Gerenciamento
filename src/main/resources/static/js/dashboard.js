@@ -1,3 +1,6 @@
+/* SPA-isolated screen: dashboard. Prevent cross-page handler overwrites. */
+(() => {
+'use strict';
 // ── Inicialização ──────────────────────────────────────────
 const PODE_VER_ESTOQUE_DASH = temPermissao(PERMISSOES.VER_ESTOQUE);
 const PODE_VER_FINANCEIRO_DASH = temAlgumaPermissao([
@@ -42,6 +45,8 @@ async function carregarDados() {
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null)
   ]);
 
+  // Response may arrive after the user has navigated to another view.
+  if (paginaAtual() !== 'dashboard') return;
   renderSummaryCards(produtos, caixas, metricas);
   renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
@@ -51,13 +56,57 @@ async function carregarDados() {
   window._dadosCaixas = caixas;
   window._dadosRentabilidade = null;
   window._graficosRendered = false;
+  if (document.getElementById('tabpanel-graficos')?.classList.contains('active')) {
+    void abrirTabDash('graficos');
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+function iniciarDashboardSPA() {
+  if (paginaAtual() !== 'dashboard') return;
   renderHeader();
   renderPermissionSections();
   window._dashboardReady = carregarDados();
-});
+}
+
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.dashboard = {
+  mount: iniciarDashboardSPA,
+  activate() {
+    Object.assign(window, {
+      obterAlertasEstoque,
+      dataLocalHojeIso,
+      carregarDados,
+      renderHeader,
+      renderSummaryCards,
+      renderPermissionSections,
+      renderAlertas,
+      renderMovimentacoes,
+      renderFinanceiro,
+      carregarChartJsSobDemanda,
+      carregarRentabilidadeSobDemanda,
+      abrirTabDash,
+      parseNumeroSeguro,
+      resolverCampoNumerico,
+      formatarMoedaBR,
+      formatarPercentual,
+      resumirTexto,
+      obterClassificacaoMargem,
+      normalizarProdutoLucratividade,
+      gerarAnaliseLucratividade,
+      gerarAnaliseLucratividadeApi,
+      atualizarResumoLucratividade,
+      renderGraficoLucratividade,
+      renderTabelaLucratividade,
+      renderAnaliseLucratividade,
+      renderGraficos,
+      renderGraficoEstoque,
+      renderGraficoMovimentacoes,
+      renderGraficoCaixas,
+      renderGraficoAlertas,
+    });
+  }
+};
+document.addEventListener('DOMContentLoaded', iniciarDashboardSPA);
 
 // ── Header ────────────────────────────────────────────────
 function renderHeader() {
@@ -1187,3 +1236,8 @@ function renderGraficoAlertas(produtos) {
     }).join('');
   }
 }
+// Expose inline HTML handlers for direct navigation as well as SPA mounts.
+if (/^\/dashboard(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.dashboard.activate();
+}
+})();

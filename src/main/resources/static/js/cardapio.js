@@ -1,3 +1,6 @@
+/* SPA-isolated screen: cardapio. Retains direct HTML navigation. */
+(() => {
+'use strict';
 let cardapioCategorias = [];
 let cardapioItens = [];
 let cardapioProdutos = [];
@@ -9,9 +12,10 @@ let cardapioUnidades = [];
 let cardapioOpcoesPorGrupo = {};
 let cardapioComponentesPorOpcao = {};
 
-document.addEventListener('DOMContentLoaded', async function () {
+async function stockOSMount_cardapio() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'cardapio') return;
   await recarregarDados();
-});
+}
 
 async function recarregarDados() {
   limparAlertaPagina();
@@ -1090,3 +1094,77 @@ function normalizarTexto(valor) {
     .toLowerCase()
     .trim();
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.cardapio = {
+  mount: stockOSMount_cardapio,
+  activate() {
+    Object.assign(window, {
+    recarregarDados,
+    carregarVariacoesCardapioAdmin,
+    renderResumo,
+    actionButton,
+    renderCategorias,
+    aplicarFiltrosItens,
+    renderItens,
+    resolverDisponibilidadeItem,
+    normalizarDisponibilidadeCardapio,
+    resumoOperacionalCardapio,
+    primeiroAlertaCardapio,
+    capacidadeCardapio,
+    contextoOperacionalCardapioAdmin,
+    urlDisponibilidadeCardapioAdmin,
+    preencherSelectCategorias,
+    preencherSelectProdutos,
+    abrirModalCategoria,
+    salvarCategoria,
+    abrirModalItem,
+    aplicarRegrasTipoItem,
+    salvarItem,
+    alternarCategoriaAtiva,
+    alternarItemAtivo,
+    alternarDisponibilidadeItem,
+    salvarOrdemCategoria,
+    salvarOrdemItem,
+    atualizarToggle,
+    preencherSelectsModificadores,
+    renderModificadores,
+    abrirModalGrupoModificador,
+    salvarGrupoModificador,
+    alternarGrupoModificador,
+    abrirModalOpcoesModificador,
+    carregarOpcoesGrupoModificador,
+    renderOpcoesGrupoModificador,
+    limparFormularioOpcaoModificador,
+    editarOpcaoModificador,
+    salvarOpcaoModificador,
+    abrirModalComponentesModificador,
+    carregarComponentesOpcaoModificador,
+    renderComponentesOpcaoModificador,
+    limparFormularioComponenteModificador,
+    editarComponenteModificador,
+    aplicarRegrasComponenteAdmin,
+    salvarComponenteModificador,
+    validarComponenteAdmin,
+    abrirModalAssociarGrupo,
+    salvarAssociacaoModificador,
+    carregarConfiguracaoVariacaoAdmin,
+    nomeProdutoAdmin,
+    fecharModal,
+    fecharModalSeClicouFora,
+    mostrarAlertaModal,
+    limparAlertaModal,
+    mostrarAlertaPagina,
+    limparAlertaPagina,
+    formatarNumero,
+    normalizarTexto,
+  });
+  }
+};
+if (/^\/cardapio(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.cardapio.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_cardapio);
+
+})();

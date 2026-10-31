@@ -1,3 +1,6 @@
+/* SPA-isolated screen: cotacoes. Retains direct HTML navigation. */
+(() => {
+'use strict';
 // ── cotacoes.js ────────────────────────────────────────────────────────────
 // Monthly price quotes: register, compare, history, reports.
 
@@ -5,14 +8,15 @@ let todosProdutos = [];
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+async function stockOSMount_cotacoes() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'cotacoes') return;
   // Default month: current
-  const agora = new Date();
-  const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('relatorio-mes').value = mesAtual;
-  renderResumo();
-  carregarProdutos();
-});
+    const agora = new Date();
+    const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
+    if (!document.getElementById('relatorio-mes').value) document.getElementById('relatorio-mes').value = mesAtual;
+    renderResumo();
+    carregarProdutos();
+}
 
 async function carregarProdutos() {
   try {
@@ -256,3 +260,34 @@ function limparAlert(id) {
   const el = document.getElementById(id);
   if (el) { el.textContent = ''; el.className = 'alert-modal'; }
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.cotacoes = {
+  mount: stockOSMount_cotacoes,
+  activate() {
+    Object.assign(window, {
+    carregarProdutos,
+    abrirAba,
+    renderResumo,
+    carregarRelatorio,
+    renderComparacao,
+    carregarHistorico,
+    registrarCotacao,
+    formatarMes,
+    abrirModalCotacao,
+    abrirAba_r,
+    abrirModal,
+    fecharModal,
+    fecharModalSeClicouFora,
+    mostrarAlert,
+    limparAlert,
+  });
+  }
+};
+if (/^\/cotacoes(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.cotacoes.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_cotacoes);
+
+})();
