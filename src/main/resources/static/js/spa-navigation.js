@@ -25,6 +25,7 @@
 
   const main = document.querySelector('.app > .main.page');
   const header = main.querySelector('.topbar.header');
+  if (!header) return;
   const pages = new Map();
   const loading = new Map();
   let navigationId = 0;
@@ -195,14 +196,17 @@
         !temPermissao(PERMISSOES.VER_ESTOQUE)) return fallback(href);
 
     const id = ++navigationId;
+    // Do not close in-progress forms until the destination is ready.
     try {
       const [next] = await Promise.all([
         prepare(target), ensureStyles(target), ensureScript(target)
       ]);
       if (id !== navigationId) return;
       rememberCurrent();
-      render(target, next);
+      // Lifecycle initialization checks paginaAtual() (location.pathname).
+      // Update the URL *before* mounting the new page.
       if (mode === 'push') history.pushState({ stockosSpa: true }, '', href);
+      render(target, next);
       window.scrollTo(0, mode === 'pop' ? next.scrollY || 0 : 0);
     } catch (error) {
       if (id !== navigationId) return;
@@ -223,7 +227,14 @@
       if (!link || link.hasAttribute('download') ||
           (link.target && link.target !== '_self')) return;
       const route = routeFromUrl(link.href);
-      if (!route || route === active) return;
+      if (!route) {
+        ++navigationId; // Cancel any pending SPA transition before native navigation.
+        return;
+      }
+      if (route === active) {
+        ++navigationId;
+        return;
+      }
       event.preventDefault();
       void navigate(link.href);
     });

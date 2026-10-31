@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 execFileSync(process.execPath,['scripts/build-preview.mjs'],{stdio:'inherit'});
-for (const p of ['login.html','dashboard.html','estoque.html','cardapio.html','caixas.html','js/preview-mock.js','js/preview-notes.js','js/preview-pdv.js','js/preview-cardapio.js','js/preview-design-review.js','css/palette-original.css','_redirects','_headers']) {
+for (const p of ['login.html','dashboard.html','estoque.html','cardapio.html','caixas.html','js/preview-mock.js','js/preview-notes.js','js/preview-pdv.js','js/preview-cardapio.js','js/preview-design-review.js','js/spa-navigation.js','css/palette-original.css','_redirects','_headers']) {
   await access(join('dist-preview',p));
 }
 const html=await readFile('dist-preview/dashboard.html','utf8');
@@ -28,6 +28,8 @@ for (const [page, mock] of [
 ]) assert.match(await readFile('dist-preview/'+page,'utf8'),new RegExp('/js/'+mock.replace('.','\\.') ));
 assert.doesNotMatch(html,/chart\.umd\.min\.js/,'Chart.js must load on demand');
 assert.ok(html.includes('/js/preview-design-review.js'),'Design review injection absent');
+assert.ok(html.includes('/js/spa-navigation.js'),'SPA pilot missing from Dashboard');
+assert.ok((await readFile('dist-preview/estoque.html','utf8')).includes('/js/spa-navigation.js'),'SPA pilot missing from Estoque');
 assert.ok(!html.includes('/css/dashboard-refinement.css'),'Preview should only apply refinements in new design');
 assert.ok((await readFile('dist-preview/css/stockos-design.bundle.css','utf8')).includes('/* StockOS CSS: compat.css */'));
 assert.ok(!original.includes('/js/preview-mock.js'),'Mock leaked into real Java frontend');
