@@ -1,5 +1,6 @@
-/* Preview-only opt-in for the redesigned StockOS CSS.
- * The real Spring frontend and standard preview remain unchanged by default. */
+/* Netlify/preview-only StockOS redesign, enabled by default.
+ * Original theme can be restored with ?design=original or the on-page toggle.
+ * Spring frontend source remains unchanged. */
 (() => {
   'use strict';
   const PARAM = 'design';
@@ -11,12 +12,11 @@
   ];
   const url = new URL(location.href);
   const choice = url.searchParams.get(PARAM);
-  if (choice === 'novo') localStorage.setItem(KEY, 'novo');
-  if (choice === 'original') localStorage.removeItem(KEY);
-  const active = localStorage.getItem(KEY) === 'novo';
+  if (choice === 'novo' || choice === 'original') localStorage.setItem(KEY, choice);
+  const active = localStorage.getItem(KEY) !== 'original';
 
   if (active) {
-    // CSS loads AFTER the classic styles, making the redesign explicit and reversible.
+    // Redesign CSS loads after the classic styles only in the preview; it remains reversible.
     for (const file of files) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -29,7 +29,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const control = document.createElement('button');
     control.type = 'button';
-    control.textContent = active ? 'Visual novo (teste) · Voltar ao original' : 'Testar visual novo';
+    control.textContent = active ? 'Visual novo · Ver original' : 'Visual original · Ver novo';
     control.setAttribute('aria-label', control.textContent);
     control.style.cssText = [
       'position:fixed','top:12px','right:12px','z-index:2147483645',
@@ -38,8 +38,7 @@
       'cursor:pointer','box-shadow:0 4px 18px #0005'
     ].join(';');
     control.addEventListener('click', () => {
-      if (active) localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY,'novo');
+      localStorage.setItem(KEY, active ? 'original' : 'novo');
       location.reload();
     });
     document.body.appendChild(control);
