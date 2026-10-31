@@ -42,6 +42,8 @@ async function carregarDados() {
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null)
   ]);
 
+  // Response may arrive after the user has navigated to another view.
+  if (paginaAtual() !== 'dashboard') return;
   renderSummaryCards(produtos, caixas, metricas);
   renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
@@ -51,13 +53,21 @@ async function carregarDados() {
   window._dadosCaixas = caixas;
   window._dadosRentabilidade = null;
   window._graficosRendered = false;
+  if (document.getElementById('tabpanel-graficos')?.classList.contains('active')) {
+    void abrirTabDash('graficos');
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+function iniciarDashboardSPA() {
+  if (paginaAtual() !== 'dashboard') return;
   renderHeader();
   renderPermissionSections();
   window._dashboardReady = carregarDados();
-});
+}
+
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.dashboard = { mount: iniciarDashboardSPA };
+document.addEventListener('DOMContentLoaded', iniciarDashboardSPA);
 
 // ── Header ────────────────────────────────────────────────
 function renderHeader() {

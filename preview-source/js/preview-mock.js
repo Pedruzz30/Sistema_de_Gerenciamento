@@ -168,7 +168,19 @@
     // Never pretend that unsupported workflows succeeded.
     return respond({erro:'Função indisponível nesta demonstração. Use o ambiente real para concluir esta operação.'},501);
   }
-  window.fetch=function(input,init){return handle(input,init);};
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = function(input,init) {
+    const raw = input instanceof Request ? input.url : String(input);
+    const url = new URL(raw,location.href);
+    const method = String(init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    // The SPA pilot may fetch its own canonical HTML. No external network or
+    // unsupported preview API is granted additional access.
+    if (url.origin === location.origin && method === 'GET' &&
+        /^\/(?:dashboard|estoque)\.html$/.test(url.pathname)) {
+      return nativeFetch(input,init);
+    }
+    return handle(input,init);
+  };
   // No deploy público, nunca confundir o preview com o backend real.
   document.addEventListener('DOMContentLoaded',()=>{
     if(location.pathname.endsWith('/caixas.html')) {
