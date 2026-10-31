@@ -15,6 +15,12 @@
   if (choice === 'novo' || choice === 'original') localStorage.setItem(KEY, choice);
   const active = localStorage.getItem(KEY) !== 'original';
 
+  // A página Java carrega o refinamento diretamente; na prévia em modo original
+  // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active) {
+    document.querySelectorAll('link[href="/css/dashboard-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (active) {
     // Redesign CSS loads after the classic styles only in the preview; it remains reversible.
     for (const file of files) {
