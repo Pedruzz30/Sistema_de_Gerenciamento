@@ -1,171 +1,534 @@
+
+/* ============================================
+   STOCKOS — GERENCIAMENTO DE CARDÁPIO
+   ============================================ */
+
+/* ---------- HEADER ---------- */
+
 .header-right--cardapio {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
   flex-wrap: wrap;
+  gap: 10px 12px;
+  min-width: 0;
 }
+
+.header-right--cardapio > * {
+  min-width: 0;
+}
+
+/* ---------- LAYOUT PRINCIPAL ---------- */
 
 .cardapio-layout {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns:
+    minmax(300px, 340px)
+    minmax(0, 1fr);
   align-items: start;
+  gap: 20px;
+
+  width: 100%;
+  min-width: 0;
 }
+
+/* ---------- PAINÉIS ---------- */
 
 .cardapio-panel {
   position: relative;
+  min-width: 0;
+  isolation: isolate;
 }
 
 .cardapio-panel--categories .table-wrap {
-  max-height: 720px;
+  max-height: min(720px, 75vh);
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--border-light, rgba(148, 163, 184, 0.3))
+    transparent;
 }
+
+/* ---------- CABEÇALHO DA TABELA ---------- */
 
 .table-header--stack {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
+  gap: 18px;
+  min-width: 0;
 }
 
 .table-header-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  min-width: 0;
 }
 
-.toolbar--cardapio {
-  margin-bottom: 0;
+.table-header-row > * {
+  min-width: 0;
 }
+
+/* ---------- TOOLBAR DO CARDÁPIO ---------- */
+
+.toolbar--cardapio {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.toolbar--cardapio > * {
+  min-width: 0;
+}
+
+/* ---------- LEGENDA ---------- */
 
 .cardapio-legend {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .cardapio-legend__item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.045),
+      rgba(255, 255, 255, 0.012)
+    );
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
   color: var(--text-2);
   font-size: 12px;
-  line-height: 1.55;
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
+  font-weight: 500;
+  line-height: 1.5;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
 
-.compact-control--order {
-  width: 76px;
-  text-align: center;
+.cardapio-legend__item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
+
+.cardapio-legend__item .dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- CONTROLE DE ORDEM ---------- */
+
+.compact-control--order {
+  width: 72px;
+  min-width: 60px;
+  min-height: 36px;
+  padding: 6px 10px;
+
+  border: 1px solid var(--border);
+  border-radius: 9px;
+
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-1);
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.compact-control--order:hover:not(:disabled) {
+  border-color: var(--border-light);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.compact-control--order:focus-visible {
+  outline: 2px solid var(--accent, #f59e0b);
+  outline-offset: 2px;
+}
+
+.compact-control--order:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- EDITOR DE ORDEM ---------- */
 
 .ordem-editor {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
+
+/* ---------- GRID DE AÇÕES ---------- */
 
 .actions-grid {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .actions-grid--stack {
-  max-width: 220px;
+  max-width: 230px;
+  align-items: flex-start;
 }
+
+/* ---------- BOTÃO DE AÇÃO ---------- */
 
 .action-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  gap: 6px;
+
+  min-width: 0;
+  min-height: 30px;
+  padding: 6px 11px;
+
+  appearance: none;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.035);
   color: var(--text-2);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
+
   font-family: inherit;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
+  letter-spacing: 0.045em;
+  text-align: center;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
 }
 
-.action-chip:hover {
-  color: var(--text-1);
-  transform: translateY(-1px);
+/* ---------- ÍCONES DOS BOTÕES ---------- */
+
+.action-chip svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  stroke-width: 1.9;
 }
 
-.action-chip--muted:hover {
-  border-color: var(--border-light);
+/* ---------- INTERAÇÕES ---------- */
+
+@media (hover: hover) {
+  .action-chip:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.075);
+    border-color: var(--border-light);
+    color: var(--text-1);
+    transform: translateY(-1px);
+  }
 }
+
+.action-chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.action-chip:focus-visible {
+  outline: 2px solid var(--accent, #f59e0b);
+  outline-offset: 2px;
+}
+
+.action-chip:disabled,
+.action-chip[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- AÇÃO NEUTRA ---------- */
+
+.action-chip--muted {
+  background: rgba(148, 163, 184, 0.045);
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+@media (hover: hover) {
+  .action-chip--muted:hover:not(:disabled) {
+    background: rgba(148, 163, 184, 0.1);
+    border-color: var(--border-light);
+    color: var(--text-1);
+  }
+}
+
+/* ---------- AÇÃO POSITIVA ---------- */
 
 .action-chip--success {
-  background: rgba(52, 211, 153, 0.1);
-  border-color: rgba(52, 211, 153, 0.18);
+  background: rgba(52, 211, 153, 0.09);
   color: var(--green-text);
+  border-color: rgba(52, 211, 153, 0.22);
 }
+
+@media (hover: hover) {
+  .action-chip--success:hover:not(:disabled) {
+    background: rgba(52, 211, 153, 0.16);
+    color: var(--green-text);
+    border-color: rgba(52, 211, 153, 0.4);
+    box-shadow: 0 2px 10px rgba(52, 211, 153, 0.055);
+  }
+}
+
+/* ---------- AÇÃO DE PERIGO ---------- */
 
 .action-chip--danger {
-  background: rgba(248, 113, 113, 0.1);
-  border-color: rgba(248, 113, 113, 0.18);
+  background: rgba(248, 113, 113, 0.09);
   color: var(--red-text);
+  border-color: rgba(248, 113, 113, 0.22);
 }
+
+@media (hover: hover) {
+  .action-chip--danger:hover:not(:disabled) {
+    background: rgba(248, 113, 113, 0.16);
+    color: var(--red-text);
+    border-color: rgba(248, 113, 113, 0.4);
+    box-shadow: 0 2px 10px rgba(248, 113, 113, 0.055);
+  }
+}
+
+/* ---------- AÇÃO DE ATENÇÃO ---------- */
 
 .action-chip--warning {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.18);
+  background: rgba(245, 158, 11, 0.09);
   color: var(--amber-text);
+  border-color: rgba(245, 158, 11, 0.22);
 }
 
+@media (hover: hover) {
+  .action-chip--warning:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.16);
+    color: var(--amber-text);
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.055);
+  }
+}
+
+/* ---------- TEXTO DE AJUDA ---------- */
+
 .field-help {
-  margin-top: 6px;
+  margin-top: 7px;
+  max-width: 65ch;
+
   color: var(--text-3);
   font-size: 12px;
-  line-height: 1.6;
+  font-weight: 450;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
+
+/* ---------- STATUS DOS PRODUTOS ---------- */
 
 .status-pill-row {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 7px;
+  margin-top: 6px;
+  min-width: 0;
 }
 
+/* ---------- ALERTAS ---------- */
+
 #cardapio-page-alert {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
+  scroll-margin-top: 90px;
 }
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+/* ---------- TELAS MÉDIAS ---------- */
 
 @media (max-width: 1180px) {
   .cardapio-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
   }
 
   .cardapio-panel--categories .table-wrap {
     max-height: none;
-  }
-}
-
-@media (max-width: 720px) {
-  .header-right--cardapio,
-  .table-header-row,
-  .ordem-editor {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .cardapio-legend__item {
-    align-items: flex-start;
-  }
-
-  .compact-control--order {
-    width: 100%;
   }
 
   .actions-grid--stack {
     max-width: none;
   }
 }
+
+/* ---------- TABLETS ---------- */
+
+@media (max-width: 900px) {
+  .header-right--cardapio {
+    justify-content: flex-start;
+  }
+
+  .table-header--stack {
+    gap: 14px;
+  }
+
+  .cardapio-legend {
+    gap: 7px;
+  }
+
+  .cardapio-legend__item {
+    padding: 8px 10px;
+  }
+}
+
+/* ---------- CELULARES ---------- */
+
+@media (max-width: 720px) {
+  .header-right--cardapio {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .table-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .toolbar--cardapio {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cardapio-layout {
+    gap: 14px;
+  }
+
+  .cardapio-legend__item {
+    align-items: center;
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 11px;
+    border-radius: 9px;
+  }
+
+  .ordem-editor {
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .compact-control--order {
+    width: 76px;
+    flex-shrink: 0;
+  }
+
+  .actions-grid {
+    gap: 7px;
+  }
+
+  .action-chip {
+    min-height: 34px;
+    padding: 8px 11px;
+  }
+
+  .field-help {
+    font-size: 11px;
+  }
+
+  #cardapio-page-alert {
+    margin-bottom: 14px;
+  }
+}
+
+/* ---------- CELULARES PEQUENOS ---------- */
+
+@media (max-width: 420px) {
+  .cardapio-legend {
+    gap: 6px;
+  }
+
+  .cardapio-legend__item {
+    font-size: 10px;
+    padding: 7px 9px;
+  }
+
+  .actions-grid--stack {
+    width: 100%;
+  }
+
+  .actions-grid--stack .action-chip {
+    flex: 1 1 auto;
+  }
+
+  .ordem-editor {
+    flex-wrap: wrap;
+  }
+
+  .compact-control--order {
+    width: 72px;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cardapio-legend__item,
+  .compact-control--order,
+  .action-chip {
+    transition: none;
+  }
+
+  .action-chip:hover,
+  .action-chip:active {
+    transform: none;
+  }
+}
+

@@ -1,36 +1,238 @@
-/* Badges */
+
+/* ============================================
+   STOCKOS — BADGES E INDICADORES DE STATUS
+   ============================================ */
+
+/* ---------- BADGE BASE ---------- */
+
 .badge {
-  display: inline-flex; align-items: center; gap: var(--sp-1);
-  padding: 2px var(--sp-2);
-  height: 20px;
-  border-radius: 100px;
-  font-size: var(--fs-10);
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  gap: var(--sp-1, 4px);
+
+  width: fit-content;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 3px var(--sp-2, 8px);
+
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+
   background: var(--paper-raised);
   color: var(--ink-3);
-  border: 1px solid var(--rule);
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-.badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.badge.ok     { background: var(--ok-soft);   color: var(--ok);   border-color: transparent; }
-.badge.warn   { background: var(--warn-soft);  color: var(--warn); border-color: transparent; }
-.badge.bad    { background: var(--bad-soft);   color: var(--bad);  border-color: transparent; }
-.badge.info   { background: var(--info-soft);  color: var(--info); border-color: transparent; }
-.badge.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-.badge.solid-ink { background: var(--ink); color: var(--paper); border-color: transparent; }
 
-/* Live pill */
+  font-family: inherit;
+  font-size: var(--fs-10, 10px);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: 0.055em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* ---------- INDICADOR DO BADGE ---------- */
+
+.badge .dot {
+  display: inline-block;
+  flex: 0 0 6px;
+
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px color-mix(
+    in srgb,
+    currentColor 10%,
+    transparent
+  );
+}
+
+/* ---------- STATUS POSITIVO ---------- */
+
+.badge.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: color-mix(
+    in srgb,
+    var(--ok) 18%,
+    transparent
+  );
+}
+
+/* ---------- STATUS DE ATENÇÃO ---------- */
+
+.badge.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: color-mix(
+    in srgb,
+    var(--warn) 18%,
+    transparent
+  );
+}
+
+/* ---------- STATUS CRÍTICO ---------- */
+
+.badge.bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: color-mix(
+    in srgb,
+    var(--bad) 20%,
+    transparent
+  );
+}
+
+/* ---------- STATUS INFORMATIVO ---------- */
+
+.badge.info {
+  background: var(--info-soft);
+  color: var(--info);
+  border-color: color-mix(
+    in srgb,
+    var(--info) 18%,
+    transparent
+  );
+}
+
+/* ---------- DESTAQUE DA MARCA ---------- */
+
+.badge.accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(
+    in srgb,
+    var(--accent) 20%,
+    transparent
+  );
+}
+
+/* ---------- BADGE SÓLIDO ---------- */
+
+.badge.solid-ink {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+/* ---------- LIVE STATUS ---------- */
+
 .live-pill {
-  display: inline-flex; align-items: center; gap: var(--sp-2);
-  padding: 3px var(--sp-3);
-  background: var(--ok-soft); color: var(--ok);
-  border-radius: 100px;
-  font-size: var(--fs-11); font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  gap: var(--sp-2, 8px);
+
+  width: fit-content;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 5px var(--sp-3, 12px);
+
+  background: var(--ok-soft);
+  color: var(--ok);
+
+  border: 1px solid color-mix(
+    in srgb,
+    var(--ok) 20%,
+    transparent
+  );
+
+  border-radius: 999px;
+
+  font-family: inherit;
+  font-size: var(--fs-11, 11px);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
 }
+
+/* ---------- LIVE INDICATOR ---------- */
+
 .live-pill .dot {
-  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
-  animation: live-pulse 1.6s ease-in-out infinite;
+  position: relative;
+  display: inline-block;
+  flex: 0 0 7px;
+
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+  background: currentColor;
+
+  box-shadow: 0 0 0 3px color-mix(
+    in srgb,
+    currentColor 12%,
+    transparent
+  );
 }
-@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.live-pill .dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+
+  border: 1px solid currentColor;
+  border-radius: 50%;
+
+  opacity: 0;
+  transform: scale(0.7);
+
+  animation: live-pulse 2.4s ease-out infinite;
+}
+
+/* ---------- ANIMAÇÃO SUAVE ---------- */
+
+@keyframes live-pulse {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.65);
+  }
+
+  65%,
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+/* ---------- RESPONSIVIDADE ---------- */
+
+@media (max-width: 480px) {
+  .badge {
+    min-height: 22px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .live-pill {
+    min-height: 26px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .badge {
+    transition: none;
+  }
+
+  .live-pill .dot::after {
+    animation: none;
+  }
+}
+

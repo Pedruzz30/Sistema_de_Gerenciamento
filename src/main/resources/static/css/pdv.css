@@ -1,27 +1,44 @@
+/*
+ * StockOS — PDV / estilos aprimorados
+ * Compatível com as classes originais de catálogo, carrinho e personalização.
+ * Design dark. Depende dos tokens globais já existentes (--border, --text-*, etc.).
+ * A abertura do modal, preço, estoque e finalização continuam sob controle do JS.
+ */
+
+
+/* ===== 01. Estrutura da janela PDV ===== */
+
 .pdv-shell {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
     rgba(8, 17, 29, 0.96);
   border: 1px solid var(--border);
-  border-radius: 28px;
-  width: min(1180px, 96vw);
-  height: 90vh;
+  border-radius: 20px;
+  width: min(1280px, calc(100vw - 32px));
+  height: min(90dvh, 920px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 32px 90px rgba(2, 6, 23, 0.48);
-  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.42);
+  backdrop-filter: blur(8px);
+  min-height: 0;
+  max-height: calc(100dvh - 24px);
+  -webkit-backdrop-filter: blur(8px);
+  isolation: isolate;
 }
+
+
+/* ===== 02. Cabeçalho ===== */
 
 .pdv-shell__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 22px;
+  gap: 12px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .pdv-shell__intro {
@@ -29,12 +46,13 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .pdv-shell__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -45,22 +63,26 @@
 }
 
 .pdv-shell__title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-1);
   font-family: var(--font-display);
   letter-spacing: -0.04em;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .pdv-shell__meta {
   margin-top: 3px;
   font-size: 11px;
   color: var(--text-3);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .pdv-shell__close {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid transparent;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
@@ -69,7 +91,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+  transition: color 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
+  flex-shrink: 0;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pdv-shell__close:hover {
@@ -79,21 +104,27 @@
 }
 
 .pdv-shell__body {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
+
+/* ===== 03. Catálogo e busca ===== */
+
 .pdv-catalog-panel {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
   min-width: 0;
+  min-height: 0;
 }
 
 .pdv-catalog-toolbar {
-  padding: 16px 18px 14px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.02);
   flex-shrink: 0;
@@ -101,8 +132,7 @@
 
 .pdv-search-input {
   width: 100%;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
     var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -110,6 +140,10 @@
   padding: 11px 14px;
   font-size: 13px;
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  min-height: 44px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
 }
 
 .pdv-search-input:hover {
@@ -129,6 +163,10 @@
   overflow-x: auto;
   margin-top: 12px;
   padding-bottom: 2px;
+  min-width: 0;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
 }
 
 .pdv-category-tab {
@@ -144,7 +182,12 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+  transition: border-color 0.14s ease, color 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
+  flex: 0 0 auto;
+  min-height: 38px;
+  font-family: inherit;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pdv-category-tab:hover {
@@ -157,6 +200,7 @@
   border-color: var(--pdv-accent, rgba(245, 158, 11, 0.22));
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(34, 211, 238, 0.08));
   color: #fff7ed;
+  font-weight: 750;
 }
 
 .pdv-category-tab__icon {
@@ -183,25 +227,36 @@
 }
 
 .pdv-catalog-grid {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
 }
+
+
+/* ===== 04. Seções e produtos ===== */
 
 .pdv-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .pdv-section--single,
 .pdv-section__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 182px), 1fr));
+  gap: 12px;
+  min-width: 0;
 }
 
 .pdv-section__header {
@@ -209,6 +264,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .pdv-section__title {
@@ -231,13 +287,18 @@
   flex-direction: column;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 20px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+
     rgba(9, 20, 34, 0.84);
   text-align: left;
   cursor: pointer;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, opacity 0.16s ease;
+  min-width: 0;
+  min-height: 150px;
+  font-family: inherit;
+  color: var(--text-1);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pdv-card:hover {
@@ -248,12 +309,13 @@
 
 .pdv-card--selected {
   border-color: var(--pdv-accent, rgba(245, 158, 11, 0.24));
-  box-shadow: 0 18px 36px rgba(2, 6, 23, 0.28);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.11), 0 12px 28px rgba(2, 6, 23, 0.22);
 }
 
 .pdv-card--disabled {
   cursor: not-allowed;
   opacity: 0.5;
+  filter: saturate(0.7);
 }
 
 .pdv-card--pulse {
@@ -261,7 +323,7 @@
 }
 
 .pdv-card__accent {
-  height: 4px;
+  height: 3px;
   background: var(--pdv-accent, var(--purple));
   flex-shrink: 0;
 }
@@ -289,8 +351,9 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 14px 16px;
+  gap: 8px;
+  padding: 15px 14px;
+  min-width: 0;
 }
 
 .pdv-card__topline {
@@ -320,26 +383,30 @@
 }
 
 .pdv-card__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-1);
   line-height: 1.35;
-  min-height: 38px;
+  min-height: 0;
+  overflow-wrap: anywhere;
 }
 
 .pdv-card__meta {
   font-size: 11px;
   color: var(--text-3);
   line-height: 1.5;
-  min-height: 34px;
+  min-height: 0;
+  overflow-wrap: anywhere;
 }
 
 .pdv-card__price {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--pdv-accent, var(--green));
   font-family: var(--font-display);
   letter-spacing: -0.04em;
+  margin-top: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .pdv-card__status {
@@ -352,11 +419,17 @@
   font-weight: 700;
 }
 
+
+/* ===== 05. Carrinho ===== */
+
 .pdv-cart-panel {
-  width: 332px;
+  width: clamp(310px, 29%, 372px);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  background: rgba(2, 6, 23, 0.14);
 }
 
 .pdv-cart-header {
@@ -368,12 +441,15 @@
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
   flex-shrink: 0;
+  min-height: 60px;
 }
 
 .pdv-cart-title-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .pdv-cart-title {
@@ -396,7 +472,10 @@
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+  transition: border-color 0.14s ease, color 0.14s ease, background-color 0.14s ease;
+  min-height: 34px;
+  flex-shrink: 0;
+  font-family: inherit;
 }
 
 .pdv-clear-btn:hover {
@@ -406,9 +485,14 @@
 }
 
 .pdv-cart-items {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   padding: 12px;
+  min-height: 0;
+  min-width: 0;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
 }
 
 .pdv-cart-empty {
@@ -419,14 +503,15 @@
 .pdv-item-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   padding: 11px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  min-width: 0;
 }
 
 .pdv-item-icon {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
@@ -453,12 +538,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.45;
 }
 
 .pdv-item-meta {
   margin-top: 2px;
   font-size: 10px;
   color: var(--text-3);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .pdv-item-subtotal {
@@ -467,19 +555,21 @@
   color: var(--pdv-accent, var(--green));
   font-family: var(--font-display);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pdv-item-controls {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
 .pdv-item-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-2);
@@ -487,7 +577,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+  transition: border-color 0.14s ease, color 0.14s ease, background-color 0.14s ease;
+  flex-shrink: 0;
+  font-family: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pdv-item-btn:hover {
@@ -501,8 +595,8 @@
 }
 
 .pdv-item-btn--remove {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   margin-left: 2px;
   border: none;
   background: transparent;
@@ -514,18 +608,20 @@
 }
 
 .pdv-item-qty {
-  min-width: 20px;
+  min-width: 22px;
   text-align: center;
   font-size: 13px;
   font-weight: 800;
   color: var(--text-1);
+  font-variant-numeric: tabular-nums;
 }
 
 .pdv-cart-footer {
   border-top: 1px solid var(--border);
-  padding: 16px;
+  padding: 16px 18px;
   background: rgba(255, 255, 255, 0.03);
   flex-shrink: 0;
+  margin-top: auto;
 }
 
 .pdv-summary-row {
@@ -533,6 +629,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 7px;
+  gap: 12px;
 }
 
 .pdv-summary-row--total {
@@ -560,27 +657,30 @@
 }
 
 .pdv-summary-value--total {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--green-text);
   font-family: var(--font-display);
   letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
 }
 
 .pdv-submit {
   width: 100%;
-  min-height: 46px;
+  min-height: 48px;
   border: none;
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ecfdf5;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
   font-family: var(--font-display);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   transition: opacity 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pdv-submit:hover:not(:disabled) {
@@ -601,8 +701,11 @@
   margin-top: 10px;
 }
 
+
+/* ===== 06. Configuração e adicionais ===== */
+
 .pdv-config-modal {
-  max-width: min(760px, 94vw);
+  max-width: min(760px, calc(100vw - 24px));
 }
 
 .pdv-config-form {
@@ -613,7 +716,7 @@
 
 .pdv-config-top {
   display: grid;
-  grid-template-columns: 1fr 140px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 140px);
   gap: 12px;
 }
 
@@ -623,6 +726,7 @@
   gap: 6px;
   font-size: 12px;
   color: var(--text-3);
+  min-width: 0;
 }
 
 .pdv-config-field input,
@@ -634,6 +738,11 @@
   background: rgba(255,255,255,.04);
   color: var(--text-1);
   padding: 10px 12px;
+  min-width: 0;
+  min-height: 42px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
 }
 
 .pdv-config-group {
@@ -680,7 +789,7 @@
 .pdv-config-option,
 .pdv-config-variation {
   width: 100%;
-  min-height: 48px;
+  min-height: 52px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -691,6 +800,10 @@
   text-align: left;
   padding: 10px;
   cursor: pointer;
+  min-width: 0;
+  font-family: inherit;
+  line-height: 1.45;
+  transition: background-color 160ms ease, border-color 160ms ease;
 }
 
 .pdv-config-option--selected {
@@ -730,6 +843,8 @@
   font-weight: 800;
   color: var(--green-text);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pdv-config-stepper {
@@ -739,12 +854,15 @@
 }
 
 .pdv-config-stepper button {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255,255,255,.04);
   color: var(--text-1);
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
 }
 
 .pdv-config-summary-box {
@@ -767,11 +885,13 @@
   align-items: center;
   margin-top: 10px;
   color: var(--text-1);
+  gap: 12px;
 }
 
 .pdv-config-total strong {
   color: var(--green-text);
   font-size: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 .pdv-config-total--sub strong {
@@ -790,30 +910,129 @@
 }
 
 @keyframes pdvPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.97); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ===== 07. Estados de interação e acessibilidade ===== */
+
+.pdv-shell :is(button, input, select, textarea):focus-visible,
+.pdv-card:focus-visible,
+.pdv-category-tab:focus-visible,
+.pdv-config-option:focus-visible,
+.pdv-config-variation:focus-visible {
+  outline: 2px solid var(--pdv-accent, var(--accent, #f59e0b));
+  outline-offset: 2px;
+}
+
+.pdv-shell :is(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+
+.pdv-search-input::placeholder,
+.pdv-config-field :is(input, textarea)::placeholder {
+  color: var(--text-3);
+}
+
+.pdv-config-field :is(input, select, textarea):focus-visible {
+  border-color: var(--pdv-accent, var(--accent, #f59e0b));
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(245, 158, 11, 0.13));
+}
+
+.pdv-config-option--selected,
+.pdv-config-option[aria-checked="true"],
+.pdv-config-variation[aria-checked="true"] {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.09);
+}
+
+.pdv-card--disabled:hover,
+.pdv-card:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.pdv-card:disabled,
+.pdv-category-tab:disabled,
+.pdv-config-option--disabled,
+.pdv-config-variation:disabled,
+.pdv-item-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pdv-config-stepper button:disabled {
+  opacity: 0.4;
+}
+
+@media (hover: hover) {
+  .pdv-card:hover:not(:disabled):not(.pdv-card--disabled) {
+    border-color: var(--pdv-accent, rgba(245, 158, 11, 0.35));
+    box-shadow: 0 12px 26px rgba(2, 6, 23, 0.23);
+    transform: translateY(-2px);
+  }
+
+  .pdv-config-option:hover:not(:disabled):not(.pdv-config-option--disabled),
+  .pdv-config-variation:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: var(--border-light);
+  }
+
+  .pdv-item-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.pdv-item-btn:active:not(:disabled),
+.pdv-category-tab:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* ===== 08. Responsividade ===== */
+
+@media (max-width: 1100px) {
+  .pdv-shell {
+    width: min(1000px, calc(100vw - 24px));
+  }
+  .pdv-cart-panel {
+    width: 318px;
+  }
+  .pdv-section--single,
+  .pdv-section__grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 165px), 1fr));
+  }
 }
 
 @media (max-width: 960px) {
   .pdv-shell {
-    width: min(96vw, 760px);
-    height: auto;
-    max-height: 92vh;
+    width: min(760px, calc(100vw - 24px));
+    height: min(94dvh, 900px);
+    max-height: calc(100dvh - 16px);
   }
-
   .pdv-shell__body {
     flex-direction: column;
   }
-
   .pdv-catalog-panel {
+    flex: 1 1 58%;
+    min-height: 0;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
-
   .pdv-cart-panel {
     width: 100%;
-    max-height: 360px;
+    flex: 0 1 38%;
+    min-height: 190px;
+    max-height: 38%;
+  }
+  .pdv-cart-items {
+    min-height: 0;
   }
 }
 
@@ -821,23 +1040,127 @@
   .pdv-shell {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
     border-radius: 0;
   }
-
-  .pdv-shell__header,
+  .pdv-shell__header {
+    min-height: 62px;
+    padding: 10px 14px;
+  }
+  .pdv-shell__icon {
+    width: 36px;
+    height: 36px;
+  }
+  .pdv-shell__title {
+    font-size: 15px;
+  }
   .pdv-catalog-toolbar,
   .pdv-cart-header,
   .pdv-cart-footer {
     padding-left: 12px;
     padding-right: 12px;
   }
-
+  .pdv-search-input {
+    font-size: 16px; /* Evita zoom automático em iOS ao focar. */
+  }
   .pdv-catalog-grid {
     padding: 12px;
+    gap: 14px;
   }
-
   .pdv-section--single,
   .pdv-section__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .pdv-card {
+    min-height: 140px;
+    border-radius: 14px;
+  }
+  .pdv-card__body {
+    padding: 12px;
+  }
+  .pdv-cart-panel {
+    flex-basis: 42%;
+    max-height: 42%;
+    min-height: 190px;
+  }
+  .pdv-item-row {
+    flex-wrap: wrap;
+  }
+  .pdv-item-content {
+    flex: 1 1 calc(100% - 48px);
+  }
+  .pdv-item-subtotal {
+    margin-left: 45px;
+  }
+  .pdv-item-controls {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .pdv-category-tab {
+    padding: 8px 11px;
+  }
+  .pdv-card__badge {
+    top: 7px;
+    right: 7px;
+  }
+  .pdv-card__body {
+    gap: 6px;
+    padding: 10px;
+  }
+  .pdv-card__title {
+    font-size: 12px;
+  }
+  .pdv-cart-footer {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+@media (max-height: 590px) and (max-width: 960px) {
+  /* Em paisagem, preserva rolagem para que nenhum painel fique inacessível. */
+  .pdv-shell__body {
+    overflow-y: auto;
+  }
+  .pdv-catalog-panel {
+    flex: 0 0 auto;
+    min-height: 200px;
+  }
+  .pdv-catalog-grid {
+    min-height: 150px;
+    max-height: 220px;
+  }
+  .pdv-cart-panel {
+    flex: 0 0 auto;
+    min-height: 190px;
+    max-height: none;
+  }
+  .pdv-cart-items {
+    max-height: 180px;
+  }
+}
+
+@media (hover: none) {
+  .pdv-card:hover,
+  .pdv-category-tab:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdv-shell *,
+  .pdv-shell *::before,
+  .pdv-shell *::after,
+  .pdv-config-modal *,
+  .pdv-config-modal *::before,
+  .pdv-config-modal *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

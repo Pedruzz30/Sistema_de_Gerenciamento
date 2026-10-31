@@ -1,47 +1,369 @@
-/* Layout principal */
+
+/* ============================================
+   STOCKOS — APP LAYOUT & GRID SYSTEM
+   ============================================ */
+
+/* ---------- LAYOUT PRINCIPAL ---------- */
+
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
-  grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-areas: "sidebar topbar" "sidebar main";
+  grid-template-columns: var(--sidebar-w, 260px) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-h, 64px) minmax(0, 1fr);
+  grid-template-areas:
+    "sidebar topbar"
+    "sidebar main";
+
+  width: 100%;
   min-height: 100vh;
-}
-.sidebar { grid-area: sidebar; border-right: 1px solid var(--rule); background: var(--paper-sunk); }
-.topbar  { grid-area: topbar;  border-bottom: 1px solid var(--rule); background: var(--paper-sunk); }
-.main    { grid-area: main; padding: var(--sp-6) var(--sp-8); overflow: auto; background: var(--paper); }
+  min-height: 100dvh;
 
-/* Page header */
+  background: var(--paper);
+}
+
+/* ---------- SIDEBAR ---------- */
+
+.sidebar {
+  grid-area: sidebar;
+  min-width: 0;
+
+  background: var(--paper-sunk);
+  border-right: 1px solid var(--rule);
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.topbar {
+  grid-area: topbar;
+
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+  min-height: var(--topbar-h, 64px);
+
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ---------- ÁREA PRINCIPAL ---------- */
+
+.main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+
+  padding:
+    clamp(20px, 2.4vw, 36px)
+    clamp(20px, 3vw, 48px);
+
+  overflow-x: hidden;
+  overflow-y: visible;
+
+  background: var(--paper);
+}
+
+/* ============================================
+   PAGE HEADER
+   ============================================ */
+
 .page-head {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  margin-bottom: var(--sp-6); gap: var(--sp-4); flex-wrap: wrap;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 16px 24px;
+  min-width: 0;
+  margin-bottom: clamp(20px, 2.5vw, 30px);
 }
-.page-head h1 { font-size: var(--fs-28); font-weight: 700; letter-spacing: -0.02em; }
-.page-head .sub { color: var(--ink-4); font-size: var(--fs-13); margin-top: 2px; }
-.page-head .actions { display: flex; gap: var(--sp-2); }
 
-/* Grid utilities */
-.grid   { display: grid; gap: var(--sp-4); }
-.grid-4 { grid-template-columns: repeat(4, 1fr); }
-.grid-3 { grid-template-columns: repeat(3, 1fr); }
-.grid-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-dash { grid-template-columns: 1.6fr 1fr; }
+.page-head > * {
+  min-width: 0;
+}
 
-.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
-.cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4); }
+/* ---------- TÍTULO ---------- */
 
-.row  { display: flex; gap: var(--sp-3); align-items: center; }
-.grow { flex: 1 1 auto; }
-.stack    { display: flex; flex-direction: column; gap: var(--sp-3); }
-.stack-lg { display: flex; flex-direction: column; gap: var(--sp-6); }
+.page-head h1 {
+  margin: 0;
 
-/* Responsive */
+  color: var(--ink);
+  font-family: var(--font-display, inherit);
+  font-size: clamp(22px, 2.2vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------- SUBTÍTULO ---------- */
+
+.page-head .sub {
+  margin-top: 6px;
+
+  color: var(--ink-3, var(--ink-4));
+  font-size: var(--fs-13, 13px);
+  font-weight: 450;
+  line-height: 1.6;
+
+  max-width: 75ch;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- AÇÕES DO CABEÇALHO ---------- */
+
+.page-head .actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 8px);
+
+  min-width: 0;
+}
+
+.page-head .actions > * {
+  flex-shrink: 0;
+}
+
+/* ============================================
+   GRID UTILITIES
+   ============================================ */
+
+.grid {
+  display: grid;
+  gap: var(--sp-4, 16px);
+  min-width: 0;
+}
+
+/* ---------- 4 COLUNAS ---------- */
+
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* ---------- 3 COLUNAS ---------- */
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------- 2 COLUNAS ---------- */
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* ---------- DASHBOARD ---------- */
+
+.grid-dash {
+  grid-template-columns:
+    minmax(0, 1.6fr)
+    minmax(0, 1fr);
+}
+
+/* ---------- COLUNAS AUXILIARES ---------- */
+
+.cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4, 16px);
+  min-width: 0;
+}
+
+.cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4, 16px);
+  min-width: 0;
+}
+
+/* ---------- PROTEÇÃO CONTRA OVERFLOW ---------- */
+
+.grid > *,
+.cols-2 > *,
+.cols-3 > *,
+.grid-dash > * {
+  min-width: 0;
+}
+
+/* ============================================
+   FLEX UTILITIES
+   ============================================ */
+
+/* ---------- ROW ---------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 12px);
+  min-width: 0;
+}
+
+/* ---------- GROW ---------- */
+
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------- STACK ---------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  min-width: 0;
+}
+
+/* ---------- STACK LARGE ---------- */
+
+.stack-lg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6, 24px);
+  min-width: 0;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+/* ---------- NOTEBOOKS ---------- */
+
+@media (max-width: 1280px) {
+  .main {
+    padding: 24px;
+  }
+
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- TABLETS / NOTEBOOKS PEQUENOS ---------- */
+
 @media (max-width: 1100px) {
-  .grid-4   { grid-template-columns: repeat(2, 1fr); }
-  .grid-dash { grid-template-columns: 1fr; }
+  .grid-dash {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grid-3,
+  .cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .main {
+    padding: 22px;
+  }
 }
+
+/* ---------- SIDEBAR MOBILE ---------- */
+
 @media (max-width: 820px) {
-  .app { grid-template-columns: 1fr; grid-template-areas: "topbar" "main"; }
-  .sidebar { display: none; }
-  .grid-3, .grid-2 { grid-template-columns: 1fr; }
-  .main { padding: var(--sp-4); }
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      var(--topbar-h, 64px)
+      minmax(0, 1fr);
+
+    grid-template-areas:
+      "topbar"
+      "main";
+  }
+
+  /*
+   * No mobile, a sidebar sai do fluxo do grid.
+   * As regras de abertura e fechamento devem
+   * continuar no CSS/JS específico da sidebar.
+   */
+
+  .sidebar {
+    display: none;
+  }
+
+  .topbar {
+    min-width: 0;
+  }
+
+  .main {
+    padding: 20px 18px;
+  }
+
+  .page-head {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .page-head .actions {
+    justify-content: flex-start;
+  }
+
+  .grid-2,
+  .cols-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
+
+/* ---------- CELULARES ---------- */
+
+@media (max-width: 600px) {
+  .main {
+    padding: 16px 14px 24px;
+  }
+
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .page-head h1 {
+    font-size: clamp(22px, 5.5vw, 27px);
+  }
+
+  .page-head .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .grid-4,
+  .grid-3,
+  .grid-2,
+  .cols-3,
+  .cols-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grid,
+  .cols-2,
+  .cols-3 {
+    gap: 12px;
+  }
+
+  .stack-lg {
+    gap: 20px;
+  }
+}
+
+/* ---------- TELAS MUITO PEQUENAS ---------- */
+
+@media (max-width: 380px) {
+  .main {
+    padding: 14px 12px 20px;
+  }
+
+  .page-head .actions {
+    align-items: stretch;
+  }
+
+  .page-head .actions > .btn {
+    flex: 1 1 auto;
+  }
+}
+

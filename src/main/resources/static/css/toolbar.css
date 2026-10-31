@@ -1,53 +1,414 @@
-/* Toolbar / filtros */
+
+/* ============================================
+   STOCKOS — TOOLBAR, FILTERS & TABS
+   ============================================ */
+
+/* ---------- TOOLBAR ---------- */
+
 .toolbar {
   display: flex;
-  gap: var(--sp-2);
   align-items: center;
-  margin-bottom: var(--sp-4);
   flex-wrap: wrap;
-}
-.search-wrap { position: relative; min-width: 260px; flex: 0 1 320px; }
-.search-wrap svg {
-  position: absolute; left: var(--sp-3); top: 50%; transform: translateY(-50%);
-  width: 13px; height: 13px; color: var(--ink-4); pointer-events: none;
-}
-.input-search { padding-left: calc(var(--sp-3) + 13px + var(--sp-2)); }
 
-/* Segmented control */
+  gap: var(--sp-2, 8px);
+  min-width: 0;
+  margin-bottom: var(--sp-4, 16px);
+}
+
+.toolbar > * {
+  min-width: 0;
+}
+
+/* ============================================
+   SEARCH FIELD
+   ============================================ */
+
+.search-wrap {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  flex: 0 1 320px;
+  min-width: min(260px, 100%);
+  max-width: 100%;
+}
+
+/* ---------- ÍCONE DE PESQUISA ---------- */
+
+.search-wrap > svg,
+.search-wrap .search-icon {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 16px;
+  height: 16px;
+
+  transform: translateY(-50%);
+
+  color: var(--ink-3);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-wrap .search-icon svg {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+  stroke-width: 1.9;
+}
+
+/* ---------- INPUT DE PESQUISA ---------- */
+
+.input-search {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+
+  padding:
+    9px
+    14px
+    9px
+    40px;
+
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm, 8px);
+
+  background: var(--paper-inset);
+  color: var(--ink);
+
+  font-family: inherit;
+  font-size: var(--fs-13, 13px);
+  font-weight: 450;
+  line-height: 1.4;
+
+  outline: none;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.input-search::placeholder {
+  color: var(--ink-3);
+  opacity: 0.85;
+}
+
+@media (hover: hover) {
+  .input-search:hover:not(:disabled) {
+    border-color: var(--rule-strong);
+    background: var(--paper-raised);
+  }
+}
+
+.input-search:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.input-search:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-search::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+/* ============================================
+   SEGMENTED CONTROL
+   ============================================ */
+
+/* ---------- CONTAINER ---------- */
+
 .seg {
   display: inline-flex;
-  padding: 2px;
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-sm);
-}
-.seg > button {
-  padding: 0 var(--sp-3); height: 26px;
-  font-size: var(--fs-12); font-weight: 500;
-  color: var(--ink-4);
-  border-radius: 4px;
-  font-family: inherit;
-  transition: background 0.1s, color 0.1s;
-}
-.seg > button:hover { color: var(--ink-2); }
-.seg > button.active { background: var(--paper-sunk); color: var(--ink); }
+  align-items: center;
 
-/* Tabs */
-.tabs {
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+
+  padding: 4px;
+
+  background: var(--paper-raised);
+
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sm, 8px);
+
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.seg::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- BOTÕES ---------- */
+
+.seg > button {
   display: inline-flex;
-  gap: var(--sp-4);
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: var(--sp-5);
-}
-.tabs > button {
-  padding: var(--sp-3) 0;
-  font-size: var(--fs-13);
-  font-weight: 500;
-  color: var(--ink-4);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 12px;
+
+  border: 1px solid transparent;
+  border-radius: 6px;
+
+  background: transparent;
+  color: var(--ink-3);
+
   font-family: inherit;
-  transition: color 0.1s, border-color 0.1s;
+  font-size: var(--fs-12, 12px);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
 }
-.tabs > button:hover { color: var(--ink-2); }
-.tabs > button.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* ---------- HOVER ---------- */
+
+@media (hover: hover) {
+  .seg > button:hover:not(:disabled) {
+    background: var(--surface-hover);
+    color: var(--ink);
+  }
+}
+
+/* ---------- SEGMENTO ATIVO ---------- */
+
+.seg > button.active,
+.seg > button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-hover, var(--accent));
+
+  border-color: var(--accent-border, var(--rule));
+
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+@media (hover: hover) {
+  .seg > button.active:hover,
+  .seg > button[aria-pressed="true"]:hover {
+    background: var(--accent-soft-2);
+    color: var(--accent-hover, var(--accent));
+  }
+}
+
+/* ---------- FOCO ---------- */
+
+.seg > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- DESABILITADO ---------- */
+
+.seg > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   TABS — NAVIGATION
+   ============================================ */
+
+/* ---------- CONTAINER ---------- */
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+
+  gap: var(--sp-5, 20px);
+
+  width: fit-content;
+  max-width: 100%;
+
+  margin-bottom: var(--sp-5, 20px);
+
+  border-bottom: 1px solid var(--rule);
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+/* ---------- BOTÕES DAS ABAS ---------- */
+
+.tabs > button {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  gap: 8px;
+  min-height: 44px;
+  padding: 12px 2px;
+
+  margin: 0;
+
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+
+  background: transparent;
+  color: var(--ink-3);
+
+  font-family: inherit;
+  font-size: var(--fs-13, 13px);
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+
+  cursor: pointer;
+  user-select: none;
+
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+/* ---------- ÍCONES NAS ABAS ---------- */
+
+.tabs > button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-width: 1.9;
+}
+
+/* ---------- HOVER ---------- */
+
+@media (hover: hover) {
+  .tabs > button:hover:not(:disabled) {
+    color: var(--ink);
+    border-bottom-color: var(--rule-strong);
+  }
+}
+
+/* ---------- ABA ATIVA ---------- */
+
+.tabs > button.active,
+.tabs > button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .tabs > button.active:hover,
+  .tabs > button[aria-selected="true"]:hover {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+}
+
+/* ---------- FOCO ---------- */
+
+.tabs > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ---------- DESABILITADO ---------- */
+
+.tabs > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .toolbar {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .search-wrap {
+    flex: 1 1 260px;
+  }
+
+  .tabs {
+    gap: 16px;
+  }
+
+  .tabs > button {
+    min-height: 42px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .search-wrap {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .input-search {
+    min-height: 44px;
+  }
+
+  .seg {
+    max-width: 100%;
+  }
+
+  .seg > button {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .tabs {
+    width: 100%;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .tabs > button {
+    min-height: 44px;
+    padding: 11px 2px;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .input-search,
+  .seg > button,
+  .tabs > button {
+    transition: none;
+  }
+}

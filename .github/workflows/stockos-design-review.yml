@@ -1,0 +1,33 @@
+name: StockOS design review checks
+
+on:
+  push:
+    branches:
+      - feat/stockos-design-review-safe-20261030
+  pull_request:
+    paths:
+      - 'src/main/resources/static/css/**'
+      - 'preview-source/js/preview-design-review.js'
+      - 'scripts/build-preview.mjs'
+      - 'scripts/check-preview.mjs'
+      - 'scripts/test-design-review.mjs'
+      - 'package.json'
+      - '.github/workflows/stockos-design-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check preview-source/js/preview-design-review.js
+      - run: npm run test:preview
+      - run: npm run test:design
+      - run: npm run test:cardapio
+      - run: npm run test:local-preview

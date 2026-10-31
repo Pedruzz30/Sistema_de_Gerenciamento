@@ -1,83 +1,528 @@
-/* Formulários */
-.field {
-  display: flex; flex-direction: column; gap: var(--sp-1);
-}
-.field label {
-  font-size: var(--fs-11);
-  font-weight: 500;
-  color: var(--ink-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-.field .hint { font-size: var(--fs-11); color: var(--ink-4); }
 
-.input, .select, .textarea {
-  height: 36px;
-  padding: 0 var(--sp-3);
+/* ============================================
+   STOCKOS — FORMS, SWITCH & WIZARD
+   ============================================ */
+
+/* ============================================
+   FORM FIELD
+   ============================================ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+
+  min-width: 0;
+}
+
+/* ---------- LABEL ---------- */
+
+.field label {
+  display: block;
+
+  color: var(--ink-3);
+
+  font-size: var(--fs-11, 11px);
+  font-weight: 700;
+  line-height: 1.45;
+
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+/* ---------- TEXTO DE AJUDA ---------- */
+
+.field .hint {
+  display: block;
+
+  color: var(--ink-4);
+
+  font-size: var(--fs-11, 11px);
+  font-weight: 450;
+  line-height: 1.55;
+
+  overflow-wrap: anywhere;
+}
+
+/* ============================================
+   INPUTS, SELECTS & TEXTAREAS
+   ============================================ */
+
+.input,
+.select,
+.textarea {
+  display: block;
+
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+
+  padding: 10px var(--sp-3, 12px);
+
   border: 1px solid var(--rule-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-sm, 8px);
+
   background: var(--paper-inset);
   color: var(--ink);
-  font-size: var(--fs-13);
-  transition: border-color 0.12s, box-shadow 0.12s;
-  width: 100%;
-}
-.textarea { height: auto; padding: var(--sp-2) var(--sp-3); min-height: 72px; resize: vertical; line-height: 1.4; }
-.input::placeholder, .textarea::placeholder { color: var(--ink-4); }
-.input:focus, .select:focus, .textarea:focus {
+
+  font-family: var(--font-ui, inherit);
+  font-size: var(--fs-13, 13px);
+  font-weight: 500;
+  line-height: 1.45;
+
   outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
+
+/* ---------- PLACEHOLDER ---------- */
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--ink-4);
+  opacity: 1;
+}
+
+/* ---------- HOVER ---------- */
+
+@media (hover: hover) {
+  .input:hover:not(:disabled),
+  .select:hover:not(:disabled),
+  .textarea:hover:not(:disabled) {
+    background: var(--paper-raised);
+    border-color: var(--rule-strong);
+  }
+}
+
+/* ---------- FOCUS ---------- */
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(
+    --focus-ring,
+    0 0 0 3px rgba(245, 158, 11, 0.16)
+  );
+}
+
+/* Destaca também o label quando há foco */
+
+.field:focus-within > label {
+  color: var(--ink-2);
+}
+
+/* ---------- DESABILITADO ---------- */
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ---------- SOMENTE LEITURA ---------- */
+
+.input:read-only,
+.textarea:read-only {
+  cursor: default;
+}
+
+/* ---------- ERRO DE VALIDAÇÃO ---------- */
+
+.input[aria-invalid="true"],
+.select[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: var(--bad);
+}
+
+.input[aria-invalid="true"]:focus,
+.select[aria-invalid="true"]:focus,
+.textarea[aria-invalid="true"]:focus {
+  border-color: var(--bad);
+
+  box-shadow: 0 0 0 3px var(--bad-soft);
+}
+
+/* ============================================
+   TEXTAREA
+   ============================================ */
+
+.textarea {
+  height: auto;
+  min-height: 100px;
+
+  padding:
+    var(--sp-3, 12px)
+    var(--sp-3, 12px);
+
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* ============================================
+   SELECT
+   ============================================ */
+
 .select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b6b80' fill='none' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  -webkit-appearance: none;
+
+  padding-right: 38px;
+
+  /* Seta construída em CSS, sem imagem externa */
+
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent 50%,
+      var(--ink-3) 50%
+    ),
+    linear-gradient(
+      135deg,
+      var(--ink-3) 50%,
+      transparent 50%
+    );
+
+  background-position:
+    calc(100% - 19px) 50%,
+    calc(100% - 14px) 50%;
+
+  background-size: 5px 5px;
   background-repeat: no-repeat;
-  background-position: right var(--sp-3) center;
-  padding-right: var(--sp-8);
+
+  cursor: pointer;
 }
 
-.grid-form { display: grid; gap: var(--sp-4); }
-.grid-form.cols-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-form.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.select:disabled {
+  cursor: not-allowed;
+}
 
-/* Switch */
-.switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
-.switch input { opacity: 0; width: 0; height: 0; }
+/* ============================================
+   FORM GRID
+   ============================================ */
+
+.grid-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+
+  gap: var(--sp-4, 16px);
+
+  width: 100%;
+  min-width: 0;
+}
+
+.grid-form.cols-2 {
+  grid-template-columns: repeat(
+    2,
+    minmax(0, 1fr)
+  );
+}
+
+.grid-form.cols-3 {
+  grid-template-columns: repeat(
+    3,
+    minmax(0, 1fr)
+  );
+}
+
+.grid-form > * {
+  min-width: 0;
+}
+
+/* ============================================
+   SWITCH / TOGGLE
+   ============================================ */
+
+.switch {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+
+  width: 42px;
+  height: 24px;
+
+  flex-shrink: 0;
+
+  vertical-align: middle;
+}
+
+/* ---------- INPUT NATIVO ---------- */
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+
+  width: 100%;
+  height: 100%;
+  margin: 0;
+
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ---------- TRILHO ---------- */
+
 .switch .slider {
-  position: absolute; inset: 0; cursor: pointer;
-  background: var(--rule-strong);
-  border-radius: 100px;
-  transition: background 0.15s;
-}
-.switch .slider::before {
-  content: ''; position: absolute;
-  width: 14px; height: 14px; left: 3px; top: 3px;
-  background: var(--ink-4);
-  border-radius: 50%;
-  transition: transform 0.15s, background 0.15s;
-}
-.switch input:checked + .slider { background: var(--accent); }
-.switch input:checked + .slider::before { transform: translateX(16px); background: #fff; }
+  position: absolute;
+  inset: 0;
 
-/* Wizard stepper */
-.wizard {
-  display: flex; align-items: center;
-  gap: var(--sp-2); margin-bottom: var(--sp-6);
-}
-.wizard-step {
-  display: flex; align-items: center; gap: var(--sp-2);
-  font-size: var(--fs-13); color: var(--ink-4);
-}
-.wizard-step .num {
-  width: 22px; height: 22px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--paper-raised);
   border: 1px solid var(--rule-strong);
-  font-size: var(--fs-11); font-weight: 500;
-  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+
+  background: var(--paper-raised);
+
+  pointer-events: none;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
-.wizard-step.active { color: var(--ink); font-weight: 500; }
-.wizard-step.active .num { background: var(--accent); border-color: var(--accent); color: #fff; }
-.wizard-step.done .num { background: var(--ok); border-color: var(--ok); color: #fff; }
-.wizard-dash { flex: 1; height: 1px; background: var(--rule); max-width: 48px; }
+
+/* ---------- CÍRCULO ---------- */
+
+.switch .slider::before {
+  content: "";
+
+  position: absolute;
+  top: 3px;
+  left: 3px;
+
+  width: 16px;
+  height: 16px;
+
+  border-radius: 50%;
+
+  background: var(--ink-3);
+
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+
+  transition:
+    transform 180ms var(
+      --ease-out,
+      ease-out
+    ),
+    background-color 180ms ease;
+}
+
+/* ---------- HOVER ---------- */
+
+@media (hover: hover) {
+  .switch:hover input:not(:disabled) + .slider {
+    border-color: var(--accent-border);
+  }
+}
+
+/* ---------- ATIVADO ---------- */
+
+.switch input:checked + .slider {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(18px);
+  background: var(--accent-ink, #211403);
+}
+
+/* ---------- FOCO PELO TECLADO ---------- */
+
+.switch input:focus-visible + .slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- DESABILITADO ---------- */
+
+.switch input:disabled {
+  cursor: not-allowed;
+}
+
+.switch input:disabled + .slider {
+  opacity: 0.45;
+}
+
+/* ============================================
+   WIZARD / STEPPER
+   ============================================ */
+
+/* ---------- CONTAINER ---------- */
+
+.wizard {
+  display: flex;
+  align-items: center;
+
+  gap: var(--sp-2, 8px);
+
+  width: 100%;
+  min-width: 0;
+
+  margin-bottom: var(--sp-6, 24px);
+}
+
+/* ---------- ETAPA ---------- */
+
+.wizard-step {
+  display: inline-flex;
+  align-items: center;
+
+  gap: var(--sp-2, 8px);
+  min-width: 0;
+
+  color: var(--ink-4);
+
+  font-size: var(--fs-13, 13px);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ---------- NÚMERO ---------- */
+
+.wizard-step .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  width: 28px;
+  height: 28px;
+
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+
+  background: var(--paper-raised);
+  color: var(--ink-3);
+
+  font-size: var(--fs-11, 11px);
+  font-weight: 700;
+  line-height: 1;
+
+  font-variant-numeric: tabular-nums;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+/* ---------- ETAPA ATIVA ---------- */
+
+.wizard-step.active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.wizard-step.active .num {
+  background: var(--accent);
+  border-color: var(--accent);
+
+  color: var(--accent-ink, #211403);
+
+  box-shadow: var(
+    --shadow-accent,
+    0 4px 12px rgba(245, 158, 11, 0.12)
+  );
+}
+
+/* ---------- ETAPA CONCLUÍDA ---------- */
+
+.wizard-step.done {
+  color: var(--ink-2);
+}
+
+.wizard-step.done .num {
+  background: var(--ok);
+  border-color: var(--ok);
+
+  color: var(--paper);
+}
+
+/* ---------- LINHA ENTRE ETAPAS ---------- */
+
+.wizard-dash {
+  flex: 1 1 24px;
+
+  min-width: 12px;
+  max-width: 48px;
+  height: 1px;
+
+  background: var(--rule-strong);
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 900px) {
+  .grid-form.cols-3 {
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-form.cols-2,
+  .grid-form.cols-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .input,
+  .select {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .textarea {
+    min-height: 110px;
+    font-size: 14px;
+  }
+
+  .wizard {
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .wizard-step {
+    flex-shrink: 0;
+    gap: 6px;
+
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .wizard-step .num {
+    width: 26px;
+    height: 26px;
+  }
+
+  .wizard-dash {
+    flex: 1 0 12px;
+    min-width: 12px;
+  }
+}
+
+/* ============================================
+   ACESSIBILIDADE
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .select,
+  .textarea,
+  .switch .slider,
+  .switch .slider::before,
+  .wizard-step .num {
+    transition: none;
+  }
+}
+

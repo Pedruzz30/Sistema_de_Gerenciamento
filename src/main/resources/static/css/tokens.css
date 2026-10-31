@@ -1,121 +1,450 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
 
-/* StockOS — design tokens */
+/* ============================================
+   STOCKOS — DESIGN SYSTEM TOKENS
+   Theme: Dark / Amber / Cyan
+   ============================================ */
+
+/* ---------- FONTES ---------- */
+
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400..700&family=Manrope:wght@400..800&family=Space+Grotesk:wght@500..700&display=swap");
+
+/* ============================================
+   ROOT — DESIGN TOKENS
+   ============================================ */
+
 :root {
+  color-scheme: dark;
+
+  /* ==========================================
+     BACKGROUNDS
+     ========================================== */
+
   --paper: #07111d;
-  --paper-sunk: rgba(9, 20, 34, 0.84);
-  --paper-raised: rgba(17, 32, 52, 0.88);
-  --paper-inset: rgba(11, 24, 40, 0.92);
+
+  --paper-sunk: rgba(9, 20, 34, 0.9);
+
+  --paper-raised: rgba(17, 32, 52, 0.92);
+
+  --paper-inset: rgba(11, 24, 40, 0.96);
+
+  /* Superfícies complementares */
+
+  --surface-overlay: rgba(7, 17, 29, 0.94);
+
+  --surface-hover: rgba(255, 255, 255, 0.055);
+
+  --surface-active: rgba(255, 255, 255, 0.085);
+
+  /* ==========================================
+     TYPOGRAPHY COLORS
+     ========================================== */
 
   --ink: #f8fafc;
+
   --ink-2: #cbd5e1;
-  --ink-3: #94a3b8;
-  --ink-4: #64748b;
+
+  --ink-3: #a7b4c7;
+
+  --ink-4: #8a9bb1;
+
+  /* ==========================================
+     BORDERS
+     ========================================== */
 
   --rule: rgba(148, 163, 184, 0.16);
+
   --rule-strong: rgba(148, 163, 184, 0.28);
 
+  --rule-focus: rgba(245, 158, 11, 0.45);
+
+  /* ==========================================
+     BRAND — AMBER
+     ========================================== */
+
   --accent: #f59e0b;
-  --accent-ink: #fff7ed;
+
+  /* Texto escuro para contraste no âmbar */
+  --accent-ink: #211403;
+
+  --accent-hover: #fbbf24;
+
+  --accent-pressed: #d97706;
+
   --accent-soft: rgba(245, 158, 11, 0.12);
+
   --accent-soft-2: rgba(245, 158, 11, 0.18);
+
+  --accent-border: rgba(245, 158, 11, 0.28);
+
+  /* ==========================================
+     SECONDARY BRAND — CYAN
+     ========================================== */
+
   --accent-cool: #22d3ee;
+
   --accent-cool-soft: rgba(34, 211, 238, 0.12);
 
+  --accent-cool-border: rgba(34, 211, 238, 0.24);
+
+  /* ==========================================
+     STATUS COLORS
+     ========================================== */
+
+  /* Success */
+
   --ok: #34d399;
+
   --ok-soft: rgba(52, 211, 153, 0.12);
+
+  --ok-border: rgba(52, 211, 153, 0.24);
+
+  /* Warning */
+
   --warn: #f59e0b;
+
   --warn-soft: rgba(245, 158, 11, 0.12);
+
+  --warn-border: rgba(245, 158, 11, 0.24);
+
+  /* Danger */
+
   --bad: #f87171;
+
   --bad-soft: rgba(248, 113, 113, 0.12);
+
+  --bad-border: rgba(248, 113, 113, 0.24);
+
+  /* Information */
+
   --info: #22d3ee;
+
   --info-soft: rgba(34, 211, 238, 0.12);
 
-  --font-display: 'Space Grotesk', 'Manrope', sans-serif;
-  --font-ui: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --info-border: rgba(34, 211, 238, 0.24);
+
+  /* ==========================================
+     FONT FAMILIES
+     ========================================== */
+
+  --font-display:
+    "Space Grotesk",
+    "Manrope",
+    sans-serif;
+
+  --font-ui:
+    "Manrope",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  --font-mono:
+    "JetBrains Mono",
+    ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+
+  /* ==========================================
+     BORDER RADIUS
+     ========================================== */
 
   --r-xs: 4px;
+
   --r-sm: 8px;
+
   --r-md: 14px;
+
   --r-lg: 18px;
+
   --r-xl: 24px;
 
-  --shadow-sm: 0 8px 24px rgba(2, 6, 23, 0.18);
-  --shadow-md: 0 20px 50px rgba(2, 6, 23, 0.34);
-  --shadow-lg: 0 32px 90px rgba(2, 6, 23, 0.46);
+  --r-full: 999px;
+
+  /* ==========================================
+     SHADOW SYSTEM
+     ========================================== */
+
+  --shadow-xs:
+    0 2px 6px rgba(2, 6, 23, 0.12);
+
+  --shadow-sm:
+    0 8px 24px rgba(2, 6, 23, 0.18);
+
+  --shadow-md:
+    0 20px 50px rgba(2, 6, 23, 0.34);
+
+  --shadow-lg:
+    0 32px 90px rgba(2, 6, 23, 0.46);
+
+  --shadow-accent:
+    0 8px 24px rgba(245, 158, 11, 0.12);
+
+  /* ==========================================
+     SPACING SCALE
+     ========================================== */
 
   --sp-1: 4px;
+
   --sp-2: 8px;
+
   --sp-3: 12px;
+
   --sp-4: 16px;
+
   --sp-5: 20px;
+
   --sp-6: 24px;
+
+  --sp-7: 28px;
+
   --sp-8: 32px;
+
   --sp-10: 40px;
+
   --sp-12: 48px;
 
+  /* ==========================================
+     FONT SIZE SCALE
+     ========================================== */
+
   --fs-10: 10px;
+
   --fs-11: 11px;
+
   --fs-12: 12px;
+
   --fs-13: 13px;
+
   --fs-14: 14px;
+
   --fs-15: 15px;
+
   --fs-16: 16px;
+
   --fs-18: 18px;
+
   --fs-20: 20px;
+
   --fs-24: 24px;
+
   --fs-28: 28px;
+
   --fs-32: 32px;
+
   --fs-36: 36px;
+
   --fs-40: 40px;
+
   --fs-46: 46px;
 
+  /* ==========================================
+     FONT WEIGHTS
+     ========================================== */
+
+  --fw-regular: 400;
+
+  --fw-medium: 500;
+
+  --fw-semibold: 600;
+
+  --fw-bold: 700;
+
+  --fw-extrabold: 800;
+
+  /* ==========================================
+     MOTION
+     ========================================== */
+
+  --duration-fast: 120ms;
+
+  --duration-normal: 180ms;
+
+  --duration-slow: 280ms;
+
+  --ease-standard:
+    cubic-bezier(0.2, 0, 0, 1);
+
+  --ease-out:
+    cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ==========================================
+     APP DIMENSIONS
+     ========================================== */
+
   --sidebar-w: 250px;
+
   --topbar-h: 74px;
 
+  /* ==========================================
+     Z-INDEX SCALE
+     ========================================== */
+
+  --z-base: 1;
+
+  --z-sticky: 10;
+
+  --z-dropdown: 30;
+
+  --z-sidebar: 40;
+
+  --z-overlay: 90;
+
+  --z-modal: 100;
+
+  --z-toast: 1000;
+
+  /* ==========================================
+     LEGACY COMPATIBILITY
+     Preserve existing frontend classes
+     ========================================== */
+
+  /* Background aliases */
+
   --bg-base: var(--paper);
+
   --bg-card: var(--paper-sunk);
+
   --bg-hover: var(--paper-raised);
+
   --bg-input: var(--paper-inset);
+
+  /* Border aliases */
+
   --border: var(--rule);
+
   --border-light: var(--rule-strong);
+
+  /* Text aliases */
+
   --text-1: var(--ink);
+
   --text-2: var(--ink-2);
+
   --text-3: var(--ink-4);
+
+  /* Radius aliases */
+
   --radius: 20px;
+
   --radius-sm: 14px;
+
+  /* Brand legacy aliases */
+
   --purple: var(--accent);
+
   --purple-light: #fde68a;
+
   --pink: #fb7185;
+
+  /* Success aliases */
+
   --green: var(--ok);
+
   --green-text: #86efac;
+
+  /* Danger aliases */
+
   --red: var(--bad);
+
   --red-text: #fda4af;
+
+  /* Warning aliases */
+
   --amber: var(--warn);
+
   --amber-text: #fcd34d;
+
+  /* Information aliases */
+
   --cyan: var(--info);
+
   --sky-text: #67e8f9;
+
+  /* Neutral alias */
+
+  --slate-text: #cbd5e1;
+
+  /* Layout aliases */
+
   --header-h: var(--topbar-h);
-  --focus-ring: 0 0 0 3px rgba(245, 158, 11, 0.16);
+
+  /* Focus */
+
+  --focus-ring:
+    0 0 0 3px rgba(245, 158, 11, 0.16);
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+/* ============================================
+   GLOBAL TYPOGRAPHY
+   ============================================ */
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
+
   font-family: var(--font-ui);
-  color: var(--ink);
-  background: var(--paper);
   font-size: 14px;
   line-height: 1.5;
+
+  color: var(--ink);
+  background: var(--paper);
+
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button { font: inherit; color: inherit; }
-input, select, textarea { font: inherit; color: inherit; }
-::selection { background: rgba(245, 158, 11, 0.24); color: var(--ink); }
-.mono { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
-.num { font-variant-numeric: tabular-nums; }
-.display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.04em; }
+/* ---------- FORM CONTROLS ---------- */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- SELECTION ---------- */
+
+::selection {
+  background: rgba(245, 158, 11, 0.24);
+  color: var(--ink);
+}
+
+/* ============================================
+   TYPOGRAPHY UTILITIES
+   ============================================ */
+
+/* Monospaced text */
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Numeric values */
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Display typography */
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+  }
+}

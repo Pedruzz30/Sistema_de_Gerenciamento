@@ -1,36 +1,280 @@
-/* Sheet — card container */
-.sheet {
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-md);
-  padding: var(--sp-5);
-}
-.sheet-head {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  gap: var(--sp-3); margin-bottom: var(--sp-4);
-}
-.sheet-head h3 { font-size: var(--fs-15); font-weight: 600; }
-.sheet-head .extra { color: var(--ink-4); font-size: var(--fs-12); }
-.sheet-rule { height: 1px; background: var(--rule); margin: 0 calc(var(--sp-5) * -1) var(--sp-4); }
 
-.sheet-list { display: flex; flex-direction: column; }
+/* ============================================
+   STOCKOS — SHEETS & CONTENT CONTAINERS
+   ============================================ */
+
+/* ---------- CARD BASE ---------- */
+
+.sheet {
+  position: relative;
+  min-width: 0;
+  padding: var(--sp-5, 20px);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      transparent 65%
+    ),
+    var(--paper-sunk);
+
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md, 14px);
+
+  color: var(--ink);
+
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* ---------- INTERAÇÃO DISCRETA ---------- */
+
+@media (hover: hover) {
+  .sheet:hover {
+    border-color: var(--rule-strong);
+    box-shadow:
+      0 5px 18px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  }
+}
+
+/* ---------- CABEÇALHO ---------- */
+
+.sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 10px 16px;
+  min-width: 0;
+  margin-bottom: var(--sp-4, 16px);
+}
+
+.sheet-head > * {
+  min-width: 0;
+}
+
+/* ---------- TÍTULO ---------- */
+
+.sheet-head h3 {
+  margin: 0;
+
+  color: var(--ink);
+  font-family: var(--font-display, inherit);
+  font-size: var(--fs-15, 15px);
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------- TEXTO AUXILIAR ---------- */
+
+.sheet-head .extra {
+  color: var(--ink-3, var(--ink-4));
+  font-size: var(--fs-12, 12px);
+  font-weight: 450;
+  line-height: 1.5;
+  text-align: right;
+}
+
+/* ---------- DIVISÓRIA ---------- */
+
+.sheet-rule {
+  height: 1px;
+
+  margin:
+    0
+    calc(var(--sp-5, 20px) * -1)
+    var(--sp-4, 16px);
+
+  border: 0;
+
+  background: var(--rule);
+}
+
+/* ---------- LISTA ---------- */
+
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+/* ---------- ITENS DA LISTA ---------- */
+
 .sheet-list > li {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--sp-3);
-  padding: var(--sp-3) 0;
-  border-bottom: 1px solid var(--rule);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+
+  gap: var(--sp-3, 12px);
+  min-width: 0;
+  padding: 13px 0;
+
+  border-bottom: 1px solid var(--rule);
+
+  transition:
+    background-color 180ms ease;
 }
-.sheet-list > li:last-child { border-bottom: 0; }
-.sheet-list .ti { font-size: var(--fs-13); color: var(--ink); font-weight: 500; }
-.sheet-list .tm { font-size: var(--fs-12); color: var(--ink-4); margin-top: 2px; }
+
+.sheet-list > li:first-child {
+  padding-top: 4px;
+}
+
+.sheet-list > li:last-child {
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+.sheet-list > li > * {
+  min-width: 0;
+}
+
+/* ---------- TEXTO PRINCIPAL ---------- */
+
+.sheet-list .ti {
+  color: var(--ink);
+  font-size: var(--fs-13, 13px);
+  font-weight: 600;
+  line-height: 1.45;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------- METADADOS ---------- */
+
+.sheet-list .tm {
+  margin-top: 4px;
+
+  color: var(--ink-3, var(--ink-4));
+  font-size: var(--fs-12, 12px);
+  font-weight: 450;
+  line-height: 1.5;
+
+  overflow-wrap: anywhere;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
 
 .empty-box {
-  padding: var(--sp-8) var(--sp-4);
-  border: 1px dashed var(--rule);
-  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+  min-width: 0;
+  min-height: 140px;
+
+  padding:
+    var(--sp-8, 32px)
+    var(--sp-4, 16px);
+
+  background: color-mix(
+    in srgb,
+    var(--paper-raised) 45%,
+    transparent
+  );
+
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--r-md, 14px);
+
+  color: var(--ink-3, var(--ink-4));
+  font-size: var(--fs-13, 13px);
+  font-weight: 450;
+  line-height: 1.6;
   text-align: center;
-  color: var(--ink-4);
-  font-size: var(--fs-13);
+
+  overflow-wrap: anywhere;
 }
+
+/* ---------- ÍCONES OPCIONAIS ---------- */
+
+.empty-box svg,
+.empty-box .icon-svg {
+  width: 32px;
+  height: 32px;
+
+  color: var(--ink-3, var(--ink-4));
+  opacity: 0.65;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 720px) {
+  .sheet {
+    padding: 16px;
+  }
+
+  .sheet-head {
+    align-items: flex-start;
+    gap: 8px 12px;
+  }
+
+  .sheet-rule {
+    margin:
+      0
+      -16px
+      14px;
+  }
+
+  .sheet-list > li {
+    gap: 10px;
+    padding: 12px 0;
+  }
+
+  .empty-box {
+    min-height: 120px;
+    padding: 24px 16px;
+  }
+}
+
+@media (max-width: 420px) {
+  .sheet-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sheet-head .extra {
+    text-align: left;
+  }
+
+  .sheet-list > li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .sheet-list .ti {
+    font-size: 12px;
+  }
+
+  .sheet-list .tm {
+    font-size: 11px;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-list > li {
+    transition: none;
+  }
+}
+

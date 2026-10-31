@@ -1,46 +1,346 @@
-/* Modal */
+
+/* ============================================
+   STOCKOS — MODAL SYSTEM
+   ============================================ */
+
+/* ---------- BACKDROP ---------- */
+
 .modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.65);
-  backdrop-filter: blur(3px);
-  display: flex; align-items: center; justify-content: center;
+  position: fixed;
+  inset: 0;
   z-index: 100;
-  padding: var(--sp-4);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: clamp(12px, 3vw, 24px);
+
+  background: rgba(2, 6, 15, 0.76);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+
+  overscroll-behavior: contain;
 }
+
+/* ---------- MODAL BASE ---------- */
+
 .modal {
-  background: var(--paper-sunk);
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--r-lg);
-  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  position: relative;
+  isolation: isolate;
+
+  display: flex;
+  flex-direction: column;
+
   width: 100%;
+  min-width: 0;
   max-width: 480px;
-  max-height: 90vh;
-  display: flex; flex-direction: column;
+  max-height: min(90vh, 900px);
+  max-height: min(90dvh, 900px);
+
   overflow: hidden;
+
+  background:
+    linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.035),
+      transparent 55%
+    ),
+    var(--paper-sunk);
+
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-lg, 18px);
+
+  color: var(--ink);
+
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.38),
+    0 8px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+
+  animation: stockos-modal-enter 220ms
+    cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.modal.wide { max-width: 720px; }
-.modal.xl   { max-width: 1100px; }
+
+/* ---------- TAMANHOS ---------- */
+
+.modal.wide {
+  max-width: 720px;
+}
+
+.modal.xl {
+  max-width: 1100px;
+}
+
+/* ---------- CABEÇALHO ---------- */
 
 .modal-head {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid var(--rule);
-}
-.modal-head h3 { font-size: var(--fs-16); font-weight: 600; }
-.modal-head .close {
-  width: 28px; height: 28px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: var(--r-sm);
-  color: var(--ink-4);
-  border: none; background: none; cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-}
-.modal-head .close:hover { background: var(--paper-raised); color: var(--ink); }
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 
-.modal-body { padding: var(--sp-5); overflow: auto; flex: 1; }
-.modal-foot {
-  display: flex; justify-content: flex-end; gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-5);
-  border-top: 1px solid var(--rule);
-  background: var(--paper-raised);
+  gap: 16px;
+  min-width: 0;
+  min-height: 66px;
+  padding: 16px 22px;
+
+  background: rgba(255, 255, 255, 0.012);
+  border-bottom: 1px solid var(--rule);
+
+  flex-shrink: 0;
 }
+
+/* ---------- TÍTULO ---------- */
+
+.modal-head h3 {
+  min-width: 0;
+  margin: 0;
+
+  color: var(--ink);
+  font-family: var(--font-display, inherit);
+  font-size: var(--fs-16, 16px);
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------- BOTÃO FECHAR ---------- */
+
+.modal-head .close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 34px;
+  height: 34px;
+  padding: 0;
+
+  appearance: none;
+
+  border: 1px solid transparent;
+  border-radius: var(--r-sm, 9px);
+
+  background: transparent;
+  color: var(--ink-3, var(--ink-4));
+
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 1;
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.modal-head .close svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  stroke-width: 1.9;
+}
+
+@media (hover: hover) {
+  .modal-head .close:hover {
+    background: var(--bad-soft);
+    color: var(--bad);
+    border-color: color-mix(
+      in srgb,
+      var(--bad) 22%,
+      transparent
+    );
+  }
+}
+
+.modal-head .close:active {
+  transform: scale(0.94);
+}
+
+.modal-head .close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.modal-head .close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- CORPO DO MODAL ---------- */
+
+.modal-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+
+  padding: 24px 22px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  color: var(--ink-2);
+  line-height: 1.6;
+
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+/* ---------- ESPAÇAMENTO INTERNO ---------- */
+
+.modal-body > :first-child {
+  margin-top: 0;
+}
+
+.modal-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- RODAPÉ ---------- */
+
+.modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+
+  gap: 10px;
+  min-width: 0;
+  padding: 16px 22px;
+
+  background: var(--paper-raised);
+  border-top: 1px solid var(--rule);
+
+  flex-shrink: 0;
+}
+
+.modal-foot > * {
+  min-width: 0;
+}
+
+/* ---------- ANIMAÇÃO DE ENTRADA ---------- */
+
+@keyframes stockos-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+/* ---------- TABLETS ---------- */
+
+@media (max-width: 768px) {
+  .modal {
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .modal-head {
+    min-height: 60px;
+    padding: 14px 18px;
+  }
+
+  .modal-body {
+    padding: 20px 18px;
+  }
+
+  .modal-foot {
+    padding: 14px 18px;
+  }
+}
+
+/* ---------- CELULARES ---------- */
+
+@media (max-width: 480px) {
+  .modal-backdrop {
+    align-items: center;
+    padding: 10px;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+
+    border-radius: 14px;
+  }
+
+  .modal-head {
+    min-height: 58px;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .modal-head h3 {
+    font-size: 15px;
+  }
+
+  .modal-head .close {
+    width: 36px;
+    height: 36px;
+  }
+
+  .modal-body {
+    padding: 18px 16px;
+    font-size: 13px;
+  }
+
+  .modal-foot {
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .modal-foot > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---------- CELULARES ESTREITOS ---------- */
+
+@media (max-width: 360px) {
+  .modal-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-foot > button,
+  .modal-foot > .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- ACESSIBILIDADE ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
+  }
+
+  .modal-head .close {
+    transition: none;
+  }
+
+  .modal-head .close:active {
+    transform: none;
+  }
+}
+
