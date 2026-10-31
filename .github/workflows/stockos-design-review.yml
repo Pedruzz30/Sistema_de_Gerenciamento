@@ -29,5 +29,6 @@ jobs:
       - run: node --check preview-source/js/preview-design-review.js
       - run: npm run test:preview
       - run: npm run test:design
+      - run: npm run test:performance
       - run: npm run test:cardapio
       - run: npm run test:local-preview

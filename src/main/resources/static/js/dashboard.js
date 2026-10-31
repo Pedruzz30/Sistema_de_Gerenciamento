@@ -34,12 +34,12 @@ async function carregarDados() {
     }
   };
   // Consultas independentes devem rodar em paralelo, não em cascata.
-  const [produtos, caixas, movimentacoes, metricas, rentabilidade] = await Promise.all([
+  // Ranking is not required for the first screen. Fetch only if charts open.
+  const [produtos, caixas, movimentacoes, metricas] = await Promise.all([
     PODE_VER_ESTOQUE_DASH ? pedir('/api/produtos', []) : Promise.resolve([]),
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas', []) : Promise.resolve([]),
     PODE_VER_ESTOQUE_DASH ? pedir('/api/movimentacoes', []) : Promise.resolve([]),
-    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null),
-    PODE_VER_RENTABILIDADE_DASH ? pedir('/api/rentabilidade/ranking', null) : Promise.resolve(null)
+    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null)
   ]);
 
   renderSummaryCards(produtos, caixas, metricas);
@@ -49,14 +49,14 @@ async function carregarDados() {
   window._dadosProdutos = produtos;
   window._dadosMov = movimentacoes;
   window._dadosCaixas = caixas;
-  window._dadosRentabilidade = rentabilidade;
+  window._dadosRentabilidade = null;
   window._graficosRendered = false;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
   renderHeader();
   renderPermissionSections();
-  carregarDados();
+  window._dashboardReady = carregarDados();
 });
 
 // ── Header ────────────────────────────────────────────────
@@ -261,21 +261,76 @@ function renderFinanceiro(caixas, metricasHoje) {
 
 // ── Navegação de abas do dashboard ────────────────────────────────────────
 
-function abrirTabDash(aba) {
+const CHART_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+let chartJsPromise = null;
+let rentabilidadePromise = null;
+
+function carregarChartJsSobDemanda() {
+  if (typeof Chart !== 'undefined') return Promise.resolve();
+  if (chartJsPromise) return chartJsPromise;
+  chartJsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = CHART_JS_URL;
+    script.async = true;
+    script.onload = () => typeof Chart !== 'undefined'
+      ? resolve()
+      : reject(new Error('Chart.js carregou sem disponibilizar a API'));
+    script.onerror = () => reject(new Error('Falha ao baixar Chart.js'));
+    document.head.appendChild(script);
+  }).catch(error => {
+    chartJsPromise = null;
+    throw error;
+  });
+  return chartJsPromise;
+}
+
+function carregarRentabilidadeSobDemanda() {
+  if (!PODE_VER_RENTABILIDADE_DASH) return Promise.resolve(null);
+  if (rentabilidadePromise) return rentabilidadePromise;
+  rentabilidadePromise = fetch('/api/rentabilidade/ranking')
+    .then(resp => {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    })
+    .catch(error => {
+      console.warn('StockOS: ranking de rentabilidade indisponível', error);
+      rentabilidadePromise = null;
+      return null; // Fallback to local ranking.
+    });
+  return rentabilidadePromise;
+}
+
+async function abrirTabDash(aba) {
   document.querySelectorAll('#tab-visao, #tab-graficos').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#tabpanel-visao, #tabpanel-graficos').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + aba).classList.add('active');
   document.getElementById('tabpanel-' + aba).classList.add('active');
 
-  // Renderiza gráficos na primeira vez que a aba for aberta
-  if (aba === 'graficos' && !window._graficosRendered) {
-    window._graficosRendered = true;
+  if (aba !== 'graficos' || window._graficosRendered || window._graficosRendering) return;
+  window._graficosRendering = true;
+  const badge = document.getElementById('badge-g-estoque');
+  if (badge) badge.textContent = 'Carregando análise…';
+  try {
+    // Waiting for the dashboard API keeps the chart data complete on slow devices.
+    const [, rentabilidade] = await Promise.all([
+      carregarChartJsSobDemanda(),
+      carregarRentabilidadeSobDemanda(),
+      window._dashboardReady || Promise.resolve()
+    ]);
+    if (!document.getElementById('tabpanel-graficos').classList.contains('active')) return;
+    window._dadosRentabilidade = rentabilidade;
     renderGraficos(
       window._dadosProdutos || [],
       window._dadosMov || [],
       window._dadosCaixas || [],
-      window._dadosRentabilidade || null
+      rentabilidade
     );
+    window._graficosRendered = true;
+  } catch (error) {
+    console.error('StockOS: falha ao carregar Análise Visual', error);
+    if (badge) badge.textContent = 'Análise indisponível';
+  } finally {
+    window._graficosRendering = false;
   }
 }
 
