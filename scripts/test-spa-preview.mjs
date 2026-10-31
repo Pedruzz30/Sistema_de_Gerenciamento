@@ -22,10 +22,9 @@ assert.ok(!script.includes('eval('));
 assert.ok(!script.includes('new Function('));
 assert.ok(!script.includes('innerHTML = await response.text()'));
 
-const head = {querySelector:()=>null};
 const handlers = new Map();
 const app = {
-  querySelector: selector => selector === '.topbar.header' ? head : null
+  querySelector: () => null
 };
 const doc = {
   readyState: 'complete',
