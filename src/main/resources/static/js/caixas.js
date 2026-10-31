@@ -1,3 +1,6 @@
+/* SPA-isolated screen: caixas. Retains direct HTML navigation. */
+(() => {
+'use strict';
 // ── caixas.js ─────────────────────────────────────────────────────────────
 // Gerencia o ciclo de vida dos caixas PDV:
 // abertura, PDV de vendas, sangria, suprimento e encerramento.
@@ -20,10 +23,11 @@ const PODE_GERIR_FINANCAS_CAIXA = temPermissao(PERMISSOES.VER_FINANCAS);
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+async function stockOSMount_caixas() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'caixas') return;
   aplicarPermissoesUI();
-  carregarCaixas();
-});
+    carregarCaixas();
+}
 
 // ── Permissões de UI ──────────────────────────────────────────────────────
 
@@ -431,3 +435,44 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.caixas = {
+  mount: stockOSMount_caixas,
+  activate() {
+    Object.assign(window, {
+    buttonIcon,
+    aplicarPermissoesUI,
+    podeExecutarMovimentacao,
+    mensagemSemPermissao,
+    carregarCaixas,
+    abrirCaixa,
+    registrarMovimentacao,
+    encerrarCaixa,
+    carregarConsolidado,
+    renderCaixas,
+    renderResumo,
+    abrirModalAbrirCaixa,
+    confirmarAbrirCaixa,
+    abrirModalMov,
+    confirmarMovimentacao,
+    abrirModalEncerrar,
+    confirmarEncerrar,
+    abrirModalMovsLista,
+    mostrarFechamento,
+    abrirModal,
+    fecharModal,
+    fecharModalSeClicouFora,
+    mostrarAlert,
+    limparAlert,
+    escapeHtml,
+  });
+  }
+};
+if (/^\/caixas(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.caixas.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_caixas);
+
+})();

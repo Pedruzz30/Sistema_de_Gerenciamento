@@ -1,3 +1,6 @@
+/* SPA-isolated screen: logs. Retains direct HTML navigation. */
+(() => {
+'use strict';
 // ── logs.js ────────────────────────────────────────────────────────────────
 // System audit log viewer: fetch, display, filter.
 
@@ -5,9 +8,10 @@ let todosLogs = [];
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+async function stockOSMount_logs() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'logs') return;
   carregarLogs();
-});
+}
 
 // ── API ───────────────────────────────────────────────────────────────────
 
@@ -120,3 +124,23 @@ function renderTabela() {
 function filtrar() {
   renderTabela();
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.logs = {
+  mount: stockOSMount_logs,
+  activate() {
+    Object.assign(window, {
+    carregarLogs,
+    renderResumo,
+    renderTabela,
+    filtrar,
+  });
+  }
+};
+if (/^\/logs(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.logs.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_logs);
+
+})();

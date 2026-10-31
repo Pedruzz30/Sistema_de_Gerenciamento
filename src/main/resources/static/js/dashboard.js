@@ -66,7 +66,43 @@ function iniciarDashboardSPA() {
 }
 
 window.StockOSPages = window.StockOSPages || {};
-window.StockOSPages.dashboard = { mount: iniciarDashboardSPA };
+window.StockOSPages.dashboard = {
+  mount: iniciarDashboardSPA,
+  activate() {
+    Object.assign(window, {
+      obterAlertasEstoque,
+      dataLocalHojeIso,
+      carregarDados,
+      renderHeader,
+      renderSummaryCards,
+      renderPermissionSections,
+      renderAlertas,
+      renderMovimentacoes,
+      renderFinanceiro,
+      carregarChartJsSobDemanda,
+      carregarRentabilidadeSobDemanda,
+      abrirTabDash,
+      parseNumeroSeguro,
+      resolverCampoNumerico,
+      formatarMoedaBR,
+      formatarPercentual,
+      resumirTexto,
+      obterClassificacaoMargem,
+      normalizarProdutoLucratividade,
+      gerarAnaliseLucratividade,
+      gerarAnaliseLucratividadeApi,
+      atualizarResumoLucratividade,
+      renderGraficoLucratividade,
+      renderTabelaLucratividade,
+      renderAnaliseLucratividade,
+      renderGraficos,
+      renderGraficoEstoque,
+      renderGraficoMovimentacoes,
+      renderGraficoCaixas,
+      renderGraficoAlertas,
+    });
+  }
+};
 document.addEventListener('DOMContentLoaded', iniciarDashboardSPA);
 
 // ── Header ────────────────────────────────────────────────

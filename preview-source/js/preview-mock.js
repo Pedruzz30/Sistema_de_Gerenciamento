@@ -176,7 +176,7 @@
     // The SPA pilot may fetch its own canonical HTML. No external network or
     // unsupported preview API is granted additional access.
     if (url.origin === location.origin && method === 'GET' &&
-        /^\/(?:dashboard|estoque)\.html$/.test(url.pathname)) {
+        /^\/(?:dashboard|estoque|cardapio|fornecedores|notas|caixas|cotacoes|funcionarios|logs)\.html$/.test(url.pathname)) {
       return nativeFetch(input,init);
     }
     return handle(input,init);

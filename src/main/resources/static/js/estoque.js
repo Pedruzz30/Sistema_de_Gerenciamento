@@ -31,7 +31,39 @@ async function iniciarEstoqueSPA() {
 }
 
 window.StockOSPages = window.StockOSPages || {};
-window.StockOSPages.estoque = { mount: iniciarEstoqueSPA };
+window.StockOSPages.estoque = {
+  mount: iniciarEstoqueSPA,
+  activate() {
+    Object.assign(window, {
+      carregarProdutos,
+      cadastrarProduto,
+      atualizarProduto,
+      confirmarMovimentacao,
+      renderTabela,
+      nivelLabel,
+      getProdutosVisiveis,
+      categoriaLabel,
+      renderCategoriaBadge,
+      calcularMetricasCategorias,
+      renderResumoCategorias,
+      renderGraficoCategorias,
+      atualizarEstadoExportacao,
+      exportarCsvProdutos,
+      preencherSelectCategorias,
+      filtrar,
+      filtrarCategoria,
+      filtrarProdutos,
+      abrirModalCadastro,
+      abrirModalEdicao,
+      abrirModalMov,
+      fecharModal,
+      fecharModalSeClicouFora,
+      setTipo,
+      limparFormCadastro,
+      mostrarAlertaModal,
+    });
+  }
+};
 document.addEventListener('DOMContentLoaded', iniciarEstoqueSPA);
 
 async function carregarProdutos() {

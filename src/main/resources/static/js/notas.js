@@ -1,15 +1,19 @@
+/* SPA-isolated screen: notas. Retains direct HTML navigation. */
+(() => {
+'use strict';
 let fornecedoresAtivos = [];
 let todosOsProdutos = [];
 let notaAtual = null;
 let stepAtual = 1;
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function stockOSMount_notas() {
+  if (typeof paginaAtual === 'function' && paginaAtual() !== 'notas') return;
   await Promise.all([
-    carregarNotas(),
-    carregarFornecedores(),
-    carregarTodosProdutos()
-  ]);
-});
+      carregarNotas(),
+      carregarFornecedores(),
+      carregarTodosProdutos()
+    ]);
+}
 
 async function carregarNotas() {
   try {
@@ -647,3 +651,55 @@ function limparAlert(id) {
     el.className = 'alert-modal';
   }
 }
+
+/* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+window.StockOSPages = window.StockOSPages || {};
+window.StockOSPages.notas = {
+  mount: stockOSMount_notas,
+  activate() {
+    Object.assign(window, {
+    carregarNotas,
+    carregarFornecedores,
+    carregarTodosProdutos,
+    renderTabelaNotas,
+    avancarStep1,
+    prepararStep2,
+    fornecedorAtual,
+    produtoVinculadoAoFornecedor,
+    formatarProdutoBusca,
+    atualizarAutocompleteProdutos,
+    resolveProdutoSelecionado,
+    toggleNovoProduto,
+    atualizarAvisoVinculo,
+    renderItensStep2,
+    limparFormularioNovoProduto,
+    limparFormularioItem,
+    construirNovoProdutoPayload,
+    adicionarItem,
+    avancarStep2,
+    descartarRascunho,
+    resetWizard,
+    renderItensStep3,
+    avancarStep3,
+    renderStep4,
+    avancarStep4,
+    irParaStep,
+    abrirAba,
+    iniciarNovaNota,
+    confirmarCancelarNota,
+    verDetalhe,
+    pagarNota,
+    abrirModal,
+    fecharModal,
+    fecharModalSeClicouFora,
+    mostrarAlert,
+    limparAlert,
+  });
+  }
+};
+if (/^\/notas(?:\.html)?\/?$/.test(location.pathname)) {
+  window.StockOSPages.notas.activate();
+}
+document.addEventListener('DOMContentLoaded', stockOSMount_notas);
+
+})();

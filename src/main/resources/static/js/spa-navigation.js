@@ -8,14 +8,21 @@
 
   const ROUTES = {
     dashboard: { href: '/dashboard.html', script: '/js/dashboard.js', css: '/css/dashboard-refinement.css', bodyClass: 'dashboard-page' },
-    estoque: { href: '/estoque.html', script: '/js/estoque.js', css: '/css/estoque-refinement.css', bodyClass: 'estoque-page' }
+    estoque: { href: '/estoque.html', script: '/js/estoque.js', css: '/css/estoque-refinement.css', bodyClass: 'estoque-page' },
+    cardapio: { href: '/cardapio.html', script: '/js/cardapio.js', css: '/css/cardapio-refinement.css', bodyClass: 'cardapio-page' },
+    fornecedores: { href: '/fornecedores.html', script: '/js/fornecedores.js', css: '/css/fornecedores-refinement.css', bodyClass: 'fornecedores-page' },
+    notas: { href: '/notas.html', script: '/js/notas.js', css: '/css/notas-refinement.css', bodyClass: 'notas-page' },
+    caixas: { href: '/caixas.html', script: '/js/caixas.js', css: '/css/caixas-refinement.css', bodyClass: 'caixas-page' },
+    cotacoes: { href: '/cotacoes.html', script: '/js/cotacoes.js', css: '/css/cotacoes-refinement.css', bodyClass: 'cotacoes-page' },
+    funcionarios: { href: '/funcionarios.html', script: '/js/funcionarios.js', css: '/css/funcionarios-refinement.css', bodyClass: 'funcionarios-page' },
+    logs: { href: '/logs.html', script: '/js/logs.js', css: '/css/logs-refinement.css', bodyClass: 'logs-page' },
   };
 
   function routeFromUrl(href) {
     let url;
     try { url = new URL(href, location.href); } catch { return null; }
     if (url.origin !== location.origin) return null;
-    const match = /^\/(dashboard|estoque)(?:\.html)?\/?$/.exec(url.pathname);
+    const match = /^\/(dashboard|estoque|cardapio|fornecedores|notas|caixas|cotacoes|funcionarios|logs)(?:\.html)?\/?$/.exec(url.pathname);
     return match ? match[1] : null;
   }
 
@@ -42,10 +49,11 @@
     const parts = locateVisibleParts();
     const entry = pages.get(active) || {
       title: document.title,
-      modals: Array.from(document.body.children).filter(el =>
-        el.classList && el.classList.contains('modal-overlay')),
       ...parts
     };
+    // Include dialogs created dynamically (e.g. PDV configuration).
+    entry.modals = Array.from(document.body.children).filter(el =>
+      el.classList && el.classList.contains('modal-overlay'));
     entry.scrollY = window.scrollY;
     pages.set(active, entry);
     return entry;
@@ -71,27 +79,44 @@
     });
   }
 
-  function ensureScript(route) {
-    if (window.StockOSPages && window.StockOSPages[route]) return Promise.resolve();
-    if (loading.has(route)) return loading.get(route);
-    const spec = ROUTES[route];
+  // Every route is a standalone HTML page as well as a SPA view.
+  // Preload demo API shims before the route controller executes.
+  function loadScript(src) {
+    if (loading.has(src)) return loading.get(src);
     const script = document.createElement('script');
-    script.src = spec.script;
-    script.async = true;
-    const promise = new Promise((resolve, reject) => {
-      script.onload = () => {
-        if (window.StockOSPages && window.StockOSPages[route]) resolve();
-        else reject(new Error('Módulo de tela não iniciou: ' + route));
-      };
-      script.onerror = () => reject(new Error('Script indisponível: ' + route));
+    script.src = src;
+    script.async = false;
+    const promise = new Promise((resolve,reject) => {
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Script indisponível: '+src));
       document.body.appendChild(script);
     }).catch(error => {
+      loading.delete(src);
       script.remove();
-      loading.delete(route);
       throw error;
     });
-    loading.set(route, promise);
+    loading.set(src,promise);
     return promise;
+  }
+
+  async function ensureScript(route) {
+    if (window.StockOsPreview && window.StockOsPreview.mode === 'mock') {
+      const demo = {
+        notas: '/js/preview-notes.js',
+        cardapio: '/js/preview-cardapio.js',
+        caixas: '/js/preview-pdv.js'
+      };
+      if (demo[route]) await loadScript(demo[route]);
+    }
+    if (!window.StockOSPages || !window.StockOSPages[route]) {
+      await loadScript(ROUTES[route].script);
+    }
+    if (route === 'caixas' && !window.StockOSPDV) {
+      await loadScript('/js/pdv.js');
+    }
+    if (!window.StockOSPages || !window.StockOSPages[route]) {
+      throw new Error('Módulo de tela não iniciou: ' + route);
+    }
   }
 
   async function prepare(route) {
@@ -130,6 +155,7 @@
     document.body.classList.remove('sidebar-open');
     document.querySelectorAll('.modal-overlay.open, .sidebar-overlay.open')
       .forEach(el => el.classList.remove('open'));
+    document.getElementById('stockos-preview-pdv')?.remove();
     const sidebar = document.querySelector('.app > .sidebar');
     if (sidebar) sidebar.classList.remove('open');
     const toggle = header.querySelector('.sidebar-toggle');
@@ -171,6 +197,14 @@
     }
 
     const lifecycle = window.StockOSPages && window.StockOSPages[route];
+    if (lifecycle && typeof lifecycle.activate === 'function') lifecycle.activate();
+    // PDV is an additional module within Caixas and depends on its helpers.
+    if (route === 'caixas' && window.StockOSPDV) window.StockOSPDV.activate();
+    // Preview-only behaviour: notes disclaimer and fake checkout are mounted
+    // after the new document's content becomes visible.
+    if (window.StockOSPreviewHooks && typeof window.StockOSPreviewHooks[route] === 'function') {
+      window.StockOSPreviewHooks[route]();
+    }
     if (lifecycle && typeof lifecycle.mount === 'function') {
       Promise.resolve(lifecycle.mount()).catch(error =>
         console.error('StockOS: erro ao iniciar '+route, error));
@@ -188,12 +222,13 @@
     if (!target) return fallback(href);
     if (target === active) return;
 
-    // Authorization still lives in the backend, and full navigation remains
-    // available if the current user cannot open a screen.
-    if (target === 'estoque' &&
-        typeof temPermissao === 'function' &&
-        typeof PERMISSOES !== 'undefined' &&
-        !temPermissao(PERMISSOES.VER_ESTOQUE)) return fallback(href);
+    // Enforce the same page permissions on client transitions; Spring remains
+    // authoritative on every API call and on full HTML navigation.
+    if (typeof PERMISSOES_POR_PAGINA !== 'undefined' &&
+        typeof temAlgumaPermissao === 'function') {
+      const required = PERMISSOES_POR_PAGINA[target];
+      if (required && !temAlgumaPermissao(required)) return fallback(href);
+    }
 
     const id = ++navigationId;
     // Do not close in-progress forms until the destination is ready.

@@ -1,3 +1,6 @@
+/* SPA-isolated POS module. Its actions are exported only when Caixas is active. */
+(() => {
+'use strict';
 const PDV_CATEGORY_TONES = {
   todos: { icon: 'grid', accent: '#4f46e5', soft: 'rgba(79,70,229,.12)' },
   entradas: { icon: 'plus', accent: '#d97706', soft: 'rgba(217,119,6,.12)' },
@@ -1009,3 +1012,77 @@ function capacidadeDisponivelItem(operacional) {
   if (!capacidades.length) return null;
   return Math.max.apply(null, capacidades);
 }
+window.StockOSPDV = {
+  activate() {
+    Object.assign(window, {
+      abrirPDV,
+      carregarCardapioPDV,
+      carregarVariacoesItemPDV,
+      getCategoriaConfig,
+      getCategoriaByCodigo,
+      countItensCategoria,
+      renderTabsCategorias,
+      selecionarCategoriaPDV,
+      getBuscaAtualPDV,
+      itemCombinaBusca,
+      itensFiltradosPDV,
+      renderCardapio,
+      getBadgeTipo,
+      getStatusItem,
+      renderCardProduto,
+      filtrarProdutosPDV,
+      adicionarAoCarrinho,
+      selecionarVariacaoPadraoPDV,
+      abrirSeletorVariacaoPDV,
+      selecionarVariacaoConfiguracaoPDV,
+      abrirConfiguracaoItemPDV,
+      selecoesPadraoConfiguracaoPDV,
+      selecoesDoItemVendaPDV,
+      renderConfiguracaoPDV,
+      renderGrupoConfiguracaoPDV,
+      renderOpcaoConfiguracaoPDV,
+      selecaoAtualPDV,
+      grupoConfiguracaoPDV,
+      opcaoConfiguracaoPDV,
+      motivoOpcaoPDV,
+      selecionarOpcaoPDV,
+      alterarQuantidadeOpcaoPDV,
+      alterarQuantidadeConfiguracaoPDV,
+      alterarObservacaoConfiguracaoPDV,
+      trocarVariacaoConfiguracaoPDV,
+      validarConfiguracaoLocalPDV,
+      validarConfiguracaoVisualPDV,
+      atualizarResumoConfiguracaoPDV,
+      confirmarConfiguracaoPDV,
+      payloadItemVendaPDV,
+      validarConfiguracaoBackendPDV,
+      persistirItemConfiguradoPDV,
+      registrarPayloadNovoItemPDV,
+      recarregarVendaAtualPDV,
+      itensAtivosVendaPDV,
+      editarItemCarrinhoPDV,
+      removerItemCompleto,
+      limparCarrinho,
+      quantidadeItemNoCarrinhoPDV,
+      resumoModificadoresCarrinhoPDV,
+      mensagemValidacaoPDV,
+      variacaoDisponivelPDV,
+      gerarIdempotencyKeyPDV,
+      garantirModalConfiguracaoPDV,
+      calcularTotalCarrinho,
+      renderCarrinho,
+      finalizarVendaPDV,
+      formatarMoedaPDV,
+      recarregarDisponibilidadePDV,
+      contextoOperacionalPDV,
+      urlDisponibilidadePDV,
+      normalizarDisponibilidadePDV,
+      itemDisponivelParaSelecaoPDV,
+      resumoMotivoIndisponibilidade,
+      primeiroAlertaDisponibilidade,
+      capacidadeDisponivelItem,
+    });
+  }
+};
+if (/^\/caixas(?:\.html)?\/?$/.test(location.pathname)) window.StockOSPDV.activate();
+})();
