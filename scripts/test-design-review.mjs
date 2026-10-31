@@ -33,8 +33,8 @@ function run(query, previouslyEnabled=false) {
   return {links,storage,window,events};
 }
 let result=run('');
-assert.equal(result.links.length,0,'Default must NOT affect classic CSS');
-assert.equal(result.window.StockOsDesignReview.mode,'original');
+assert.equal(result.links.length,files.length,'Default must enable updated CSS');
+assert.equal(result.window.StockOsDesignReview.mode,'novo');
 result=run('?design=novo');
 assert.equal(result.links.length,files.length);
 assert.deepEqual(result.links.map(l=>l.href),files.map(n=>'/css/'+n+'.css'));
@@ -45,7 +45,9 @@ assert.equal(result.window.StockOsDesignReview.mode,'novo');
 result=run('?design=original',true);
 assert.equal(result.links.length,0);
 assert.equal(result.window.StockOsDesignReview.mode,'original');
-assert.equal(result.storage.has('stockos-preview-design-review-v1'),false);
+assert.equal(result.storage.get('stockos-preview-design-review-v1'),'original');
+result=run('',false);
+assert.equal(result.window.StockOsDesignReview.mode,'novo');
 const javaLogin=await readFile('src/main/resources/static/login.html','utf8');
 assert.doesNotMatch(javaLogin,/preview-design-review/);
-console.log('PASS design preview: opt-in, stylesheet order, persistence, revert, Java isolation');
+console.log('PASS design preview: updated default, stylesheet order, persistence, revert, Java isolation');
