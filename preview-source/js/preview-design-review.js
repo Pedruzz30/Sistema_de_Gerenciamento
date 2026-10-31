@@ -31,6 +31,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Refinamento específico do Dashboard, após a paleta restaurada.
+    if (/\/(?:dashboard|dashboard\.html)$/.test(location.pathname)) {
+      const sheet = document.createElement('link');
+      sheet.rel = 'stylesheet';
+      sheet.href = '/css/dashboard-refinement.css';
+      sheet.dataset.stockosDashboardRefinement = 'true';
+      document.head.appendChild(sheet);
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {

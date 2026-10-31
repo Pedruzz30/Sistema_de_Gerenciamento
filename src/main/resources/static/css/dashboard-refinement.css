@@ -1,0 +1,454 @@
+/* StockOS — refinamento visual exclusivo do Dashboard
+   Aplicar depois de app.css e, na prévia, depois de palette-original.css.
+   Adicionar class="dashboard-page" ao <body> de dashboard.html.
+*/
+
+/* Corrige o grid global de duas linhas: o Dashboard possui topbar DENTRO de .main. */
+body.dashboard-page .app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w, 250px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "sidebar main";
+  min-height: 100dvh;
+}
+body.dashboard-page .sidebar {
+  grid-area: sidebar;
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 0;
+  padding: 16px 12px 14px;
+  overflow-y: auto;
+  box-shadow: none;
+}
+body.dashboard-page .sidebar-brand { margin-bottom: 12px; padding: 6px 8px 16px; }
+body.dashboard-page .sidebar .nav { gap: 3px; }
+body.dashboard-page .sidebar .nav-item {
+  min-height: 40px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  font-weight: 550;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+body.dashboard-page .sidebar .nav-item:hover { transform: none; }
+body.dashboard-page .sidebar .nav-item.active {
+  box-shadow: none;
+  border-color: var(--accent-border, var(--rule-strong));
+}
+body.dashboard-page .sidebar .user-chip {
+  padding: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+body.dashboard-page .main.page {
+  display: flex;
+  flex-direction: column;
+  grid-area: main;
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+/* Cabeçalho integrado ao dashboard, sem aparência de card flutuante. */
+body.dashboard-page .topbar.header {
+  position: relative;
+  top: auto;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 94px;
+  padding: 20px clamp(20px, 2.3vw, 36px) 18px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+body.dashboard-page .topbar-left { min-width: 0; gap: 5px; }
+body.dashboard-page .crumbs {
+  gap: 7px;
+  font-size: 11px;
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+body.dashboard-page .crumbs .cur { color: var(--ink-2); font-weight: 650; }
+body.dashboard-page .page-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: clamp(21px, 1.7vw, 26px);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+body.dashboard-page .page-sub {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+body.dashboard-page .topbar-right { flex: 0 0 auto; gap: 8px; }
+body.dashboard-page .live-pill {
+  min-height: 30px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 650;
+  box-shadow: none;
+}
+body.dashboard-page .main-body.content {
+  width: 100%;
+  max-width: 1680px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 20px clamp(20px, 2.3vw, 36px) 40px;
+}
+
+/* KPIs: densidade maior, números legíveis e hierarquia consistente. */
+body.dashboard-page .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 20px;
+}
+body.dashboard-page .summary-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 126px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgb(27 24 21 / 0.035) !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+body.dashboard-page .summary-card::before,
+body.dashboard-page .card::before { content: none; }
+body.dashboard-page .summary-card--link:hover {
+  transform: none;
+  border-color: var(--rule-strong) !important;
+  box-shadow: 0 6px 18px rgb(27 24 21 / 0.07) !important;
+}
+body.dashboard-page .summary-card--link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+body.dashboard-page .summary-card-top {
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+body.dashboard-page .summary-label {
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: 0.075em;
+}
+body.dashboard-page .summary-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  box-shadow: none;
+}
+body.dashboard-page .summary-icon .icon-svg,
+body.dashboard-page .summary-icon svg { width: 16px; height: 16px; }
+body.dashboard-page .summary-value {
+  margin: 0 0 6px;
+  font-family: var(--font-ui);
+  font-size: clamp(25px, 2vw, 31px);
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+body.dashboard-page .summary-trend {
+  margin: auto 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+body.dashboard-page .summary-card__arrow {
+  top: 12px;
+  right: 12px;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* Tabs: navegação plana e clara em vez de botão flutuante. */
+body.dashboard-page .dashboard-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow-x: auto;
+}
+body.dashboard-page .dashboard-tabs .tab-btn {
+  flex: 0 0 auto;
+  min-height: 43px;
+  margin: 0 0 -1px;
+  padding: 10px 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+body.dashboard-page .dashboard-tabs .tab-btn:hover {
+  color: var(--ink);
+  background: transparent;
+}
+body.dashboard-page .dashboard-tabs .tab-btn.active {
+  color: var(--ink);
+  font-weight: 750;
+  border-bottom-color: var(--accent);
+  background: transparent;
+  box-shadow: none;
+}
+body.dashboard-page .dashboard-tabs .tab-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* Visão Geral: painéis com espaçamento e densidade unificados. */
+body.dashboard-page .main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 0.8fr);
+  align-items: start;
+  gap: 14px;
+  min-width: 0;
+}
+body.dashboard-page .main-grid > .stack { min-width: 0; gap: 14px; }
+body.dashboard-page .main-grid .card,
+body.dashboard-page #tabpanel-graficos > .section-grid-two .card,
+body.dashboard-page .profitability-section {
+  min-width: 0;
+  padding: 18px 20px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgb(27 24 21 / 0.035) !important;
+}
+body.dashboard-page .card-header {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+body.dashboard-page .card-title {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+body.dashboard-page .card-badge {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Estado vazio de movimentações mais curto e informativo. */
+body.dashboard-page #mov-list .empty-state {
+  justify-content: center;
+  min-height: 130px;
+  padding: 18px;
+  gap: 7px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 10px;
+  background: var(--paper-sunk);
+}
+body.dashboard-page #mov-list .empty-state__icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 0;
+  border-radius: 10px;
+}
+body.dashboard-page #mov-list .empty-state__title {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+body.dashboard-page #mov-list .empty-state__copy {
+  max-width: 48ch;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Alertas em duas linhas para evitar rótulos comprimidos. */
+body.dashboard-page #alerta-list { gap: 8px; }
+body.dashboard-page #alerta-list .alert-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 9px;
+  min-height: 49px;
+  padding: 10px 11px;
+  border-radius: 9px;
+  transition: none;
+}
+body.dashboard-page #alerta-list .alert-item:hover { transform: none; }
+body.dashboard-page #alerta-list .alert-name {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+body.dashboard-page #alerta-list .alert-dot { width: 7px; height: 7px; }
+body.dashboard-page #alerta-list .alert-qty {
+  color: var(--ink-2);
+  font-size: 11px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+body.dashboard-page #alerta-list .alert-level {
+  grid-column: 2 / -1;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.065em;
+  line-height: 1;
+  text-align: right;
+}
+
+/* Financeiro: leitura rápida e melhor equilíbrio entre valor e rótulo. */
+body.dashboard-page .financial-grid { gap: 10px; margin-bottom: 16px; }
+body.dashboard-page .financial-grid .fin-card {
+  min-width: 0;
+  min-height: 90px;
+  padding: 15px 12px;
+  border-radius: 10px;
+  text-align: left;
+}
+body.dashboard-page .fin-label {
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.065em;
+}
+body.dashboard-page .fin-value {
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: clamp(18px, 1.5vw, 23px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+body.dashboard-page #section-financeiro .card-header--subtle { margin: 4px 0 10px; }
+body.dashboard-page .caixa-list,
+body.dashboard-page .mov-list { gap: 8px; }
+body.dashboard-page .caixa-item,
+body.dashboard-page .mov-item {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 9px;
+}
+body.dashboard-page .caixa-name,
+body.dashboard-page .mov-produto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+body.dashboard-page .caixa-valor,
+body.dashboard-page .mov-time,
+body.dashboard-page .mov-qty {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+body.dashboard-page .section-grid-two {
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.85fr);
+  align-items: start;
+  gap: 14px;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+body.dashboard-page .profitability-section { margin-top: 0; }
+
+@media (max-width: 1250px) {
+  body.dashboard-page .main-grid,
+  body.dashboard-page .section-grid-two { grid-template-columns: minmax(0, 1fr); }
+  body.dashboard-page .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  body.dashboard-page .app,
+  body.dashboard-page .app.is-collapsed {
+    grid-template-areas: "main";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  body.dashboard-page .sidebar {
+    grid-area: auto;
+    grid-row: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(var(--sidebar-w, 250px), calc(100vw - 36px));
+    height: 100dvh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    box-shadow: none;
+  }
+  body.dashboard-page .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 18px 0 35px rgb(0 0 0 / 0.18);
+  }
+  body.dashboard-page .main.page { grid-area: main; grid-column: 1; grid-row: 1; }
+}
+@media (max-width: 640px) {
+  body.dashboard-page .topbar.header {
+    min-height: 86px;
+    padding: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  body.dashboard-page .topbar-right { width: auto; flex-direction: row; align-items: center; }
+  body.dashboard-page .live-pill { padding: 5px 9px; font-size: 10px; }
+  body.dashboard-page .main-body.content { padding: 16px 14px 28px; }
+  body.dashboard-page .summary-grid { gap: 10px; margin-bottom: 16px; }
+  body.dashboard-page .summary-card { min-height: 115px; padding: 13px; }
+  body.dashboard-page .summary-label { font-size: 9px; }
+  body.dashboard-page .summary-value { font-size: clamp(21px, 5vw, 26px); }
+  body.dashboard-page .main-grid .card,
+  body.dashboard-page #tabpanel-graficos > .section-grid-two .card,
+  body.dashboard-page .profitability-section { padding: 16px; }
+  body.dashboard-page .financial-grid { grid-template-columns: 1fr; }
+  body.dashboard-page .financial-grid .fin-card { min-height: 74px; }
+}
+@media (max-width: 420px) {
+  body.dashboard-page .summary-grid { grid-template-columns: minmax(0, 1fr); }
+  body.dashboard-page .topbar-right { width: 100%; justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.dashboard-page .sidebar,
+  body.dashboard-page .summary-card,
+  body.dashboard-page .sidebar .nav-item { transition: none; }
+}
