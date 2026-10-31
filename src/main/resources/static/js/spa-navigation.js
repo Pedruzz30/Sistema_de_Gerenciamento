@@ -35,6 +35,7 @@
   if (!header) return;
   const pages = new Map();
   const loading = new Map();
+  const preparing = new Map();
   let navigationId = 0;
 
   function locateVisibleParts() {
@@ -121,6 +122,10 @@
 
   async function prepare(route) {
     if (pages.has(route)) return pages.get(route);
+    // Hover prefetch and a quick click must share the same request.
+    if (preparing.has(route)) return preparing.get(route);
+    const pending = (async () => {
+    if (pages.has(route)) return pages.get(route);
     const spec = ROUTES[route];
     const response = await fetch(spec.href, {
       headers: { Accept: 'text/html' },
@@ -149,6 +154,9 @@
     };
     pages.set(route, entry);
     return entry;
+    })().finally(() => preparing.delete(route));
+    preparing.set(route, pending);
+    return pending;
   }
 
   function clearOpenOverlays() {
@@ -220,7 +228,10 @@
   async function navigate(href, mode = 'push') {
     const target = routeFromUrl(href);
     if (!target) return fallback(href);
-    if (target === active) return;
+    if (target === active) {
+      ++navigationId; // invalidate a stale in-flight navigation (Back/Forward race)
+      return;
+    }
 
     // Enforce the same page permissions on client transitions; Spring remains
     // authoritative on every API call and on full HTML navigation.
