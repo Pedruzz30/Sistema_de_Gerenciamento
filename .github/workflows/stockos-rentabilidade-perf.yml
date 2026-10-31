@@ -31,6 +31,9 @@ jobs:
       DB_URL: jdbc:postgresql://localhost:5432/stockos_ci
       DB_USERNAME: postgres
       DB_PASSWORD: stockos_ci_only
+      STOCKOS_TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/stockos_ci
+      STOCKOS_TEST_DB_USERNAME: postgres
+      STOCKOS_TEST_DB_PASSWORD: stockos_ci_only
 
     steps:
       - uses: actions/checkout@v4

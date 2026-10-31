@@ -13,7 +13,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
-import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -151,19 +150,29 @@ class Fase46FlywayMigrationIntegrationTest {
     }
 
     private static String jdbcUrl() {
-        return System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://localhost:5432/sistema_gerenciamento");
+        String url = System.getenv().getOrDefault(
+                "STOCKOS_TEST_DB_URL", "jdbc:postgresql://127.0.0.1:5433/stockos_test");
+        if (!url.startsWith("jdbc:postgresql://")) {
+            throw new IllegalStateException("STOCKOS_TEST_DB_URL deve ser uma URL JDBC PostgreSQL.");
+        }
+        URI uri = URI.create(url.substring("jdbc:".length()));
+        String host = uri.getHost();
+        if (!"localhost".equalsIgnoreCase(host) && !"127.0.0.1".equals(host)) {
+            throw new IllegalStateException("Testes de migrations exigem PostgreSQL local, nunca Supabase Cloud.");
+        }
+        return url;
     }
 
     private static String dbUser() {
-        return System.getenv().getOrDefault("DB_USERNAME", "postgres");
+        return System.getenv().getOrDefault("STOCKOS_TEST_DB_USERNAME", "stockos_local");
     }
 
     private static String dbPassword() {
-        String env = System.getenv("DB_PASSWORD");
-        if (env != null) {
-            return env;
+        String password = System.getenv("STOCKOS_TEST_DB_PASSWORD");
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("Configure STOCKOS_TEST_DB_PASSWORD com a senha do banco Docker de testes.");
         }
-        return propriedadesLocais().getProperty("DB_PASSWORD", "");
+        return password;
     }
 
     private static String adminUrl() {
@@ -179,14 +188,4 @@ class Fase46FlywayMigrationIntegrationTest {
 
     private record DatabaseTarget(String dbName, String url, String user, String password) {}
 
-    private static Properties propriedadesLocais() {
-        Properties properties = new Properties();
-        try (java.io.InputStream in = java.nio.file.Files.newInputStream(
-                java.nio.file.Path.of("src", "main", "resources", "application-local.properties"))) {
-            properties.load(in);
-        } catch (Exception ignored) {
-            // application-local.properties e opcional.
-        }
-        return properties;
-    }
 }

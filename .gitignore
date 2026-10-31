@@ -11,6 +11,8 @@ target/
 
 # Local environment and Spring overrides
 .env
+.env.*
+!.env.example
 src/main/resources/application-local.properties
 
 # Claude / configs locais
