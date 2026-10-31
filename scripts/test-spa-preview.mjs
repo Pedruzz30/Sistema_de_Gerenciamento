@@ -52,10 +52,10 @@ for (const route of ["cardapio","fornecedores","notas","caixas","cotacoes","func
   execFileSync(process.execPath,['--check','dist-preview/js/'+route+'.js'],{stdio:'inherit'});
 }
 const pdv = await readFile('dist-preview/js/pdv.js','utf8');
-assert.match(pdv,/window\\.StockOSPDV/);
+assert.match(pdv,/window\.StockOSPDV/);
 execFileSync(process.execPath,['--check','dist-preview/js/pdv.js'],{stdio:'inherit'});
 const demo = await readFile('dist-preview/js/preview-mock.js','utf8');
 for (const route of ["dashboard","estoque","cardapio","fornecedores","notas","caixas","cotacoes","funcionarios","logs"]) assert.match(demo,new RegExp(route));
-assert.match(await readFile('dist-preview/js/preview-notes.js','utf8'),/StockOSPreviewHooks\\.notas/);
-assert.match(await readFile('dist-preview/js/preview-pdv.js','utf8'),/StockOSPreviewHooks\\.caixas/);
+assert.match(await readFile('dist-preview/js/preview-notes.js','utf8'),/StockOSPreviewHooks\.notas/);
+assert.match(await readFile('dist-preview/js/preview-pdv.js','utf8'),/StockOSPreviewHooks\.caixas/);
 console.log('PASS SPA: 9 routes, modular controllers, POS bridge, mocks, fallback and syntax');
