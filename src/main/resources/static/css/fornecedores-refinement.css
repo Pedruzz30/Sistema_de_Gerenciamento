@@ -1,0 +1,683 @@
+/*
+ * StockOS — Fornecedores refinement
+ * Scoped to body.fornecedores-page to protect other screens.
+ * Loaded after palette-original.css in the Netlify design preview.
+ */
+
+/* --- Application frame: remove the unused topbar grid track --- */
+body.fornecedores-page .app {
+  display: grid;
+  grid-template-areas: "sidebar main";
+  grid-template-columns: var(--sidebar-w, 250px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+body.fornecedores-page .sidebar {
+  grid-area: sidebar;
+  grid-row: 1;
+  grid-column: 1;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 0;
+  padding: 16px 12px 14px;
+  overflow-y: auto;
+  box-shadow: none;
+}
+
+body.fornecedores-page .sidebar-brand {
+  padding: 6px 8px 16px;
+  margin-bottom: 12px;
+}
+
+body.fornecedores-page .nav { gap: 3px; }
+body.fornecedores-page .nav-item {
+  min-height: 40px;
+  padding: 10px 11px;
+  border-radius: 10px;
+}
+body.fornecedores-page .nav-item.active { box-shadow: none; }
+
+body.fornecedores-page .sidebar .user-chip {
+  padding: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+body.fornecedores-page .main.page {
+  grid-area: main;
+  grid-row: 1;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100dvh;
+  width: 100%;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+body.fornecedores-page .topbar.header {
+  position: relative;
+  top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 94px;
+  padding: 20px clamp(20px, 2.3vw, 36px) 18px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+body.fornecedores-page .topbar-left { min-width: 0; gap: 5px; }
+body.fornecedores-page .crumbs { gap: 7px; font-size: 11px; letter-spacing: .015em; }
+body.fornecedores-page .crumbs .cur { font-weight: 650; color: var(--ink-2); }
+
+body.fornecedores-page .page-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(21px, 1.7vw, 26px);
+  font-weight: 750;
+  letter-spacing: -.045em;
+  line-height: 1.2;
+}
+
+body.fornecedores-page .page-sub {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+body.fornecedores-page .topbar-right { flex: 0 0 auto; }
+body.fornecedores-page .topbar-right .btn {
+  min-height: 38px;
+  padding: 9px 15px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+body.fornecedores-page .main-body.content {
+  width: 100%;
+  max-width: 1680px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 20px clamp(20px, 2.3vw, 36px) 40px;
+}
+
+/* --- KPI summary: avoid tall cards containing three lines of content --- */
+body.fornecedores-page #fornecedor-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+body.fornecedores-page #fornecedor-summary .page-summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 108px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(27, 24, 21, .035) !important;
+}
+
+body.fornecedores-page #fornecedor-summary .page-summary-card::before {
+  content: none;
+}
+
+body.fornecedores-page #fornecedor-summary .page-summary-label {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: .07em;
+}
+
+body.fornecedores-page #fornecedor-summary .page-summary-value {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(25px, 2vw, 31px);
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+body.fornecedores-page #fornecedor-summary .page-summary-sub {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* --- Search and filter toolbar: one coherent horizontal control row --- */
+body.fornecedores-page .toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 11px 13px;
+  margin: 0 0 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow: none;
+}
+
+body.fornecedores-page .toolbar .search-wrap {
+  display: flex;
+  flex: 1 1 290px;
+  width: auto;
+  min-width: 210px;
+  max-width: 430px;
+}
+
+body.fornecedores-page .toolbar .input-search {
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--paper-raised);
+  font-size: 12px;
+}
+
+body.fornecedores-page .toolbar .input-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+body.fornecedores-page .toolbar .seg.filter-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px;
+  margin-left: auto;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--paper-sunk);
+  overflow-x: auto;
+}
+
+body.fornecedores-page .toolbar .filter-btn {
+  flex: 0 0 auto;
+  min-height: 31px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  box-shadow: none;
+  transform: none;
+}
+
+body.fornecedores-page .toolbar .filter-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--paper-raised);
+}
+
+body.fornecedores-page .toolbar .filter-btn.active {
+  border-color: var(--accent-border, var(--rule-strong));
+  background: var(--accent-soft);
+  color: var(--accent-ink, var(--ink));
+  box-shadow: none;
+}
+
+/* --- Supplier table: clearer scanning, compact actions and no forced height --- */
+body.fornecedores-page .table-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(27, 24, 21, .035) !important;
+}
+
+body.fornecedores-page .table-card .table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 62px;
+  padding: 15px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-sunk);
+}
+
+body.fornecedores-page .table-card .table-title {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+body.fornecedores-page .table-card .table-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+body.fornecedores-page .table-card .table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper-raised);
+}
+
+body.fornecedores-page #tabela-fornecedores {
+  min-width: 0;
+}
+
+body.fornecedores-page .table-card .table {
+  width: 100%;
+  min-width: 890px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+body.fornecedores-page .table-card .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-sunk);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+
+body.fornecedores-page .table-card .table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body.fornecedores-page .table-card .table tbody tr:hover td {
+  background: var(--paper-sunk);
+}
+
+body.fornecedores-page .table-card .produto-nome {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+body.fornecedores-page .table-card .produto-id {
+  margin-top: 3px;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+body.fornecedores-page .table-card .acoes {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+}
+
+body.fornecedores-page .table-card .btn-acao {
+  min-height: 33px;
+  padding: 7px 11px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+body.fornecedores-page .table-card .btn-acao.saida {
+  color: var(--bad);
+  border-color: var(--bad-border, var(--rule-strong));
+  background: var(--bad-soft);
+}
+
+body.fornecedores-page .table-card .btn-acao.entrada {
+  color: var(--ok);
+  border-color: var(--ok-border, var(--rule-strong));
+  background: var(--ok-soft);
+}
+
+body.fornecedores-page .table-card :is(.btn-acao, .filter-btn):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Dialogs: neutralize compat.css setting max-width:100% on modal children. --- */
+body.fornecedores-page .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(26, 24, 23, .48);
+  backdrop-filter: blur(5px);
+}
+
+body.fornecedores-page .modal-overlay.open { display: flex; }
+
+body.fornecedores-page .modal-overlay > .modal {
+  display: flex;
+  flex: 0 1 520px;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-width: min(520px, 100%) !important;
+  max-height: min(690px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule-strong);
+  border-radius: 16px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 18px 65px rgba(20, 17, 15, .19);
+  animation: none;
+}
+
+body.fornecedores-page #modal-produtos > .modal.modal--narrow {
+  flex-basis: 480px;
+  max-width: min(480px, 100%) !important;
+}
+
+body.fornecedores-page .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 12px;
+  min-height: 62px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+body.fornecedores-page .modal-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+body.fornecedores-page .modal-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 19px;
+}
+
+body.fornecedores-page .modal-close:hover {
+  border-color: var(--rule);
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+body.fornecedores-page .modal-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  padding: 21px 22px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body.fornecedores-page .modal-body > .form-group { margin: 0; }
+
+body.fornecedores-page .modal-body .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.fornecedores-page .modal-body .form-group label {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.45;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+}
+
+body.fornecedores-page .modal-body .form-group :is(input, select, textarea) {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+body.fornecedores-page .modal-body .form-group :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: var(--focus-ring);
+}
+
+body.fornecedores-page .modal-body .produto-info-card {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+body.fornecedores-page .modal-body .itens-nota-list { margin: 0; }
+body.fornecedores-page .modal-body .item-nota-row { gap: 12px; }
+body.fornecedores-page .modal-body .item-nota-nome {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.fornecedores-page .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 13px 22px;
+  min-height: 62px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper-sunk);
+}
+
+body.fornecedores-page .modal-footer > button {
+  min-height: 37px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.fornecedores-page .modal-footer > .btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+body.fornecedores-page .modal-close:focus-visible,
+body.fornecedores-page .modal-footer button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Responsive layouts --- */
+@media (max-width: 1100px) {
+  body.fornecedores-page .table-card .table { min-width: 950px; }
+}
+
+@media (max-width: 980px) {
+  body.fornecedores-page .app,
+  body.fornecedores-page .app.is-collapsed {
+    grid-template-areas: "main";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  body.fornecedores-page .sidebar {
+    grid-area: auto;
+    grid-row: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    width: min(280px, 82vw);
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+  }
+
+  body.fornecedores-page .sidebar.open { transform: translateX(0); }
+
+  body.fornecedores-page .main.page {
+    grid-area: main;
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  body.fornecedores-page .topbar.header {
+    min-height: 86px;
+    padding: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  body.fornecedores-page .topbar-right { width: auto; }
+
+  body.fornecedores-page .main-body.content { padding: 16px 14px 28px; }
+
+  body.fornecedores-page #fornecedor-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  body.fornecedores-page #fornecedor-summary .page-summary-card {
+    min-height: 104px;
+    padding: 13px 15px;
+  }
+
+  body.fornecedores-page .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+  }
+
+  body.fornecedores-page .toolbar .search-wrap {
+    width: 100%;
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+  }
+
+  body.fornecedores-page .toolbar .seg.filter-group {
+    margin-left: 0;
+    width: max-content;
+  }
+
+  body.fornecedores-page .table-card .table-header { padding: 13px 16px; }
+
+  body.fornecedores-page .modal-header,
+  body.fornecedores-page .modal-footer { padding: 13px 16px; }
+
+  body.fornecedores-page .modal-body { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+  body.fornecedores-page .topbar-right { width: 100%; }
+  body.fornecedores-page .topbar-right .btn { width: 100%; }
+
+  body.fornecedores-page #fornecedor-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.fornecedores-page #fornecedor-summary .page-summary-card {
+    min-height: 92px;
+  }
+
+  body.fornecedores-page .modal-overlay { padding: 10px; }
+
+  body.fornecedores-page .modal-overlay > .modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+
+  body.fornecedores-page .modal-footer > button { flex: 1 1 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.fornecedores-page .sidebar,
+  body.fornecedores-page .nav-item,
+  body.fornecedores-page .page-summary-card,
+  body.fornecedores-page .modal { transition: none; animation: none; }
+}

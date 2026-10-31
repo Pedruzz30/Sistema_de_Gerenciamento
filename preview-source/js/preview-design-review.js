@@ -17,6 +17,10 @@
 
   // A página Java carrega o refinamento diretamente; na prévia em modo original
   // retiramos esse link para preservar a comparação visual sem CSS novo.
+  if (!active && /\/(?:fornecedores|fornecedores\.html)$/.test(location.pathname)) {
+    document.querySelectorAll('link[href="/css/fornecedores-refinement.css"]').forEach(link => link.remove());
+  }
+
   if (!active && /\/(?:cardapio|cardapio\.html)$/.test(location.pathname)) {
     document.querySelectorAll('link[href="/css/cardapio-refinement.css"]').forEach(link => link.remove());
   }
@@ -45,6 +49,14 @@
     palette.href = '/css/palette-original.css';
     palette.dataset.stockosPalette = 'original';
     document.head.appendChild(palette);
+    // Fornecedores: refinamento apenas nesta tela, depois da paleta restaurada.
+    if (/\/(?:fornecedores|fornecedores\.html)$/.test(location.pathname)) {
+      const suppliers = document.createElement('link');
+      suppliers.rel = 'stylesheet';
+      suppliers.href = '/css/fornecedores-refinement.css';
+      suppliers.dataset.stockosFornecedoresRefinement = 'true';
+      document.head.appendChild(suppliers);
+    }
     // Cardápio: CSS localizado após a paleta para comparar sem alterar outras telas.
     if (/\/(?:cardapio|cardapio\.html)$/.test(location.pathname)) {
       const menuStyle = document.createElement('link');
