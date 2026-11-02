@@ -99,6 +99,53 @@ class LegacyApiIsolationGateTest {
         verifyNoInteractions(chain);
     }
 
+    @Test
+    void permiteApenasEscritasDeCatalogoJaAuditadas() throws Exception {
+        String tenant = UUID.randomUUID().toString();
+        String base = "/api/v2/estabelecimentos/" + tenant;
+        String[][] allowed = {
+                {"GET", base + "/catalogo/produtos/12"},
+                {"GET", base + "/catalogo/fornecedores"},
+                {"POST", base + "/catalogo/produtos"},
+                {"PATCH", base + "/catalogo/produtos/12/nome"}
+        };
+        for (String[] route : allowed) {
+            MockHttpServletRequest request = request(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            FilterChain chain = mock(FilterChain.class);
+            gate.doFilter(request, response, chain);
+            verify(chain).doFilter(request, response);
+        }
+    }
+
+    @Test
+    void bloqueiaMetodosECaminhosNovosSemRevisaoDeSeguranca() throws Exception {
+        String tenant = UUID.randomUUID().toString();
+        String base = "/api/v2/estabelecimentos/" + tenant;
+        String[][] denied = {
+                {"DELETE", base + "/catalogo/produtos/12"},
+                {"PUT", base + "/catalogo/produtos/12"},
+                {"POST", base + "/catalogo/fornecedores"},
+                {"GET", base + "/catalogo/relatorios"},
+                {"GET", base + "/catalogo/produtos/12/segredos"},
+                {"GET", base + "/catalogo/produtos/12/nome"},
+                {"PATCH", base + "/catalogo/produtos/12/preco"},
+                {"PATCH", base + "/catalogo/produtos/invalido/nome"},
+                {"POST", base + "/estoque/saldos"},
+                {"POST", "/api/auth/me"},
+                {"POST", "/api/auth/config"},
+                {"GET", base + "/catalogo/"}
+        };
+        for (String[] route : denied) {
+            MockHttpServletRequest request = request(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            FilterChain chain = mock(FilterChain.class);
+            gate.doFilter(request, response, chain);
+            assertEquals(403, response.getStatus(), route[0] + " " + route[1]);
+            verifyNoInteractions(chain);
+        }
+    }
+
     private static MockHttpServletRequest request(String method, String path) {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setServletPath(path);
