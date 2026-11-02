@@ -40,6 +40,12 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   enviado em cabeçalhos. Testes unitários cobrem ausência de identidade,
   cabeçalho falso, usuário desativado e ausência de vazamento na resposta.
   Os dados de catálogo são sempre filtrados por loja pelo serviço.
+- `LegacyApiIsolationGate`: em modo `supabase`, retorna 403 para toda API
+  legada por padrão, permitindo apenas configuração/sessão autenticada e o
+  caminho do novo catálogo tenant-aware. Esta camada **não autentica** ninguém:
+  é indispensável integrar a cadeia Spring Security/JWT da PR #31 antes de
+  qualquer uso real. O modo `legacy` permanece exclusivamente local.
+  Testes unitários verificam bloqueio de APIs globais e prefixos falsificados.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
