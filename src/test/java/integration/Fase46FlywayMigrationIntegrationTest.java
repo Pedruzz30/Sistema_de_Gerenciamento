@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fase46FlywayMigrationIntegrationTest {
 
-    private static final String VERSAO_ATUAL_SCHEMA = "20261102.06";
+    private static final String VERSAO_ATUAL_SCHEMA = "20261102.07";
 
     @Test
     void bancoVazioExecutaFlywayEHibernateValidate() throws Exception {
@@ -48,6 +48,8 @@ class Fase46FlywayMigrationIntegrationTest {
                 assertTrue(colunaExiste(st, "nota_fiscal_itens", "estabelecimento_id"));
                 assertTrue(colunaExiste(st, "estoques_produto", "estabelecimento_id"));
                 assertTrue(colunaExiste(st, "movimentos_estoque_decimal", "estabelecimento_id"));
+                assertTrue(colunaExiste(st, "vendas", "estabelecimento_id"));
+                assertTrue(colunaExiste(st, "venda_itens", "estabelecimento_id"));
                 assertEquals(VERSAO_ATUAL_SCHEMA, versaoAtualFlyway(st));
             }
         } finally {
