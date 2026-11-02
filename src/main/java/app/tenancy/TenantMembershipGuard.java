@@ -67,8 +67,8 @@ public class TenantMembershipGuard {
      * of access. The verified user identity must be supplied by the server.
      * Re-run this check at the point of each privileged transaction; a cached
      * browser role is not authoritative.
+     * Explicitly grant only the listed tenant roles; no implicit role elevation.
      */
-    /** Explicitly grant only the listed tenant roles; no implicit role elevation. */
     public void requireAnyRole(UUID estabelecimentoId, long verifiedUsuarioRu, Papel... allowed) {
         Papel current = requireActiveMembership(estabelecimentoId, verifiedUsuarioRu);
         if (allowed == null || allowed.length == 0
