@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fase46FlywayMigrationIntegrationTest {
 
-    private static final String VERSAO_ATUAL_SCHEMA = "20261102.01";
+    private static final String VERSAO_ATUAL_SCHEMA = "20261102.02";
 
     @Test
     void bancoVazioExecutaFlywayEHibernateValidate() throws Exception {
@@ -41,6 +41,8 @@ class Fase46FlywayMigrationIntegrationTest {
                 assertTrue(tabelaExiste(st, "flyway_schema_history"));
                 assertTrue(tabelaExiste(st, "estabelecimentos"));
                 assertTrue(tabelaExiste(st, "usuarios_estabelecimentos"));
+                assertTrue(colunaExiste(st, "produtos", "estabelecimento_id"));
+                assertTrue(colunaExiste(st, "fornecedores", "estabelecimento_id"));
                 assertEquals(VERSAO_ATUAL_SCHEMA, versaoAtualFlyway(st));
             }
         } finally {
@@ -138,6 +140,13 @@ class Fase46FlywayMigrationIntegrationTest {
     private static boolean tabelaExiste(Statement st, String tabela) throws Exception {
         try (ResultSet rs = st.executeQuery(
                 "select exists (select 1 from information_schema.tables where table_schema = current_schema() and table_name = '" + tabela + "')")) {
+            rs.next();
+            return rs.getBoolean(1);
+        }
+    }
+
+    private static boolean colunaExiste(Statement st, String tabela, String coluna) throws Exception {
+        try (ResultSet rs = st.executeQuery("select exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = '" + tabela + "' and column_name = '" + coluna + "')")) {
             rs.next();
             return rs.getBoolean(1);
         }
