@@ -13,3 +13,8 @@ coverage
 backups_auditoria
 *.log
 *.patch
+
+# Never copy machine-specific credentials or property overrides into Docker builds.
+.stockos-local.env
+src/main/resources/application-local.properties
+src/test/resources/application-test-local.properties
