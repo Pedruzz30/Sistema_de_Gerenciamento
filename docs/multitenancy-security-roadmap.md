@@ -73,6 +73,12 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   para `PROPRIETARIO` ou `GERENTE`. Testes negam acesso ao operador, a membros
   de outra loja e a vendas legadas sem estabelecimento. Ainda **não existe
   rota HTTP pública** para estes relatórios.
+- Nova rota read-only `TenantStockController`: GET saldos/movimentos em
+  `/api/v2/estabelecimentos/{id}/estoque`, habilitada somente com JWT
+  verificado pelo filtro da PR #31 e `stockos.auth.mode=supabase`.
+  `LegacyApiIsolationGate` libera **apenas** esses dois GETs de estoque;
+  escrita continua bloqueada. Testes de identidade forjada, usuário inativo,
+  rotas não permitidas e desativação total no modo legado.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
