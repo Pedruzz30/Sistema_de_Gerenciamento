@@ -88,6 +88,13 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   financeiras exigem `PROPRIETARIO`/`GERENTE`, filtram `estabelecimento_id`
   no SQL e validam a loja também no JOIN. Testes impedem acesso cruzado,
   leitura por operador e vazamento de caixas legados.
+- Migration `V20261102_09`: partes da venda, consumos e estornos
+  recebem propriedade de estabelecimento opcional, sem reassociar legado.
+  Triggers e FKs compostas rejeitam produto, item, parte ou movimento de outra
+  loja, omissão do tenant e estorno que não reverta o movimento exato consumido.
+  Testes PostgreSQL cobrem sucesso autorizado e negações entre duas lojas.
+  **Isto não habilita endpoints de finalização/cancelamento** nem substitui
+  limites totais estornáveis, idempotência ou bloqueios transacionais.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
