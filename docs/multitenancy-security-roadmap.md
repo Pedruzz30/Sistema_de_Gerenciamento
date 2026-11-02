@@ -32,6 +32,14 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   produto de outra loja, inclusive tentando omitir `estabelecimento_id`.
   Testes de integração exercitam os dois bloqueios e preservam associações
   legadas integralmente sem proprietário.
+- Primeiro controller HTTP tenant-aware em `TenantCatalogController`, com GET de
+  produtos/fornecedores, POST de produto e PATCH de nome. **Não é registrado
+  no modo legado**: depende da classe de filtro verificado da PR #31 e da
+  propriedade `stockos.auth.mode=supabase`. Lê o atributo de usuário
+  preenchido exclusivamente pelo filtro de autenticação; ignora qualquer RU
+  enviado em cabeçalhos. Testes unitários cobrem ausência de identidade,
+  cabeçalho falso, usuário desativado e ausência de vazamento na resposta.
+  Os dados de catálogo são sempre filtrados por loja pelo serviço.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
@@ -42,9 +50,11 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
    repositórios/controllers **legados continuam globais**. Vendas, notas,
    movimentos de estoque, logs e outras tabelas ainda não receberam
    escopo obrigatório. A coluna antiga `vendas.filial_id` não garante isolamento.
-2. A guarda e o serviço de catálogo seguro **não foram acoplados aos
-   endpoints legados**. **Não se deve ativar multi-tenancy publicamente**;
-   consultas antigas ainda poderiam ignorar `estabelecimento_id`.
+2. A nova API de catálogo tenant-aware não substitui os **endpoints legados**.
+   **Não se deve ativar multi-tenancy publicamente**; as consultas antigas
+   ainda podem ignorar `estabelecimento_id`. O controller novo fica inativo
+   na branch atual, até integrar a PR #31 e validar o filtro JWT real.
+   Nenhuma operação comercial deve depender dele antes dos testes de ponta a ponta.
 3. Próxima etapa: mapear todas as tabelas e suas relações; introduzir
    `estabelecimento_id` obrigatório em operações novas e constraints/FKs
    compostas que impeçam referenciar objetos de outra loja. Planejar a
