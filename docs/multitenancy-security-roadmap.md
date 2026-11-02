@@ -54,6 +54,11 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
 - `SupabaseModeStartupGuard`: impede iniciar a aplicação em modo Supabase se
   o filtro de identidade verificada e a cadeia Spring Security JWT ainda não
   estiverem integrados. Teste garante falha explícita na ausência do filtro.
+- Migration `V20261102_06`: saldos (`estoques_produto`) e movimentos
+  (`movimentos_estoque_decimal`) passam a ter estabelecimento opcional, FKs
+  compostas, triggers contra produto de outra loja e estorno cruzado;
+  propriedade do registro fica imutável. Sem backfill. Testes de banco
+  validam operações autorizadas, cruzamento, omissão de tenant e legado.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
@@ -62,8 +67,9 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
 1. **Ainda não há isolamento de dados operacionais completo**. As colunas
    novas em `produtos`, `fornecedores`, `caixas` e cardápio são anuláveis, e os
    repositórios/controllers **legados continuam globais**. Vendas, notas,
-   movimentos de estoque, logs e outras tabelas ainda não receberam
-   escopo obrigatório. A coluna antiga `vendas.filial_id` não garante isolamento.
+   logs e várias outras tabelas ainda não receberam escopo obrigatório.
+   Saldo e movimento de estoque possuem escopo opcional, mas as rotas
+   legadas ainda não aplicam os filtros de tenant exigidos. A coluna antiga `vendas.filial_id` não garante isolamento.
 2. A nova API de catálogo tenant-aware não substitui os **endpoints legados**.
    **Não se deve ativar multi-tenancy publicamente**; as consultas antigas
    ainda podem ignorar `estabelecimento_id`. O controller novo fica inativo
