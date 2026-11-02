@@ -68,6 +68,11 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   concordar, com chaves compostas e trigger que impede omissões de tenant.
   Testes cobrem associações entre lojas, troca de variação e compatibilidade
   com registros antigos.
+- Serviço interno `TenantScopedSalesService`: busca vendas por loja com
+  filtros SQL obrigatórios, limite de resultados e acesso financeiro somente
+  para `PROPRIETARIO` ou `GERENTE`. Testes negam acesso ao operador, a membros
+  de outra loja e a vendas legadas sem estabelecimento. Ainda **não existe
+  rota HTTP pública** para estes relatórios.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
