@@ -28,6 +28,10 @@ services:
       dockerfile: Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      STOCKOS_AUTH_MODE: "${STOCKOS_AUTH_MODE:-legacy}"
+      STOCKOS_SUPABASE_URL: "${STOCKOS_SUPABASE_URL:-}"
+      STOCKOS_SUPABASE_PUBLISHABLE_KEY: "${STOCKOS_SUPABASE_PUBLISHABLE_KEY:-}"
+      STOCKOS_CORS_ORIGIN: "${STOCKOS_CORS_ORIGIN:-}"
       DB_URL: jdbc:postgresql://db:5432/stockos_dev
       DB_USERNAME: stockos_local
       DB_PASSWORD: "${STOCKOS_DB_PASSWORD:?Configure STOCKOS_DB_PASSWORD em .env}"

@@ -57,7 +57,7 @@ for (const page of pages) {
   html=html.replace(/<link\s+rel="stylesheet"\s+href="\/css\/[a-z-]+-refinement\.css"\s*\/?>/g,'');
   const scripts = previewScriptsFor(page)
     .map(name=>'<script src="/js/'+name+'.js"></script>').join('\n');
-  html=html.replace('</head>', scripts+'\n</head>');
+  html=html.replace('</head>', '<script>window.STOCKOS_PREVIEW = true;</script>\n'+scripts+'\n</head>');
   await writeFile(p,html);
 }
 await writeFile(join(out,'_redirects'), [

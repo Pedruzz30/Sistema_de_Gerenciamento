@@ -44,6 +44,13 @@ Para iniciar também o backend Java local: `docker compose --profile app up -d -
 Não exponha o backend na Internet enquanto o login legado `X-User-RU`
 não for substituído por autenticação verificada e autorização por usuário/tenant.
 
+## Integração Supabase Auth (staging, desligada por padrão)
+
+Veja [docs/supabase-auth-foundation.md](docs/supabase-auth-foundation.md).
+O modo seguro usa JWT Supabase com vinculo explicito ao usuario StockOS,
+mas **ainda nao possui isolamento por estabelecimento**. Nao habilitar em
+producao nem publicar a API sem completar multitenancy.
+
 ## Requisitos
 
 - Java 17 ou superior

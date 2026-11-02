@@ -6,6 +6,7 @@ import service.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.time.Clock;
 import java.time.ZoneId;
@@ -30,6 +31,7 @@ public class AppConfig {
     // ── Repositories ──────────────────────────────────────────────────────────
 
     @Bean
+    @ConditionalOnProperty(name = "stockos.auth.mode", havingValue = "legacy", matchIfMissing = true)
     public Usuario adminSuperior(UsuarioRepository usuarioRepository) {
         popularUsuariosPadrao(usuarioRepository);
         Usuario admin = usuarioRepository.listarTodos().stream()
