@@ -16,16 +16,27 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
 - `TenantMembershipGuard`: exige vínculo, operador e loja ativos. Rejeita ausência
   de vínculo, troca de loja, suspensão, revogação e papel não autorizado.
 - Testes de integração de autorização e constraints do PostgreSQL.
+- Primeira migração **aditiva** de propriedade de catálogo (`V20261102_02`):
+  `estabelecimento_id` anulável em produtos, fornecedores, caixas e cardápio.
+  Registros legados continuam sem dono, sem associação automática.
+- Serviço Java **interno** `TenantScopedCatalogService` para listar, consultar,
+  cadastrar e renomear produtos apenas dentro do tenant verificado. A cláusula
+  SQL filtra pelo estabelecimento inclusive no `UPDATE`; não há endpoint público.
+- Testes de acesso cruzado em produtos, revogação e impossibilidade de modificar
+  registro de outra loja.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
 ## Restrições de segurança e etapas obrigatórias
 
-1. **Ainda não há isolamento de dados operacionais**. `produtos`,
-   `fornecedores`, `caixas`, `vendas`, `notas_fiscais`, logs e outras tabelas
-   continuam globais. A coluna antiga `vendas.filial_id` não garante isolamento.
-2. Esta guarda não foi acoplada aos endpoints legados. **Não se deve ativar
-   multi-tenancy publicamente** apenas por existir uma tabela de vínculos.
+1. **Ainda não há isolamento de dados operacionais completo**. As colunas
+   novas em `produtos`, `fornecedores`, `caixas` e cardápio são anuláveis, e os
+   repositórios/controllers **legados continuam globais**. Vendas, notas,
+   movimentos de estoque, logs e outras tabelas ainda não receberam
+   escopo obrigatório. A coluna antiga `vendas.filial_id` não garante isolamento.
+2. A guarda e o serviço de catálogo seguro **não foram acoplados aos
+   endpoints legados**. **Não se deve ativar multi-tenancy publicamente**;
+   consultas antigas ainda poderiam ignorar `estabelecimento_id`.
 3. Próxima etapa: mapear todas as tabelas e suas relações; introduzir
    `estabelecimento_id` obrigatório em operações novas e constraints/FKs
    compostas que impeçam referenciar objetos de outra loja. Planejar a
