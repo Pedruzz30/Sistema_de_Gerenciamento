@@ -3,6 +3,7 @@ package integration;
 import app.Main;
 import app.tenancy.LegacyApiIsolationGate;
 import controller.TenantCatalogController;
+import controller.TenantStockController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,8 +24,10 @@ class TenantApiDisabledInLegacyModeIntegrationTest {
     @Test
     void semSupabaseNaoRegistraApiTenantAwareNemGateCondicional() {
         assertFalse(context.containsBeanDefinition("tenantCatalogController"));
+        assertFalse(context.containsBeanDefinition("tenantStockController"));
         assertFalse(context.containsBeanDefinition("legacyApiIsolationGate"));
         assertFalse(context.getBeansOfType(TenantCatalogController.class).size() > 0);
+        assertFalse(context.getBeansOfType(TenantStockController.class).size() > 0);
         assertFalse(context.getBeansOfType(LegacyApiIsolationGate.class).size() > 0);
     }
 }
