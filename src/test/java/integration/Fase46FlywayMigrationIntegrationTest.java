@@ -41,6 +41,7 @@ class Fase46FlywayMigrationIntegrationTest {
                 assertTrue(tabelaExiste(st, "flyway_schema_history"));
                 assertTrue(tabelaExiste(st, "estabelecimentos"));
                 assertTrue(tabelaExiste(st, "usuarios_estabelecimentos"));
+                assertTrue(colunaExiste(st, "usuarios", "supabase_auth_user_id"));
                 assertTrue(colunaExiste(st, "produtos", "estabelecimento_id"));
                 assertTrue(colunaExiste(st, "fornecedores", "estabelecimento_id"));
                 assertTrue(colunaExiste(st, "fornecedor_produtos", "estabelecimento_id"));

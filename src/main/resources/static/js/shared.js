@@ -63,7 +63,7 @@ if (!usuario) window.location.href = '/login.html';
 (function () {
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = function (input, init) {
+  window.fetch = async function (input, init) {
     const isRequestObject = input instanceof Request;
     const requestUrl = isRequestObject ? input.url : String(input || '');
     const isApiCall = requestUrl.startsWith('/api/') || requestUrl.includes('/api/');
@@ -79,7 +79,17 @@ if (!usuario) window.location.href = '/login.html';
         });
       }
 
-      headers.set('X-User-RU', String(usuario.ru));
+      if (window.StockosAuth && window.StockosAuth.isSupabase()) {
+        const token = await window.StockosAuth.getAccessToken();
+        if (!token) {
+          window.location.href = '/login.html';
+          throw new Error('Sessao Supabase encerrada');
+        }
+        headers.delete('X-User-RU');
+        headers.set('Authorization', 'Bearer ' + token);
+      } else {
+        headers.set('X-User-RU', String(usuario.ru));
+      }
 
       if (isRequestObject) {
         const requestComCabecalho = new Request(input, Object.assign({}, init || {}, { headers }));
@@ -165,7 +175,10 @@ window.resolverContextoOperacionalCardapio = resolverContextoOperacionalCardapio
 window.getFilialOperacionalAtual = getFilialOperacionalAtual;
 window.getCanalVendaAtual = getCanalVendaAtual;
 
-function logout() {
+async function logout() {
+  if (window.StockosAuth && window.StockosAuth.isSupabase()) {
+    await window.StockosAuth.signOut();
+  }
   limparUsuarioPersistido();
   window.location.href = '/login.html';
 }
