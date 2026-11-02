@@ -46,6 +46,14 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   é indispensável integrar a cadeia Spring Security/JWT da PR #31 antes de
   qualquer uso real. O modo `legacy` permanece exclusivamente local.
   Testes unitários verificam bloqueio de APIs globais e prefixos falsificados.
+- Migration `V20261102_05`: acrescenta dono de tenant a notas fiscais e seus
+  itens; FKs compostas, triggers e owner imutável barram referências cruzadas
+  entre notas, fornecedores e produtos, preservando registros legados sem
+  proprietário. Testes incluem nota válida, fornecedor externo, operador sem
+  vínculo, produto externo, omissão de tenant e compatibilidade com legado.
+- `SupabaseModeStartupGuard`: impede iniciar a aplicação em modo Supabase se
+  o filtro de identidade verificada e a cadeia Spring Security JWT ainda não
+  estiverem integrados. Teste garante falha explícita na ausência do filtro.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
