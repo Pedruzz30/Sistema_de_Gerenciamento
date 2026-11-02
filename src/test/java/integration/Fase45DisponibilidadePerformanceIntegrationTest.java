@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManagerFactory;
 import model.CategoriaCardapio;
 import model.CategoriaEstoque;
+import model.DimensaoUnidade;
 import model.EstoqueProduto;
 import model.FichaTecnica;
 import model.FichaTecnicaIngrediente;
@@ -190,8 +191,13 @@ class Fase45DisponibilidadePerformanceIntegrationTest {
     }
 
     private CargaRepresentativa prepararCargaRepresentativa(String sufixo) {
-        UnidadeMedida grama = unidadeRepository.buscarPorCodigo("GRAMA").orElseThrow();
-        UnidadeMedida unidade = unidadeRepository.buscarPorCodigo("UNIDADE").orElseThrow();
+        // A fresh test database may not have any measurement units seeded.
+        UnidadeMedida grama = unidadeRepository.buscarPorCodigo("GRAMA")
+                .orElseGet(() -> unidadeRepository.salvar(
+                        new UnidadeMedida(0, "GRAMA", "Grama", DimensaoUnidade.MASSA, BigDecimal.ONE, true)));
+        UnidadeMedida unidade = unidadeRepository.buscarPorCodigo("UNIDADE")
+                .orElseGet(() -> unidadeRepository.salvar(
+                        new UnidadeMedida(0, "UNIDADE", "Unidade", DimensaoUnidade.CONTAGEM, BigDecimal.ONE, true)));
         List<Produto> produtos = criarProdutos(sufixo, grama);
         List<GrupoModificador> grupos = criarGruposComOpcoes(sufixo, grama, produtos);
         CategoriaCardapio categoria = categoriaRepository.salvar(new CategoriaCardapio(

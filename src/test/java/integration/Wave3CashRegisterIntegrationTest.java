@@ -127,8 +127,27 @@ class Wave3CashRegisterIntegrationTest {
                 1,
                 BigDecimal.valueOf(7.50)
         );
-        CategoriaCardapio categoriaBebidas = categoriaCardapioRepository.buscarPorCodigo("bebidas").orElseThrow();
-        ItemCardapio pizza = itemCardapioRepository.buscarPorCodigo("pizza_calabresa_broto").orElseThrow();
+        CategoriaCardapio categoriaBebidas = categoriaCardapioRepository.buscarPorCodigo("bebidas")
+                .orElseGet(() -> categoriaCardapioRepository.salvar(
+                        new CategoriaCardapio(0, "bebidas", "Bebidas", 20, true)));
+        CategoriaCardapio categoriaPreparados = categoriaCardapioRepository.buscarPorCodigo("preparados")
+                .orElseGet(() -> categoriaCardapioRepository.salvar(
+                        new CategoriaCardapio(0, "preparados", "Preparados", 10, true)));
+        // The test must create its own prepared item instead of relying on a
+        // legacy pizza catalog that is not present in a fresh database.
+        ItemCardapio preparado = itemCardapioRepository.salvar(new ItemCardapio(
+                0,
+                "preparado_wave3_" + sufixo,
+                "Preparado Wave3",
+                "Item sem vinculo com o estoque direto.",
+                new BigDecimal("29.90"),
+                categoriaPreparados,
+                TipoItemCardapio.PREPARADO_SOB_DEMANDA,
+                true,
+                true,
+                998,
+                null
+        ));
         ItemCardapio bebidaCardapio = itemCardapioRepository.salvar(new ItemCardapio(
                 0,
                 "bebida_wave3_" + sufixo,
@@ -152,9 +171,9 @@ class Wave3CashRegisterIntegrationTest {
                 admin,
                 numeroCaixa,
                 BigDecimal.ZERO,
-                "1x Pizza Calabresa Broto, 2x Bebida Wave3",
+                "1x Preparado Wave3, 2x Bebida Wave3",
                 List.of(
-                        VendaItemInput.itemCardapio(pizza.getId(), 1),
+                        VendaItemInput.itemCardapio(preparado.getId(), 1),
                         VendaItemInput.itemCardapio(bebidaCardapio.getId(), 2)
                 )
         );

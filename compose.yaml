@@ -1,0 +1,43 @@
+name: stockos-local
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: stockos_dev
+      POSTGRES_USER: stockos_local
+      POSTGRES_PASSWORD: "${STOCKOS_DB_PASSWORD:?Configure STOCKOS_DB_PASSWORD em .env}"
+    # Only the local computer can reach this development database.
+    ports:
+      - "127.0.0.1:${STOCKOS_DB_PORT:-5433}:5432"
+    volumes:
+      - stockos_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/01-create-test-db.sql:/docker-entrypoint-initdb.d/01-create-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockos_local -d stockos_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  app:
+    # Opt-in: starting the database alone never starts the legacy-auth API.
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://db:5432/stockos_dev
+      DB_USERNAME: stockos_local
+      DB_PASSWORD: "${STOCKOS_DB_PASSWORD:?Configure STOCKOS_DB_PASSWORD em .env}"
+      FLYWAY_BASELINE_ON_MIGRATE: "false"
+      STOCKOS_SEED_DEMO_CATALOG_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  stockos_postgres_data:

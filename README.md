@@ -23,6 +23,27 @@ Sistema web para operacao de estoque, compras, fornecedores, notas fiscais, cota
 - Gestao de funcionarios, perfis e logs de auditoria
 - Cadastro de categorias e itens por estabelecimento; catalogo demonstrativo generico opcional
 
+
+## Docker (ambiente local isolado)
+
+A infraestrutura para desenvolvimento local fica em
+[docs/infra-docker-supabase.md](docs/infra-docker-supabase.md).
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+docker compose up -d --wait db
+.\scripts\test-docker.ps1
+```
+
+O banco da aplicação (`stockos_dev`) e o banco dos testes (`stockos_test`)
+ficam em containers Docker, sem usar o PostgreSQL instalado no Windows.
+Para iniciar também o backend Java local: `docker compose --profile app up -d --build app`.
+
+**Supabase Cloud e Supabase Auth ainda não estão conectados nesta etapa.**
+Não exponha o backend na Internet enquanto o login legado `X-User-RU`
+não for substituído por autenticação verificada e autorização por usuário/tenant.
+
 ## Requisitos
 
 - Java 17 ou superior
@@ -135,7 +156,7 @@ curl -Method Post "http://localhost:8080/api/auth/login" `
 Use o `ru` retornado pela API nas chamadas protegidas:
 
 ```powershell
-curl -Headers @{ "X-User-RU" = "<ru-retornado>" } "http://localhost:8080/api/produtos"
+curl -Headers ${ "X-User-RU" = "<ru-retornado>" } "http://localhost:8080/api/produtos"
 ```
 
 ## Testes
