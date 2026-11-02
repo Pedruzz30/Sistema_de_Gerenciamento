@@ -79,6 +79,15 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   `LegacyApiIsolationGate` libera **apenas** esses dois GETs de estoque;
   escrita continua bloqueada. Testes de identidade forjada, usuário inativo,
   rotas não permitidas e desativação total no modo legado.
+- Migration `V20261102_08`: movimentos de caixa ganham
+  `estabelecimento_id` opcional, referência composta ao caixa e triggers que
+  rejeitam vinculação a caixa de outra loja, omissão de tenant e operador
+  sem vínculo ativo. Registros legados continuam sem dono. O dono de um
+  movimento não pode ser transferido por UPDATE ordinário.
+- Serviço **interno**, somente leitura, `TenantScopedCashService`: consultas
+  financeiras exigem `PROPRIETARIO`/`GERENTE`, filtram `estabelecimento_id`
+  no SQL e validam a loja também no JOIN. Testes impedem acesso cruzado,
+  leitura por operador e vazamento de caixas legados.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
@@ -90,6 +99,8 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
    logs e várias outras tabelas ainda não receberam escopo obrigatório.
    Saldo, movimento de estoque, venda e item de venda possuem escopo opcional,
    mas as rotas legadas ainda não aplicam os filtros de tenant exigidos.
+   Movimentos de caixa recebem tenant opcional; os fluxos de fechamento,
+   pagamentos e reconciliação ainda não foram portados e seguem bloqueados.
    O novo modelo de vendas ainda não protege consumos, estornos, pagamento
    e todas as referências de ficha técnica. A coluna antiga `vendas.filial_id` não garante isolamento.
 2. A nova API de catálogo tenant-aware não substitui os **endpoints legados**.
