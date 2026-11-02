@@ -59,6 +59,15 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   compostas, triggers contra produto de outra loja e estorno cruzado;
   propriedade do registro fica imutável. Sem backfill. Testes de banco
   validam operações autorizadas, cruzamento, omissão de tenant e legado.
+- Serviço interno `TenantScopedStockService`: lista saldos e movimentos
+  com `estabelecimento_id` explícito nas cláusulas `WHERE` **e** nos joins;
+  impõe vínculo ativo ao usuário verificado e limita volume de resultados.
+  Testes tentam consulta entre lojas e acesso a linhas legadas.
+- Migration `V20261102_07`: adiciona `estabelecimento_id` opcional a
+  `vendas` e `venda_itens`; a venda, o item do cardápio e a variação devem
+  concordar, com chaves compostas e trigger que impede omissões de tenant.
+  Testes cobrem associações entre lojas, troca de variação e compatibilidade
+  com registros antigos.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
@@ -68,8 +77,10 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
    novas em `produtos`, `fornecedores`, `caixas` e cardápio são anuláveis, e os
    repositórios/controllers **legados continuam globais**. Vendas, notas,
    logs e várias outras tabelas ainda não receberam escopo obrigatório.
-   Saldo e movimento de estoque possuem escopo opcional, mas as rotas
-   legadas ainda não aplicam os filtros de tenant exigidos. A coluna antiga `vendas.filial_id` não garante isolamento.
+   Saldo, movimento de estoque, venda e item de venda possuem escopo opcional,
+   mas as rotas legadas ainda não aplicam os filtros de tenant exigidos.
+   O novo modelo de vendas ainda não protege consumos, estornos, pagamento
+   e todas as referências de ficha técnica. A coluna antiga `vendas.filial_id` não garante isolamento.
 2. A nova API de catálogo tenant-aware não substitui os **endpoints legados**.
    **Não se deve ativar multi-tenancy publicamente**; as consultas antigas
    ainda podem ignorar `estabelecimento_id`. O controller novo fica inativo
