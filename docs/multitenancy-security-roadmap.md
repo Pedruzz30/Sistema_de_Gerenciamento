@@ -47,8 +47,32 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
 9. Se usar Supabase Data API, revisar RLS. O backend JDBC deve impor suas
    próprias políticas: RLS de um client Supabase não protege automaticamente
    a conta JDBC do Spring.
-10. Revisão de logs/PII, backups por tenant, proteção de cookies/tokens,
+10. Separar credenciais do migrador Flyway das credenciais de execução Java:
+    a conexão da aplicação **não pode utilizar o superusuário PostgreSQL**
+    usado no Docker local. O papel de aplicação deve ter privilégios mínimos,
+    sem BYPASSRLS e sem permissões para DDL ou outros bancos. Uma mesma conta
+    superuser para todos os tenants anula boa parte da defesa em profundidade.
+11. Revisão de logs/PII, backups por tenant, proteção de cookies/tokens,
     limites de acesso e resposta a incidentes antes do piloto.
+
+## Matriz mínima de ataques de regressão
+
+| Área | Tentativa proibida | Resultado requerido |
+| --- | --- | --- |
+| Autenticação | JWT sem assinatura, com audiência errada ou expirado | 401 |
+| Identidade | Alterar RU ou papel no cabeçalho/JSON | Identidade vinculada server-side prevalece |
+| Associação | Funcionário da loja A acessa loja B | 403/404 genérico, sem dados |
+| Estado | Usuário revogado ou loja suspensa usa sessão antiga | Acesso negado |
+| Estoque | ID de produto de B em operação de A | Nenhuma leitura, baixa ou modificação |
+| Caixa | Terminal de A finaliza venda de B | Negado e registrado |
+| Relatórios | Paginação/totalização/exportação cruzada | Valores exclusivamente do tenant autenticado |
+| Relacionamentos | Nota fiscal de A referencia fornecedor/produto de B | Constraint ou operação rejeita |
+| Background | Job agendado processa linhas de outra loja | Escopo de tenant obrigatório e auditável |
+| Banco | Credencial da API tenta DDL ou acesso administrativo | Permissão negada |
+
+Não considerar a plataforma pronta enquanto esta matriz não estiver executada
+contra os endpoints e transações reais. Testes de associação isolados não
+comprovam a proteção das operações de negócio.
 
 **Status:** trabalho de infraestrutura numa PR draft. Não conectar à Cloud
 nem executar migrações manualmente em ambiente de cliente.
