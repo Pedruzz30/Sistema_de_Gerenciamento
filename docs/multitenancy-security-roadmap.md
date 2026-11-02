@@ -24,6 +24,14 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   SQL filtra pelo estabelecimento inclusive no `UPDATE`; não há endpoint público.
 - Testes de acesso cruzado em produtos, revogação e impossibilidade de modificar
   registro de outra loja.
+- Migration `V20261102_03`: impede vincular fornecedor a produto de outra
+  loja (inclusive quando uma associação omite o `estabelecimento_id`), e
+  torna a propriedade de produtos, fornecedores, caixas e cardápio imutável
+  para operações SQL ordinárias.
+- Migration `V20261102_04`: impede que um item de cardápio use categoria ou
+  produto de outra loja, inclusive tentando omitir `estabelecimento_id`.
+  Testes de integração exercitam os dois bloqueios e preservam associações
+  legadas integralmente sem proprietário.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
