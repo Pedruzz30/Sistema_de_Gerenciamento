@@ -45,6 +45,8 @@ class LegacyApiIsolationGateTest {
         String tenant = UUID.randomUUID().toString();
         for (String path : new String[]{
                 "/api/v2/estabelecimentos/" + tenant + "/catalogo/produtos",
+                "/api/v2/estabelecimentos/" + tenant + "/estoque/saldos",
+                "/api/v2/estabelecimentos/" + tenant + "/estoque/movimentos",
                 "/api/auth/config",
                 "/api/auth/me"}) {
             MockHttpServletRequest request = request("GET", path);
@@ -72,6 +74,29 @@ class LegacyApiIsolationGateTest {
             assertEquals(403, response.getStatus(), path);
             verifyNoInteractions(chain);
         }
+    }
+
+    @Test
+    void estoqueNaoPermiteEscritaNemRotasNaoRevisadas() throws Exception {
+        String tenant = UUID.randomUUID().toString();
+        for (String path : new String[]{
+                "/api/v2/estabelecimentos/" + tenant + "/estoque/saldos",
+                "/api/v2/estabelecimentos/" + tenant + "/estoque/movimentos",
+                "/api/v2/estabelecimentos/" + tenant + "/estoque/ajustes"}) {
+            MockHttpServletRequest request = request("POST", path);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            FilterChain chain = mock(FilterChain.class);
+            gate.doFilter(request, response, chain);
+            assertEquals(403, response.getStatus(), path);
+            verifyNoInteractions(chain);
+        }
+        MockHttpServletRequest request = request("GET",
+                "/api/v2/estabelecimentos/" + tenant + "/estoque/ajustes");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+        gate.doFilter(request, response, chain);
+        assertEquals(403, response.getStatus());
+        verifyNoInteractions(chain);
     }
 
     private static MockHttpServletRequest request(String method, String path) {
