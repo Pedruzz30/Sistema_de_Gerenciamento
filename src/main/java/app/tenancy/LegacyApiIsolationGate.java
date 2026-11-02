@@ -11,63 +11,85 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Locale;
+import java.util.UUID;
 
 /**
  * Default-deny guard for legacy business APIs while in Supabase mode.
  *
- * Even with verified JWT, legacy controllers use global repositories and
- * are unsafe for multiple tenants. Block them until explicitly migrated.
+ * Only already-reviewed tenant routes and their exact HTTP methods are allowed.
+ * Broad path prefixes could accidentally expose future controllers before their
+ * tenant authorization and SQL scopes have been audited.
  *
- * Registered before authentication filters; this does not authenticate
- * requests. The security chain in PR #31 must still enforce verified JWT
- * for ALL allowed /api/v2 endpoints.
+ * This is NOT authentication: Spring Security still verifies the bearer JWT,
+ * and each tenant-scoped service must enforce membership and row isolation.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @ConditionalOnProperty(name = "stockos.auth.mode", havingValue = "supabase")
 public class LegacyApiIsolationGate extends OncePerRequestFilter {
 
+    private static final String TENANT_PREFIX = "/api/v2/estabelecimentos/";
+    private static final String PRODUCT_PREFIX = "/catalogo/produtos/";
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return !path.startsWith("/api/")
-                || "OPTIONS".equalsIgnoreCase(request.getMethod())
-                || "/api/auth/config".equals(path)
-                || "/api/auth/me".equals(path)
-                || isTenantCatalogRoute(path)
-                || ("GET".equalsIgnoreCase(request.getMethod()) && isTenantStockReadRoute(path));
-    }
+        String method = request.getMethod().toUpperCase(Locale.ROOT);
 
-    private static boolean isTenantCatalogRoute(String path) {
-        // Only the explicitly scoped catalog API is permitted at this stage.
-        // New v2 domains require security review and a new allowlist entry.
-        if (!path.startsWith("/api/v2/estabelecimentos/")) return false;
-        String tail = path.substring("/api/v2/estabelecimentos/".length());
-        int slash = tail.indexOf('/');
-        if (slash <= 0 || !tail.substring(slash).startsWith("/catalogo")) return false;
-        try {
-            java.util.UUID.fromString(tail.substring(0, slash));
-        } catch (IllegalArgumentException exception) {
+        if (!path.startsWith("/api/") || "OPTIONS".equals(method)) {
+            return true;
+        }
+        if ("GET".equals(method) &&
+                ("/api/auth/config".equals(path) || "/api/auth/me".equals(path))) {
+            return true;
+        }
+
+        String scopedPath = scopedPathForValidTenant(path);
+        if (scopedPath == null) {
             return false;
         }
-        String catalogPath = tail.substring(slash);
-        return "/catalogo".equals(catalogPath)
-                || catalogPath.startsWith("/catalogo/");
+
+        return switch (method) {
+            case "GET" -> "/catalogo/produtos".equals(scopedPath)
+                    || "/catalogo/fornecedores".equals(scopedPath)
+                    || isSingleProductPath(scopedPath)
+                    || "/estoque/saldos".equals(scopedPath)
+                    || "/estoque/movimentos".equals(scopedPath);
+            case "POST" -> "/catalogo/produtos".equals(scopedPath);
+            case "PATCH" -> scopedPath.endsWith("/nome")
+                    && isSingleProductPath(scopedPath.substring(0, scopedPath.length() - "/nome".length()));
+            default -> false;
+        };
     }
 
-    private static boolean isTenantStockReadRoute(String path) {
-        if (!path.startsWith("/api/v2/estabelecimentos/")) return false;
-        String tail = path.substring("/api/v2/estabelecimentos/".length());
+    private static String scopedPathForValidTenant(String path) {
+        if (!path.startsWith(TENANT_PREFIX)) {
+            return null;
+        }
+        String tail = path.substring(TENANT_PREFIX.length());
         int slash = tail.indexOf('/');
-        if (slash <= 0) return false;
+        if (slash <= 0) {
+            return null;
+        }
+        String tenantId = tail.substring(0, slash);
         try {
-            java.util.UUID.fromString(tail.substring(0, slash));
+            UUID parsed = UUID.fromString(tenantId);
+            if (!parsed.toString().equalsIgnoreCase(tenantId)) {
+                return null;
+            }
         } catch (IllegalArgumentException exception) {
+            return null;
+        }
+        return tail.substring(slash);
+    }
+
+    private static boolean isSingleProductPath(String path) {
+        if (!path.startsWith(PRODUCT_PREFIX)) {
             return false;
         }
-        String scopedPath = tail.substring(slash);
-        return "/estoque/saldos".equals(scopedPath)
-                || "/estoque/movimentos".equals(scopedPath);
+        String id = path.substring(PRODUCT_PREFIX.length());
+        return !id.isEmpty() && id.chars().allMatch(ch -> ch >= '0' && ch <= '9');
     }
 
     @Override
