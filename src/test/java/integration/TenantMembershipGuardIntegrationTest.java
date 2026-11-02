@@ -1,5 +1,7 @@
 package integration;
 
+import app.Main;
+
 import app.tenancy.TenantMembershipGuard;
 import app.tenancy.TenantMembershipGuard.Papel;
 import org.junit.jupiter.api.Test;
@@ -10,14 +12,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(classes = Main.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
 class TenantMembershipGuardIntegrationTest {
+    private static final AtomicLong NEXT_CPF = new AtomicLong(84_000_000_000L);
+
     @Autowired private JdbcTemplate jdbc;
     @Autowired private TenantMembershipGuard guard;
 
@@ -69,7 +73,7 @@ class TenantMembershipGuardIntegrationTest {
 
     private long novoUsuario() {
         // CPFs sintéticos distintos no banco efêmero, com transação revertida ao final.
-        String cpf = Long.toString(ThreadLocalRandom.current().nextLong(10_000_000_000L, 99_999_999_999L));
+        String cpf = Long.toString(NEXT_CPF.incrementAndGet());
         return jdbc.queryForObject("""
                 insert into usuarios (nome, sobrenome, cpf, senha, ativo, perfil)
                 values ('Teste', 'Isolamento', ?, 'nao-usar-em-producao', true, 'OPERADOR')
