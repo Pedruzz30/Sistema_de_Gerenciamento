@@ -34,7 +34,8 @@ public class LegacyApiIsolationGate extends OncePerRequestFilter {
                 || "OPTIONS".equalsIgnoreCase(request.getMethod())
                 || "/api/auth/config".equals(path)
                 || "/api/auth/me".equals(path)
-                || isTenantCatalogRoute(path);
+                || isTenantCatalogRoute(path)
+                || ("GET".equalsIgnoreCase(request.getMethod()) && isTenantStockReadRoute(path));
     }
 
     private static boolean isTenantCatalogRoute(String path) {
@@ -52,6 +53,21 @@ public class LegacyApiIsolationGate extends OncePerRequestFilter {
         String catalogPath = tail.substring(slash);
         return "/catalogo".equals(catalogPath)
                 || catalogPath.startsWith("/catalogo/");
+    }
+
+    private static boolean isTenantStockReadRoute(String path) {
+        if (!path.startsWith("/api/v2/estabelecimentos/")) return false;
+        String tail = path.substring("/api/v2/estabelecimentos/".length());
+        int slash = tail.indexOf('/');
+        if (slash <= 0) return false;
+        try {
+            java.util.UUID.fromString(tail.substring(0, slash));
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        String scopedPath = tail.substring(slash);
+        return "/estoque/saldos".equals(scopedPath)
+                || "/estoque/movimentos".equals(scopedPath);
     }
 
     @Override
