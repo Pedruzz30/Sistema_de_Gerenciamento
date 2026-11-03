@@ -76,6 +76,23 @@ pública por natureza, mas `service_role`, JWT secret e senhas do banco nunca
 devem ser enviados ao navegador. Chaves JWT assimétricas e JWKS ativo são
 obrigatórios; HS256 legado não é suportado pelo backend.
 
+### Script interativo de provisionamento pronto
+
+Arquivo: `scripts/staging/01-provision-roles.psql`. Execute **somente**
+em uma conexão administrativa autorizada ao banco descartável do Render
+(`psql -X -v ON_ERROR_STOP=1 -f scripts/staging/01-provision-roles.psql`).
+O script verifica o nome exato do banco, a permissão para criar roles,
+recusa sobrescrever roles existentes e solicita as duas senhas
+interativamente via `\\password`, sem gravá-las no Git.
+
+A conexão externa ao banco está bloqueada por sua allowlist e o conector
+disponível não consegue executar DDL. **Não abra a allowlist para
+`0.0.0.0/0` e não execute este script no Supabase Staging.**
+Faça o provisionamento em um ambiente administrativo autorizado dentro da
+rede privada do Render ou via acesso pontual de IP conhecido e restrito.
+Após aplicar Flyway externamente, conceder as permissões DML/sequence
+ao runtime e confirmar os testes de negação antes de hospedar a API.
+
 ### Provisionamento seguro de roles (administrador, banco DESCARTÁVEL)
 
 Com acesso `psql` usando a conta administradora do novo banco, conectar ao
