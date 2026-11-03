@@ -80,6 +80,12 @@ class SupabaseFlywaySeparation {
             throw new IllegalStateException(
                     "Modo Supabase exige SPRING_FLYWAY_USER/PASSWORD distintos do DB_USERNAME da aplicacao.");
         }
-        return Flyway::migrate;
+        return flyway -> {
+            // This check runs before the FIRST Flyway DDL, using Flyway's
+            // configured migration datasource (never the runtime datasource).
+            SupabaseSchemaCompatibilityGuard.requireFlywayCompatibleDatabase(
+                    flyway.getConfiguration().getDataSource());
+            flyway.migrate();
+        };
     }
 }
