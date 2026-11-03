@@ -112,6 +112,11 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   regressão de alocação duplicada e referência imutável foram adicionados.
   **Pendente:** testes concorrentes com conexões distintas e proteção do
   vínculo do consumo após um estorno já realizado.
+- Migration `V20261103_03`: protege a trilha de auditoria do
+  estorno. Após registrar um estorno de tenant, o consumo não pode trocar
+  sua venda/item/parte/produto/movimento; o lançamento de estorno não
+  pode ser editado ou excluído por DML comum. Correções deverão usar eventos
+  compensatórios próprios e auditados; estes fluxos ainda não estão habilitados.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
