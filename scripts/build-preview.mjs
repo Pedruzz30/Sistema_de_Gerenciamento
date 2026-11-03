@@ -6,6 +6,9 @@ const out = resolve('dist-preview');
 await rm(out, { recursive:true, force:true });
 await mkdir(out, {recursive:true});
 await cp(root, out, {recursive:true});
+// Overlay reviewed PR #33 browser UI only in the static mock build.
+// The Java app in main remains unchanged; no backend or migrations are deployed.
+await cp(resolve('preview-source/security-preview'), out, {recursive:true});
 // The real Java frontend is the single source of truth. Mock is preview-only.
 await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
@@ -57,7 +60,7 @@ for (const page of pages) {
   html=html.replace(/<link\s+rel="stylesheet"\s+href="\/css\/[a-z-]+-refinement\.css"\s*\/?>/g,'');
   const scripts = previewScriptsFor(page)
     .map(name=>'<script src="/js/'+name+'.js"></script>').join('\n');
-  html=html.replace('</head>', scripts+'\n</head>');
+  html=html.replace('</head>', '<script>window.STOCKOS_PREVIEW = true;</script>\n'+scripts+'\n</head>');
   await writeFile(p,html);
 }
 await writeFile(join(out,'_redirects'), [
