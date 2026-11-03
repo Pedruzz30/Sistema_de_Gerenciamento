@@ -188,6 +188,41 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
                         refund));
     }
 
+    @Test
+    void bloqueiaTrocaDeMovimentoDeConsumoAposEstorno() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refundMove);
+        long otherExit = movimento(a.tenant, a.product, "SAIDA_VENDA", null);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumos set movimento_estoque_id = ? where id = ?",
+                        otherExit, consumption));
+    }
+
+    @Test
+    void bloqueiaEdicaoEExclusaoDeEstornoPublicado() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long refundId = estorno(a.tenant, consumption, refundMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumo_estornos set quantidade_base_estornada = 0.5 where id = ?",
+                        refundId));
+    }
+
+    @Test
+    void bloqueiaExclusaoDeEstornoPublicado() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long refundId = estorno(a.tenant, consumption, refundMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update("delete from venda_item_consumo_estornos where id = ?", refundId));
+    }
+
     private Fixture fixture() {
         UUID tenant = jdbc.queryForObject(
                 "insert into estabelecimentos(nome) values ('Teste consumo') returning id", UUID.class);
