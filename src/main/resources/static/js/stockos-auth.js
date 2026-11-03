@@ -12,7 +12,7 @@
     catch (_) { return null; }
   }
   function config() { return readJson(CONFIG_KEY); }
-  function isSupabase() { return sessionStorage.getItem(MODE_KEY) === 'supabase'; }
+  function isSupabase() { return !window.STOCKOS_PREVIEW && sessionStorage.getItem(MODE_KEY) === 'supabase'; }
 
   async function discover() {
     // The mock preview has no live Java backend; it may omit /api/auth/config.
