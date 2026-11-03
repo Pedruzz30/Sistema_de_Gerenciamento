@@ -121,6 +121,32 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
 
+## Console tenant-aware de homologação (03/11/2026)
+
+- O login Supabase passa a encaminhar para `/estabelecimentos.html`, evitando
+  abrir o dashboard legado cuja API está bloqueada no modo multi-tenant.
+- A página consulta `GET /api/v2/estabelecimentos` com o JWT da sessão,
+  permite escolher **somente** um estabelecimento da lista autenticada e
+  consulta catálogo, fornecedores, saldos e movimentos tenant-aware em modo
+  **somente leitura**.
+- Ao trocar ou atualizar uma loja, o frontend consulta novamente os vínculos
+  ativos no servidor. A autorização continua obrigatória em cada serviço SQL;
+  a escolha local não é autoridade de acesso.
+- O JavaScript usa `textContent`/DOM seguro, não armazena o tenant em
+  `localStorage`, limpa a interface após falha e não libera pagamentos ou caixa.
+- O login Supabase remove o cache persistente do usuário operacional e guarda
+  somente a informação de exibição em `sessionStorage`.
+- `scripts/test-tenant-console.mjs` testa a allowlist de leitura, JWT por
+  requisição, seleção não autorizada e vínculo revogado; o workflow Backend
+  and Docker passou a executar esse teste.
+- A página `estabelecimentos.html` é excluída do build Netlify mock, por sua
+  lista explícita de páginas permitidas. O site público segue demonstração.
+
+**Ainda não é homologação E2E real:** faltam contas Supabase reais, vínculos
+cadastrados, credenciais de banco com grants mínimos, HTTPS hospedado para
+backend, teste com duas sessões e monitoramento operacional. A API financeira
+continua bloqueada.
+
 ## Descoberta autenticada de estabelecimentos (03/11/2026)
 
 A API de homologação oferece `GET /api/v2/estabelecimentos` **apenas** em modo
