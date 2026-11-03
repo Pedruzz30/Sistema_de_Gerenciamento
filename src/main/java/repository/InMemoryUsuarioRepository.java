@@ -5,6 +5,7 @@ import model.Usuario;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class InMemoryUsuarioRepository implements UsuarioRepository {
@@ -43,6 +44,12 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
     @Override
     public synchronized Optional<Usuario> buscarPorRu(long ru) {
         return usuarios.stream().filter(usuario -> usuario.getRu() == ru).findFirst();
+    }
+
+    @Override
+    public synchronized Optional<Usuario> buscarPorSupabaseAuthUserId(UUID userId) {
+        if (userId == null) return Optional.empty();
+        return usuarios.stream().filter(u -> userId.equals(u.getSupabaseAuthUserId())).findFirst();
     }
 
     @Override
