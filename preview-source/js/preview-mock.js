@@ -93,6 +93,73 @@
       const anterior=p.quantidadeAtual;p.quantidadeAtual+=sinal*qtd;p.nivelEstoque=level(p.quantidadeAtual,p.quantidadeMinima);
       db.movimentacoes.unshift({id:Date.now(),tipo:body.tipo,produto:p.nome,quantidade:qtd,dataHora:new Date().toLocaleString('sv-SE').replace(' ','T'),saldoAnterior:anterior,saldoPosterior:p.quantidadeAtual});save();return respond(p);
     }
+    // Static demo only: validate the entire cart before applying one coherent
+    // in-memory snapshot. This is NOT a backend payment/sales transaction.
+    if(path==='/api/preview/transacoes/venda' && method==='POST'){
+      const key=String(body.idempotencyKey||'');
+      const numero=Number(body.numeroCaixa);
+      const itens=body.itens;
+      if(!/^[a-zA-Z0-9_-]{8,100}$/.test(key))return respond({erro:'Identificador da venda inválido.'},400);
+      if(!Number.isInteger(numero)||numero<=0||!Array.isArray(itens)||!itens.length||itens.length>100)
+        return respond({erro:'Carrinho ou caixa inválido.'},400);
+      const grouped=new Map();
+      for(const item of itens){
+        const id=Number(item.idProduto),quantity=Number(item.quantidade);
+        if(!Number.isInteger(id)||id<=0||!Number.isInteger(quantity)||quantity<=0)
+          return respond({erro:'Produto ou quantidade inválidos.'},400);
+        grouped.set(id,(grouped.get(id)||0)+quantity);
+      }
+      const pedido=[...grouped].sort((a,b)=>a[0]-b[0]).map(([idProduto,quantidade])=>({idProduto,quantidade}));
+      const fingerprint=JSON.stringify({numeroCaixa:numero,itens:pedido});
+      const prior=Array.isArray(db.vendasPreview)?db.vendasPreview.find(v=>v.idempotencyKey===key):null;
+      if(prior)return prior.fingerprint===fingerprint
+        ? respond(prior,200) : respond({erro:'Identificador já usado em outra venda.'},409);
+      const caixa=db.caixas.find(c=>c.numeroCaixa===numero && c.status==='ABERTO');
+      if(!caixa)return respond({erro:'Abra o caixa antes de registrar a venda fictícia.'},409);
+      let totalCentavos=0;
+      for(const item of pedido){
+        const p=db.produtos.find(x=>x.id===item.idProduto);
+        if(!p||p.ativo===false||!Number.isInteger(p.quantidadeAtual)||p.quantidadeAtual<item.quantidade)
+          return respond({erro:'Estoque insuficiente ou produto indisponível.'},409);
+        const preco=Number(p.precoUnitario);
+        if(!Number.isFinite(preco)||preco<0)return respond({erro:'Preço de produto inválido.'},409);
+        totalCentavos+=Math.round(preco*100)*item.quantidade;
+      }
+      if(!Number.isSafeInteger(totalCentavos)||totalCentavos<=0)
+        return respond({erro:'Total da venda inválido.'},400);
+      const next=JSON.parse(JSON.stringify(db));
+      const selected=next.caixas.find(c=>c.numeroCaixa===numero&&c.status==='ABERTO');
+      const instant=new Date().toISOString();
+      const lastMovement=Math.max(0,...next.movimentacoes.map(x=>Number(x.id)||0));
+      const lastCash=Math.max(0,...next.movimentacoesCaixa.map(x=>Number(x.id)||0));
+      let index=0;
+      for(const item of pedido){
+        const p=next.produtos.find(x=>x.id===item.idProduto);
+        const before=p.quantidadeAtual;
+        p.quantidadeAtual-=item.quantidade;
+        p.nivelEstoque=level(p.quantidadeAtual,p.quantidadeMinima);
+        next.movimentacoes.unshift({
+          id:lastMovement+(++index),tipo:'SAIDA',produto:p.nome,quantidade:item.quantidade,
+          dataHora:instant,saldoAnterior:before,saldoPosterior:p.quantidadeAtual
+        });
+      }
+      const valor=totalCentavos/100;
+      selected.totalVendas=+(Number(selected.totalVendas||0)+valor).toFixed(2);
+      selected.saldoAtual=+(Number(selected.saldoAtual||0)+valor).toFixed(2);
+      next.movimentacoesCaixa.unshift({
+        id:lastCash+1,caixaId:selected.id,numeroCaixa:numero,tipo:'VENDA',
+        valor,descricao:'Venda fictícia do PDV',dataHora:instant,operador:'Admin Demo'
+      });
+      if(!Array.isArray(next.vendasPreview))next.vendasPreview=[];
+      const sale={
+        id:next.vendasPreview.length+1,idempotencyKey:key,fingerprint,numeroCaixa:numero,
+        itens:pedido,valor,criadaEm:instant,demonstracao:true
+      };
+      next.vendasPreview.push(sale);
+      db=next;
+      save();
+      return respond(sale,201);
+    }
     if(path==='/api/caixas' && method==='GET')return respond(db.caixas);
     if(path==='/api/caixas/metricas/hoje'){
       const t=db.caixas.reduce((a,c)=>a+Number(c.totalVendas||0),0);
