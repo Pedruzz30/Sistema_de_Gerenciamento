@@ -13,6 +13,7 @@ on:
       - "scripts/test-docker.ps1"
       - "src/main/**"
       - "src/test/**"
+      - "scripts/test-tenant-console.mjs"
       - ".github/workflows/stockos-backend-docker.yml"
   push:
     branches: [main]
@@ -43,6 +44,11 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Tenant console security regression
+        run: node scripts/test-tenant-console.mjs
       - name: Start isolated PostgreSQL via Compose
         shell: bash
         run: |
