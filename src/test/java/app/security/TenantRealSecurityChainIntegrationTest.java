@@ -21,6 +21,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -53,8 +55,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * replace a real Supabase session + separated-DB-roles staging E2E.
  */
 @WebMvcTest(controllers = {TenantEstablishmentsController.class, TenantCatalogController.class})
-@Import({StockosSecurityConfig.class, LegacyApiIsolationGate.class})
+@ContextConfiguration(classes = TenantRealSecurityChainIntegrationTest.SliceConfiguration.class)
+@Import({StockosSecurityConfig.class, LegacyApiIsolationGate.class,
+        TenantCatalogController.class, TenantEstablishmentsController.class})
 class TenantRealSecurityChainIntegrationTest {
+    // Avoid app.Main's @EnableJpaRepositories in a web-only security slice.
+    // The real security filter chain is still wired by StockosSecurityConfig.
+    @SpringBootConfiguration
+    static class SliceConfiguration {}
+
     private static final RSAKey TRUSTED_KEY;
     private static final HttpServer JWKS_SERVER;
     private static final String ROOT;
