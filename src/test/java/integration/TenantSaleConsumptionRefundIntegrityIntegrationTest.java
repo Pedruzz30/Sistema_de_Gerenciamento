@@ -279,24 +279,79 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
             start.countDown();
             workers.shutdownNow();
             assertTrue(workers.awaitTermination(10, TimeUnit.SECONDS));
-            // Remove the committed fixture in FK dependency order.
-            transaction.execute(status -> {
-                jdbc.update("delete from venda_item_consumos where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("delete from movimentos_estoque_decimal where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("delete from venda_itens where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("delete from vendas where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("""
-                        delete from variacoes_item_cardapio where item_cardapio_id in
-                        (select id from itens_cardapio where estabelecimento_id = ?)
-                        """, fixture.tenant);
-                jdbc.update("delete from itens_cardapio where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("delete from categorias_cardapio where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("delete from produtos where estabelecimento_id = ?", fixture.tenant);
-                jdbc.update("delete from unidades_medida where id = ?", fixture.unit);
-                jdbc.update("delete from estabelecimentos where id = ?", fixture.tenant);
-                return null;
-            });
+            limparFixture(fixture, transaction);
         }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void transacaoInvalidaReverteTodosOsConsumosDaLoja() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Fixture fixture = transaction.execute(status -> fixture());
+        assertNotNull(fixture);
+        try {
+            assertThrows(DataIntegrityViolationException.class, () -> transaction.execute(status -> {
+                consumo(fixture.tenant, fixture.saleItem, fixture.product,
+                        fixture.unit, fixture.originalMove);
+                // A second unit from a one-unit movement is prohibited.
+                consumo(fixture.tenant, fixture.saleItem, fixture.product,
+                        fixture.unit, fixture.originalMove);
+                return null;
+            }));
+            Integer count = jdbc.queryForObject("""
+                    select count(*) from venda_item_consumos
+                     where estabelecimento_id = ? and movimento_estoque_id = ?
+                    """, Integer.class, fixture.tenant, fixture.originalMove);
+            assertEquals(0, count, "The first insert must roll back with the second");
+        } finally {
+            limparFixture(fixture, transaction);
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void tentativaEntreDuasLojasReverteOperacaoInteira() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Fixture a = transaction.execute(status -> fixture());
+        Fixture b = transaction.execute(status -> fixture());
+        assertNotNull(a);
+        assertNotNull(b);
+        try {
+            assertThrows(DataIntegrityViolationException.class, () -> transaction.execute(status -> {
+                consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+                // The forged second write tries to attach store B's stock
+                // product to a sale line belonging to store A.
+                consumo(a.tenant, a.saleItem, b.product, a.unit, null);
+                return null;
+            }));
+            Integer count = jdbc.queryForObject("""
+                    select count(*) from venda_item_consumos
+                     where estabelecimento_id in (?, ?)
+                    """, Integer.class, a.tenant, b.tenant);
+            assertEquals(0, count, "No partial consumption may survive a cross-store failure");
+        } finally {
+            limparFixture(a, transaction);
+            limparFixture(b, transaction);
+        }
+    }
+
+    private void limparFixture(Fixture fixture, TransactionTemplate transaction) {
+        transaction.execute(status -> {
+            jdbc.update("delete from venda_item_consumos where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from movimentos_estoque_decimal where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from venda_itens where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from vendas where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("""
+                    delete from variacoes_item_cardapio where item_cardapio_id in
+                    (select id from itens_cardapio where estabelecimento_id = ?)
+                    """, fixture.tenant);
+            jdbc.update("delete from itens_cardapio where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from categorias_cardapio where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from produtos where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from unidades_medida where id = ?", fixture.unit);
+            jdbc.update("delete from estabelecimentos where id = ?", fixture.tenant);
+            return null;
+        });
     }
 
     private Fixture fixture() {
