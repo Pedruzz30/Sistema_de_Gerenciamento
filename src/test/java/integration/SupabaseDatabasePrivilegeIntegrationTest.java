@@ -39,7 +39,10 @@ class SupabaseDatabasePrivilegeIntegrationTest {
 
         try (Connection owner = DriverManager.getConnection(url, admin, adminPassword);
              Statement st = owner.createStatement()) {
-            assertTrue(st.execute("select 1") == false);
+            try (ResultSet result = st.executeQuery("select 1")) {
+                assertTrue(result.next(), "Database connection should return a row");
+                assertEquals(1, result.getInt(1));
+            }
             try {
                 st.execute("create role " + role
                         + " login password '" + password + "'"
