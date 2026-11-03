@@ -60,6 +60,27 @@ class LegacyApiIsolationGateTest {
     }
 
     @Test
+    void descobertaSomentePermiteGetExato() throws Exception {
+        MockHttpServletRequest allowed = request("GET", "/api/v2/estabelecimentos");
+        FilterChain allowedChain = mock(FilterChain.class);
+        gate.doFilter(allowed, new MockHttpServletResponse(), allowedChain);
+        verify(allowedChain).doFilter(eq(allowed), any());
+        for (String[] attempt : new String[][]{
+                {"POST", "/api/v2/estabelecimentos"},
+                {"DELETE", "/api/v2/estabelecimentos"},
+                {"GET", "/api/v2/estabelecimentos/export"},
+                {"GET", "/api/v2/estabelecimentos-extra"}
+        }) {
+            MockHttpServletRequest input = request(attempt[0], attempt[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            FilterChain chain = mock(FilterChain.class);
+            gate.doFilter(input, response, chain);
+            assertEquals(403, response.getStatus());
+            verifyNoInteractions(chain);
+        }
+    }
+
+    @Test
     void rejeitaUuidInvalidoOuPrefixoDeRotaParecido() throws Exception {
         for (String path : new String[]{
                 "/api/v2/estabelecimentos/forjado/catalogo/produtos",
