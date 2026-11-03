@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -36,6 +37,30 @@ public class TenantMembershipGuard {
     }
 
     public enum Papel { PROPRIETARIO, GERENTE, OPERADOR }
+
+    /**
+     * Only active, tenant-linked stores. Returns no global tenant list and
+     * never derives RU from request JSON, query parameters or headers.
+     */
+    public record EstabelecimentoDisponivel(UUID id, String nome, Papel papel, int ruLocal) {}
+
+    public List<EstabelecimentoDisponivel> listarEstabelecimentosAutorizados(long verifiedUsuarioRu) {
+        if (verifiedUsuarioRu <= 0) throw denied();
+        return jdbc.query("""
+                select e.id, e.nome, ue.papel, ue.ru_local
+                  from usuarios_estabelecimentos ue
+                  join estabelecimentos e on e.id = ue.estabelecimento_id
+                  join usuarios u on u.ru = ue.usuario_ru
+                 where ue.usuario_ru = ?
+                   and ue.ativo = true
+                   and u.ativo = true
+                   and e.situacao = 'ATIVO'
+                 order by e.nome, e.id
+                 limit 100
+                """, (rs, row) -> new EstabelecimentoDisponivel(
+                rs.getObject("id", UUID.class), rs.getString("nome"),
+                Papel.valueOf(rs.getString("papel")), rs.getInt("ru_local")), verifiedUsuarioRu);
+    }
 
     /**
      * Fail-closed for missing, revoked, inactive or cross-tenant membership.
