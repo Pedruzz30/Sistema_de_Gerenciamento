@@ -23,13 +23,15 @@ O `StagingAuthenticationModeGuard` agora exige **antes de criar o contexto
 Spring, executar Flyway ou iniciar a API**:
 
 - `STOCKOS_AUTH_MODE=supabase` e URL Supabase não vazia;
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SPRING_FLYWAY_USER` e
-  `SPRING_FLYWAY_PASSWORD` explicitamente configurados;
+- `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` explicitamente configurados;
 - URL JDBC PostgreSQL não-local;
-- runtime diferente do migrador e não nomeado `postgres`/`stockos_local`.
+- `stockos.migrations.mode=external` e `spring.flyway.enabled=false`;
+- nenhuma variável `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` ou
+  `SPRING_FLYWAY_URL` no serviço web;
+- runtime não nomeado `postgres`, `stockos_local` ou `stockos_migrator`.
 
 O teste `StagingAuthenticationModeGuardTest` cobre ausência de cada variável,
-URL local, identidade compartilhada e desenvolvimento legado separado. Esta
+URL local, segredos de migração presentes na API e desenvolvimento legado separado. Esta
 verificação **não substitui** o guard PostgreSQL que inspecciona privilégios
 efetivos após conectar, nem autoriza provisionar o serviço antes dos grants.
 
@@ -62,9 +64,9 @@ STOCKOS_SUPABASE_PUBLISHABLE_KEY=<sb_publishable_...>
 DB_URL=jdbc:postgresql://<host-privado-do-Render>:5432/<db>?sslmode=require
 DB_USERNAME=stockos_app
 DB_PASSWORD=<runtime-secret>
-SPRING_FLYWAY_USER=stockos_migrator
-SPRING_FLYWAY_PASSWORD=<migrator-secret>
 STOCKOS_SEED_DEMO_CATALOG_ENABLED=false
+SPRING_FLYWAY_ENABLED=false
+STOCKOS_MIGRATIONS_MODE=external
 FLYWAY_BASELINE_ON_MIGRATE=false
 ```
 
@@ -92,7 +94,9 @@ REVOKE CREATE ON SCHEMA public FROM stockos_app;
 ```
 
 **Atenção à propriedade das tabelas:** todas as migrations devem ser
-executadas como `stockos_migrator`. Se o schema/tabelas antigos tiverem
+executadas como `stockos_migrator` em um processo de administração separado
+do web service. O processo web recebe **apenas** a senha de `stockos_app`.
+Nenhuma senha do migrador deve permanecer entre as variáveis do serviço.  Se o schema/tabelas antigos tiverem
 outro proprietário, não usar `SET ROLE` sem revisão. Depois do Flyway,
 conceder DML e sequences ao runtime conforme
 [`postgresql-least-privilege.md`](postgresql-least-privilege.md), ajustando
