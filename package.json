@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
     "test:local-preview": "node scripts/test-local-preview.mjs",
     "test:design": "node scripts/test-design-review.mjs",
     "test:performance": "node scripts/test-preview-performance.mjs",
-    "test:spa": "node scripts/test-spa-preview.mjs"
+    "test:spa": "node scripts/test-spa-preview.mjs",
+    "test:atomic-pdv": "node scripts/test-atomic-pdv-preview.mjs"
   }
 }
