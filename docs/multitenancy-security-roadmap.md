@@ -1,5 +1,39 @@
 # StockOS — Segurança multi-tenant: fundação (não pronta para produção)
 
+## Auditoria read-only do StockOS Staging existente (03/11/2026)
+
+Inspeção do projeto **StockOS Staging** via consultas PostgreSQL
+**somente leitura** (sem criar usuários, executar migrations ou alterar RLS):
+
+- O banco existente contém 23 tabelas em `stockos_private`, com
+  `empresas`, `filiais`, `membros` e `produtos`. Isso representa um modelo
+  **diferente** do modelo Flyway Java desta PR (`estabelecimentos`,
+  `usuarios_estabelecimentos` e produtos com IDs numéricos).
+- As tabelas estão vazias conforme a contagem disponível; `public` não contém
+  as tabelas de negócio Flyway inspecionadas.
+- As tabelas privadas possuem RLS habilitada e sem políticas explícitas.
+  O advisor marca isso como `INFO`, não como prova de exposição.
+- As permissões verificadas negam acesso/DDL ao schema `stockos_private`
+  para `anon`, `authenticated` e `service_role`; as consultas verificaram
+  ausência de `SELECT`, `INSERT`, `UPDATE` e `DELETE` para os papéis
+  `anon` e `authenticated`. Não foram encontradas funções próprias no
+  schema. Isso não substitui auditoria de todo o projeto nem de credenciais
+  com privilégios elevados.
+
+**Medida fail-closed:** `SupabaseSchemaCompatibilityGuard` inspeciona
+`pg_catalog` usando a *mesma conexão configurada no Flyway*, antes de
+`flyway.migrate()`, apenas quando `stockos.auth.mode=supabase`.
+Caso encontre as tabelas identificadoras do modelo `stockos_private`, ou não
+consiga consultar a base, bloqueia as migrations. Testes confirmam
+pré-verificação, negação e ausência de chamadas `migrate()` na colisão.
+
+**Importante:** esta proteção não faz reconciliação automática. Não migre as
+estruturas Java para o Supabase Staging existente. Para homologação com o
+backend Java, use banco PostgreSQL **separado**, descartável, com usuário
+runtime e migrador independentes e sem clientes reais, até ser definido um
+modelo canônico e um plano de migração revisado.
+
+
 ## Objetivo
 
 Cada estabelecimento é um tenant independente. O dono entra com identidade
