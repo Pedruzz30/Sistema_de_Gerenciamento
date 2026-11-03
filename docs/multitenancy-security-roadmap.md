@@ -120,6 +120,23 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
+
+## Descoberta autenticada de estabelecimentos (03/11/2026)
+
+A API de homologação oferece `GET /api/v2/estabelecimentos` **apenas** em modo
+`supabase`. O RU operacional vem do JWT validado e do vínculo servidor-side
+`supabase_auth_user_id`, nunca do header `X-User-RU` nem de um parâmetro.
+
+Ela lista no máximo 100 estabelecimentos para os quais o usuário possui vínculo
+ativo, com a própria loja ativa e a conta operacional ativa. Responde com
+`id`, `nome`, `papel` e `ruLocal` e não permite criar/selecionar automaticamente
+uma loja sem autorização. O catálogo e o estoque continuam usando o UUID no
+caminho exclusivamente como seletor, com a checagem de membership no backend.
+
+Testes em memória e integração PostgreSQL cobrem usuário inativo, duas lojas,
+vínculo revogado, loja suspensa e tentativa de RU falsificado. **Este endpoint
+não disponibiliza transações financeiras nem é um teste E2E de Supabase Auth real.**
+
 ## Validações acrescentadas em 03/11/2026
 
 - Teste com **duas transações PostgreSQL independentes** tentando consumir a
