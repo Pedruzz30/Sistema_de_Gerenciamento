@@ -104,6 +104,14 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   **Pendente:** teste concorrente com duas transações reais, auditoria de
   integridade das atualizações de referências já vinculadas e autorização
   transacional no serviço; rotas financeiras seguem bloqueadas.
+- Migration `V20261103_02`: impede que vários consumos de um tenant
+  aloquem mais unidades do que o movimento `SAIDA_VENDA` original, exigindo
+  movimento para consumos tenant-owned. O movimento é bloqueado com
+  `FOR UPDATE` antes da soma, e referências já usadas em consumos ou estornos
+  não podem ter quantidade/produto/tipo/reversão reescritos. Testes de
+  regressão de alocação duplicada e referência imutável foram adicionados.
+  **Pendente:** testes concorrentes com conexões distintas e proteção do
+  vínculo do consumo após um estorno já realizado.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
