@@ -45,6 +45,11 @@ public class LegacyApiIsolationGate extends OncePerRequestFilter {
             return true;
         }
 
+        // Discovery is strictly GET and derives identity from verified JWT.
+        if ("GET".equals(method) && "/api/v2/estabelecimentos".equals(path)) {
+            return true;
+        }
+
         String scopedPath = scopedPathForValidTenant(path);
         if (scopedPath == null) {
             return false;
