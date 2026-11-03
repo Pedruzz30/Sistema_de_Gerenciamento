@@ -17,6 +17,22 @@ O banco Render usa plano **free**, PostgreSQL 17, região Oregon e expira em
 **03/12/2026**. Não há garantia de backups. Use exclusivamente dados de teste.
 Não converter o plano, aumentar recursos nem criar hospedagem paga sem aprovação.
 
+## Bloqueio de inicialização antecipado (staging)
+
+O `StagingAuthenticationModeGuard` agora exige **antes de criar o contexto
+Spring, executar Flyway ou iniciar a API**:
+
+- `STOCKOS_AUTH_MODE=supabase` e URL Supabase não vazia;
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SPRING_FLYWAY_USER` e
+  `SPRING_FLYWAY_PASSWORD` explicitamente configurados;
+- URL JDBC PostgreSQL não-local;
+- runtime diferente do migrador e não nomeado `postgres`/`stockos_local`.
+
+O teste `StagingAuthenticationModeGuardTest` cobre ausência de cada variável,
+URL local, identidade compartilhada e desenvolvimento legado separado. Esta
+verificação **não substitui** o guard PostgreSQL que inspecciona privilégios
+efetivos após conectar, nem autoriza provisionar o serviço antes dos grants.
+
 ## Pré-condições para criar o serviço web
 
 1. Confirmar que o banco Render está `available`, sem tabelas de clientes.
