@@ -120,6 +120,26 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
+## Validações acrescentadas em 03/11/2026
+
+- Teste com **duas transações PostgreSQL independentes** tentando consumir a
+  mesma unidade de estoque; somente uma operação deve ser aceita.
+- Testes de rollback transacional: consumo inválido após um consumo aceito
+  anteriormente na mesma transação não deve persistir parcialmente; a mesma
+  regra se aplica a tentativa de cruzar lojas.
+- `SupabaseDatabasePrivilegeGuard`: startup em modo Supabase falha quando a
+  credencial JDBC da aplicação tem privilégios administrativos, ownership
+  de tabelas críticas ou possibilidade de criar objetos no schema/banco.
+- `SupabaseFlywaySeparation`: exige credenciais de migração diferentes das
+  credenciais de runtime, antes de Flyway executar.
+- Provisionamento operacional documentado em
+  [PostgreSQL — least privilege](postgresql-least-privilege.md).
+
+**Ainda pendente:** testes reais de autenticação com Supabase, segregação
+de papéis testada em banco efêmero com grants reais, auditoria de privilégios
+de funções herdadas e implementação de transações tenant-aware para
+pagamentos e fechamentos de caixa. Estas medidas não habilitam APIs financeiras.
+
 ## Restrições de segurança e etapas obrigatórias
 
 1. **Ainda não há isolamento de dados operacionais completo**. As colunas
