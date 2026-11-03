@@ -82,6 +82,65 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
                 () -> estorno(null, consumoA, refundMove));
     }
 
+    @Test
+    void aceitaEstornoParcialDentroDoConsumoEMovimento() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long first = estorno(a.tenant, consumption, refundMovement, "0.400000");
+        long second = estorno(a.tenant, consumption, refundMovement, "0.600000");
+        assertEquals(2, jdbc.queryForObject("""
+                select count(*) from venda_item_consumo_estornos
+                where estabelecimento_id = ? and id in (?, ?)
+                """, Integer.class, a.tenant, first, second));
+    }
+
+    @Test
+    void rejeitaSomaDeEstornosMaiorQueConsumo() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long firstMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long secondMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, firstMovement, "0.700000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(a.tenant, consumption, secondMovement, "0.400000"));
+    }
+
+    @Test
+    void rejeitaDistribuicaoMaiorQueQuantidadeDoMovimentoDeEstorno() {
+        Fixture a = fixture();
+        long consumptionOne = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long consumptionTwo = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumptionOne, refundMovement, "0.700000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(a.tenant, consumptionTwo, refundMovement, "0.400000"));
+    }
+
+    @Test
+    void rejeitaReducaoDaQuantidadeConsumidaAposEstorno() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refundMovement, "0.500000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumos set quantidade_base_total = 0.3 where id = ?",
+                        consumption));
+    }
+
+    @Test
+    void rejeitaReducaoDoMovimentoJaVinculadoAEstorno() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refundMovement, "0.700000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update movimentos_estoque_decimal set quantidade_base = 0.4 where id = ?",
+                        refundMovement));
+    }
+
     private Fixture fixture() {
         UUID tenant = jdbc.queryForObject(
                 "insert into estabelecimentos(nome) values ('Teste consumo') returning id", UUID.class);
@@ -158,13 +217,17 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
     }
 
     private long estorno(UUID tenant, long consumption, long movement) {
+        return estorno(tenant, consumption, movement, "1.000000");
+    }
+
+    private long estorno(UUID tenant, long consumption, long movement, String quantity) {
         return jdbc.queryForObject("""
                 insert into venda_item_consumo_estornos(
                     venda_item_consumo_id, movimento_estoque_id,
                     quantidade_base_estornada, custo_unitario_snapshot,
                     valor_estornado, criado_em, estabelecimento_id)
-                values (?, ?, 1, 2, 2, now(), ?) returning id
-                """, Long.class, consumption, movement, tenant);
+                values (?, ?, ?, 2, 2, now(), ?) returning id
+                """, Long.class, consumption, movement, new java.math.BigDecimal(quantity), tenant);
     }
 
     private record Fixture(UUID tenant, long unit, int product, long saleItem, long originalMove) {}
