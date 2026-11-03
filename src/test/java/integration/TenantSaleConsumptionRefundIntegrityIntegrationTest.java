@@ -141,6 +141,53 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
                         refundMovement));
     }
 
+    @Test
+    void bloqueiaConsumoSemMovimentoEmLojaTenant() {
+        Fixture a = fixture();
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(a.tenant, a.saleItem, a.product, a.unit, null));
+    }
+
+    @Test
+    void bloqueiaDuplaAlocacaoDaSaidaDeEstoque() {
+        Fixture a = fixture();
+        consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove));
+    }
+
+    @Test
+    void bloqueiaAumentoDeConsumoAcimaDaSaida() {
+        Fixture a = fixture();
+        long consumoId = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumos set quantidade_base_total = 1.2 where id = ?",
+                        consumoId));
+    }
+
+    @Test
+    void bloqueiaReescritaDeMovimentoJaConsumido() {
+        Fixture a = fixture();
+        consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update movimentos_estoque_decimal set tipo = 'AJUSTE_NEGATIVO' where id = ?",
+                        a.originalMove));
+    }
+
+    @Test
+    void bloqueiaReescritaDeEstornoJaVinculado() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refund = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refund);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update movimentos_estoque_decimal set movimento_estornado_id = null where id = ?",
+                        refund));
+    }
+
     private Fixture fixture() {
         UUID tenant = jdbc.queryForObject(
                 "insert into estabelecimentos(nome) values ('Teste consumo') returning id", UUID.class);
