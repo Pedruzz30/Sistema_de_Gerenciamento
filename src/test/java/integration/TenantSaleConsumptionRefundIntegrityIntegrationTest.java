@@ -7,6 +7,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -18,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TenantSaleConsumptionRefundIntegrityIntegrationTest {
     private static final AtomicLong NEXT = new AtomicLong(900000L);
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager transactionManager;
 
     @Test
     void permiteConsumoEEstornoExatoDaMesmaLoja() {
@@ -222,6 +231,72 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
         long refundId = estorno(a.tenant, consumption, refundMove);
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("delete from venda_item_consumo_estornos where id = ?", refundId));
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void doisOperadoresConcorrentesNaoConsomemMesmaSaidaDuasVezes() throws Exception {
+        // The fixture must be committed: independent connections cannot see
+        // uncommitted rows from the outer @Transactional test method.
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Fixture fixture = transaction.execute(status -> fixture());
+        assertNotNull(fixture);
+
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            java.util.concurrent.Callable<Boolean> attempt = () -> {
+                ready.countDown();
+                if (!start.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Concurrent test did not start");
+                }
+                try {
+                    transaction.execute(status -> {
+                        consumo(fixture.tenant, fixture.saleItem, fixture.product,
+                                fixture.unit, fixture.originalMove);
+                        return null;
+                    });
+                    return true;
+                } catch (DataIntegrityViolationException denied) {
+                    return false;
+                }
+            };
+            Future<Boolean> first = workers.submit(attempt);
+            Future<Boolean> second = workers.submit(attempt);
+            assertTrue(ready.await(10, TimeUnit.SECONDS));
+            start.countDown();
+
+            int success = (first.get(20, TimeUnit.SECONDS) ? 1 : 0)
+                    + (second.get(20, TimeUnit.SECONDS) ? 1 : 0);
+            assertEquals(1, success, "Only one transaction may allocate the stock exit");
+            Integer recorded = jdbc.queryForObject("""
+                    select count(*) from venda_item_consumos
+                     where estabelecimento_id = ? and movimento_estoque_id = ?
+                    """, Integer.class, fixture.tenant, fixture.originalMove);
+            assertEquals(1, recorded);
+        } finally {
+            start.countDown();
+            workers.shutdownNow();
+            assertTrue(workers.awaitTermination(10, TimeUnit.SECONDS));
+            // Remove the committed fixture in FK dependency order.
+            transaction.execute(status -> {
+                jdbc.update("delete from venda_item_consumos where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("delete from movimentos_estoque_decimal where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("delete from venda_itens where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("delete from vendas where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("""
+                        delete from variacoes_item_cardapio where item_cardapio_id in
+                        (select id from itens_cardapio where estabelecimento_id = ?)
+                        """, fixture.tenant);
+                jdbc.update("delete from itens_cardapio where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("delete from categorias_cardapio where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("delete from produtos where estabelecimento_id = ?", fixture.tenant);
+                jdbc.update("delete from unidades_medida where id = ?", fixture.unit);
+                jdbc.update("delete from estabelecimentos where id = ?", fixture.tenant);
+                return null;
+            });
+        }
     }
 
     private Fixture fixture() {
