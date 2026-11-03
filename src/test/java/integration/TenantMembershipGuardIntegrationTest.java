@@ -52,6 +52,34 @@ class TenantMembershipGuardIntegrationTest {
     }
 
     @Test
+    void descobertaMostraSomenteLojasAtivasDoUsuario() {
+        long dono = novoUsuario();
+        long outro = novoUsuario();
+        UUID lojaA = novaLoja("Estabelecimento A");
+        UUID lojaB = novaLoja("Estabelecimento B");
+        UUID suspensa = novaLoja("Estabelecimento Suspenso");
+        UUID revogada = novaLoja("Estabelecimento Revogado");
+        vincular(lojaA, dono, 1, "PROPRIETARIO");
+        vincular(lojaB, outro, 1, "OPERADOR");
+        vincular(suspensa, dono, 2, "GERENTE");
+        vincular(revogada, dono, 3, "OPERADOR");
+        jdbc.update("update estabelecimentos set situacao = 'SUSPENSO' where id = ?", suspensa);
+        jdbc.update("update usuarios_estabelecimentos set ativo = false where estabelecimento_id = ?", revogada);
+
+        var visible = guard.listarEstabelecimentosAutorizados(dono);
+        assertEquals(1, visible.size());
+        assertEquals(lojaA, visible.get(0).id());
+        assertEquals("Estabelecimento A", visible.get(0).nome());
+        assertEquals(Papel.PROPRIETARIO, visible.get(0).papel());
+        assertEquals(1, visible.get(0).ruLocal());
+
+        assertEquals(lojaB, guard.listarEstabelecimentosAutorizados(outro).get(0).id());
+        assertThrows(SecurityException.class, () -> guard.listarEstabelecimentosAutorizados(0));
+        jdbc.update("update usuarios set ativo = false where ru = ?", dono);
+        assertEquals(0, guard.listarEstabelecimentosAutorizados(dono).size());
+    }
+
+    @Test
     void ruLocalPodeSeRepetirEntreLojasMasNaoDentroDaMesmaLoja() {
         long ruA = novoUsuario();
         long ruB = novoUsuario();
