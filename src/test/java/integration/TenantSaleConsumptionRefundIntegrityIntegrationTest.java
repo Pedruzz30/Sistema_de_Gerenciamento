@@ -109,9 +109,10 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
     @Test
     void rejeitaDistribuicaoMaiorQueQuantidadeDoMovimentoDeEstorno() {
         Fixture a = fixture();
-        long consumptionOne = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
-        long consumptionTwo = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
-        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long largerExit = movimento(a.tenant, a.product, "SAIDA_VENDA", null, "2.000000");
+        long consumptionOne = consumo(a.tenant, a.saleItem, a.product, a.unit, largerExit);
+        long consumptionTwo = consumo(a.tenant, a.saleItem, a.product, a.unit, largerExit);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", largerExit);
         estorno(a.tenant, consumptionOne, refundMovement, "0.700000");
         assertThrows(DataIntegrityViolationException.class,
                 () -> estorno(a.tenant, consumptionTwo, refundMovement, "0.400000"));
@@ -274,15 +275,19 @@ class TenantSaleConsumptionRefundIntegrityIntegrationTest {
     }
 
     private long movimento(UUID tenant, int product, String tipo, Long reversed) {
+        return movimento(tenant, product, tipo, reversed, "1.000000");
+    }
+
+    private long movimento(UUID tenant, int product, String tipo, Long reversed, String quantity) {
         long n = NEXT.incrementAndGet();
         return jdbc.queryForObject("""
                 insert into movimentos_estoque_decimal(
                     filial_id, produto_id, tipo, quantidade_base, saldo_anterior, saldo_posterior,
                     custo_unitario, custo_total, origem_tipo, origem_id,
                     motivo, criado_em, movimento_estornado_id, estabelecimento_id)
-                values (?, ?, ?, 1, 10, 9, 2, 2, 'TESTE', ?, 'Teste', now(), ?, ?)
+                values (?, ?, ?, ?, 10, 9, 2, 2, 'TESTE', ?, 'Teste', now(), ?, ?)
                 returning id
-                """, Long.class, n, product, tipo, n, reversed, tenant);
+                """, Long.class, n, product, tipo, new java.math.BigDecimal(quantity), n, reversed, tenant);
     }
 
     private long consumo(UUID tenant, long saleItem, int product, long unit, Long movement) {
