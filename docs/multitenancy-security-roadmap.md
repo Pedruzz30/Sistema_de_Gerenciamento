@@ -1,5 +1,28 @@
 # StockOS — Segurança multi-tenant: fundação (não pronta para produção)
 
+## Validação combinada HTTP + PostgreSQL (03/11/2026)
+
+- `TenantHttpPostgresIsolationIntegrationTest`: dois sujeitos JWT **simulados
+  como já verificados**, roteados por `LinkedStockosUserFilter`, passam pelos
+  controllers reais de descoberta e catálogo, serviços reais e banco efêmero
+  PostgreSQL (dados transacionais revertidos ao fim do teste).
+- Verifica acesso exclusivo a produtos da loja A/B, recusa cruzada em ambos
+  os sentidos, ignorar RU enviado pelo navegador e perda de acesso após
+  revogação do vínculo sem exigir troca do token.
+- Testa bloqueio persistente dos caminhos financeiros/legados para a identidade
+  autenticada. A verificação **criptográfica** do JWT é executada separadamente
+  por `SupabaseJwtCryptographicVerificationTest` com chaves e JWKS locais;
+  nenhuma sessão Supabase remota foi criada.
+- `UsuarioRepository` agora obriga cada implementação a declarar
+  `buscarPorSupabaseAuthUserId` explicitamente: o adaptador JPA já consulta
+  o UUID indexado, sem fallback que carrega todos os usuários.
+- A autenticação real, revogação de sessão Supabase, permissões de banco
+  runtime e uso de HTTPS fora de desenvolvimento ainda precisam de homologação
+  em ambiente separado com credenciais e usuários descartáveis.
+
+**Não habilitar transações financeiras, migrar schema antigo ou publicar o
+backend SaaS nesta etapa.**
+
 ## Auditoria read-only do StockOS Staging existente (03/11/2026)
 
 Inspeção do projeto **StockOS Staging** via consultas PostgreSQL
