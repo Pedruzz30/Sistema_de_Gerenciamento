@@ -1,5 +1,22 @@
 # StockOS — Segurança multi-tenant: fundação (não pronta para produção)
 
+## Teste integrado da cadeia real Spring Security (03/11/2026)
+
+O teste `TenantRealSecurityChainIntegrationTest` exercita a cadeia HTTP
+real do Spring Security com tokens JWT assinados por RSA e JWKS **local**
+efêmero, em modo Supabase. Ao contrário dos testes anteriores, não injeta
+diretamente uma autenticação pré-validada no `SecurityContext`.
+
+Cobertura: assinatura válida, token ausente, assinatura falsificada, issuer
+incorreto, audience/role inválidas, expiração, usuário não vinculado, RU
+falsificado e bloqueio de rotas financeiras. Serviços de negócio são mocks
+neste teste; os testes de isolamento SQL no PostgreSQL permanecem separados.
+
+**Limite de homologação:** não utiliza sessões reais do Supabase, não
+testa revogação remota de sessões e não inicia serviço SaaS hospedado.
+A rotação de chaves exige revisão de cache JWKS e estratégia operacional.
+Manter esta PR em draft sem publicar backend ou migrations remotas.
+
 ## Validação combinada HTTP + PostgreSQL (03/11/2026)
 
 - `TenantHttpPostgresIsolationIntegrationTest`: dois sujeitos JWT **simulados
