@@ -124,7 +124,7 @@ class TenantRealSecurityChainIntegrationTest {
                 List.of(new EstabelecimentoDisponivel(STORE_A, "Loja A", Papel.OPERADOR, 7)));
         when(catalog.listarProdutos(STORE_B, 91L)).thenThrow(new SecurityException("not a member"));
 
-        mvc.perform(get("/api/v2/estabelecimentos")
+        mvc.perform(getApi("/api/v2/estabelecimentos")
                 .header("Authorization", "Bearer " + token(TRUSTED_KEY, USER_A.toString(),
                         ISSUER, "authenticated", "authenticated", Instant.now().plusSeconds(240)))
                 .header("X-User-RU", "99999"))
@@ -133,7 +133,7 @@ class TenantRealSecurityChainIntegrationTest {
                 .andExpect(jsonPath("$[0].ruLocal").value(7));
 
         String guessed = "/api/v2/estabelecimentos/" + STORE_B + "/catalogo/produtos";
-        mvc.perform(get(guessed).header("Authorization", "Bearer " +
+        mvc.perform(getApi(guessed).header("Authorization", "Bearer " +
                 token(TRUSTED_KEY, USER_A.toString(), ISSUER,
                         "authenticated", "authenticated", Instant.now().plusSeconds(240))))
                 .andExpect(status().isForbidden())
@@ -145,7 +145,7 @@ class TenantRealSecurityChainIntegrationTest {
 
     @Test
     void noBearerCannotUseForgedRuHeader() throws Exception {
-        mvc.perform(get("/api/v2/estabelecimentos").header("X-User-RU", "91"))
+        mvc.perform(getApi("/api/v2/estabelecimentos").header("X-User-RU", "91"))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(users, memberships, catalog);
     }
@@ -171,7 +171,7 @@ class TenantRealSecurityChainIntegrationTest {
                         "authenticated", "authenticated", Instant.now().plusSeconds(240))
         };
         for (String signed : badTokens) {
-            mvc.perform(get("/api/v2/estabelecimentos")
+            mvc.perform(getApi("/api/v2/estabelecimentos")
                     .header("Authorization", "Bearer " + signed))
                     .andExpect(status().isUnauthorized());
         }
@@ -182,7 +182,7 @@ class TenantRealSecurityChainIntegrationTest {
     void signedButUnlinkedUserCannotEnumerateTenants() throws Exception {
         UUID unknown = UUID.randomUUID();
         when(users.buscarPorSupabaseAuthUserId(unknown)).thenReturn(Optional.empty());
-        mvc.perform(get("/api/v2/estabelecimentos")
+        mvc.perform(getApi("/api/v2/estabelecimentos")
                 .header("Authorization", "Bearer " + token(TRUSTED_KEY, unknown.toString(),
                         ISSUER, "authenticated", "authenticated", Instant.now().plusSeconds(240))))
                 .andExpect(status().isForbidden());
@@ -198,12 +198,24 @@ class TenantRealSecurityChainIntegrationTest {
         String bearer = "Bearer " + token(TRUSTED_KEY, USER_A.toString(), ISSUER,
                 "authenticated", "authenticated", Instant.now().plusSeconds(240));
 
-        mvc.perform(get("/api/vendas").header("Authorization", bearer))
+        mvc.perform(getApi("/api/vendas").header("Authorization", bearer))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/v2/estabelecimentos")
+        mvc.perform(postApi("/api/v2/estabelecimentos")
                 .header("Authorization", bearer))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(memberships, catalog);
+    }
+
+    // MockMvc does not populate servletPath automatically for the path
+    // checks in the production security filters. Match real servlet dispatch.
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+    getApi(String path) {
+        return get(path).servletPath(path);
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+    postApi(String path) {
+        return post(path).servletPath(path);
     }
 
     private static String token(RSAKey key, String subject, String issuer,
