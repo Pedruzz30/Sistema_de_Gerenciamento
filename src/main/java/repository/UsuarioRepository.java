@@ -14,13 +14,12 @@ public interface UsuarioRepository {
 
     Optional<Usuario> buscarPorRu(long ru);
 
-    /** Auth identity is an explicit administrator-provisioned UUID link, never an email match. */
-    default Optional<Usuario> buscarPorSupabaseAuthUserId(UUID userId) {
-        if (userId == null) return Optional.empty();
-        return listarTodos().stream()
-                .filter(u -> userId.equals(u.getSupabaseAuthUserId()))
-                .findFirst();
-    }
+    /**
+     * Security-critical lookup: must be implemented explicitly by each adapter.
+     * Production adapter uses the indexed supabase_auth_user_id column, never
+     * an in-memory scan of every operational user.
+     */
+    Optional<Usuario> buscarPorSupabaseAuthUserId(UUID userId);
 
     List<Usuario> listarTodos();
 }
