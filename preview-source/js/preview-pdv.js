@@ -35,21 +35,24 @@
       };
       finish.onclick=async()=>{
         if(cart.length===0){feedback.textContent='Adicione produtos ao carrinho.';return;}
-        const value=render();
+        render();
         finish.disabled=true;
         try{
-          const cash=await (await fetch('/api/caixas')).json();if(!cash.some(c=>c.numeroCaixa===numero&&c.status==='ABERTO'))throw Error('Caixa encerrado.');
-          const current=await (await fetch('/api/produtos')).json();
-          if(cart.some(c=>{const p=current.find(p=>p.id===c.id);return !p||p.quantidadeAtual<c.qty;}))throw Error('Saldo de produto mudou; atualize o PDV.');
-          // The local preview deliberately processes only simulated stock and cash.
-          // Neither backend API nor payment gateway is contacted.
-          for(const c of cart){
-            const r=await fetch('/api/movimentacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idProduto:c.id,quantidade:c.qty,tipo:'SAIDA'})});
-            if(!r.ok)throw Error('Falha em baixa fictícia de estoque.');
+          // One preview-only command validates and commits the sale atomically.
+          // The idempotency key survives a retry of this same cart.
+          const key=window.crypto?.randomUUID?.() || ('pdv_'+Date.now()+'_'+Math.random().toString(36).slice(2));
+          const response=await fetch('/api/preview/transacoes/venda',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              idempotencyKey:key,numeroCaixa:numero,
+              itens:cart.map(c=>({idProduto:c.id,quantidade:c.qty}))
+            })
+          });
+          if(!response.ok){
+            const error=await response.json().catch(()=>({}));
+            throw Error(error.erro||'Não foi possível registrar a venda fictícia.');
           }
-          const sale=await fetch('/api/caixas/venda',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numeroCaixa:numero,valor:value,descricao:'Venda demonstrativa'})});
-          if(!sale.ok)throw Error('Falha ao registrar venda no caixa fictício.');
-          feedback.textContent='Venda fictícia registrada. Nenhum pagamento foi realizado.';
+          feedback.textContent='Venda fictícia registrada com estoque e caixa atualizados. Nenhum pagamento foi realizado.';
           finish.disabled=true;
           if(typeof carregarCaixas==='function')await carregarCaixas();
         }catch(e){feedback.textContent=e.message;finish.disabled=false;}
