@@ -60,7 +60,7 @@
       </div>
 
       <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="f-row grid-2">
+        <div class="f-row grid-2" id="legacyNameFields">
           <div class="f-group field">
             <label for="nome">Nome</label>
             <div class="input-wrap">
@@ -75,6 +75,11 @@
               <input class="input" type="text" id="sobrenome" placeholder="Superior" autocomplete="family-name" required>
             </div>
           </div>
+        </div>
+
+        <div class="f-group full field" id="supabaseEmailField" style="display:none">
+          <label for="authEmail">E-mail</label>
+          <div class="input-wrap"><input class="input" type="email" id="authEmail" placeholder="voce@empresa.com" autocomplete="email"></div>
         </div>
 
         <div class="f-group full field">
@@ -111,6 +116,7 @@
 
 </div>
 
+<script src="/js/stockos-auth.js"></script>
 <script>
   const LOGIN_ICONS = {
     user: '<circle cx="12" cy="8" r="3"/><path d="M6 19a6 6 0 0 1 12 0"/>',
@@ -132,7 +138,29 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', renderLoginIcons);
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderLoginIcons();
+    if (window.STOCKOS_PREVIEW) return;
+    try {
+      const cfg = await window.StockosAuth.discover();
+      if (cfg.mode === 'supabase') {
+        document.getElementById('legacyNameFields').style.display = 'none';
+        document.getElementById('supabaseEmailField').style.display = '';
+        document.getElementById('nome').required = false;
+        document.getElementById('sobrenome').required = false;
+        document.getElementById('authEmail').required = true;
+      }
+    } catch (error) {
+      // Fail closed if backend is configured for Supabase but unreachable.
+      // The static Netlify mock preview is handled by preview-mock.js.
+      const isPreview = Boolean(window.STOCKOS_PREVIEW || window.__STOCKOS_PREVIEW__);
+      if (!isPreview) {
+        document.getElementById('btnSubmit').disabled = true;
+        document.getElementById('alert').className = 'alert error';
+        document.getElementById('alertMsg').textContent = 'Nao foi possivel verificar a configuracao de login.';
+      }
+    }
+  });
 
   function persistirUsuario(usuario) {
     const payload = JSON.stringify(usuario);
@@ -155,6 +183,24 @@
     alert.className = 'alert';
 
     try {
+      if (window.StockosAuth.isSupabase()) {
+        const email = document.getElementById('authEmail').value.trim();
+        const token = await window.StockosAuth.signIn(email, senha);
+        const me = await fetch('/api/auth/me', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        if (!me.ok) {
+          window.StockosAuth.clearSession();
+          throw new Error('Usuario ainda nao vinculado ou sem permissao');
+        }
+        const linkedUser = await me.json();
+        persistirUsuario(linkedUser);
+        alert.className = 'alert success';
+        alertIcon.innerHTML = loginIconMarkup('checkCircle');
+        alertMsg.textContent = 'Acesso autorizado. Redirecionando...';
+        window.location.href = '/dashboard.html';
+        return;
+      }
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,7 +220,9 @@
     } catch (err) {
       alert.className = 'alert error';
       alertIcon.innerHTML = loginIconMarkup('alertTriangle');
-      alertMsg.textContent = 'Nome, sobrenome ou senha incorretos.';
+      alertMsg.textContent = window.StockosAuth.isSupabase()
+        ? 'Nao foi possivel entrar. Confira a conta e seu vinculo com o StockOS.'
+        : 'Nome, sobrenome ou senha incorretos.';
       btn.classList.remove('loading');
       document.querySelectorAll('input').forEach(i => {
         i.style.borderColor = 'rgba(244,63,94,.5)';
