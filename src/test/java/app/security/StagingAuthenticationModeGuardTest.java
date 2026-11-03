@@ -17,8 +17,8 @@ class StagingAuthenticationModeGuardTest {
         env.setProperty("DB_URL", "jdbc:postgresql://db.internal:5432/stockos");
         env.setProperty("DB_USERNAME", "stockos_app");
         env.setProperty("DB_PASSWORD", "runtime-test-only");
-        env.setProperty("SPRING_FLYWAY_USER", "stockos_migrator");
-        env.setProperty("SPRING_FLYWAY_PASSWORD", "migrator-test-only");
+        env.setProperty("stockos.migrations.mode", "external");
+        env.setProperty("spring.flyway.enabled", "false");
         return env;
     }
 
@@ -44,8 +44,7 @@ class StagingAuthenticationModeGuardTest {
 
     @Test
     void stagingRejectsMissingRuntimeOrMigrationCredentials() {
-        for (String missing : new String[]{"DB_URL", "DB_USERNAME", "DB_PASSWORD",
-                "SPRING_FLYWAY_USER", "SPRING_FLYWAY_PASSWORD"}) {
+        for (String missing : new String[]{"DB_URL", "DB_USERNAME", "DB_PASSWORD"}) {
             MockEnvironment env = staging("supabase", "https://example.supabase.co");
             env.setProperty(missing, "");
             assertThrows(IllegalStateException.class,
@@ -67,6 +66,27 @@ class StagingAuthenticationModeGuardTest {
             assertThrows(IllegalStateException.class,
                     () -> guard.postProcessEnvironment(env, mock(SpringApplication.class)),
                     "Must reject runtime DB user " + runtime);
+        }
+    }
+
+    @Test
+    void stagingRejectsFlywayInApplicationAndMigrationSecrets() {
+        MockEnvironment flywayEnabled = staging("supabase", "https://example.supabase.co");
+        flywayEnabled.setProperty("spring.flyway.enabled", "true");
+        assertThrows(IllegalStateException.class,
+                () -> guard.postProcessEnvironment(flywayEnabled, mock(SpringApplication.class)));
+
+        MockEnvironment embedded = staging("supabase", "https://example.supabase.co");
+        embedded.setProperty("stockos.migrations.mode", "embedded");
+        assertThrows(IllegalStateException.class,
+                () -> guard.postProcessEnvironment(embedded, mock(SpringApplication.class)));
+
+        for (String secret : new String[]{"SPRING_FLYWAY_USER",
+                "SPRING_FLYWAY_PASSWORD", "SPRING_FLYWAY_URL"}) {
+            MockEnvironment environment = staging("supabase", "https://example.supabase.co");
+            environment.setProperty(secret, "should-not-be-present");
+            assertThrows(IllegalStateException.class,
+                    () -> guard.postProcessEnvironment(environment, mock(SpringApplication.class)));
         }
     }
 
