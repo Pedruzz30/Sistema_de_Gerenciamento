@@ -66,10 +66,10 @@ public class SupabaseDatabasePrivilegeGuard implements ApplicationRunner {
  * SPRING_FLYWAY_PASSWORD. Do not use STOCKOS local superuser for runtime.
  */
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "stockos.migrations.mode", havingValue = "embedded", matchIfMissing = true)
 class SupabaseFlywaySeparation {
     @Bean
     @ConditionalOnProperty(name = "stockos.auth.mode", havingValue = "supabase")
-    @ConditionalOnProperty(name = "stockos.migrations.mode", havingValue = "embedded", matchIfMissing = true)
     org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy
     requireSeparateMigrationIdentity(
             @Value("${spring.flyway.user:}") String migrator,
