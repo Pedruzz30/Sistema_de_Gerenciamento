@@ -14,6 +14,11 @@ class StagingAuthenticationModeGuardTest {
         env.setActiveProfiles("staging");
         env.setProperty("stockos.auth.mode", mode);
         env.setProperty("stockos.auth.supabase-url", url);
+        env.setProperty("DB_URL", "jdbc:postgresql://db.internal:5432/stockos");
+        env.setProperty("DB_USERNAME", "stockos_app");
+        env.setProperty("DB_PASSWORD", "runtime-test-only");
+        env.setProperty("SPRING_FLYWAY_USER", "stockos_migrator");
+        env.setProperty("SPRING_FLYWAY_PASSWORD", "migrator-test-only");
         return env;
     }
 
@@ -35,6 +40,34 @@ class StagingAuthenticationModeGuardTest {
     void permitsExplicitSupabaseConfig() {
         assertDoesNotThrow(() -> guard.postProcessEnvironment(
                 staging("supabase", "https://example.supabase.co"), mock(SpringApplication.class)));
+    }
+
+    @Test
+    void stagingRejectsMissingRuntimeOrMigrationCredentials() {
+        for (String missing : new String[]{"DB_URL", "DB_USERNAME", "DB_PASSWORD",
+                "SPRING_FLYWAY_USER", "SPRING_FLYWAY_PASSWORD"}) {
+            MockEnvironment env = staging("supabase", "https://example.supabase.co");
+            env.setProperty(missing, "");
+            assertThrows(IllegalStateException.class,
+                    () -> guard.postProcessEnvironment(env, mock(SpringApplication.class)),
+                    "Must reject missing " + missing);
+        }
+    }
+
+    @Test
+    void stagingRejectsLocalDatabaseAndSharedOrAdminIdentity() {
+        MockEnvironment local = staging("supabase", "https://example.supabase.co");
+        local.setProperty("DB_URL", "jdbc:postgresql://localhost:5432/stockos");
+        assertThrows(IllegalStateException.class,
+                () -> guard.postProcessEnvironment(local, mock(SpringApplication.class)));
+
+        for (String runtime : new String[]{"stockos_migrator", "postgres", "stockos_local"}) {
+            MockEnvironment env = staging("supabase", "https://example.supabase.co");
+            env.setProperty("DB_USERNAME", runtime);
+            assertThrows(IllegalStateException.class,
+                    () -> guard.postProcessEnvironment(env, mock(SpringApplication.class)),
+                    "Must reject runtime DB user " + runtime);
+        }
     }
 
     @Test
