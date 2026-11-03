@@ -69,6 +69,7 @@ public class SupabaseDatabasePrivilegeGuard implements ApplicationRunner {
 class SupabaseFlywaySeparation {
     @Bean
     @ConditionalOnProperty(name = "stockos.auth.mode", havingValue = "supabase")
+    @ConditionalOnProperty(name = "stockos.migrations.mode", havingValue = "embedded", matchIfMissing = true)
     org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy
     requireSeparateMigrationIdentity(
             @Value("${spring.flyway.user:}") String migrator,
