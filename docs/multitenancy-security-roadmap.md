@@ -95,6 +95,15 @@ identificador público, nunca senha. Proprietário não empresta sessão a caixa
   Testes PostgreSQL cobrem sucesso autorizado e negações entre duas lojas.
   **Isto não habilita endpoints de finalização/cancelamento** nem substitui
   limites totais estornáveis, idempotência ou bloqueios transacionais.
+- Migration `V20261103_01`: para registros pertencentes a um tenant,
+  travas de linha e triggers limitam a soma de estornos pela quantidade do
+  consumo original **e** pela quantidade do movimento de devolução. Bloqueiam
+  alterações posteriores em quantidades de consumos/movimentos já vinculados
+  a estornos. Testes cobrem estorno parcial, excesso cumulativo, distribuição
+  acima do movimento e edição retroativa. Registros legados continuam intactos.
+  **Pendente:** teste concorrente com duas transações reais, auditoria de
+  integridade das atualizações de referências já vinculadas e autorização
+  transacional no serviço; rotas financeiras seguem bloqueadas.
 - **Nenhum** proprietário ou estabelecimento é criado automaticamente;
   **nenhum** dado legado é migrado, reclassificado ou eliminado.
 
