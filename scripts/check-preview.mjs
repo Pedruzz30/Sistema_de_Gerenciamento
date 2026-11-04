@@ -15,8 +15,8 @@ assert.equal(await readFile('src/main/resources/static/js/dashboard.js','utf8'),
   await readFile('dist-preview/js/dashboard.js','utf8'),
   'Dashboard JS must come from canonical frontend');
 assert.equal(original.slice(original.indexOf('<body')),
-  html.slice(html.indexOf('<body')),
-  'Dashboard HTML body must come from canonical frontend');
+  html.slice(html.indexOf('<body')).replace(/<div class="comandas-demo-entry"[\s\S]*?<\/div>/, ''),
+  'Dashboard HTML body must come from canonical frontend, except preview-only comandas entry');
 assert.ok(html.includes('/js/preview-mock.js'),'Mock injection absent');
 assert.ok(!html.includes('/js/preview-notes.js'),'Notes demo should not run on dashboard');
 assert.ok(!html.includes('/js/preview-pdv.js'),'PDV demo should not run on dashboard');
@@ -32,6 +32,7 @@ assert.ok(html.includes('/js/spa-navigation.js'),'SPA pilot missing from Dashboa
 assert.ok((await readFile('dist-preview/estoque.html','utf8')).includes('/js/spa-navigation.js'),'SPA pilot missing from Estoque');
 assert.ok(!html.includes('/css/dashboard-refinement.css'),'Preview should only apply refinements in new design');
 assert.ok((await readFile('dist-preview/css/stockos-design.bundle.css','utf8')).includes('/* StockOS CSS: compat.css */'));
+assert.ok(!original.includes('comandas-demo-entry'),'Demo shortcut must not leak into Java frontend');
 assert.ok(!original.includes('/js/preview-mock.js'),'Mock leaked into real Java frontend');
 assert.ok(!original.includes('/js/preview-notes.js'),'Invoice mock leaked into Java frontend');
 assert.ok(!original.includes('/js/preview-pdv.js'),'PDV mock leaked into Java frontend');
