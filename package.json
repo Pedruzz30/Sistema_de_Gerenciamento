@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-quick-actions.mjs && node scripts/test-mobile-preview.mjs && node scripts/test-mobile-navigation.mjs && npm run test:operational-ux && npm run test:operational-dashboard && npm run test:mobile-pdv",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-quick-actions.mjs && node scripts/test-mobile-preview.mjs && node scripts/test-mobile-navigation.mjs && npm run test:operational-ux && npm run test:operational-dashboard && npm run test:mobile-pdv && npm run test:comandas-demo",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
@@ -19,6 +19,7 @@
     "test:mobile-navigation": "node scripts/test-mobile-navigation.mjs",
     "test:operational-ux": "node scripts/test-operational-ux.mjs",
     "test:operational-dashboard": "node scripts/test-operational-dashboard.mjs",
-    "test:mobile-pdv": "node scripts/test-mobile-pdv-flow.mjs"
+    "test:mobile-pdv": "node scripts/test-mobile-pdv-flow.mjs",
+    "test:comandas-demo": "node scripts/test-comandas-demo.mjs"
   }
 }
