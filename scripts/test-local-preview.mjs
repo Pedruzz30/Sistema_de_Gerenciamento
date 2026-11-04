@@ -25,7 +25,7 @@ try {
   const base = await waitForAddress();
   const root = await fetch(base + '/', { redirect:'manual' });
   assert.equal(root.status, 302);
-  assert.equal(root.headers.get('location'), '/login.html');
+  assert.equal(root.headers.get('location'), '/dashboard.html');
   const login = await fetch(base + '/login.html');
   assert.equal(login.status, 200);
   const html = await login.text();

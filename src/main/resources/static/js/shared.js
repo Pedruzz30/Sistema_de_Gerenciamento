@@ -438,7 +438,8 @@ function renderUserCard() {
 let shellInicializado = false;
 
 function isShellMobile() {
-  return window.innerWidth <= 900;
+  // Alinhar o breakpoint do JS à sidebar escondida pelo app.css.
+  return window.innerWidth <= 980;
 }
 
 function fecharModalAberto() {
@@ -497,7 +498,23 @@ function setupShell() {
     overlay.type = 'button';
     overlay.className = 'sidebar-overlay';
     overlay.setAttribute('aria-label', 'Fechar navegação');
-    document.body.appendChild(overlay);
+  }
+  // O design novo cria um stacking context em .app (z-index: 1).
+  // Um overlay anexado diretamente ao body (z-index: 39) ficava ACIMA
+  // de toda a sidebar, mesmo quando ela tinha z-index: 50. Isto
+  // bloqueava os toques e desfocava o menu no Android.
+  // Mantendo o backdrop e a sidebar no MESMO contexto, o menu fica acima.
+  if (overlay.parentElement !== app) app.appendChild(overlay);
+
+  // Permitir fechar o menu por dentro, sem depender de toque no backdrop.
+  let closeSidebarButton = sidebar.querySelector('.sidebar-close');
+  if (!closeSidebarButton) {
+    closeSidebarButton = document.createElement('button');
+    closeSidebarButton.type = 'button';
+    closeSidebarButton.className = 'sidebar-close';
+    closeSidebarButton.setAttribute('aria-label', 'Fechar menu de navegação');
+    closeSidebarButton.textContent = 'Fechar menu ×';
+    sidebar.insertBefore(closeSidebarButton, sidebar.firstChild);
   }
 
   function syncSidebar(isOpen) {
@@ -525,6 +542,7 @@ function setupShell() {
   });
 
   overlay.addEventListener('click', fecharSidebar);
+  closeSidebarButton.addEventListener('click', fecharSidebar);
 
   sidebar.addEventListener('click', function (event) {
     const alvo = event.target.closest('a');
@@ -559,4 +577,21 @@ document.addEventListener('DOMContentLoaded', function () {
   renderUserCard();
   aplicarIconesEstaticos(document);
   setupShell();
+  // Atalhos operacionais carregados somente no shell legado/mock.
+  // O console Supabase tenant-aware usa navegação própria e mantém APIs de escrita bloqueadas.
+  if (!(window.StockosAuth && window.StockosAuth.isSupabase())) {
+    if (!document.getElementById('stockos-quick-style')) {
+      const style = document.createElement('link');
+      style.id = 'stockos-quick-style';
+      style.rel = 'stylesheet';
+      style.href = '/css/quick-actions.css';
+      document.head.appendChild(style);
+    }
+    if (!document.getElementById('stockos-quick-script')) {
+      const script = document.createElement('script');
+      script.id = 'stockos-quick-script';
+      script.src = '/js/quick-actions.js';
+      document.body.appendChild(script);
+    }
+  }
 });

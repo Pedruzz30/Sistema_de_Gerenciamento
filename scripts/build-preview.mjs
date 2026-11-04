@@ -8,8 +8,23 @@ await mkdir(out, {recursive:true});
 await cp(root, out, {recursive:true});
 // The real Java frontend is the single source of truth. Mock is preview-only.
 await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
+// Login automático existe SOMENTE no build estático mock. Não altera shared.js
+// canônico, login Java ou autorização real do backend.
+const sharedPath = join(out,'js/shared.js');
+const sharedCanonical = await readFile(sharedPath,'utf8');
+const authMarker = 'const usuario = lerUsuarioPersistido();';
+if (!sharedCanonical.includes(authMarker)) {
+  throw new Error('Contrato do login canônico alterado; revisar o fallback do mock.');
+}
+await writeFile(sharedPath, sharedCanonical.replace(
+  authMarker, 'const usuario = lerUsuarioPersistido() || window.StockosPreviewUser;'
+));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
+await cp(resolve('preview-source/comandas-demo.html'),join(out,'comandas-demo.html'));
+await cp(resolve('preview-source/js/comandas-demo-model.js'),join(out,'js/comandas-demo-model.js'));
+await cp(resolve('preview-source/js/comandas-demo.js'),join(out,'js/comandas-demo.js'));
+await cp(resolve('preview-source/css/comandas-demo.css'),join(out,'css/comandas-demo.css'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
 await cp(resolve('preview-source/js/preview-design-review.js'),join(out,'js/preview-design-review.js'));
 await mkdir(join(out,'css'),{recursive:true});
@@ -34,7 +49,7 @@ await writeFile(join(out,'css/stockos-design.bundle.css'),designBundle);
 // Preview-only mock modules remain in preview-source/js/.
 
 // SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.
-const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html']);
+const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html','comandas-demo.html']);
 const { readdir } = await import('node:fs/promises');
 for (const entry of await readdir(out)) {
   if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
@@ -58,6 +73,19 @@ for (const page of pages) {
   const scripts = previewScriptsFor(page)
     .map(name=>'<script src="/js/'+name+'.js"></script>').join('\n');
   html=html.replace('</head>', '<script>window.STOCKOS_PREVIEW = true;</script>\n'+scripts+'\n</head>');
+  if (page === 'dashboard.html' || page === 'caixas.html') {
+    // Link de demonstração visível apenas no Netlify, não no app Java real.
+    const entry = '<div class="comandas-demo-entry" style="margin:10px 0 18px;padding:13px 15px;border:1px solid var(--rule,#5c7087);background:var(--paper-raised,#142236);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+      '<span style="font-size:13px;color:var(--ink,#f4f7fa)"><strong>Experimente as comandas</strong> · Fluxo demonstrativo com dados fictícios, sem pagamentos.</span>' +
+      '<a href="/comandas-demo.html" style="padding:11px 15px;border-radius:9px;background:var(--accent,#dca062);color:#211607;font-size:13px;font-weight:750;text-decoration:none;min-height:44px;display:inline-flex;align-items:center">Abrir comandas</a></div>';
+    html = html.replace('<div class="main-body content">','<div class="main-body content">' + entry);
+  }
+  if (page === 'login.html') {
+    const demoAccess = '<div class="stockos-demo-entry" style="margin:14px 0 0;text-align:center">' +
+      '<a href="/dashboard.html" style="display:inline-flex;justify-content:center;align-items:center;min-height:46px;padding:10px 16px;border-radius:10px;text-decoration:none;border:1px solid var(--rule);background:var(--paper-raised);color:var(--ink);font-weight:700">Abrir demonstração sem login</a>' +
+      '<p style="font-size:12px;color:var(--ink-3);margin:8px 0 0">Ambiente de testes com dados fictícios; nenhuma conta real necessária.</p></div>';
+    html = html.replace('</form>', '</form>' + demoAccess);
+  }
   await writeFile(p,html);
 }
 await writeFile(join(out,'_redirects'), [
@@ -70,9 +98,10 @@ await writeFile(join(out,'_redirects'), [
   '/cotacoes /cotacoes.html 200',
   '/funcionarios /funcionarios.html 200',
   '/logs /logs.html 200',
-  '/cardapio /cardapio.html 200'
+  '/cardapio /cardapio.html 200',
+  '/comandas-demo /comandas-demo.html 200'
 ].join('\n')+'\n');
-await writeFile(join(out,'index.html'), '<meta http-equiv="refresh" content="0;url=/login.html"><a href="/login.html">Abrir StockOS Demo</a>\n');
+await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demonstração</title></head><body><p><a href="/dashboard.html">Abrir demonstração do StockOS (dados fictícios)</a></p></body></html>\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');
 await writeFile(join(out,'robots.txt'), 'User-agent: *\nDisallow: /\n');
 console.log('StockOS mock preview pronto em dist-preview/');
