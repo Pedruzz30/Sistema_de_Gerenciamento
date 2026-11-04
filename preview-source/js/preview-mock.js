@@ -314,7 +314,7 @@
     banner.textContent='DEMONSTRAÇÃO · dados fictícios';
   }
   function mountScaleSummary() {
-    if(!db.demoEscala || !/\\/dashboard(?:\\.html)?\\/?$/.test(location.pathname))return;
+    if(!db.demoEscala || !/\/dashboard(?:\.html)?\/?$/.test(location.pathname))return;
     const anchor=document.getElementById('summary-grid');
     if(!anchor || document.getElementById('stockos-volume-summary'))return;
     const data=db.demoEscala;
