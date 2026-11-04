@@ -8,6 +8,17 @@ await mkdir(out, {recursive:true});
 await cp(root, out, {recursive:true});
 // The real Java frontend is the single source of truth. Mock is preview-only.
 await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
+// Login automático existe SOMENTE no build estático mock. Não altera shared.js
+// canônico, login Java ou autorização real do backend.
+const sharedPath = join(out,'js/shared.js');
+const sharedCanonical = await readFile(sharedPath,'utf8');
+const authMarker = 'const usuario = lerUsuarioPersistido();';
+if (!sharedCanonical.includes(authMarker)) {
+  throw new Error('Contrato do login canônico alterado; revisar o fallback do mock.');
+}
+await writeFile(sharedPath, sharedCanonical.replace(
+  authMarker, 'const usuario = lerUsuarioPersistido() || window.StockosPreviewUser;'
+));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
