@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-quick-actions.mjs && node scripts/test-mobile-preview.mjs",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-quick-actions.mjs && node scripts/test-mobile-preview.mjs && node scripts/test-mobile-navigation.mjs",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
@@ -15,6 +15,7 @@
     "test:spa": "node scripts/test-spa-preview.mjs",
     "test:atomic-pdv": "node scripts/test-atomic-pdv-preview.mjs",
     "test:quick-actions": "node scripts/test-quick-actions.mjs",
-    "test:mobile": "node scripts/test-mobile-preview.mjs"
+    "test:mobile": "node scripts/test-mobile-preview.mjs",
+    "test:mobile-navigation": "node scripts/test-mobile-navigation.mjs"
   }
 }
