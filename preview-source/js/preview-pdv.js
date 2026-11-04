@@ -156,8 +156,14 @@
           finish.textContent='Venda fictícia registrada';
           switchPanel('pedido');
           finish.disabled=true;
-          if(typeof carregarCaixas==='function')await carregarCaixas();
-        }catch(e){feedback.textContent=e.message;switchPanel('pedido');finish.disabled=false;}
+          if(typeof carregarCaixas==='function') {
+            try { await carregarCaixas(); }
+            catch(error) { console.warn('Preview PDV: falha ao atualizar caixas',error); }
+          }
+        }catch(e){
+          feedback.textContent=e.message+' Confira antes de tentar novamente.';
+          switchPanel('pedido');finish.disabled=false;
+        }
         finally{processing=false;}
       };
       overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
