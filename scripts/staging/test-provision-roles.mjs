@@ -36,7 +36,7 @@ for (const [name, source, required] of [
   ['grants', grants, [/BEGIN;/, /COMMIT;/, /current_database\(\) <> 'stockos_java_staging_temp'/,
     /current_user <> 'stockos_migrator'/, /GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public/,
     /GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public/,
-    /REVOKE CREATE ON SCHEMA public FROM stockos_app/]],
+    /has_schema_privilege\('PUBLIC', 'public', 'CREATE'\)/]],
   ['verify', verify, [/current_database\(\) <> 'stockos_java_staging_temp'/,
     /current_user <> 'stockos_app'/, /rolbypassrls/, /has_database_privilege/,
     /has_schema_privilege/, /pg_has_role/]]
