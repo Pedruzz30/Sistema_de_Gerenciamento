@@ -73,6 +73,13 @@ for (const page of pages) {
   const scripts = previewScriptsFor(page)
     .map(name=>'<script src="/js/'+name+'.js"></script>').join('\n');
   html=html.replace('</head>', '<script>window.STOCKOS_PREVIEW = true;</script>\n'+scripts+'\n</head>');
+  if (page === 'dashboard.html' || page === 'caixas.html') {
+    // Link de demonstração visível apenas no Netlify, não no app Java real.
+    const entry = '<div class="comandas-demo-entry" style="margin:10px 0 18px;padding:13px 15px;border:1px solid var(--rule,#5c7087);background:var(--paper-raised,#142236);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+      '<span style="font-size:13px;color:var(--ink,#f4f7fa)"><strong>Experimente as comandas</strong> · Fluxo demonstrativo com dados fictícios, sem pagamentos.</span>' +
+      '<a href="/comandas-demo.html" style="padding:11px 15px;border-radius:9px;background:var(--accent,#dca062);color:#211607;font-size:13px;font-weight:750;text-decoration:none;min-height:44px;display:inline-flex;align-items:center">Abrir comandas</a></div>';
+    html = html.replace('<div class="main-body content">','<div class="main-body content">' + entry);
+  }
   if (page === 'login.html') {
     const demoAccess = '<div class="stockos-demo-entry" style="margin:14px 0 0;text-align:center">' +
       '<a href="/dashboard.html" style="display:inline-flex;justify-content:center;align-items:center;min-height:46px;padding:10px 16px;border-radius:10px;text-decoration:none;border:1px solid var(--rule);background:var(--paper-raised);color:var(--ink);font-weight:700">Abrir demonstração sem login</a>' +
