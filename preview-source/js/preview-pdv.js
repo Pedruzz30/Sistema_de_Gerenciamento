@@ -2,6 +2,40 @@
 (() => {
   'use strict';
   const create=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
+  const PREVIEW_PDV_CSS = `
+    .stockos-preview-pdv__dialog {display:flex;flex-direction:column;min-height:0;}
+    .stockos-preview-pdv__navigation {display:none;}
+    .stockos-preview-pdv__catalog {display:flex;flex-direction:column;min-width:0;}
+    .stockos-preview-pdv__cart {display:flex;flex-direction:column;min-width:0;min-height:0;}
+    .stockos-preview-pdv__select {min-height:46px;border-radius:8px;}
+    .stockos-preview-pdv__controls {display:flex;gap:8px;align-items:center;}
+    .stockos-preview-pdv__qty {min-height:46px;max-width:100px;}
+    .stockos-preview-pdv__add {min-height:46px;padding:10px 14px;border:0;border-radius:8px;background:#c98b46;color:#20170a;font-weight:700;}
+    .stockos-preview-pdv__item {display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #526b84;}
+    .stockos-preview-pdv__item-text {flex:1;min-width:0;}
+    .stockos-preview-pdv__item-actions {display:flex;align-items:center;gap:6px;}
+    .stockos-preview-pdv__item-actions button {min-height:44px;min-width:44px;border:1px solid #607992;border-radius:8px;background:#263e57;color:#fff;}
+    .stockos-preview-pdv__item-actions button:disabled {opacity:.5;}
+    .stockos-preview-pdv__finish {min-height:48px;font-weight:700;}
+    .stockos-preview-pdv__feedback {font-size:12px;line-height:1.5;}
+    @media(max-width:640px) {
+      .stockos-preview-pdv {padding:0 !important;}
+      .stockos-preview-pdv__dialog {width:100vw !important;height:100dvh !important;max-height:100dvh !important;border-radius:0 !important;padding:14px !important;padding-top:max(14px,env(safe-area-inset-top,14px)) !important;overflow:hidden !important;}
+      .stockos-preview-pdv__head {flex:0 0 auto;}
+      .stockos-preview-pdv__title {font-size:16px;}
+      .stockos-preview-pdv__close {min-height:44px;padding:8px 12px;}
+      .stockos-preview-pdv__info {font-size:12px;flex:0 0 auto;}
+      .stockos-preview-pdv__navigation {display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:0 0 auto;margin:8px 0;}
+      .stockos-preview-pdv__tab {min-height:48px;border-radius:9px;background:#2b4157;border:1px solid #617b91;color:white;font-weight:700;}
+      .stockos-preview-pdv__tab[aria-pressed="true"] {background:#37684d;border-color:#97d3ab;}
+      .stockos-preview-pdv__catalog,.stockos-preview-pdv__cart {min-height:0;flex:1 1 auto;overflow-y:auto;}
+      .stockos-preview-pdv__dialog[data-mobile-panel="produtos"] .stockos-preview-pdv__cart {display:none;}
+      .stockos-preview-pdv__dialog[data-mobile-panel="pedido"] .stockos-preview-pdv__catalog {display:none;}
+      .stockos-preview-pdv__rows {flex:1 1 auto;overflow-y:auto;}
+      .stockos-preview-pdv__total {margin-top:auto;padding:12px 0;border-top:1px solid #526b84;}
+      .stockos-preview-pdv__finish {flex:0 0 auto;margin-bottom:max(10px,env(safe-area-inset-bottom,10px));}
+    }
+  `;
   function mountPreviewPdv(){
     if(!/\/caixas(?:\.html)?\/?$/.test(location.pathname))return;
     window.abrirPDV=async numero=>{
@@ -37,12 +71,52 @@
       const total=create('strong','stockos-preview-pdv__total','Total: R$ 0,00');total.style.display='block';modal.append(total);
       const finish=create('button','stockos-preview-pdv__finish','Registrar venda fictícia');finish.type='button';finish.style.cssText='padding:10px 14px;margin-top:14px;background:#2c7557;color:white;border:0;border-radius:8px;cursor:pointer';modal.append(finish);
       const feedback=create('p','stockos-preview-pdv__feedback');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');modal.append(feedback);
+      // Dois painéis separados, com navegação por toque em telas estreitas.
+      const catalogPanel=create('section','stockos-preview-pdv__catalog');
+      const cartPanel=create('section','stockos-preview-pdv__cart');
+      catalogPanel.append(pick,controls);
+      cartPanel.append(rows,total,finish,feedback);
+      modal.append(catalogPanel,cartPanel);
+      if(!document.getElementById('stockos-preview-pdv-style')){
+        const style=create('style');
+        style.id='stockos-preview-pdv-style';
+        style.textContent=PREVIEW_PDV_CSS;
+        document.head.appendChild(style);
+      }
       overlay.append(modal);document.body.append(overlay);
       const cart=[];
       let pendingKey=null;
       let processing=false;
       let submitted=false;
-      const render=()=>{rows.replaceChildren();let value=0;for(const c of cart){const p=products.find(x=>x.id===c.id);const row=create('div','stockos-preview-pdv__item',''+c.qty+' × '+p.nome+' — R$ '+(p.precoUnitario*c.qty).toFixed(2));row.style.padding='5px 0';rows.append(row);value+=c.qty*p.precoUnitario;}total.textContent='Total: R$ '+value.toFixed(2);
+      const updateQuantity=(id,delta)=>{
+        if(processing||submitted)return;
+        const item=cart.find(c=>c.id===id),product=products.find(p=>p.id===id);
+        if(!item||!product)return;
+        const next=item.qty+delta;
+        if(next>product.quantidadeAtual){feedback.textContent='Estoque insuficiente.';return;}
+        if(next<=0)cart.splice(cart.indexOf(item),1);
+        else item.qty=next;
+        pendingKey=null;feedback.textContent='';render();
+      };
+      const render=()=>{rows.replaceChildren();let value=0;
+        for(const c of cart){
+          const p=products.find(x=>x.id===c.id);
+          const row=create('div','stockos-preview-pdv__item');
+          const label=create('span','stockos-preview-pdv__item-text',p.nome+' · R$ '+(p.precoUnitario*c.qty).toFixed(2));
+          const actions=create('span','stockos-preview-pdv__item-actions');
+          const less=create('button','','−'),more=create('button','','+');
+          less.type=more.type='button';
+          less.setAttribute('aria-label','Remover uma unidade de '+p.nome);
+          more.setAttribute('aria-label','Adicionar uma unidade de '+p.nome);
+          less.disabled=more.disabled=processing||submitted;
+          less.addEventListener('click',()=>updateQuantity(c.id,-1));
+          more.addEventListener('click',()=>updateQuantity(c.id,1));
+          actions.append(less,create('strong','',String(c.qty)),more);
+          row.append(label,actions);row.style.padding='5px 0';rows.append(row);
+          value+=c.qty*p.precoUnitario;
+        }
+        if(!cart.length)rows.append(create('p','','Toque em Produtos e adicione itens ao pedido.'));
+        total.textContent='Total: R$ '+value.toFixed(2);
         const itemCount=cart.reduce((sum,item)=>sum+item.qty,0);
         showCart.textContent='Pedido · '+itemCount+' '+(itemCount===1?'item':'itens');
         return value;};
