@@ -30,4 +30,19 @@ assert.ok(before('\\password stockos_app') < before('ALTER ROLE stockos_app LOGI
 assert.ok(before('ALTER ROLE stockos_app LOGIN') < before('COMMIT;'));
 assert.doesNotMatch(sql, /CREATE ROLE stockos_(app|migrator) LOGIN/);
 assert.doesNotMatch(sql, /0\.0\.0\.0\/0/);
-console.log('PASS staging role script: transactional, fail-closed, no default passwords');
+const grants = readFileSync(new URL('./02-grant-runtime-access.psql', import.meta.url), 'utf8');
+const verify = readFileSync(new URL('./03-verify-runtime-access.psql', import.meta.url), 'utf8');
+for (const [name, source, required] of [
+  ['grants', grants, [/BEGIN;/, /COMMIT;/, /current_database\(\) <> 'stockos_java_staging_temp'/,
+    /current_user <> 'stockos_migrator'/, /GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public/,
+    /GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public/,
+    /REVOKE CREATE ON SCHEMA public FROM stockos_app/]],
+  ['verify', verify, [/current_database\(\) <> 'stockos_java_staging_temp'/,
+    /current_user <> 'stockos_app'/, /rolbypassrls/, /has_database_privilege/,
+    /has_schema_privilege/, /pg_has_role/]]
+]) {
+  for (const expression of required) assert.match(source, expression, name + ' missing ' + expression);
+}
+assert.doesNotMatch(grants, /GRANT\s+(ALL|CREATE)\s+ON\s+(ALL\s+)?TABLES/i);
+assert.doesNotMatch(grants, /ALTER\s+ROLE\s+stockos_app\s+SUPERUSER/i);
+console.log('PASS staging role scripts: provisioning, post-migration grants, read-only privilege audit');
