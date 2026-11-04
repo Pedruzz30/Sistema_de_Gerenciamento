@@ -56,8 +56,14 @@ function lerUsuarioPersistido() {
   return localUsuario;
 }
 
-const usuario = lerUsuarioPersistido();
-if (!usuario) window.location.href = '/login.html';
+// A demonstração Netlify tem somente dados fictícios. Pode funcionar sem
+// localStorage/sessionStorage (modo privado, WebView e navegadores móveis).
+// O usuário de preview só é criado pelo bundle mock isolado; em backend real
+// seguimos exigindo sessão, sem atalhos de autenticação.
+const usuario = lerUsuarioPersistido() ||
+  (window.STOCKOS_PREVIEW === true && window.StockosPreviewUser
+    ? window.StockosPreviewUser : null);
+if (!usuario) window.location.replace('/login.html');
 
 // ── X-User-RU header injection ──────────────────────────────────────────────
 (function () {
