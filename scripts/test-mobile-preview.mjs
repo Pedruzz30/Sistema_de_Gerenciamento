@@ -10,6 +10,10 @@ const originalLogin = await readFile('src/main/resources/static/login.html', 'ut
 execFileSync(process.execPath, ['--check', 'src/main/resources/static/js/shared.js']);
 execFileSync(process.execPath, ['--check', 'preview-source/js/preview-mock.js']);
 execFileSync(process.execPath, ['--check', 'scripts/build-preview.mjs']);
+execFileSync(process.execPath, ['scripts/build-preview.mjs']);
+const previewShared = await readFile('dist-preview/js/shared.js', 'utf8');
+assert.match(previewShared,/const usuario = lerUsuarioPersistido\(\) \|\| window\.StockosPreviewUser/);
+assert.doesNotMatch(shared,/const usuario = lerUsuarioPersistido\(\) \|\| window\.StockosPreviewUser/);
 
 const demoUser = {
   ru:1, nome:'Admin', sobrenome:'Demo', nomeClasse:'SUPERIOR',
@@ -30,6 +34,9 @@ function environment(preview) {
     fetch() {return Promise.resolve();},
     location:{
       pathname:'/dashboard.html',
+      _href:'/dashboard.html',
+      get href() {return this._href;},
+      set href(destination) {redirects.push(destination);this._href=destination;},
       replace(destination) {redirects.push(destination);}
     },
     innerWidth:930
@@ -38,7 +45,7 @@ function environment(preview) {
     window:win, document:{addEventListener() {}},
     console, setTimeout, clearTimeout, Request, Headers
   });
-  vm.runInContext(shared,context,{filename:'shared.js'});
+  vm.runInContext(preview ? previewShared : shared,context,{filename:'shared.js'});
   return {context,redirects};
 }
 
@@ -52,7 +59,6 @@ const real = environment(false);
 assert.deepEqual(real.redirects,['/login.html'],
   'Only preview can use demo identity; real app still requires authentication');
 
-execFileSync(process.execPath, ['scripts/build-preview.mjs']);
 const index = await readFile('dist-preview/index.html','utf8');
 const login = await readFile('dist-preview/login.html','utf8');
 const dashboard = await readFile('dist-preview/dashboard.html','utf8');
