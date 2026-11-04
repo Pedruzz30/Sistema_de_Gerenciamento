@@ -51,7 +51,7 @@ async function carregarDados() {
   const caixasDisponiveis = Array.isArray(caixas);
   const produtosAtuais = produtosDisponiveis ? produtos : [];
   const caixasAtuais = caixasDisponiveis ? caixas : [];
-  renderSummaryCards(produtosAtuais, caixasAtuais, metricas);
+  renderSummaryCards(produtosAtuais, caixasAtuais, metricas, { produtosDisponiveis, caixasDisponiveis });
   renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
   renderAlertas(produtosAtuais);
   renderMovimentacoes(movimentacoes);
@@ -131,7 +131,7 @@ function renderHeader() {
 }
 
 // ── Summary cards (Improvement 5: clickable cards) ────────
-function renderSummaryCards(produtos, caixas, metricasHoje) {
+function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosDisponiveis: true, caixasDisponiveis: true }) {
   var totalProdutos = produtos.length;
   var alertas = obterAlertasEstoque(produtos).length;
   var vendasDia = metricasHoje ? Number(metricasHoje.totalVendas) : null;
@@ -141,7 +141,7 @@ function renderSummaryCards(produtos, caixas, metricasHoje) {
   var cards = [
     {
       label: 'Total de Produtos',
-      value: totalProdutos,
+      value: status.produtosDisponiveis ? totalProdutos : '—',
       icon: 'box',
       tone: 'purple',
       trend: 'neutral',
@@ -151,13 +151,13 @@ function renderSummaryCards(produtos, caixas, metricasHoje) {
     },
     {
       label: 'Alertas de Estoque',
-      value: alertas,
+      value: status.produtosDisponiveis ? alertas : '—',
       icon: 'alertTriangle',
       tone: 'red',
       trend: alertas > 0 ? 'down' : 'up',
       trendText: alertas > 0 ? 'precisam de atenção' : 'tudo em ordem',
       perm: PERMISSOES.VER_ESTOQUE,
-      href: '/estoque',
+      href: alertas > 0 ? '/estoque.html?filtro=critico' : '/estoque.html',
     },
     {
       label: 'Vendas do Dia',
@@ -171,7 +171,7 @@ function renderSummaryCards(produtos, caixas, metricasHoje) {
     },
     {
       label: 'Caixas Abertos',
-      value: caixasAbertos + '/' + totalCaixas,
+      value: status.caixasDisponiveis ? caixasAbertos + '/' + totalCaixas : '—',
       icon: 'chart',
       tone: 'cyan',
       trend: 'neutral',
@@ -183,7 +183,7 @@ function renderSummaryCards(produtos, caixas, metricasHoje) {
 
   var grid = document.getElementById('summary-grid');
   grid.innerHTML = cards
-    .filter(function (c) { return !c.permsAny || temAlgumaPermissao(c.permsAny); })
+    .filter(function (c) { return (!c.perm || temPermissao(c.perm)) && (!c.permsAny || temAlgumaPermissao(c.permsAny)); })
     .map(function (c, i) {
       var trendIcon = c.trend === 'up' ? '↑' : c.trend === 'down' ? '↓' : '—';
       return '<a class="summary-card summary-card--link fade-up fade-up-' + (i + 1) + '" href="' + c.href + '">' +
