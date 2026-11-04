@@ -2,9 +2,9 @@
 (() => {
   'use strict';
   const original = window.fetch.bind(window);
-  const KEY = 'stockos-preview-notes-v1';
+  const KEY = 'stockos-preview-notes-'+(window.StockOsPreview?.scenario || 'basic')+'-v1';
   const load = () => { try { const v=JSON.parse(localStorage.getItem(KEY)||'null');return Array.isArray(v)?v:null; } catch {return null;} };
-  let notas = load() || [];
+  let notas = load() || (window.StockOsPreview?.getSeedNotes?.() || []);
   const save = () => { try {localStorage.setItem(KEY,JSON.stringify(notas));}catch{} };
   const answer = (data,status=200) => Promise.resolve(new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}}));
   const error = (message,status=400) => answer({erro:message},status);

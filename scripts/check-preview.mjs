@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 execFileSync(process.execPath,['scripts/build-preview.mjs'],{stdio:'inherit'});
-for (const p of ['login.html','dashboard.html','estoque.html','cardapio.html','caixas.html','js/preview-mock.js','js/preview-notes.js','js/preview-pdv.js','js/preview-cardapio.js','js/preview-design-review.js','js/spa-navigation.js','css/palette-original.css','_redirects','_headers']) {
+for (const p of ['login.html','dashboard.html','estoque.html','cardapio.html','caixas.html','js/preview-scale.js','js/preview-mock.js','js/preview-notes.js','js/preview-pdv.js','js/preview-cardapio.js','js/preview-design-review.js','js/spa-navigation.js','css/palette-original.css','_redirects','_headers']) {
   await access(join('dist-preview',p));
 }
 const html=await readFile('dist-preview/dashboard.html','utf8');
@@ -17,6 +17,8 @@ assert.equal(await readFile('src/main/resources/static/js/dashboard.js','utf8'),
 assert.equal(original.slice(original.indexOf('<body')),
   html.slice(html.indexOf('<body')),
   'Dashboard HTML body must come from canonical frontend');
+assert.ok(html.includes('/js/preview-scale.js'),'Scale fixture injection absent');
+assert.ok(html.indexOf('/js/preview-scale.js') < html.indexOf('/js/preview-mock.js'),'Volume fixture must initialize before mock');
 assert.ok(html.includes('/js/preview-mock.js'),'Mock injection absent');
 assert.ok(!html.includes('/js/preview-notes.js'),'Notes demo should not run on dashboard');
 assert.ok(!html.includes('/js/preview-pdv.js'),'PDV demo should not run on dashboard');
@@ -32,6 +34,7 @@ assert.ok(html.includes('/js/spa-navigation.js'),'SPA pilot missing from Dashboa
 assert.ok((await readFile('dist-preview/estoque.html','utf8')).includes('/js/spa-navigation.js'),'SPA pilot missing from Estoque');
 assert.ok(!html.includes('/css/dashboard-refinement.css'),'Preview should only apply refinements in new design');
 assert.ok((await readFile('dist-preview/css/stockos-design.bundle.css','utf8')).includes('/* StockOS CSS: compat.css */'));
+assert.ok(!original.includes('/js/preview-scale.js'),'Volume demo leaked into real Java frontend');
 assert.ok(!original.includes('/js/preview-mock.js'),'Mock leaked into real Java frontend');
 assert.ok(!original.includes('/js/preview-notes.js'),'Invoice mock leaked into Java frontend');
 assert.ok(!original.includes('/js/preview-pdv.js'),'PDV mock leaked into Java frontend');
@@ -50,7 +53,7 @@ for(const f of ['saas-admin.html','saas-comandas.html','application.properties']
 const mock=await readFile('dist-preview/js/preview-mock.js','utf8');
 assert.ok(mock.includes('DEMONSTRAÇÃO · dados fictícios'));
 assert.ok(mock.includes('Função indisponível nesta demonstração'));
-for(const file of ['scripts/build-preview.mjs','dist-preview/js/preview-mock.js','dist-preview/js/preview-notes.js','dist-preview/js/preview-pdv.js','dist-preview/js/preview-cardapio.js','dist-preview/js/preview-design-review.js','dist-preview/js/dashboard.js','dist-preview/js/estoque.js', 'dist-preview/js/spa-navigation.js']) {
+for(const file of ['scripts/build-preview.mjs','dist-preview/js/preview-scale.js','dist-preview/js/preview-mock.js','dist-preview/js/preview-notes.js','dist-preview/js/preview-pdv.js','dist-preview/js/preview-cardapio.js','dist-preview/js/preview-design-review.js','dist-preview/js/dashboard.js','dist-preview/js/estoque.js', 'dist-preview/js/spa-navigation.js']) {
   execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
 }
 console.log('PASS: preview isolado, navegação, fontes canônicas e JS');

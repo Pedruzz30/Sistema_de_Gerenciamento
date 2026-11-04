@@ -1,7 +1,18 @@
 /* StockOS Preview - isolated browser-only data. Never bundled in the real Spring application. */
 (function () {
   'use strict';
-  const KEY = 'stockos-preview-v1';
+  const MODE_KEY = 'stockos-preview-scenario-v1';
+  const search = new URL(location.href).searchParams;
+  const requested = search.get('scenario');
+  if ((requested === 'scale' || requested === 'basic') && typeof window.StockOSCreateScaleDemo === 'function') {
+    try { localStorage.setItem(MODE_KEY, requested); } catch (_) {}
+  }
+  let mode = 'basic';
+  if (typeof window.StockOSCreateScaleDemo === 'function') {
+    try { mode = localStorage.getItem(MODE_KEY) === 'basic' ? 'basic' : 'scale'; }
+    catch (_) { mode = 'scale'; }
+  }
+  const KEY = mode === 'scale' ? 'stockos-preview-scale-v1' : 'stockos-preview-v1';
   const today = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); };
   const stamp = (h, m) => today() + 'T' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00';
   const names = [
@@ -54,7 +65,13 @@
   }
   let db;
   try { db=JSON.parse(localStorage.getItem(KEY)||'null'); } catch(e) {}
-  if (!db || !Array.isArray(db.produtos) || !Array.isArray(db.fornecedores) || !Array.isArray(db.movimentacoesCaixa)) db=initial();
+  if (!db || !Array.isArray(db.produtos) || !Array.isArray(db.fornecedores) || !Array.isArray(db.movimentacoesCaixa) ||
+      (mode === 'scale' && (!db.demoEscala || db.demoEscala.fim !== (() => {
+        const d = new Date(); d.setDate(d.getDate()-1);
+        return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      })()))) {
+    db = mode === 'scale' ? window.StockOSCreateScaleDemo(initial()) : initial();
+  }
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){console.warn('Preview: armazenamento indisponível',e);}};
   save();
   const respond=(value,status=200)=>Promise.resolve(new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}}));
@@ -164,9 +181,14 @@
     if(path==='/api/caixas/metricas/hoje'){
       const t=db.caixas.reduce((a,c)=>a+Number(c.totalVendas||0),0);
       const n=db.caixas.filter(c=>c.status==='ABERTO').length;
-      return respond({totalVendas:t,caixasAbertos:n,totalMovimentacoesVenda:12,ticketMedio: +(t/12).toFixed(2)});
+      const count=db.demoEscala
+        ? db.movimentacoesCaixa.filter(m=>m.tipo==='VENDA'&&String(m.dataHora).startsWith(today())).length
+        : 12;
+      return respond({totalVendas:Math.round(t*100)/100,caixasAbertos:n,
+        totalMovimentacoesVenda:count,ticketMedio:count?Math.round(t/count*100)/100:0});
     }
-    if(path==='/api/rentabilidade/ranking')return respond([]);
+    if(path==='/api/rentabilidade/ranking')return respond(db.rentabilidadePreview||[]);
+    if(path==='/api/preview/cenario' && method==='GET')return respond(db.demoEscala||{nome:'Demonstração simples',demonstracao:true});
     if(path==='/api/fornecedores' && method==='GET')return respond(db.fornecedores);
     if(path==='/api/fornecedores/ativos' && method==='GET')return respond(db.fornecedores.filter(f=>f.ativo));
     if(path==='/api/fornecedores' && method==='POST'){
@@ -256,8 +278,103 @@
   });
   const banner=document.createElement('div');
   banner.setAttribute('role','status');
-  banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:10px 14px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;pointer-events:none';
-  banner.textContent='DEMONSTRAÇÃO · dados fictícios';
+  banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:10px 12px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;display:flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:min(92vw,620px)';
+  if (typeof window.StockOSCreateScaleDemo === 'function') {
+    const caption=document.createElement('span');
+    caption.textContent= mode==='scale'
+      ? 'DEMONSTRAÇÃO · Estação 30 · R$ 300 mil / 30 dias · 7.500 pedidos'
+      : 'DEMONSTRAÇÃO · dados fictícios (simples)';
+    banner.appendChild(caption);
+    const selector=document.createElement('select');
+    selector.setAttribute('aria-label','Cenário de dados da demonstração');
+    selector.style.cssText='font:600 12px system-ui;border-radius:7px;border:1px solid #78ad8e;background:#102318;color:#fff;padding:6px;max-width:100%';
+    for(const optionData of [['scale','Empresa R$ 300 mil'],['basic','Demonstração simples']]){
+      const option=document.createElement('option');option.value=optionData[0];option.textContent=optionData[1];
+      selector.appendChild(option);
+    }
+    selector.value=mode;
+    selector.addEventListener('change',()=>{
+      if(selector.value!==mode){
+        try {localStorage.setItem(MODE_KEY,selector.value);}catch(_){}
+        location.reload();
+      }
+    });
+    banner.appendChild(selector);
+    const reset=document.createElement('button');reset.type='button';
+    reset.textContent='Reiniciar';
+    reset.title='Recriar apenas os dados fictícios deste cenário';
+    reset.style.cssText='font:600 12px system-ui;border-radius:7px;border:1px solid #78ad8e;background:transparent;color:#fff;padding:6px;cursor:pointer';
+    reset.addEventListener('click',()=>{
+      try {localStorage.removeItem(KEY);localStorage.removeItem('stockos-preview-notes-'+mode+'-v1');}
+      catch (_) {}
+      location.reload();
+    });
+    banner.appendChild(reset);
+  } else {
+    banner.textContent='DEMONSTRAÇÃO · dados fictícios';
+  }
+  function mountScaleSummary() {
+    if(!db.demoEscala || !/\/dashboard(?:\.html)?\/?$/.test(location.pathname))return;
+    const anchor=document.getElementById('summary-grid');
+    if(!anchor || document.getElementById('stockos-volume-summary'))return;
+    const data=db.demoEscala;
+    const formatCurrency=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+    const root=document.createElement('section');
+    root.id='stockos-volume-summary';
+    root.setAttribute('aria-label','Cenário de operação mensal fictícia');
+    root.style.cssText='background:linear-gradient(135deg,#162a21,#243a2a);color:#e9f9ee;border:1px solid #41654f;border-radius:12px;padding:16px;margin:0 0 16px;min-width:0';
+    const title=document.createElement('div');
+    title.style.cssText='font:600 15px system-ui;margin-bottom:5px';
+    title.textContent=data.nome+' · empresa fictícia';
+    root.appendChild(title);
+    const note=document.createElement('div');
+    note.style.cssText='font:12px system-ui;color:#add2b8;margin-bottom:13px';
+    note.textContent='Período concluído: '+data.inicio+' a '+data.fim+' · Histórico apenas ilustrativo';
+    root.appendChild(note);
+    const metrics=document.createElement('div');
+    metrics.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-bottom:14px';
+    for(const [label,value] of [
+      ['Faturamento / 30 dias',formatCurrency(data.faturamento)],
+      ['Pedidos',new Intl.NumberFormat('pt-BR').format(data.pedidos)],
+      ['Ticket médio',formatCurrency(data.ticketMedio)],
+      ['Produtos / fornecedores',data.produtos+' / '+data.fornecedores]
+    ]) {
+      const card=document.createElement('div');
+      card.style.cssText='background:#ffffff0c;border:1px solid #ffffff19;border-radius:8px;padding:10px;min-width:0';
+      const small=document.createElement('div');
+      small.style.cssText='font:11px system-ui;color:#b8d7c3;margin-bottom:5px';
+      small.textContent=label;
+      const strong=document.createElement('div');
+      strong.style.cssText='font:700 clamp(15px,2.5vw,21px) system-ui;overflow-wrap:anywhere';
+      strong.textContent=value;
+      card.append(small,strong);
+      metrics.appendChild(card);
+    }
+    root.appendChild(metrics);
+    const chartTitle=document.createElement('div');
+    chartTitle.textContent='Faturamento diário simulado (30 dias)';
+    chartTitle.style.cssText='font:12px system-ui;margin-bottom:8px;color:#d5efdb';
+    root.appendChild(chartTitle);
+    const chart=document.createElement('div');
+    chart.setAttribute('role','img');
+    chart.setAttribute('aria-label','Faturamento diário fictício durante 30 dias, total de R$ 300 mil');
+    chart.style.cssText='display:grid;grid-template-columns:repeat(30,minmax(3px,1fr));align-items:end;gap:3px;height:54px';
+    const maximum=Math.max(...data.dias.map(v=>v.faturamento),1);
+    for(const day of data.dias) {
+      const bar=document.createElement('div');
+      bar.title=day.data+' · '+formatCurrency(day.faturamento)+' · '+day.pedidos+' pedidos';
+      bar.style.cssText='background:#72c993;border-radius:3px 3px 0 0;height:'+Math.max(5,day.faturamento/maximum*100)+'%;min-width:0';
+      chart.appendChild(bar);
+    }
+    root.appendChild(chart);
+    anchor.parentNode.insertBefore(root,anchor);
+  }
+  window.StockOSPreviewHooks=window.StockOSPreviewHooks||{};
+  window.StockOSPreviewHooks.dashboard=mountScaleSummary;
+  document.addEventListener('DOMContentLoaded',mountScaleSummary);
   document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(banner));
-  window.StockOsPreview={reset:()=>{localStorage.removeItem(KEY);location.reload();},mode:'mock'};
+  window.StockOsPreview={
+    reset:()=>{try{localStorage.removeItem(KEY);}catch(_){}location.reload();},
+    mode:'mock',scenario:mode, getSeedNotes:()=>JSON.parse(JSON.stringify(db.notas))
+  };
 })();

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
