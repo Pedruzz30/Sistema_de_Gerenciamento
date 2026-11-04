@@ -258,6 +258,7 @@
   });
   const banner=document.createElement('div');
   banner.setAttribute('role','status');
+  banner.className = 'stockos-preview-banner';
   banner.style.cssText='position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:60;max-width:calc(100vw - 138px);padding:10px 14px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;pointer-events:none';
   banner.textContent='DEMONSTRAÇÃO · dados fictícios';
   document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(banner));
