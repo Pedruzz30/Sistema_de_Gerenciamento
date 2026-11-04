@@ -1,0 +1,67 @@
+/* StockOS: central de ações. Herda a paleta existente, sem alterar o tema. */
+.stockos-quick-trigger {
+  width: 100%; display: flex; align-items: center; gap: 9px; padding: 11px 12px;
+  border: 1px solid var(--rule); border-radius: 10px;
+  color: var(--ink); background: var(--paper-raised);
+  font: inherit; font-size: 12px; font-weight: 600; text-align: left;
+  cursor: pointer; margin: 0 0 10px;
+}
+.stockos-quick-trigger > span:first-child {display: flex; width: 17px; height: 17px;}
+.stockos-quick-trigger .icon-svg {width: 17px; height: 17px;}
+.stockos-quick-trigger kbd {margin-left: auto; font: inherit; font-size: 10px; padding: 2px 5px; border: 1px solid var(--rule); border-radius: 5px; color: var(--ink-3); white-space: nowrap;}
+.stockos-quick-trigger:hover {border-color: var(--accent); background: var(--accent-soft);}
+.stockos-quick-trigger:focus-visible, .stockos-quick-mobile:focus-visible,
+.stockos-quick-close:focus-visible, .stockos-quick-result:focus-visible,
+.stockos-quick-search:focus-visible {outline: 2px solid var(--accent); outline-offset: 2px;}
+.stockos-quick-mobile {display: none;}
+.stockos-quick-overlay[hidden] {display: none !important;}
+.stockos-quick-overlay {
+  position: fixed; inset: 0; z-index: 10050; padding: min(12vh, 90px) 16px 20px;
+  display: flex; justify-content: center; align-items: flex-start;
+  background: rgba(0,0,0,.56); overflow: auto;
+}
+.stockos-quick-dialog {
+  width: min(100%, 560px); padding: 18px;
+  border: 1px solid var(--rule); border-radius: 16px;
+  background: var(--paper); color: var(--ink);
+  box-shadow: 0 24px 80px rgba(0,0,0,.25);
+}
+.stockos-quick-top {display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px;}
+.stockos-quick-top h2 {font-size: 19px; font-weight: 700; margin: 0; line-height: 1.3;}
+.stockos-quick-close {
+  border: 1px solid var(--rule); background: var(--paper-raised); color: var(--ink);
+  border-radius: 9px; width: 34px; height: 34px; cursor: pointer;
+  font-size: 23px; line-height: 1;
+}
+.stockos-quick-search {
+  width: 100%; min-height: 48px; padding: 12px 14px;
+  background: var(--paper-raised); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 10px;
+  font: inherit; font-size: 14px; outline-offset: 2px;
+}
+.stockos-quick-results {display: grid; gap: 5px; margin-top: 13px; max-height: min(56vh, 420px); overflow-y: auto;}
+.stockos-quick-result {
+  display: flex; text-align: left; align-items: center; width: 100%; gap: 12px;
+  min-height: 62px; padding: 10px; color: var(--ink);
+  background: transparent; border: 1px solid transparent; border-radius: 10px;
+  cursor: pointer; font: inherit;
+}
+.stockos-quick-result:hover, .stockos-quick-result.is-selected {background: var(--accent-soft); border-color: var(--rule);}
+.stockos-quick-result-icon {display: flex; justify-content: center; align-items: center; width: 37px; height: 37px; border-radius: 9px; background: var(--paper-raised); flex-shrink: 0;}
+.stockos-quick-result-icon svg {width: 19px; height: 19px;}
+.stockos-quick-result strong, .stockos-quick-result small {display: block;}
+.stockos-quick-result strong {font-size: 13px; font-weight: 650;}
+.stockos-quick-result small {font-size: 11px; color: var(--ink-3); margin-top: 3px;}
+.stockos-quick-empty {text-align: center; padding: 22px 10px; color: var(--ink-3); font-size: 13px;}
+.stockos-quick-footer {font-size: 11px; color: var(--ink-3); margin: 14px 2px 2px;}
+body.stockos-quick-active {overflow: hidden;}
+@media (max-width: 900px) {
+  .stockos-quick-trigger kbd {display:none;}
+  .stockos-quick-mobile {display: block; position: fixed; right: 16px; bottom: 18px; z-index: 88; min-height: 46px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--rule); color: var(--ink); background: var(--paper-raised); box-shadow: 0 6px 22px rgba(0,0,0,.17); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;}
+  .stockos-quick-dialog {padding: 15px;}
+  .stockos-quick-overlay {padding-top: 6vh;}
+  .stockos-quick-footer {font-size: 10px;}
+}
+@media (prefers-reduced-motion: reduce) {
+  .stockos-quick-overlay *, .stockos-quick-mobile {transition: none !important;}
+}
