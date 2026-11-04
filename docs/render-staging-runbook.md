@@ -83,7 +83,10 @@ em uma conexão administrativa autorizada ao banco descartável do Render
 (`psql -X -v ON_ERROR_STOP=1 -f scripts/staging/01-provision-roles.psql`).
 O script verifica o nome exato do banco, a permissão para criar roles,
 recusa sobrescrever roles existentes e solicita as duas senhas
-interativamente via `\\password`, sem gravá-las no Git.
+interativamente via `\password`, sem gravá-las no Git. As roles começam
+com `NOLOGIN`; todo o processo, inclusive a configuração de senhas, ocorre
+em uma transação. Se houver erro ou interrupção, o `psql` encerra a sessão
+e desfaz a transação, sem deixar contas incompletas.
 
 A conexão externa ao banco está bloqueada por sua allowlist e o conector
 disponível não consegue executar DDL. **Não abra a allowlist para
