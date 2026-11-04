@@ -452,3 +452,60 @@ body.dashboard-page .profitability-section { margin-top: 0; }
   body.dashboard-page .summary-card,
   body.dashboard-page .sidebar .nav-item { transition: none; }
 }
+/* Painel de próximas ações: leitura rápida, alvos grandes e sem efeitos decorativos. */
+body.dashboard-page .operations-panel {
+  margin: 0 0 20px; padding: 18px;
+  border: 1px solid var(--rule); border-radius: 14px;
+  background: var(--paper-raised); box-shadow: var(--shadow-sm);
+}
+body.dashboard-page .operations-panel[hidden] { display: none !important; }
+body.dashboard-page .operations-heading {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 13px;
+}
+body.dashboard-page .operations-kicker {
+  margin: 0 0 4px; color: var(--accent); font-size: 10px;
+  font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+body.dashboard-page .operations-heading h2 {
+  margin: 0; font-size: 19px; line-height: 1.3; font-weight: 750; color: var(--ink);
+}
+body.dashboard-page .operations-description {
+  margin: 4px 0 0; font-size: 12px; color: var(--ink-3);
+}
+body.dashboard-page .operations-count {
+  display: inline-flex; align-items: center; min-height: 28px; padding: 5px 10px;
+  border-radius: 99px; background: var(--paper-sunk); color: var(--ink-2);
+  font-size: 11px; font-weight: 700;
+}
+body.dashboard-page .operations-list { display: grid; gap: 8px; }
+body.dashboard-page .operations-item {
+  display: flex; align-items: center; min-width: 0; gap: 12px;
+  min-height: 66px; padding: 12px 14px; border: 1px solid var(--rule);
+  border-radius: 10px; color: var(--ink); background: var(--paper);
+  text-decoration: none;
+}
+body.dashboard-page .operations-item:hover { border-color: var(--rule-strong); background: var(--paper-sunk); }
+body.dashboard-page .operations-item:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+body.dashboard-page .operations-item__indicator {
+  width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--ok);
+}
+body.dashboard-page .operations-item--warning .operations-item__indicator { background: var(--warn); }
+body.dashboard-page .operations-item--critical .operations-item__indicator { background: var(--bad); }
+body.dashboard-page .operations-item__copy { min-width: 0; flex: 1; }
+body.dashboard-page .operations-item__copy strong,
+body.dashboard-page .operations-item__copy small { display: block; }
+body.dashboard-page .operations-item__copy strong { font-size: 13px; font-weight: 750; }
+body.dashboard-page .operations-item__copy small { margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--ink-3); }
+body.dashboard-page .operations-item__action {
+  flex: 0 0 auto; font-size: 12px; font-weight: 750; color: var(--accent-ink);
+}
+@media (max-width: 640px) {
+  body.dashboard-page .operations-panel { padding: 14px; margin-bottom: 16px; }
+  body.dashboard-page .operations-item { flex-wrap: wrap; min-height: 74px; padding: 13px; }
+  body.dashboard-page .operations-item__action {
+    flex: 1 1 100%; padding-left: 21px; font-size: 13px;
+  }
+}
