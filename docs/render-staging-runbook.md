@@ -122,6 +122,13 @@ conceder DML e sequences ao runtime conforme
 [`postgresql-least-privilege.md`](postgresql-least-privilege.md), ajustando
 o nome do banco e revisando grants herdados, funções e RLS.
 
+**Separação de propriedade do schema:** a remoção de `CREATE` herdado
+de `PUBLIC` acontece durante `01-provision-roles.psql`, executado
+pela conta administrativa proprietária do schema. O migrador não executa
+`REVOKE` sobre o schema, pois não deve ser seu proprietário.
+`02-grant-runtime-access.psql` verifica que `PUBLIC` já não tem
+`CREATE` e aborta se a condição não for atendida.
+
 ## Grants após Flyway e auditoria sem privilégios
 
 Após aplicar Flyway **no banco Render descartável**, como `stockos_migrator`,
