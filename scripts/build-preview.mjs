@@ -58,6 +58,12 @@ for (const page of pages) {
   const scripts = previewScriptsFor(page)
     .map(name=>'<script src="/js/'+name+'.js"></script>').join('\n');
   html=html.replace('</head>', '<script>window.STOCKOS_PREVIEW = true;</script>\n'+scripts+'\n</head>');
+  if (page === 'login.html') {
+    const demoAccess = '<div class="stockos-demo-entry" style="margin:14px 0 0;text-align:center">' +
+      '<a href="/dashboard.html" style="display:inline-flex;justify-content:center;align-items:center;min-height:46px;padding:10px 16px;border-radius:10px;text-decoration:none;border:1px solid var(--rule);background:var(--paper-raised);color:var(--ink);font-weight:700">Abrir demonstração sem login</a>' +
+      '<p style="font-size:12px;color:var(--ink-3);margin:8px 0 0">Ambiente de testes com dados fictícios; nenhuma conta real necessária.</p></div>';
+    html = html.replace('</form>', '</form>' + demoAccess);
+  }
   await writeFile(p,html);
 }
 await writeFile(join(out,'_redirects'), [
@@ -72,7 +78,7 @@ await writeFile(join(out,'_redirects'), [
   '/logs /logs.html 200',
   '/cardapio /cardapio.html 200'
 ].join('\n')+'\n');
-await writeFile(join(out,'index.html'), '<meta http-equiv="refresh" content="0;url=/login.html"><a href="/login.html">Abrir StockOS Demo</a>\n');
+await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demonstração</title></head><body><p><a href="/dashboard.html">Abrir demonstração do StockOS (dados fictícios)</a></p></body></html>\\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');
 await writeFile(join(out,'robots.txt'), 'User-agent: *\nDisallow: /\n');
 console.log('StockOS mock preview pronto em dist-preview/');
