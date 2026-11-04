@@ -1164,3 +1164,19 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Operação de balcão em dispositivos de toque: alvos maiores e total visível. */
+@media (max-width: 640px) {
+  .pdv-shell__header { padding-top:max(10px,env(safe-area-inset-top,10px)); }
+  .pdv-shell__close, .pdv-clear-btn, .pdv-item-btn { min-width:44px; min-height:44px; }
+  .pdv-category-tab { min-height:44px; }
+  .pdv-card { min-height:148px; }
+  .pdv-cart-footer {
+    flex:0 0 auto;
+    padding-bottom:max(14px,env(safe-area-inset-bottom,14px));
+    background:var(--paper-raised);
+    border-top:1px solid var(--rule);
+  }
+  .pdv-cart-items { overscroll-behavior:contain; }
+  .pdv-search-input { min-height:48px; }
+}
