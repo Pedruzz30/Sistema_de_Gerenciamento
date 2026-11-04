@@ -78,7 +78,7 @@ await writeFile(join(out,'_redirects'), [
   '/logs /logs.html 200',
   '/cardapio /cardapio.html 200'
 ].join('\n')+'\n');
-await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demonstração</title></head><body><p><a href="/dashboard.html">Abrir demonstração do StockOS (dados fictícios)</a></p></body></html>\\n');
+await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demonstração</title></head><body><p><a href="/dashboard.html">Abrir demonstração do StockOS (dados fictícios)</a></p></body></html>\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');
 await writeFile(join(out,'robots.txt'), 'User-agent: *\nDisallow: /\n');
 console.log('StockOS mock preview pronto em dist-preview/');
