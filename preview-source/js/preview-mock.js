@@ -59,6 +59,8 @@
   save();
   const respond=(value,status=200)=>Promise.resolve(new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}}));
   const user = {ru:1,nome:'Admin',sobrenome:'Demo',nomeClasse:'SUPERIOR',perfil:'ADMIN',ativo:true,permissoes:['VER_ESTOQUE','EDITAR_ESTOQUE','VER_COMPRAS','VER_VENDAS','VER_FINANCAS','GERENCIAR_FUNCIONARIOS','VER_LOGS']};
+  // Somente o build mock possui este usuário fictício; nunca substitui autenticação real.
+  window.StockosPreviewUser = user;
   async function handle(input, init={}) {
     const raw = input instanceof Request ? input.url : String(input);
     const url = new URL(raw, location.href);
@@ -259,5 +261,5 @@
   banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:10px 14px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;pointer-events:none';
   banner.textContent='DEMONSTRAÇÃO · dados fictícios';
   document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(banner));
-  window.StockOsPreview={reset:()=>{localStorage.removeItem(KEY);location.reload();},mode:'mock'};
+  window.StockOsPreview={reset:()=>{try{localStorage.removeItem(KEY);}catch(e){} location.reload();},mode:'mock'};
 })();
