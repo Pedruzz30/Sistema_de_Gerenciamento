@@ -498,7 +498,23 @@ function setupShell() {
     overlay.type = 'button';
     overlay.className = 'sidebar-overlay';
     overlay.setAttribute('aria-label', 'Fechar navegação');
-    document.body.appendChild(overlay);
+  }
+  // O design novo cria um stacking context em .app (z-index: 1).
+  // Um overlay anexado diretamente ao body (z-index: 39) ficava ACIMA
+  // de toda a sidebar, mesmo quando ela tinha z-index: 50. Isto
+  // bloqueava os toques e desfocava o menu no Android.
+  // Mantendo o backdrop e a sidebar no MESMO contexto, o menu fica acima.
+  if (overlay.parentElement !== app) app.appendChild(overlay);
+
+  // Permitir fechar o menu por dentro, sem depender de toque no backdrop.
+  let closeSidebarButton = sidebar.querySelector('.sidebar-close');
+  if (!closeSidebarButton) {
+    closeSidebarButton = document.createElement('button');
+    closeSidebarButton.type = 'button';
+    closeSidebarButton.className = 'sidebar-close';
+    closeSidebarButton.setAttribute('aria-label', 'Fechar menu de navegação');
+    closeSidebarButton.textContent = 'Fechar menu ×';
+    sidebar.insertBefore(closeSidebarButton, sidebar.firstChild);
   }
 
   function syncSidebar(isOpen) {
@@ -526,6 +542,7 @@ function setupShell() {
   });
 
   overlay.addEventListener('click', fecharSidebar);
+  closeSidebarButton.addEventListener('click', fecharSidebar);
 
   sidebar.addEventListener('click', function (event) {
     const alvo = event.target.closest('a');
