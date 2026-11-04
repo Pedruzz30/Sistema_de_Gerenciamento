@@ -101,6 +101,10 @@
     db.vendasPreview=[];
     let cursor=0;
     const productsForPrice=prices.map((p,i)=>db.produtos[200+i*70]);
+    productsForPrice.forEach((product,i)=>{
+      product.precoUnitario=prices[i];
+      product.precoCusto=money(prices[i]*.70);
+    });
     function addSale(date,priceIndex,hour,minute,live) {
       const price=prices[priceIndex];
       const roll=rand();
