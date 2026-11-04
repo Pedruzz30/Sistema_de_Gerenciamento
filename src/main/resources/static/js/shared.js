@@ -559,4 +559,21 @@ document.addEventListener('DOMContentLoaded', function () {
   renderUserCard();
   aplicarIconesEstaticos(document);
   setupShell();
+  // Atalhos operacionais carregados somente no shell legado/mock.
+  // O console Supabase tenant-aware usa navegação própria e mantém APIs de escrita bloqueadas.
+  if (!(window.StockosAuth && window.StockosAuth.isSupabase())) {
+    if (!document.getElementById('stockos-quick-style')) {
+      const style = document.createElement('link');
+      style.id = 'stockos-quick-style';
+      style.rel = 'stylesheet';
+      style.href = '/css/quick-actions.css';
+      document.head.appendChild(style);
+    }
+    if (!document.getElementById('stockos-quick-script')) {
+      const script = document.createElement('script');
+      script.id = 'stockos-quick-script';
+      script.src = '/js/quick-actions.js';
+      document.body.appendChild(script);
+    }
+  }
 });
