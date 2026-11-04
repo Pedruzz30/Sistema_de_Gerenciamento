@@ -444,7 +444,8 @@ function renderUserCard() {
 let shellInicializado = false;
 
 function isShellMobile() {
-  return window.innerWidth <= 900;
+  // Alinhar o breakpoint do JS à sidebar escondida pelo app.css.
+  return window.innerWidth <= 980;
 }
 
 function fecharModalAberto() {
