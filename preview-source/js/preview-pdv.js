@@ -16,6 +16,20 @@
       const close=create('button','stockos-preview-pdv__close','Fechar');close.type='button';close.onclick=()=>overlay.remove();head.append(close);modal.append(head);
       const info=create('p','stockos-preview-pdv__info','Escolha produtos do estoque fictício. Nenhuma venda, pagamento ou emissão fiscal é real.');info.style.opacity='.8';modal.append(info);
       const products=(await (await fetch('/api/produtos')).json()).filter(p=>p.ativo!==false&&p.quantidadeAtual>0);
+      const navigation=create('div','stockos-preview-pdv__navigation');
+      const showCatalog=create('button','stockos-preview-pdv__tab','Produtos');
+      const showCart=create('button','stockos-preview-pdv__tab','Pedido · 0 itens');
+      showCatalog.type=showCart.type='button';
+      navigation.append(showCatalog,showCart);
+      modal.insertBefore(navigation,info);
+      function switchPanel(name) {
+        modal.dataset.mobilePanel=name;
+        showCatalog.setAttribute('aria-pressed',String(name==='produtos'));
+        showCart.setAttribute('aria-pressed',String(name==='pedido'));
+      }
+      showCatalog.addEventListener('click',()=>switchPanel('produtos'));
+      showCart.addEventListener('click',()=>switchPanel('pedido'));
+
       const pick=create('select','stockos-preview-pdv__select');pick.setAttribute('aria-label','Produto');pick.style.cssText='width:100%;margin:8px 0;padding:10px';for(const p of products){const o=create('option','',p.nome+' · R$ '+Number(p.precoUnitario).toFixed(2)+' · '+p.quantidadeAtual+' em estoque');o.value=p.id;pick.append(o);}modal.append(pick);
       const qty=create('input','stockos-preview-pdv__qty');qty.type='number';qty.setAttribute('aria-label','Quantidade');qty.min='1';qty.step='1';qty.value='1';qty.style.cssText='width:85px;margin-right:8px;padding:10px';
       const add=create('button','stockos-preview-pdv__add','Adicionar ao carrinho');add.type='button';const controls=create('div','stockos-preview-pdv__controls');controls.append(qty,add);modal.append(controls);
@@ -25,22 +39,33 @@
       const feedback=create('p','stockos-preview-pdv__feedback');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');modal.append(feedback);
       overlay.append(modal);document.body.append(overlay);
       const cart=[];
-      const render=()=>{rows.replaceChildren();let value=0;for(const c of cart){const p=products.find(x=>x.id===c.id);const row=create('div','stockos-preview-pdv__item',''+c.qty+' × '+p.nome+' — R$ '+(p.precoUnitario*c.qty).toFixed(2));row.style.padding='5px 0';rows.append(row);value+=c.qty*p.precoUnitario;}total.textContent='Total: R$ '+value.toFixed(2);return value;};
+      let pendingKey=null;
+      let processing=false;
+      let submitted=false;
+      const render=()=>{rows.replaceChildren();let value=0;for(const c of cart){const p=products.find(x=>x.id===c.id);const row=create('div','stockos-preview-pdv__item',''+c.qty+' × '+p.nome+' — R$ '+(p.precoUnitario*c.qty).toFixed(2));row.style.padding='5px 0';rows.append(row);value+=c.qty*p.precoUnitario;}total.textContent='Total: R$ '+value.toFixed(2);
+        const itemCount=cart.reduce((sum,item)=>sum+item.qty,0);
+        showCart.textContent='Pedido · '+itemCount+' '+(itemCount===1?'item':'itens');
+        return value;};
       add.onclick=()=>{
+        if(submitted||processing)return;
         const id=Number(pick.value),n=Number(qty.value),p=products.find(x=>x.id===id);if(!p||!Number.isInteger(n)||n<=0){feedback.textContent='Quantidade inválida.';return;}
         const existing=cart.find(c=>c.id===id);const current=existing?.qty||0;
         if(current+n>p.quantidadeAtual){feedback.textContent='Estoque insuficiente.';return;}
         if(existing)existing.qty+=n;else cart.push({id,qty:n});
+        pendingKey=null;
         feedback.textContent='';render();
       };
       finish.onclick=async()=>{
+        if(processing||submitted)return;
         if(cart.length===0){feedback.textContent='Adicione produtos ao carrinho.';return;}
         render();
+        processing=true;
         finish.disabled=true;
         try{
           // One preview-only command validates and commits the sale atomically.
           // The idempotency key survives a retry of this same cart.
-          const key=window.crypto?.randomUUID?.() || ('pdv_'+Date.now()+'_'+Math.random().toString(36).slice(2));
+          if(!pendingKey)pendingKey=window.crypto?.randomUUID?.() || ('pdv_'+Date.now()+'_'+Math.random().toString(36).slice(2));
+          const key=pendingKey;
           const response=await fetch('/api/preview/transacoes/venda',{
             method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
@@ -53,11 +78,16 @@
             throw Error(error.erro||'Não foi possível registrar a venda fictícia.');
           }
           feedback.textContent='Venda fictícia registrada com estoque e caixa atualizados. Nenhum pagamento foi realizado.';
+          submitted=true;
+          finish.textContent='Venda fictícia registrada';
+          switchPanel('pedido');
           finish.disabled=true;
           if(typeof carregarCaixas==='function')await carregarCaixas();
-        }catch(e){feedback.textContent=e.message;finish.disabled=false;}
+        }catch(e){feedback.textContent=e.message;switchPanel('pedido');finish.disabled=false;}
+        finally{processing=false;}
       };
       overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+      switchPanel('produtos');
     };
   }
   window.StockOSPreviewHooks=window.StockOSPreviewHooks||{};
