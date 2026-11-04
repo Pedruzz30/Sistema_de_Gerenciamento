@@ -122,6 +122,21 @@ conceder DML e sequences ao runtime conforme
 [`postgresql-least-privilege.md`](postgresql-least-privilege.md), ajustando
 o nome do banco e revisando grants herdados, funções e RLS.
 
+## Grants após Flyway e auditoria sem privilégios
+
+Após aplicar Flyway **no banco Render descartável**, como `stockos_migrator`,
+execute `psql -X -v ON_ERROR_STOP=1 -f scripts/staging/02-grant-runtime-access.psql`.
+Esse script exige o banco e usuário exatos, rejeita a presença de tabelas
+`stockos_private` do modelo Supabase antigo e concede somente DML/sequence
+ao runtime (não DDL).
+
+Em uma **nova conexão como `stockos_app`**, execute
+`psql -X -v ON_ERROR_STOP=1 -f scripts/staging/03-verify-runtime-access.psql`.
+O script verifica ausência de superuser, poderes de criação, BYPASSRLS,
+vínculo com migrador e propriedade de tabelas. O teste automático
+`node scripts/staging/test-provision-roles.mjs` valida a estrutura desses
+três scripts, **não executa SQL remoto**.
+
 ## Check de negação antes de expor a API
 
 Como usuário `stockos_app` no banco descartável:
