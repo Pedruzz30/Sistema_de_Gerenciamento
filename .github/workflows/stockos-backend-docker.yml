@@ -14,6 +14,7 @@ on:
       - "src/main/**"
       - "src/test/**"
       - "scripts/test-tenant-console.mjs"
+      - "scripts/staging/**"
       - ".github/workflows/stockos-backend-docker.yml"
   push:
     branches: [main]
@@ -25,6 +26,7 @@ on:
       - "docker/**"
       - "src/main/**"
       - "src/test/**"
+      - "scripts/staging/**"
       - ".github/workflows/stockos-backend-docker.yml"
   workflow_dispatch:
 
@@ -49,6 +51,8 @@ jobs:
           node-version: "22"
       - name: Tenant console security regression
         run: node scripts/test-tenant-console.mjs
+      - name: Staging database provisioning safety checks
+        run: node scripts/staging/test-provision-roles.mjs
       - name: Start isolated PostgreSQL via Compose
         shell: bash
         run: |
