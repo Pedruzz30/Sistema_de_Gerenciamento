@@ -29,6 +29,9 @@ $stockos_preflight$;
 CREATE ROLE stockos_migrator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
 CREATE ROLE stockos_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
 GRANT CONNECT ON DATABASE stockos_java_staging_temp TO stockos_migrator, stockos_app;
+-- Schema owner/admin must remove the PUBLIC inherited CREATE privilege here.
+-- The migrator does not own public and must not attempt this later.
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE, CREATE ON SCHEMA public TO stockos_migrator;
 GRANT USAGE ON SCHEMA public TO stockos_app;
 REVOKE CREATE ON SCHEMA public FROM stockos_app;
