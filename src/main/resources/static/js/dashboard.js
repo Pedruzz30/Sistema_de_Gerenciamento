@@ -39,21 +39,26 @@ async function carregarDados() {
   // Consultas independentes devem rodar em paralelo, não em cascata.
   // Ranking is not required for the first screen. Fetch only if charts open.
   const [produtos, caixas, movimentacoes, metricas] = await Promise.all([
-    PODE_VER_ESTOQUE_DASH ? pedir('/api/produtos', []) : Promise.resolve([]),
-    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas', []) : Promise.resolve([]),
+    PODE_VER_ESTOQUE_DASH ? pedir('/api/produtos', null) : Promise.resolve([]),
+    PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas', null) : Promise.resolve([]),
     PODE_VER_ESTOQUE_DASH ? pedir('/api/movimentacoes', []) : Promise.resolve([]),
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null)
   ]);
 
   // Response may arrive after the user has navigated to another view.
   if (paginaAtual() !== 'dashboard') return;
-  renderSummaryCards(produtos, caixas, metricas);
-  renderAlertas(produtos);
+  const produtosDisponiveis = Array.isArray(produtos);
+  const caixasDisponiveis = Array.isArray(caixas);
+  const produtosAtuais = produtosDisponiveis ? produtos : [];
+  const caixasAtuais = caixasDisponiveis ? caixas : [];
+  renderSummaryCards(produtosAtuais, caixasAtuais, metricas);
+  renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
+  renderAlertas(produtosAtuais);
   renderMovimentacoes(movimentacoes);
-  renderFinanceiro(caixas, metricas);
-  window._dadosProdutos = produtos;
+  renderFinanceiro(caixasAtuais, metricas);
+  window._dadosProdutos = produtosAtuais;
   window._dadosMov = movimentacoes;
-  window._dadosCaixas = caixas;
+  window._dadosCaixas = caixasAtuais;
   window._dadosRentabilidade = null;
   window._graficosRendered = false;
   if (document.getElementById('tabpanel-graficos')?.classList.contains('active')) {
@@ -78,6 +83,7 @@ window.StockOSPages.dashboard = {
       carregarDados,
       renderHeader,
       renderSummaryCards,
+      renderAcoesOperacionais,
       renderPermissionSections,
       renderAlertas,
       renderMovimentacoes,
@@ -192,6 +198,82 @@ function renderSummaryCards(produtos, caixas, metricasHoje) {
              '</div>' +
              '</a>';
     }).join('');
+}
+
+// ── Central operacional: sempre baseada em consultas do usuário autorizado ─
+function renderAcoesOperacionais(produtos, caixas, status) {
+  const panel = document.getElementById('daily-actions');
+  const list = document.getElementById('daily-actions-list');
+  const count = document.getElementById('daily-actions-count');
+  if (!panel || !list) return;
+  const podeEstoque = PODE_VER_ESTOQUE_DASH;
+  const podeCaixas = PODE_VER_FINANCEIRO_DASH;
+  if (!podeEstoque && !podeCaixas) {
+    panel.hidden = true;
+    return;
+  }
+
+  const tarefas = [];
+  if (podeEstoque) {
+    if (!status.produtosDisponiveis) {
+      tarefas.push({
+        prioridade: 'warning', titulo: 'Estoque indisponível',
+        detalhe: 'Não foi possível consultar os níveis. Confira a conexão antes de movimentar produtos.',
+        acao: 'Consultar estoque', href: '/estoque.html'
+      });
+    } else {
+      const alertas = obterAlertasEstoque(produtos);
+      const criticos = alertas.filter(p => p.nivelEstoque === 'SEM_ESTOQUE' || p.nivelEstoque === 'CRITICO');
+      const baixos = alertas.filter(p => p.nivelEstoque === 'BAIXO' || p.nivelEstoque === 'MODERADO');
+      if (criticos.length) tarefas.push({
+        prioridade: 'critical', titulo: criticos.length === 1 ? '1 produto em situação crítica' : criticos.length + ' produtos em situação crítica',
+        detalhe: 'Revise primeiro os itens sem estoque ou com nível crítico.',
+        acao: 'Ver críticos', href: '/estoque.html?filtro=critico'
+      });
+      if (baixos.length) tarefas.push({
+        prioridade: 'warning', titulo: baixos.length === 1 ? '1 produto precisa de atenção' : baixos.length + ' produtos precisam de atenção',
+        detalhe: 'Confira a reposição dos itens com estoque baixo ou moderado.',
+        acao: 'Ver baixos', href: '/estoque.html?filtro=baixo'
+      });
+      if (!alertas.length) tarefas.push({
+        prioridade: 'normal', titulo: 'Estoque sem alertas',
+        detalhe: 'Nenhum item cadastrado apresenta nível de atenção no momento.',
+        acao: 'Consultar produtos', href: '/estoque.html'
+      });
+    }
+  }
+
+  if (podeCaixas) {
+    if (!status.caixasDisponiveis) {
+      tarefas.push({
+        prioridade: 'warning', titulo: 'Caixas indisponíveis',
+        detalhe: 'Não foi possível consultar o estado dos caixas. Verifique a conexão.',
+        acao: 'Consultar caixas', href: '/caixas.html'
+      });
+    } else {
+      const abertos = caixas.filter(c => c.status === 'ABERTO').length;
+      if (!abertos) tarefas.push({
+        prioridade: 'normal', titulo: 'Nenhum caixa aberto',
+        detalhe: 'Confira o início do turno antes de registrar vendas.',
+        acao: 'Ir para caixas', href: '/caixas.html'
+      });
+      else tarefas.push({
+        prioridade: 'normal', titulo: abertos === 1 ? '1 caixa em operação' : abertos + ' caixas em operação',
+        detalhe: 'Acesse um caixa aberto para consultar ou registrar vendas.',
+        acao: 'Ver caixas', href: '/caixas.html'
+      });
+    }
+  }
+
+  list.innerHTML = tarefas.map(tarefa => {
+    return '<a class="operations-item operations-item--' + tarefa.prioridade + '" href="' + tarefa.href + '">' +
+      '<span class="operations-item__indicator" aria-hidden="true"></span>' +
+      '<span class="operations-item__copy"><strong>' + escapeHtml(tarefa.titulo) + '</strong>' +
+      '<small>' + escapeHtml(tarefa.detalhe) + '</small></span>' +
+      '<span class="operations-item__action">' + escapeHtml(tarefa.acao) + ' →</span></a>';
+  }).join('');
+  if (count) count.textContent = tarefas.length + (tarefas.length === 1 ? ' ação' : ' ações');
+  panel.hidden = false;
 }
 
 // ── Seções por permissão ───────────────────────────────────
