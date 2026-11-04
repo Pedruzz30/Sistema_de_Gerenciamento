@@ -4,16 +4,16 @@ import { readFile } from 'node:fs/promises';
 
 execFileSync(process.execPath,['scripts/build-preview.mjs'],{stdio:'inherit'});
 const pages = {
-  'login.html': ['preview-scale','preview-mock','preview-design-review'],
-  'dashboard.html': ['preview-scale','preview-mock','preview-design-review'],
-  'estoque.html': ['preview-scale','preview-mock','preview-design-review'],
-  'fornecedores.html': ['preview-scale','preview-mock','preview-design-review'],
-  'notas.html': ['preview-scale','preview-mock','preview-notes','preview-design-review'],
-  'caixas.html': ['preview-scale','preview-mock','preview-pdv','preview-design-review'],
-  'cotacoes.html': ['preview-scale','preview-mock','preview-design-review'],
-  'funcionarios.html': ['preview-scale','preview-mock','preview-design-review'],
-  'logs.html': ['preview-scale','preview-mock','preview-design-review'],
-  'cardapio.html': ['preview-scale','preview-mock','preview-cardapio','preview-design-review']
+  'login.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'dashboard.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'estoque.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'fornecedores.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'notas.html': ['preview-scale','preview-beverages','preview-mock','preview-notes','preview-design-review'],
+  'caixas.html': ['preview-scale','preview-beverages','preview-mock','preview-pdv','preview-design-review'],
+  'cotacoes.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'funcionarios.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'logs.html': ['preview-scale','preview-beverages','preview-mock','preview-design-review'],
+  'cardapio.html': ['preview-scale','preview-beverages','preview-mock','preview-cardapio','preview-design-review']
 };
 for (const [page, expected] of Object.entries(pages)) {
   const html = await readFile('dist-preview/'+page,'utf8');

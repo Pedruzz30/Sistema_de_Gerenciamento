@@ -7,6 +7,7 @@ await rm(out, { recursive:true, force:true });
 await mkdir(out, {recursive:true});
 await cp(root, out, {recursive:true});
 // The real Java frontend is the single source of truth. Mock is preview-only.
+await cp(resolve('preview-source/js/preview-beverages.js'),join(out,'js/preview-beverages.js'));
 await cp(resolve('preview-source/js/preview-scale.js'),join(out,'js/preview-scale.js'));
 await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
@@ -44,6 +45,7 @@ const pages = ['login.html','dashboard.html','estoque.html','fornecedores.html',
 // Only initialize browser-only mock extensions on pages that use them.
 const previewScriptsFor = page => [
   'preview-scale',
+  'preview-beverages',
   'preview-mock',
   ...(page==='notas.html' ? ['preview-notes'] : []),
   ...(page==='caixas.html' ? ['preview-pdv'] : []),

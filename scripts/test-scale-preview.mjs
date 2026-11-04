@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
-const [fixture, mock] = await Promise.all([
+const [fixture, beverages, mock] = await Promise.all([
   readFile('preview-source/js/preview-scale.js', 'utf8'),
+  readFile('preview-source/js/preview-beverages.js', 'utf8'),
   readFile('preview-source/js/preview-mock.js', 'utf8')
 ]);
 const kv = new Map();
@@ -35,6 +36,7 @@ const context = vm.createContext({
   Date, Math, Intl, console, Map, JSON
 });
 vm.runInContext(fixture, context, { filename: 'preview-scale.js' });
+vm.runInContext(beverages, context, { filename: 'preview-beverages.js' });
 const startMock = () => vm.runInContext(mock, context, { filename: 'preview-mock.js' });
 const request = async path => {
   const response = await window.fetch(path);
@@ -66,6 +68,24 @@ assert.ok(localStorage.getItem('stockos-preview-scale-v1').length < 4_000_000,
 assert.equal(localStorage.getItem('stockos-preview-v1'), null,
   'Volume fixture must not overwrite the basic preview');
 
+localStorage.setItem('stockos-preview-scenario-v1', 'beverages');
+startMock();
+const beverage = await request('/api/preview/cenario');
+assert.equal(window.StockOsPreview.scenario, 'beverages');
+assert.equal(beverage.faturamento, 2000000);
+assert.equal(beverage.pedidos, 12000);
+assert.equal(beverage.dias.length, 30);
+assert.equal(beverage.dias.reduce((sum, d) => sum + d.faturamento, 0), 2000000);
+assert.equal((await request('/api/produtos')).length, 1600);
+assert.equal((await request('/api/fornecedores')).length, 65);
+assert.equal((await request('/api/funcionarios')).length, 80);
+assert.equal((await request('/api/notas')).length, 420);
+assert.equal((await request('/api/movimentacoes')).length, 4200);
+assert.equal((await request('/api/logs')).length, 800);
+assert.equal((await request('/api/rentabilidade/ranking')).receitaTotalEstimada, 2000000);
+assert.equal(JSON.parse(localStorage.getItem('stockos-preview-beverages-v1')).vendasPreview.filter(v => v.historico).length, 12000);
+assert.ok(localStorage.getItem('stockos-preview-beverages-v1').length < 4500000, 'Beverages demo must fit localStorage');
+assert.equal(JSON.parse(localStorage.getItem('stockos-preview-scale-v1')).demoEscala.faturamento, 300000, 'R$300k scenario remains unchanged');
 localStorage.setItem('stockos-preview-scenario-v1', 'basic');
 startMock();
 assert.equal(window.StockOsPreview.scenario, 'basic');
@@ -75,4 +95,4 @@ assert.ok(localStorage.getItem('stockos-preview-scale-v1'),
   'Switching to basic must not erase the volume fixture');
 assert.equal((await window.fetch('https://example.com/api/produtos')).status, 403,
   'Preview must block external requests');
-console.log('PASS: R$300k demo, 7500 orders, separated storage, fixtures and offline isolation');
+console.log('PASS: R$300k and R$2m demos, 7500/12000 orders, scenario isolation and offline mode');
