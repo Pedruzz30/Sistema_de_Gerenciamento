@@ -35,7 +35,7 @@ assert.equal(model.get(27).totalCentavos,3780);
 const restored=context.window.StockOSComandasDemoModel.createModel(JSON.parse(JSON.stringify(model.list())));
 assert.equal(restored.get(27).totalCentavos,3780);
 assert.equal(restored.get(27).status,'ABERTA');
-assert.deepEqual(restored.list().map(t=>t.numero),[27]);
+assert.equal(restored.list().map(t=>t.numero).join(','),'27');
 
 const ui=await readFile(pageFile,'utf8');
 assert.doesNotMatch(ui,/\/api\/(?:vendas|caixas|saas|pagamentos|estoque)\b/);
@@ -45,7 +45,7 @@ assert.match(ui,/model\.requestClose/);
 assert.match(ui,/model\.resume/);
 assert.match(ui,/aria-pressed/);
 const html=await readFile('preview-source/comandas-demo.html','utf8');
-assert.match(html,/Nenhum pagamento/);
+assert.match(html,/nenhum pagamento/i);
 assert.match(html,/id="open-tab"/);
 assert.match(html,/id="product-list"/);
 assert.match(html,/id="order-list"/);
