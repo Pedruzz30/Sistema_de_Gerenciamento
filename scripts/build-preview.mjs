@@ -21,6 +21,10 @@ await writeFile(sharedPath, sharedCanonical.replace(
 ));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
+await cp(resolve('preview-source/comandas-demo.html'),join(out,'comandas-demo.html'));
+await cp(resolve('preview-source/js/comandas-demo-model.js'),join(out,'js/comandas-demo-model.js'));
+await cp(resolve('preview-source/js/comandas-demo.js'),join(out,'js/comandas-demo.js'));
+await cp(resolve('preview-source/css/comandas-demo.css'),join(out,'css/comandas-demo.css'));
 await cp(resolve('preview-source/js/preview-cardapio.js'),join(out,'js/preview-cardapio.js'));
 await cp(resolve('preview-source/js/preview-design-review.js'),join(out,'js/preview-design-review.js'));
 await mkdir(join(out,'css'),{recursive:true});
@@ -45,7 +49,7 @@ await writeFile(join(out,'css/stockos-design.bundle.css'),designBundle);
 // Preview-only mock modules remain in preview-source/js/.
 
 // SaaS, PDV legacy and miscellaneous HTML are not part of the public demo.
-const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html']);
+const allowed = new Set(['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html','comandas-demo.html']);
 const { readdir } = await import('node:fs/promises');
 for (const entry of await readdir(out)) {
   if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
@@ -87,7 +91,8 @@ await writeFile(join(out,'_redirects'), [
   '/cotacoes /cotacoes.html 200',
   '/funcionarios /funcionarios.html 200',
   '/logs /logs.html 200',
-  '/cardapio /cardapio.html 200'
+  '/cardapio /cardapio.html 200',
+  '/comandas-demo /comandas-demo.html 200'
 ].join('\n')+'\n');
 await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demonstração</title></head><body><p><a href="/dashboard.html">Abrir demonstração do StockOS (dados fictícios)</a></p></body></html>\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');
