@@ -124,6 +124,35 @@ Pelo `ClasseFuncionario.java:28`, a classe CAIXA tem só `VER_VENDAS` e `VER_EST
 
 **Conclusão do teste:** a lógica de estoque funciona, mas a experiência do operador ainda é de "cadastro de venda", não de "frente de caixa". Isso reforça os itens 1, 2, 4 e 7 da Fase 1.
 
+
+### 3.11 Demo "Central Bebidas 2M" (PR #38, já na `main`)
+A branch `feat/demo-deposito-bebidas-2m-20261104` (`preview-source/js/preview-beverages.js`) mexe **só nos dados de demonstração** do site. Não altera backend, banco nem o PDV real.
+
+| Item | Demo | Loja real da cliente |
+|---|---|---|
+| Faturamento | R$ 2.000.000 em 30 dias (~R$ 64 mil/dia) | Bem menor: 3 pessoas na loja |
+| Vendas | 12.000 no mês, **1 item por venda**, ticket R$ 166,67 | Muitas vendas pequenas e mistas (latas + gelo + caldo) |
+| Caixas | 8 abertos | 1, às vezes 2 |
+| Funcionários | 80 | 3 |
+| Produtos | 1.600 (25 bebidas × 16 embalagens × 4 marcas) | Algumas centenas, com petiscos e caldos |
+
+**O que tem de bom:** as vendas da demo guardam a forma de pagamento (51% Pix, 37% cartão, 12% dinheiro), e o volume serve para testar desempenho.
+
+**Onde contradiz a análise:**
+- **Saldo da gaveta:** o saldo continua somando tudo (`saldoAtual = vendas + 500`), mesmo a venda sabendo a forma de pagamento. Com 12% em dinheiro, a gaveta da Caixa 1 deveria ter ~R$ 1.400, não R$ 8.285 (problema 3.1).
+- **Embalagens:** cada embalagem é um produto separado, com estoque próprio. Vender um fardo não baixa as 12 latas, enquanto o backend tem o modelo certo (`EmbalagemProduto`).
+- **Itens da cliente:** sem código de barras, sem preço gelado, sem caldos ou petiscos.
+- **Fora do escopo:** inclui "retornável" e "barril", que a cliente não trabalha.
+- **PDV:** o menu suspenso do PDV de demonstração passaria a ter 1.600 produtos.
+- **Dashboard:** mostra "Nenhuma movimentação hoje" com R$ 64 mil vendidos no dia. O logo muda entre "GESTÃO · ESTOQUE" (Dashboard) e "FORNO · V2" (outras páginas).
+
+**Sugestão:** manter essa demo para escala e desempenho, e criar uma demo **do tamanho real da cliente** para apresentar a ela:
+- 1-2 caixas;
+- ~300 produtos com EAN, fardo como embalagem do mesmo produto e preço gelado;
+- caldos e petiscos;
+- vendas com vários itens;
+- gaveta somando só o dinheiro.
+
 ---
 
 ## 4. Como funciona um PDV profissional (supermercado/mercearia)
