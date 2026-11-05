@@ -1,0 +1,423 @@
+# Análise do Caixa PDV do StockOS para um depósito de bebidas
+
+Data da análise: 04/11/2026. Base: branch `main`, commit `0a3f04b`, e o print da tela `caixas.html` no Netlify.
+
+Contexto: um depósito de bebidas que também vende petiscos e caldos, com bastante movimento, hoje tudo anotado em caderno. A ideia é rodar o sistema num notebook no balcão, como gerenciador de estoque e caixa PDV.
+
+### Respostas da cliente (04/11/2026)
+
+| Pergunta | Resposta | O que muda no projeto |
+|---|---|---|
+| Vende fiado? | **Não** | Sai do roteiro: sem conta de cliente e sem contas a receber |
+| Casco retornável? | **Não** | Sai do roteiro |
+| Gelada tem preço diferente? | **Sim** | Entra na **Fase 1**: um produto, dois preços, mesmo estoque (seção 5.2) |
+| Tem mesas? | Sim, mas **não há cobrança por mesa** | Sem comandas: toda venda é de **balcão**, paga na hora |
+| Regime tributário | **Não sabem**; os donos fazem a própria contabilidade | Descobrir antes da parte fiscal (seção 8.1) |
+| Quem opera o caixa | 3 pessoas na loja; **1 ou 2 no caixa ao mesmo tempo** | Troca rápida de operador por PIN (seção 5.3) |
+
+---
+
+## 1. Veredito
+
+O **backend de vendas está bem feito**: dinheiro em `BigDecimal`, estoque decimal por filial, trava pessimista no estoque, idempotência na finalização, cancelamento com estorno e trilha de auditoria. Muito sistema comercial pequeno não tem isso.
+
+O problema é que **o PDV de hoje é de restaurante/pizzaria, não de mercearia**. Ele funciona com um cardápio de cards clicáveis, variações e modificadores. Um caixa de supermercado precisa de outra coisa: **bipar o código de barras, receber o pagamento, dar o troco e imprimir o cupom**, tudo pelo teclado e em poucos segundos.
+
+**Ainda não dá para usar o sistema na loja.** Faltam 6 coisas que impedem a operação:
+
+| # | O que falta | Por que impede |
+|---|---|---|
+| 1 | Forma de pagamento (dinheiro, Pix, débito, crédito) | O sistema trata **toda venda como dinheiro na gaveta**, então o fechamento sempre diverge |
+| 2 | Leitura por código de barras no PDV | Sem isso a fila trava em dia de movimento |
+| 3 | Valor recebido e troco | Função básica de qualquer caixa |
+| 4 | Comprovante / cupom impresso | O cliente espera receber, e é a base da NFC-e |
+| 5 | NFC-e (nota fiscal do consumidor) | Obrigatória no varejo na maioria dos estados (ver seção 8) |
+| 6 | Autenticação de verdade | Hoje é o cabeçalho `X-User-RU` com senha em texto puro (o próprio README avisa) |
+
+---
+
+## 2. O que já está bom (dá para aproveitar)
+
+| Ponto forte | Onde está |
+|---|---|
+| Estados do caixa: FECHADO → ABERTO → ENCERRADO | `src/main/java/model/Caixa.java:66` |
+| Abertura com fundo de troco; sangria e suprimento separados | `CaixaService.java:57-114` |
+| Fechamento com valor contado × valor do sistema e divergência registrada | `CaixaService.java:162-199`, `FechamentoCaixa` |
+| Venda em rascunho → itens → finalizar (API `/api/vendas`) | `VendaController.java:59-200` |
+| Idempotência: o mesmo clique duplo não gera duas vendas | `FinalizarVendaRequest(idempotencyKey…)`, `RegistroIdempotencia` |
+| Trava pessimista ao baixar o estoque (dois caixas não vendem a mesma última unidade) | `JpaEstoqueProdutoRepository.java:30`, `FinalizacaoVendaService.java:362` |
+| Política de falta por produto: BLOQUEAR / ALERTAR / IGNORAR | `model/PoliticaFalta.java` |
+| Estoque decimal (`numeric(19,6)`) e custo médio por filial | `model/EstoqueProduto.java:49-56` |
+| **Embalagens de produto** (fardo de 12 = 12 unidades) já com campo `codigo_barras` | `model/EmbalagemProduto.java` |
+| Ficha técnica: serve direitinho para o **caldo** (baixa ingredientes ao vender um copo) | `FichaTecnica*`, `VendaItemConsumo` |
+| Cancelamento total ou por item com motivo | `CancelamentoVendaService.java` |
+| Logs de auditoria de toda movimentação | `LogAcao` |
+| Migrações Flyway e testes de integração | `src/main/resources/db/migration`, `src/test` |
+
+Esta base é o motivo de valer a pena **adaptar o PDV**, em vez de reescrever.
+
+---
+
+## 3. Problemas encontrados no código (do mais grave ao menos grave)
+
+### 3.1 Toda venda entra como dinheiro na gaveta (crítico)
+`Caixa.registrarMovimentacao` (`Caixa.java:229`) soma **toda** entrada ao `saldoAtual`. A finalização (`FinalizarVendaRequest`, `VendaController.java:318`) não pede forma de pagamento.
+
+**Consequência real:** com Saldo inicial R$ 300 e R$ 2.439 vendidos, o sistema espera **R$ 2.739 em espécie** na gaveta, que é exatamente o que aparece no seu print. Num depósito, talvez 70% disso seja Pix ou cartão. No fechamento a operadora conta R$ 900 e o sistema acusa **"falta" de R$ 1.839**. O fechamento perde o sentido.
+
+### 3.2 Cancelamento de venda é lançado como SANGRIA
+`IntegracaoCaixaLegadoService.java:43` registra o estorno como `SANGRIA`. Isso gera dois problemas:
+- o relatório de sangrias fica errado (sangria é retirada de dinheiro para o cofre, não estorno);
+- `Caixa.registrarMovimentacao` **recusa saídas maiores que o saldo**. Então cancelar uma venda de R$ 200 paga no Pix, com R$ 150 na gaveta, **falha**.
+
+O cancelamento precisa de um tipo próprio (`ESTORNO_VENDA`), ligado à forma de pagamento original.
+
+### 3.3 Não existe busca por código de barras
+O campo `codigo_barras` existe só em `embalagens_produto` (migração `V20260713_01`), **sem índice único e sem endpoint de busca**. O PDV (`pdv.js:139-160`) filtra o cardápio por **nome**, e o operador clica num card. No caixa de mercearia isso é lento demais.
+
+### 3.4 Dois caminhos de venda em paralelo
+- `/api/caixas/venda` (legado) aceita **venda só com valor, sem itens** (`CaixaService.java:298-311`). Isso gera dinheiro no caixa sem baixa de estoque, e é por aí que somem as bebidas.
+- `/api/vendas` (novo, decimal, com trava). É o caminho certo.
+
+**Recomendação:** o PDV usa só `/api/vendas`. A "venda avulsa sem item" fica restrita ao gerente, ou vira um produto genérico ("Diversos") que exige permissão.
+
+### 3.5 Fechamento não é "cego"
+`caixas.js:282` preenche o campo **valor contado** com o valor do sistema. A operadora só clica em confirmar. Em PDV profissional o operador digita o que contou **sem ver** o esperado (fechamento cego), e a conferência é por forma de pagamento.
+
+### 3.6 Permissões do perfil CAIXA
+Pelo `ClasseFuncionario.java:28`, a classe CAIXA tem só `VER_VENDAS` e `VER_ESTOQUE`. Sangria, suprimento e encerramento exigem `VER_FINANCAS` (`CaixaService.java:101-155`). Na loja, 3 pessoas se revezam no caixa. O padrão de mercado é: qualquer operador vende, e sangria, cancelamento, desconto e fechamento pedem o **PIN de um dono/gerente** na hora, sem precisar trocar o usuário logado.
+
+**Senhas padrão:** o README traz `Admin / Superior / 1234` e os outros usuários com `1234`. Troquem todas antes de usar na loja.
+
+### 3.7 Gerador de ID de movimentação em memória
+`CaixaService.java:47` cria um `AtomicLong` lendo **todas as movimentações de todos os caixas** na inicialização (com `FetchType.EAGER`). Isso funciona, mas a inicialização fica lenta com meses de histórico e quebra se houver duas instâncias. Troquem por `@GeneratedValue` ou por uma sequence do Postgres.
+
+### 3.8 O modal do PDV fecha ao clicar fora
+`caixas.html:205` usa `fecharModalSeClicouFora`. No balcão, um clique errado fecha o terminal no meio da venda. O rascunho fica salvo no servidor, mas a operadora se perde. O PDV deve ser uma **tela própria** (rota `/pdv/{caixa}`), não um modal.
+
+### 3.9 Detalhes de visual no print
+- Moeda em formato americano: `R$7283.00` (`caixas.js:167-205` usa `toFixed(2)`). O certo é `R$ 7.283,00`, e já existe `formatarMoedaPDV` com `Intl.NumberFormat('pt-BR')` no `pdv.js`.
+- "Abertura 09:00" sem a data. Um caixa esquecido aberto de ontem parece ser de hoje.
+- O selo flutuante "Visual novo · Ver original" cobre o botão **+ Abrir Caixa**.
+- "FORNO · V2" no logo é resto do tema pizzaria.
+- O card mostra "Total Vendas", mas não mostra **quantas vendas** nem o **ticket médio**.
+
+
+### 3.10 Teste prático no site publicado (04/11/2026, logado como Admin Demo)
+**Atenção:** o PDV publicado no Netlify é uma **versão simplificada de demonstração** (`preview-pdv.js`). Ele não é o PDV real do repositório (`pdv.js`, com grade de cardápio). O que foi testado no Caixa 1:
+
+| Teste | Resultado | Avaliação |
+|---|---|---|
+| Escolher o produto | Um **menu suspenso com ~150 produtos** em ordem fixa (arroz, farinha…) | ❌ Inviável no balcão: procurar uma lata na lista leva vários segundos |
+| Vender 5 de um item com 2 em estoque | Bloqueou com "Estoque insuficiente" | ✅ Regra certa, mas a mensagem é pequena, sem destaque e sem som |
+| Adicionar o mesmo produto duas vezes (6 + 1) | Juntou numa linha: "7 × Refrigerante" | ✅ Bom |
+| Remover item / mudar quantidade no carrinho | **Não existe** botão | ❌ Errou, tem que fechar e começar de novo |
+| Forma de pagamento / troco | **Não pergunta** | ❌ Confirma o problema 3.1 |
+| Registrar a venda de R$ 50 | Saldo da gaveta foi de R$ 2.739 para **R$ 2.789** | ❌ Tudo entra como dinheiro em espécie |
+| Baixa de estoque | Refrigerante de 72 para **65** | ✅ Correto |
+| Depois de registrar | O carrinho **continua na tela** com o botão desativado; precisa fechar e reabrir para a próxima venda | ⚠ Lento para fila: deveria limpar e voltar ao campo de leitura na hora |
+| "Ver movs" | Lista "VENDA · Venda fictícia do PDV · +R$ 50,00 · 22:19" | ⚠ Não mostra os itens, a forma de pagamento nem quem vendeu, e não permite cancelar dali |
+| Encerrar caixa | Mostra "Valor no sistema R$ 2789.00" e **já preenche "Valor contado" com 2789.00** | ❌ Confirma o problema 3.5: basta clicar em Encerrar sem contar |
+| Teclado | Tudo exige mouse (escolher no menu, clicar Adicionar, clicar Registrar) | ❌ |
+| Formato de moeda | `R$ 6.00`, `R$2789.00` em vários lugares | ❌ Usar `R$ 6,00` / `R$ 2.789,00` |
+| Tela estreita (notebook ~1400 px) | Os botões do card quebram linha ("Encerrar" desce sozinho) | ⚠ Ajustar o layout para notebook de 14" |
+
+**Conclusão do teste:** a lógica de estoque funciona, mas a experiência do operador ainda é de "cadastro de venda", não de "frente de caixa". Isso reforça os itens 1, 2, 4 e 7 da Fase 1.
+
+---
+
+## 4. Como funciona um PDV profissional (supermercado/mercearia)
+
+O fluxo padrão no Brasil, usado por sistemas de frente de caixa de varejo:
+
+1. **Abertura do caixa:** login do operador e fundo de troco (o StockOS já tem).
+2. **Registro de itens:**
+   - O leitor de código de barras **funciona como um teclado**: "digita" o EAN e aperta Enter. O campo de leitura fica **sempre com o foco**.
+   - Multiplicador: digita `6*` e bipa, e entram 6 unidades.
+   - Produto sem código: busca por nome (F2) ou por um **código interno curto** (ex.: `101` = Caldo de feijão).
+   - Produto pesado (se um dia vender por kg): etiqueta de balança com prefixo `2`, PLU e preço ou peso embutidos.
+   - A lista mostra o **último item em destaque**, com nome, quantidade, preço e total em fonte grande.
+3. **Correções:** cancelar item (F6) e cancelar cupom inteiro. Normalmente pede senha de supervisor.
+4. **Subtotal (F10/F12):** desconto (com limite por perfil) e CPF na nota.
+5. **Pagamento:**
+   - uma ou **várias formas** (ex.: R$ 50 em dinheiro + resto no Pix);
+   - dinheiro: digita o valor recebido e o sistema mostra o **troco** em destaque;
+   - cartão ou Pix: na versão simples, a operadora passa na maquininha e marca no sistema; na versão integrada (TEF / Smart POS / Pix dinâmico), o valor vai automático para a maquininha e volta aprovado;
+   - (fiado: comum em depósito de bairro, mas a cliente não trabalha com fiado).
+6. **Finalização:** baixa de estoque, emissão de NFC-e, impressão do cupom e abertura da gaveta. Tudo numa transação: ou dá tudo certo, ou nada é gravado.
+7. **Durante o turno:** sangrias quando a gaveta passa de um limite (ex.: acima de R$ 500 o sistema avisa) e suprimentos.
+8. **Fechamento:** contagem **cega** por forma de pagamento, relatório "Redução/Leitura X" com vendas, cancelamentos, descontos, sangrias e diferenças por forma. O dinheiro é conferido na contagem; cartão e Pix são conferidos com o extrato da maquininha (conciliação).
+
+---
+
+## 5. Adaptando à realidade do depósito
+
+### 5.1 Cadastro de produtos e códigos de barras
+Os produtos de bebida já vêm com **EAN-13** de fábrica (cerveja, refrigerante, água, destilados). Na prática:
+
+- **Lata e fardo têm EANs diferentes.** A lata tem um código e o fardo de 12 tem outro (DUN-14 ou EAN próprio). O modelo `EmbalagemProduto` já resolve isso: produto "Skol lata 350ml" (unidade base) com as embalagens "Unidade" (EAN da lata, 1 un) e "Fardo 12" (EAN do fardo, 12 un). **Bipar o fardo baixa 12 unidades.**
+- **Gelada × natural:** confirmado pela cliente, ver 5.2.
+- **Petiscos industrializados** (amendoim, salgadinho) também têm EAN.
+- **Caldos e porções feitos na casa não têm código.** Ganham código interno curto (`101`, `102`…) e/ou botão de atalho na tela. Vendidos como item de cardápio com ficha técnica, baixam os ingredientes. Isso o sistema já sabe fazer.
+- **Gelo, carvão e itens soltos** levam código interno.
+- **Cadastro rápido:** na entrada da nota do fornecedor, bipa o produto e o sistema vincula o EAN. O cadastro do estoque precisa de um campo "bipe aqui" que preenche o código.
+
+**Proposta de modelo:**
+```sql
+create table produto_codigos (
+  id            bigserial primary key,
+  produto_id    int    not null references produtos(id),
+  embalagem_id  bigint     null references embalagens_produto(id),
+  codigo        varchar(32) not null,
+  tipo          varchar(12) not null, -- EAN13, EAN8, DUN14, INTERNO
+  constraint uk_produto_codigos_codigo unique (codigo)
+);
+```
+Endpoint: `GET /api/pdv/codigo/{codigo}` devolve produto, embalagem, quantidade base, preço e estoque. A resposta precisa ser instantânea (índice único e, no front, um cache do catálogo carregado na abertura do caixa).
+
+Algoritmo de leitura no front:
+```
+ao receber Enter no campo de leitura:
+  texto = "6*7891149103102"  -> qtd = 6, codigo = "7891149103102"
+  se codigo começa com "2" e tem 13 dígitos e a balança estiver configurada -> decodificar PLU + preço/peso
+  senão -> buscar no cache local pelo código; se não achar, buscar na API
+  achou -> adicionar item (ou somar quantidade se for o mesmo item, conforme configuração) + bip curto de sucesso
+  não achou -> som de erro + abrir "produto não cadastrado" (gerente pode cadastrar na hora)
+  devolver o foco ao campo de leitura
+```
+
+### 5.2 Gelada × natural (confirmado: preço diferente)
+A lata é a mesma: mesmo EAN e **mesmo estoque**. Só o preço muda, conforme ela sai da geladeira ou da prateleira.
+
+- **Cadastro:** o produto ganha `preco_venda` (natural) e `preco_gelado` (opcional). Se `preco_gelado` estiver vazio, o produto não tem essa opção (ex.: salgadinho).
+- **No PDV:** uma configuração "temperatura padrão" do caixa. Num depósito, quase tudo sai gelado, então o padrão deve ser **Gelada**. A tecla **F4** alterna o próximo item (ou o item selecionado) para Natural.
+  - A lista mostra um selo `GELADA` / `NATURAL` em cada linha, para a operadora conferir.
+  - Quem bipa um fardo fechado normalmente leva natural. Dá para configurar a temperatura padrão **por embalagem** (unidade = gelada, fardo = natural).
+- **No estoque:** a baixa é igual nos dois casos (1 lata = 1 lata). Opcionalmente, um "estoque na geladeira" para avisar quando repor. Fica para depois.
+- **No relatório:** quanto foi vendido gelado e quanto natural, e quanto a mais isso rendeu.
+- **Na NFC-e:** o mesmo produto e o mesmo código, só com preço unitário diferente. A descrição pode levar o sufixo " GELADA".
+
+```sql
+alter table produtos add column preco_gelado numeric(19,2);
+alter table embalagens_produto add column temperatura_padrao varchar(10); -- GELADA | NATURAL | null
+alter table venda_itens add column temperatura varchar(10);              -- registra o que foi cobrado
+```
+
+### 5.3 1 ou 2 operadores no mesmo caixa
+Na loja ficam 3 pessoas, e 1 ou 2 operam o caixa ao mesmo tempo. Há dois cenários:
+
+**Cenário A: um notebook e uma gaveta, operadores se revezando (o mais provável)**
+- Uma sessão de caixa por dia/turno, aberta por quem é responsável pela gaveta.
+- **Troca rápida de operador:** tecla F12 e um PIN de 4 dígitos, sem sair da tela. Cada venda grava **quem passou**. O `Venda.criadaPor` e o `finalizadaPor` já existem, só falta o PDV enviar o operador do momento.
+- O relatório mostra as vendas por operador, mas a **conferência da gaveta é uma só**, porque o dinheiro é um só.
+- Se quiserem separar a responsabilidade por turno, o "fechamento parcial / troca de turno" conta a gaveta e passa para o próximo.
+
+**Cenário B: dois notebooks e duas gavetas (dia de jogo, sexta à noite)**
+- O sistema já suporta isso: Caixa 1 e Caixa 2, cada um com sua sessão e seu fundo de troco.
+- A trava de estoque que já existe garante que os dois não vendem a mesma última unidade.
+- É preciso que os dois notebooks acessem **o mesmo banco**: um deles vira "servidor" na rede local da loja, ou o banco fica na nuvem.
+
+**Recomendação:** comecem pelo Cenário A, que é o mais barato e funciona com um notebook, e deixem o B possível.
+
+Hoje o `CaixaService` não confere se quem registra a venda é o `operadorAtual` do caixa. Isso é bom para o revezamento, mas o PDV precisa deixar claro **quem está operando agora** (nome grande no topo).
+
+### 5.4 Fora do escopo (confirmado pela cliente)
+- **Fiado:** não vende. Nada de conta de cliente.
+- **Casco retornável:** não trabalha.
+- **Comandas/mesas:** as mesas existem, mas não há cobrança por mesa. Toda venda é de balcão, paga na hora (canal `BALCAO`). A tela `saas-comandas` não precisa entrar na Fase 1.
+
+### 5.5 Delivery por WhatsApp
+Ainda não perguntado. Se existir, fica para a Fase 3: venda com canal `DELIVERY_PROPRIO`, endereço e taxa de entrega.
+
+## 6. Como deve ser a venda, o cálculo e a baixa no estoque
+
+### 6.1 Ciclo de vida
+```
+[abrir venda RASCUNHO] -> bipar/adicionar itens -> [subtotal]
+   -> desconto (opcional, com permissão) -> pagamentos (1..N)
+   -> soma dos pagamentos >= total ?  -> FINALIZAR (transação única)
+        1. trava estoque dos produtos (já existe)
+        2. baixa estoque (unidade base: fardo = 12 un) / ficha técnica do caldo
+        3. grava pagamentos (forma, valor, recebido, troco, NSU da maquininha)
+        4. lança no caixa SÓ o que é dinheiro na gaveta (entrada = valor em dinheiro - troco)
+        5. gera cupom / envia NFC-e
+        6. log de auditoria
+```
+
+### 6.2 Cálculo (regras para o código)
+- `subtotal_item = preco_unitario × quantidade`, arredondado a 2 casas, `HALF_UP`.
+- `subtotal_venda = Σ subtotal_item`.
+- Desconto em R$ ou %: guardar o valor final em R$ e **ratear entre os itens**. A NFC-e exige desconto por item, e o rateio também ajuda no cálculo da margem.
+- `total = subtotal - desconto + acrescimo` (`Venda` já tem esses campos).
+- Pagamentos: `Σ pagamentos ≥ total`. Só **dinheiro** pode passar do total; o excedente é o troco. `troco = Σ pagamentos - total` (sai sempre do dinheiro).
+- Margem: `Venda.custoIngredientesTotal` e `margemBrutaEstimadaTotal` já existem. Para bebida, o custo vem do `custo_medio` do `EstoqueProduto`.
+
+### 6.3 Nova tabela de pagamentos
+```sql
+create table venda_pagamentos (
+  id               bigserial primary key,
+  venda_id         bigint not null references vendas(id),
+  forma            varchar(20) not null, -- DINHEIRO, PIX, DEBITO, CREDITO, VOUCHER
+  valor            numeric(19,2) not null,  -- quanto abate do total
+  valor_recebido   numeric(19,2),           -- só dinheiro
+  troco            numeric(19,2),           -- só dinheiro
+  nsu              varchar(40),             -- comprovante da maquininha
+  autorizacao      varchar(40),
+  operador_id      bigint                   -- quem recebeu (revezamento de operadores)
+);
+```
+E a movimentação do caixa ganha a coluna `forma_pagamento`. O **saldo da gaveta** passa a ser `fundo inicial + vendas em dinheiro - troco + suprimentos - sangrias - estornos em dinheiro`. Os totais de Pix e cartão aparecem separados no fechamento.
+
+### 6.4 Fechamento por forma de pagamento
+| Forma | Sistema | Contado/Conferido | Diferença |
+|---|---|---|---|
+| Dinheiro | 412,00 | (digitado às cegas) | |
+| Pix | 1.230,00 | (extrato do banco) | |
+| Débito | 560,00 | (relatório da maquininha) | |
+| Crédito | 237,00 | (relatório da maquininha) | |
+
+---
+
+## 7. Hardware e infraestrutura para o notebook
+
+| Item | Recomendação | Observação |
+|---|---|---|
+| Notebook | i3/Ryzen 3, 8 GB RAM, SSD | Rode Postgres + Spring **local**, ver abaixo |
+| Leitor de código de barras | USB, modo teclado (HID), 1D/2D | O sistema não precisa de driver; o 2D também lê o QR do Pix |
+| Impressora térmica | 80 mm, USB, ESC/POS (Elgin i9, Epson TM-T20, Bematech MP-4200…) | Para imprimir sem a caixa de diálogo do navegador, use um agente local (ex.: QZ Tray) ou Chrome em modo `--kiosk-printing` |
+| Gaveta de dinheiro | Ligada na impressora (RJ11) | A impressora abre a gaveta com um comando ESC/POS ao finalizar em dinheiro |
+| Maquininha | Smart POS ou TEF de alguma adquirente | Fase 1: lançamento manual da forma. Fase 3: integração |
+| Nobreak | Pequeno | Queda de luz no meio da venda corrompe a operação |
+| Internet | Qualquer, com 4G de reserva no celular | Necessária para NFC-e e backup, **não** para vender |
+
+**Onde rodar:** a recomendação é rodar **no próprio notebook** (Docker com Postgres + app, que vocês já têm em `compose.yaml`), com **backup automático diário para a nuvem**. Se a internet cair, o caixa continua vendendo, e a NFC-e entra em contingência offline e é transmitida depois. Se rodar só na nuvem (Netlify + backend remoto), **sem internet não há venda**, e isso num depósito em dia de jogo é inaceitável.
+
+---
+
+## 8. Parte fiscal (NFC-e)
+
+### 8.1 Primeiro passo: descobrir o regime (os donos fazem a própria contabilidade)
+A obrigação de emitir nota depende do enquadramento do CNPJ:
+
+1. Peguem o CNPJ da loja e consultem no **Portal do Simples Nacional → "Consulta Optantes"** (site da Receita Federal). O resultado mostra se a empresa é **SIMEI (MEI)**, **Simples Nacional (ME/EPP)** ou nenhum dos dois (Lucro Presumido/Real).
+2. O que cada resultado significa para o PDV:
+
+| Regime | Precisa emitir NFC-e para consumidor pessoa física? | O que fazer no sistema |
+|---|---|---|
+| **MEI** (até R$ 81 mil/ano, ~R$ 6.750/mês) | **Não**, em regra (dispensa vigente em 2026, que a Resolução CGSN 195/2026 mantém a partir de 2027). Para venda a CNPJ, sim. Atenção: alguns estados exigem nota em venda no cartão | Cupom não fiscal basta no começo. Deixem a NFC-e preparada |
+| **Simples Nacional (ME/EPP)** | **Sim**, em toda venda | NFC-e na Fase 3 é obrigatória antes de operar "no oficial". CSOSN no cadastro. IBS/CBS a partir de 2027 |
+| **Lucro Presumido/Real** | **Sim** | NFC-e com IBS/CBS já em 2026 |
+
+3. **Atenção ao limite do MEI:** um depósito "com bastante movimento" passa fácil de R$ 6.750/mês. Se a loja for MEI e faturar mais que isso, ela é desenquadrada e passa a ter de emitir nota. O próprio StockOS pode ajudar com um **alerta de faturamento acumulado no ano**.
+4. Mesmo que os donos façam a própria contabilidade, **vale uma consulta pontual a um contador** na configuração inicial: NCM/CEST e tributação de bebidas com ST. Um erro aqui vira multa, e isso é configurado uma vez só.
+
+
+- A NFC-e já é **obrigatória no varejo em praticamente todo o país**. SP encerrou o SAT: cupons SAT emitidos desde 01/01/2026 são rejeitados. MG proibiu a nota modelo 2 desde 01/08/2026.
+- Para emitir é preciso: **certificado digital A1 (e-CNPJ)**, **CSC** (código gerado no site da SEFAZ do estado) e um emissor.
+- **Não construam a assinatura e a comunicação com a SEFAZ do zero.** Usem uma **API de emissão** (Focus NFe, Nuvem Fiscal, PlugNotas/Tecnospeed etc.) ou a biblioteca ACBr. O StockOS só manda os dados da venda em JSON e recebe a chave e o QR Code para imprimir.
+- **Dados fiscais do produto que precisam entrar no cadastro:** NCM, CEST, CFOP, CST/CSOSN, origem e unidade comercial. Bebidas quase sempre estão em **substituição tributária (ST)** de ICMS, e cerveja e refrigerante têm regras próprias. **Validem a tabela tributária com um contador (ver 8.1).**
+- **Reforma tributária:** os campos de IBS/CBS são obrigatórios em 2026 para Lucro Real e Presumido. Para o **Simples Nacional** (se for o caso, ver 8.1), a obrigação começa em **2027**. Bebidas alcoólicas e açucaradas entram no **Imposto Seletivo**. Já deixem colunas no cadastro e usem uma API que acompanhe as notas técnicas.
+- CPF na nota: campo opcional no subtotal.
+
+---
+
+## 9. Visual e usabilidade do PDV (proposta de tela)
+
+O PDV precisa funcionar **sem mouse**. Layout sugerido (tela cheia, rota `/pdv/1`):
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CAIXA 1 · aberto 04/11 09:00 · OPERANDO: MARINA  [F12 trocar]   Venda 000123 │
+├────────────────────────────────────────────┬─────────────────────────────────┤
+│ ▶ [ Bipe o código ou digite… ]  qtd: 1     │ ÚLTIMO ITEM                     │
+│   Próximo item: ❄ GELADA   (F4 = natural)  │ HEINEKEN LONG NECK 330ML ❄      │
+│  #  Produto                Qtd  Unit  Total│ 6 x R$ 7,49 = R$ 44,94          │
+│  1  Skol lata 350 fardo12 N  1  38,90 38,90│─────────────────────────────────│
+│  2  Heineken LN 330      ❄   6   7,49 44,94│ SUBTOTAL                        │
+│  3  Caldo de feijão 500ml    2  14,00 28,00│                                 │
+│  4  Gelo 5kg                 1  12,00 12,00│        R$ 123,84                │
+│                                            │                                 │
+│   ❄ = gelada   N = natural                 │ Itens: 10                       │
+├────────────────────────────────────────────┴─────────────────────────────────┤
+│ F2 Buscar  F3 Qtd  F4 Gelada/Natural  F6 Cancelar item*  F8 Desconto*        │
+│ F10 PAGAMENTO  F11 Sangria*  F12 Trocar operador  ESC Sair   [Caldo][Gelo]   │
+│ * pede PIN do gerente                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+Tela de pagamento (F10):
+```
+TOTAL R$ 123,84
+[1] Dinheiro  [2] Pix  [3] Débito  [4] Crédito
+Dinheiro recebido: R$ 150,00
+TROCO: R$ 26,16        (fonte enorme, cor de destaque)
+[Enter] Finalizar e imprimir
+```
+
+**Regras de usabilidade:**
+- o foco **volta sempre** ao campo de leitura depois de qualquer ação;
+- **sons:** bip curto quando lê o código, som grave de erro quando o produto não é encontrado;
+- total e troco em fonte grande e alto contraste (a operadora olha de longe);
+- **botões de atalho** para os 6-12 itens sem código mais vendidos (caldo, porção, gelo);
+- alerta visual quando a gaveta passar do limite de sangria;
+- pedir **senha do gerente** para cancelar item ou cupom, dar desconto acima do limite e fazer sangria;
+- o visual atual (cards de cardápio com categorias) pode continuar como **aba secundária** "Cozinha/Porções".
+
+**Na tela de Caixas (a do print):** formatar a moeda em pt-BR, mostrar a data junto da hora de abertura, mostrar o número de vendas e o ticket médio, separar "Dinheiro na gaveta" de "Pix/Cartão" e tirar o selo que cobre o botão.
+
+---
+
+## 10. Roteiro sugerido (em fases)
+
+**Fase 1 – Abrir a loja (MVP do caixa)**
+1. Tabela `produto_codigos` + endpoint de busca por código + cadastro "bipe aqui".
+2. Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções).
+3. **Gelada × Natural:** `preco_gelado`, padrão "Gelada", tecla F4 e temperatura padrão por embalagem.
+4. `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
+5. **Troca rápida de operador por PIN (F12)**, com cada venda gravando quem passou. PIN de gerente para sangria, cancelamento e desconto.
+6. Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
+7. Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso.
+8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
+9. Desligar a venda avulsa sem itens no PDV (só gerente).
+10. Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
+11. Instalação local no notebook (Docker) + backup diário automático.
+
+**Fase 2 – Substituir o caderno**
+12. Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário.
+13. Estoque mínimo e sugestão de compra por fornecedor.
+14. Inventário com o leitor (bipar a prateleira para contar).
+15. Alerta de faturamento acumulado no ano (limite do MEI, se for o caso).
+16. Segundo caixa (Cenário B) em rede local, se o movimento pedir.
+
+**Fase 3 – Profissionalizar**
+17. NFC-e via API de emissão, obrigatória se a loja for Simples ou Presumido (ver 8.1).
+18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
+19. Delivery pelo WhatsApp (se existir).
+
+**Fora do escopo (confirmado):** fiado, casco retornável e comandas/cobrança por mesa.
+
+**Ainda falta descobrir:**
+- O regime do CNPJ (consulta no Portal do Simples, ver 8.1).
+- Quais maquininhas ela usa (para a Fase 3).
+- Se fazem entrega.
+- Média de vendas por dia e de faturamento mensal (para dimensionar e checar o limite do MEI).
+
+---
+
+## Fontes
+
+- [Guia Completo da NFC-e 2026 (Contmatic)](https://simplifique.contmatic.com.br/blogs/guia-completo-nfc-e-2026)
+- [São Paulo: NFC-e obrigatória em 2026 (Crypto ID)](https://cryptoid.com.br/e-commerce-e-varejo-retail/nfc-e-se-torna-obrigatoria-em-2026/)
+- [NFC-e em SP: obrigatoriedade, CSC e contingência](https://granmoney.com/nfc-e/sp)
+- [NFC-e em MG: obrigatoriedade, CSC e contingência](https://granmoney.com/nfc-e/mg)
+- [CONFAZ revoga proibição de CNPJ na NFC-e (LegisWeb)](https://www.legisweb.com.br/noticia/?id=33182)
+- [Reforma Tributária: campos IBS/CBS obrigatórios em 2026 (LegisWeb)](https://www.legisweb.com.br/noticia/?id=31719)
+- [Reforma: cronograma de adequações (IOB)](https://noticias.iob.com.br/reforma-cronograma-de-adequacoes/)
+- [NFC-e em 2026 — IBS, CBS e Imposto Seletivo (NotaGateway)](https://notagateway.com.br/blog/nfc-e-em-2026/)
+- [Leitura de etiqueta de balança no PDV (Alterdata)](https://ajuda.alterdata.com.br/pdvbase/saiba-como-configurar-o-sistema-para-leitura-de-etiqueta-de-balancas-37261348.html)
+- [Nomenclatura de código de barras (Odoo)](https://www.odoo.com/documentation/16.0/pt_BR/applications/inventory_and_mrp/barcode/operations/barcode_nomenclature.html)
+- [Pix integrado ao TEF (Woovi)](https://woovi.com/en/pix/pix-tef/)
+- [Sistema de frente de caixa PDV: recursos (Omie)](https://www.omie.com.br/blog/sistema-de-frente-de-caixa-pdv-recursos-para-escolher/index.md)
+- [Smart TEF integrada ao PDV (Tray)](https://tray.com.br/escola/tray-lanca-maquininha-smart-tef/)
+- [MEI dispensado de emitir nota para pessoa física a partir de 2027 (Mix Vale)](https://www.mixvale.com.br/2026/10/23/mei-fica-dispensado-de-emitir-nota-fiscal-eletronica-para-pessoa-fisica-a-partir-de-janeiro-de-2027/)
+- [NFC-e para MEI: regras 2026 (Nota Ágil)](https://notaagil.com.br/nfce-para-mei)
