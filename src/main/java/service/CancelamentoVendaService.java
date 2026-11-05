@@ -78,8 +78,31 @@ public class CancelamentoVendaService {
         this.logRepository = logRepository;
     }
 
+    /** Saldo único: espelha o saldo decimal na coluna legada (nulo em testes antigos). */
+    private SincronizadorEstoque sincronizadorEstoque;
+
+    public void setSincronizadorEstoque(SincronizadorEstoque sincronizadorEstoque) {
+        this.sincronizadorEstoque = sincronizadorEstoque;
+    }
+
+    private void espelharNoLegado(EstoqueProduto estoque) {
+        if (sincronizadorEstoque != null) {
+            sincronizadorEstoque.espelharNoLegado(estoque);
+        }
+    }
+
     @Transactional
     public Venda cancelarVenda(Usuario usuario, long vendaId, String motivo, String idempotencyKey) {
+        return cancelarVenda(usuario, vendaId, motivo, idempotencyKey, null);
+    }
+
+    /**
+     * @param formaEstorno forma em que o valor volta ao cliente; nula = a
+     *                     mesma em que a venda foi paga
+     */
+    @Transactional
+    public Venda cancelarVenda(Usuario usuario, long vendaId, String motivo, String idempotencyKey,
+                               model.FormaPagamento formaEstorno) {
         validarPermissaoCancelamento(usuario);
         validarMotivo(motivo);
         String chave = normalizarIdempotencyKey(idempotencyKey, "cancelar venda");
@@ -112,7 +135,9 @@ public class CancelamentoVendaService {
                 usuario,
                 venda.getNumeroCaixaLegado(),
                 venda.getId(),
-                resultado.valorCancelado()
+                resultado.valorCancelado(),
+                formaEstorno,
+                motivo
         );
         registro.concluir(venda.getId());
         idempotenciaRepository.salvar(registro);
@@ -126,6 +151,16 @@ public class CancelamentoVendaService {
                               long itemId,
                               String motivo,
                               String idempotencyKey) {
+        return cancelarItem(usuario, vendaId, itemId, motivo, idempotencyKey, null);
+    }
+
+    @Transactional
+    public Venda cancelarItem(Usuario usuario,
+                              long vendaId,
+                              long itemId,
+                              String motivo,
+                              String idempotencyKey,
+                              model.FormaPagamento formaEstorno) {
         validarPermissaoCancelamento(usuario);
         validarMotivo(motivo);
         String chave = normalizarIdempotencyKey(idempotencyKey, "cancelar item de venda");
@@ -171,7 +206,9 @@ public class CancelamentoVendaService {
                 usuario,
                 venda.getNumeroCaixaLegado(),
                 venda.getId(),
-                resultado.valorCancelado()
+                resultado.valorCancelado(),
+                formaEstorno,
+                motivo
         );
         registro.concluir(venda.getId());
         idempotenciaRepository.salvar(registro);
@@ -373,6 +410,7 @@ public class CancelamentoVendaService {
         BigDecimal custoMedioPosterior = estoque.getCustoMedio();
         BigDecimal valorPosterior = estoque.valorEstoque();
         estoqueRepository.salvar(estoque);
+        espelharNoLegado(estoque);
         return movimentoRepository.salvar(new MovimentoEstoque(
                 0,
                 venda.getFilialId(),

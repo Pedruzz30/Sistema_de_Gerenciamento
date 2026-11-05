@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -55,6 +57,7 @@ public class MovimentacaoCaixa {
     // ── Campos — todos imutáveis ──────────────────────────────────────────────
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @Enumerated(EnumType.STRING)
@@ -73,6 +76,18 @@ public class MovimentacaoCaixa {
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "operador_ru", nullable = false)
     private Usuario operador;
+
+    /**
+     * Forma de pagamento (só para VENDA e ESTORNO_VENDA). Nulo nas demais.
+     * Só DINHEIRO altera o saldo da gaveta.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "forma_pagamento", length = 20)
+    private FormaPagamento formaPagamento;
+
+    /** Venda de origem (quando a movimentação veio do PDV). */
+    @Column(name = "venda_id")
+    private Long vendaId;
 
     // ── Construtor público ────────────────────────────────────────────────────
 
@@ -99,6 +114,20 @@ public class MovimentacaoCaixa {
                              BigDecimal valor,
                              String descricao,
                              Usuario operador) {
+        this(id, tipo, valor, descricao, operador,
+                tipo == TipoMovimentacaoCaixa.VENDA || tipo == TipoMovimentacaoCaixa.ESTORNO_VENDA
+                        ? FormaPagamento.DINHEIRO
+                        : null,
+                null);
+    }
+
+    public MovimentacaoCaixa(long id,
+                             TipoMovimentacaoCaixa tipo,
+                             BigDecimal valor,
+                             String descricao,
+                             Usuario operador,
+                             FormaPagamento formaPagamento,
+                             Long vendaId) {
         validar(id >= 0,                                   "ID não pode ser negativo.");
         validar(tipo != null,                              "Tipo de movimentação é obrigatório.");
         validar(valor != null,                             "Valor é obrigatório.");
@@ -111,13 +140,21 @@ public class MovimentacaoCaixa {
         this.descricao = descricao != null ? descricao.trim() : "";
         this.operador  = operador;
         this.dataHora  = LocalDateTime.now();
+        boolean exigeForma = tipo == TipoMovimentacaoCaixa.VENDA || tipo == TipoMovimentacaoCaixa.ESTORNO_VENDA;
+        validar(!exigeForma || formaPagamento != null, "Forma de pagamento e obrigatoria para " + tipo + ".");
+        validar(exigeForma || formaPagamento == null, "Forma de pagamento so se aplica a vendas e estornos.");
+        this.formaPagamento = formaPagamento;
+        this.vendaId = vendaId;
     }
 
     /**
      * Construtor privado usado por {@link #comId} para preservar o timestamp.
      */
     private MovimentacaoCaixa(long id, TipoMovimentacaoCaixa tipo, BigDecimal valor,
-                              String descricao, Usuario operador, LocalDateTime dataHora) {
+                              String descricao, Usuario operador, LocalDateTime dataHora,
+                              FormaPagamento formaPagamento, Long vendaId) {
+        this.formaPagamento = formaPagamento;
+        this.vendaId = vendaId;
         this.id        = id;
         this.tipo      = tipo;
         this.valor     = valor;
@@ -142,7 +179,18 @@ public class MovimentacaoCaixa {
      */
     public MovimentacaoCaixa comId(long novoId) {
         validar(novoId > 0, "Novo ID deve ser maior que zero.");
-        return new MovimentacaoCaixa(novoId, tipo, valor, descricao, operador, dataHora);
+        return new MovimentacaoCaixa(novoId, tipo, valor, descricao, operador, dataHora, formaPagamento, vendaId);
+    }
+
+    /**
+     * Atribui o ID gerado pelo armazenamento (o banco faz isso via sequence;
+     * o repositório em memória usa este método). Só vale para movimentação
+     * ainda não persistida.
+     */
+    public void atribuirIdGerado(long novoId) {
+        validar(this.id == 0, "Movimentacao ja possui ID.");
+        validar(novoId > 0, "Novo ID deve ser maior que zero.");
+        this.id = novoId;
     }
 
     // ── Semântica de movimentação ─────────────────────────────────────────────
@@ -193,6 +241,13 @@ public class MovimentacaoCaixa {
     public String                getDescricao() { return descricao; }
     public LocalDateTime         getDataHora()  { return dataHora;  }
     public Usuario               getOperador()  { return operador;  }
+    public FormaPagamento        getFormaPagamento() { return formaPagamento; }
+    public Long                  getVendaId()   { return vendaId;   }
+
+    /** {@code true} quando a movimentação muda o dinheiro físico da gaveta. */
+    public boolean afetaGaveta() {
+        return formaPagamento == null || formaPagamento.afetaGaveta();
+    }
 
     // ── Infraestrutura de objeto ──────────────────────────────────────────────
 

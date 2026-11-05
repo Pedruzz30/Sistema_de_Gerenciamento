@@ -121,12 +121,16 @@ public class NotaFiscalService {
         }
 
         for (ItemNotaFiscal item : nota.getItens()) {
-            estoqueService.registrarMovimentacao(
+            // Entrada com o custo da nota: alimenta o custo médio do saldo
+            // oficial, que o PDV exige para vender.
+            estoqueService.registrarEntradaComCusto(
                     item.getProduto().getId(),
                     item.getQuantidade(),
-                    TipoMovimentacao.ENTRADA,
+                    item.getPrecoUnitarioNota(),
                     usuarioLogado,
-                    "Entrada via nota fiscal #" + nota.getId()
+                    "Entrada via nota fiscal #" + nota.getId(),
+                    EstoqueService.ORIGEM_NOTA_FISCAL,
+                    nota.getId()
             );
 
             logRepository.salvar(new LogAcao(

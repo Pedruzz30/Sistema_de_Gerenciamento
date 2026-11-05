@@ -87,11 +87,38 @@ public class FinalizacaoVendaService {
         this.logRepository = logRepository;
     }
 
+    /** Saldo único: espelha o saldo decimal na coluna legada (nulo em testes antigos). */
+    private SincronizadorEstoque sincronizadorEstoque;
+
+    public void setSincronizadorEstoque(SincronizadorEstoque sincronizadorEstoque) {
+        this.sincronizadorEstoque = sincronizadorEstoque;
+    }
+
+    private void espelharNoLegado(EstoqueProduto estoque) {
+        if (sincronizadorEstoque != null) {
+            sincronizadorEstoque.espelharNoLegado(estoque);
+        }
+    }
+
     @Transactional
     public Venda finalizar(Usuario usuario,
                            long vendaId,
                            String idempotencyKey,
                            Integer numeroCaixaLegado) {
+        return finalizar(usuario, vendaId, idempotencyKey, numeroCaixaLegado, null);
+    }
+
+    /**
+     * Finaliza a venda com as formas de pagamento informadas pelo PDV. A soma
+     * dos pagamentos precisa ser igual ao total; só o dinheiro entra na gaveta.
+     * Sem pagamentos, a venda é tratada como dinheiro (compatibilidade).
+     */
+    @Transactional
+    public Venda finalizar(Usuario usuario,
+                           long vendaId,
+                           String idempotencyKey,
+                           Integer numeroCaixaLegado,
+                           List<IntegracaoCaixaLegadoService.PagamentoInput> pagamentos) {
         validarPermissaoVenda(usuario);
         String chave = normalizarIdempotencyKey(idempotencyKey);
         Venda venda = vendaRepository.buscarPorIdComLock(vendaId)
@@ -236,7 +263,7 @@ public class FinalizacaoVendaService {
                 usuario == null ? null : usuario.getRu()
         );
         venda = vendaRepository.salvar(venda);
-        integracaoCaixaLegadoService.registrarVendaConsolidada(usuario, numeroCaixaLegado, venda.getId(), valorTotal);
+        integracaoCaixaLegadoService.registrarPagamentosEVenda(usuario, venda, valorTotal, numeroCaixaLegado, pagamentos);
         registro.concluir(venda.getId());
         idempotenciaRepository.salvar(registro);
         auditar(usuario, "VENDA_FINALIZADA", "Venda " + venda.getId() + " finalizada com baixa decimal.");
@@ -424,6 +451,7 @@ public class FinalizacaoVendaService {
             BigDecimal custoMedioPosterior = estoque.getCustoMedio();
             BigDecimal valorPosterior = estoque.valorEstoque();
             estoqueProdutoRepository.salvar(estoque);
+            espelharNoLegado(estoque);
             MovimentoEstoque movimento = movimentoRepository.salvar(new MovimentoEstoque(
                     0,
                     venda.getFilialId(),

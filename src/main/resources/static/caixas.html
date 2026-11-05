@@ -67,7 +67,7 @@
         <div class="info-value purple" id="total-caixas-abertos">0</div>
       </div>
       <div class="info-card">
-        <div class="info-label">Saldo Total em Caixa</div>
+        <div class="info-label">Dinheiro nas Gavetas</div>
         <div class="info-value" id="saldo-total">R$0,00</div>
       </div>
     </div>
@@ -128,7 +128,7 @@
     <div class="modal-body">
       <div class="produto-info-card">
         <div class="produto-info-nome" id="mov-caixa-info">Caixa —</div>
-        <div class="produto-info-qtd">Saldo atual: <strong id="mov-saldo-atual">—</strong></div>
+        <div class="produto-info-qtd">Dinheiro na gaveta: <strong id="mov-saldo-atual">—</strong></div>
       </div>
       <div class="field form-group">
         <label>Valor (R$)</label>
@@ -138,6 +138,13 @@
         <label>Descrição (opcional)</label>
         <input class="input" type="text" id="mov-descricao" placeholder="Ex: Venda 3 laranjas">
       </div>
+      <fieldset class="field form-group autorizacao-gerente" id="mov-autorizacao" hidden>
+        <legend>Autorização do gerente</legend>
+        <p class="inline-note">Esta operação precisa do gerente. Ele digita o login aqui; você continua logado.</p>
+        <input class="input" type="text" id="mov-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+        <input class="input" type="text" id="mov-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+        <input class="input" type="password" id="mov-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+      </fieldset>
       <div class="alert-modal" id="alert-mov"></div>
     </div>
     <div class="modal-footer">
@@ -179,16 +186,25 @@
         Caixa: <strong id="encerrar-caixa-num">—</strong>
       </p>
       <p class="inline-note">
-        Valor no sistema: <strong id="encerrar-valor-sistema">R$0,00</strong>
+        Conte <strong>só o dinheiro da gaveta</strong> (notas e moedas) e digite o total.
+        Pix e cartões não entram na contagem: confira pelo extrato e pela maquininha.
+        O valor esperado aparece só depois de encerrar.
       </p>
       <div class="field form-group">
-        <label>Valor contado (R$)</label>
-        <input class="input" type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0">
+        <label for="encerrar-valor-contado">Dinheiro contado (R$)</label>
+        <input class="input" type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0" inputmode="decimal">
       </div>
       <div class="field form-group">
         <label>Observação (opcional)</label>
         <input class="input" type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
       </div>
+      <fieldset class="field form-group autorizacao-gerente" id="encerrar-autorizacao" hidden>
+        <legend>Autorização do gerente</legend>
+        <p class="inline-note">Esta operação precisa do gerente. Ele digita o login aqui; você continua logado.</p>
+        <input class="input" type="text" id="encerrar-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+        <input class="input" type="text" id="encerrar-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+        <input class="input" type="password" id="encerrar-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+      </fieldset>
       <div class="alert-modal" id="alert-encerrar"></div>
     </div>
     <div class="modal-footer">
@@ -202,7 +218,7 @@
      Layout split: esquerda = menu de produtos | direita = carrinho
      O modal ocupa quase toda a tela para dar espaço ao grid de produtos.
 ──────────────────────────────────────────────────────────────────────────-->
-<div class="modal-overlay" id="modal-pdv" onclick="fecharModalSeClicouFora(event,'modal-pdv')">
+<div class="modal-overlay" id="modal-pdv">
   <div id="pdv-shell" class="pdv-shell">
     <div class="pdv-shell__header">
       <div class="pdv-shell__intro">
@@ -212,13 +228,23 @@
           <div class="pdv-shell__meta" id="pdv-caixa-label">Caixa —</div>
         </div>
       </div>
-      <button class="pdv-shell__close" type="button" onclick="fecharModal('modal-pdv')" aria-label="Fechar terminal">
+      <button class="pdv-shell__close" type="button" onclick="fecharPDV()" aria-label="Fechar terminal (Esc)">
         <span data-icon="close"></span>
       </button>
     </div>
 
     <div class="pdv-shell__body">
       <section class="pdv-catalog-panel">
+        <div class="pdv-scan">
+          <label class="pdv-scan__label" for="pdv-leitura">Código de barras</label>
+          <input id="pdv-leitura" class="pdv-scan__input" type="text" autocomplete="off" spellcheck="false"
+                 inputmode="numeric" placeholder="Bipe o produto ou digite o código · 6* antes = 6 unidades"
+                 onkeydown="lerCodigoPDV(event)">
+          <div class="pdv-scan__hint">
+            <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
+            <span>F2 buscar · F10 pagamento · Esc sair</span>
+          </div>
+        </div>
         <div class="pdv-catalog-toolbar">
           <label class="visually-hidden" for="pdv-busca">Buscar item do cardapio</label>
           <input id="pdv-busca" class="pdv-search-input" type="text" placeholder="Buscar item do cardapio..." oninput="filtrarProdutosPDV()">
@@ -265,9 +291,32 @@
             <span class="pdv-summary-value pdv-summary-value--total" id="pdv-total">R$ 0,00</span>
           </div>
 
-          <button id="btn-pdv-finalizar" class="pdv-submit" onclick="finalizarVendaPDV()" disabled>
-            Finalizar Venda
+          <button id="btn-pdv-finalizar" class="pdv-submit" onclick="abrirPagamentoPDV()" disabled>
+            Pagamento (F10)
           </button>
+
+          <div id="pdv-pagamento" class="pdv-pagamento" hidden>
+            <div class="pdv-formas" role="group" aria-label="Forma de pagamento">
+              <button type="button" class="pdv-forma" data-forma-pdv="DINHEIRO" onclick="selecionarFormaPDV('DINHEIRO')"><kbd>1</kbd> Dinheiro</button>
+              <button type="button" class="pdv-forma" data-forma-pdv="PIX" onclick="selecionarFormaPDV('PIX')"><kbd>2</kbd> Pix</button>
+              <button type="button" class="pdv-forma" data-forma-pdv="DEBITO" onclick="selecionarFormaPDV('DEBITO')"><kbd>3</kbd> Débito</button>
+              <button type="button" class="pdv-forma" data-forma-pdv="CREDITO" onclick="selecionarFormaPDV('CREDITO')"><kbd>4</kbd> Crédito</button>
+            </div>
+            <div class="pdv-pag-campos">
+              <label>Valor desta forma
+                <input id="pdv-pag-valor" class="input" type="number" step="0.01" min="0.01" inputmode="decimal" oninput="renderPagamentoPDV()">
+              </label>
+              <label id="pdv-pag-recebido-wrap">Recebido (dinheiro)
+                <input id="pdv-pag-recebido" class="input" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Ex.: 50,00" oninput="renderPagamentoPDV()">
+              </label>
+            </div>
+            <button type="button" class="pdv-pag-dividir" onclick="adicionarPagamentoPDV()">+ Dividir: lançar este valor e pagar o resto em outra forma</button>
+            <div id="pdv-pag-lista" class="pdv-pag-lista"></div>
+            <div class="pdv-summary-row"><span class="pdv-summary-label">Falta pagar</span><span class="pdv-summary-value" id="pdv-pag-restante">R$ 0,00</span></div>
+            <div class="pdv-summary-row pdv-troco"><span class="pdv-summary-label">TROCO</span><span class="pdv-summary-value" id="pdv-pag-troco">R$ 0,00</span></div>
+            <button type="button" id="btn-pdv-confirmar-pagamento" class="pdv-submit" onclick="confirmarPagamentoPDV()">Finalizar venda (Enter)</button>
+            <button type="button" class="pdv-clear-btn" onclick="cancelarPagamentoPDV()">Voltar aos itens (Esc)</button>
+          </div>
 
           <div class="alert-modal" id="alert-pdv"></div>
         </div>

@@ -105,7 +105,8 @@ public class GlobalExceptionHandler {
                  "OPCOES_INCOMPATIVEIS",
                  "CANCELAMENTO_NAO_PERMITIDO",
                  "PAUSA_JA_ENCERRADA",
-                 "REGRA_HORARIO_SOBREPOSTA" -> HttpStatus.CONFLICT;
+                 "REGRA_HORARIO_SOBREPOSTA",
+                 "CODIGO_VENDA_DUPLICADO" -> HttpStatus.CONFLICT;
             case "VENDA_NAO_ENCONTRADA",
                  "ITEM_VENDA_NAO_ENCONTRADO",
                  "VARIACAO_NAO_ENCONTRADA",
@@ -114,7 +115,8 @@ public class GlobalExceptionHandler {
                  "GRUPO_MODIFICADOR_NAO_ENCONTRADO",
                  "OPCAO_MODIFICADOR_NAO_ENCONTRADA",
                  "PAUSA_NAO_ENCONTRADA",
-                 "REGRA_HORARIO_NAO_ENCONTRADA" -> HttpStatus.NOT_FOUND;
+                 "REGRA_HORARIO_NAO_ENCONTRADA",
+                 "CODIGO_VENDA_NAO_ENCONTRADO" -> HttpStatus.NOT_FOUND;
             default -> HttpStatus.BAD_REQUEST;
         };
     }

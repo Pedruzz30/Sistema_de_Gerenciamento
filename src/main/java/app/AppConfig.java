@@ -53,9 +53,17 @@ public class AppConfig {
     }
 
     @Bean
+    public SincronizadorEstoque sincronizadorEstoque(ProdutoRepository produtoRepository,
+                                                     EstoqueProdutoRepository estoqueProdutoRepository,
+                                                     MovimentoEstoqueRepository movimentoEstoqueRepository) {
+        return new SincronizadorEstoque(produtoRepository, estoqueProdutoRepository, movimentoEstoqueRepository);
+    }
+
+    @Bean
     public EstoqueService estoqueService(ProdutoRepository produtoRepository,
-                                         PedidoRepository pedidoRepository) {
-        return new EstoqueService(produtoRepository, pedidoRepository);
+                                         PedidoRepository pedidoRepository,
+                                         SincronizadorEstoque sincronizadorEstoque) {
+        return new EstoqueService(produtoRepository, pedidoRepository, sincronizadorEstoque);
     }
 
     @Bean
@@ -342,8 +350,9 @@ public class AppConfig {
                                                      EstoqueProdutoRepository estoqueProdutoRepository,
                                                      MovimentoEstoqueRepository movimentoEstoqueRepository,
                                                      RegistroIdempotenciaRepository registroIdempotenciaRepository,
-                                                     UnidadeMedidaService unidadeMedidaService) {
-        return new CompraEstoqueService(
+                                                     UnidadeMedidaService unidadeMedidaService,
+            SincronizadorEstoque sincronizadorEstoque) {
+        CompraEstoqueService compraEstoqueService = new CompraEstoqueService(
                 compraEstoqueRepository,
                 produtoRepository,
                 fornecedorRepository,
@@ -353,12 +362,17 @@ public class AppConfig {
                 registroIdempotenciaRepository,
                 unidadeMedidaService
         );
+        compraEstoqueService.setSincronizadorEstoque(sincronizadorEstoque);
+        return compraEstoqueService;
     }
 
     @Bean
     public MovimentoEstoqueService movimentoEstoqueService(MovimentoEstoqueRepository movimentoEstoqueRepository,
-                                                           EstoqueProdutoRepository estoqueProdutoRepository) {
-        return new MovimentoEstoqueService(movimentoEstoqueRepository, estoqueProdutoRepository);
+                                                           EstoqueProdutoRepository estoqueProdutoRepository,
+            SincronizadorEstoque sincronizadorEstoque) {
+        MovimentoEstoqueService movimentoEstoqueService = new MovimentoEstoqueService(movimentoEstoqueRepository, estoqueProdutoRepository);
+        movimentoEstoqueService.setSincronizadorEstoque(sincronizadorEstoque);
+        return movimentoEstoqueService;
     }
 
     @Bean
@@ -462,8 +476,15 @@ public class AppConfig {
     }
 
     @Bean
-    public IntegracaoCaixaLegadoService integracaoCaixaLegadoService(CaixaService caixaService) {
-        return new IntegracaoCaixaLegadoService(caixaService);
+    public CodigoVendaService codigoVendaService(CodigoVendaRepository codigoVendaRepository,
+                                                 VariacaoItemCardapioRepository variacaoItemCardapioRepository) {
+        return new CodigoVendaService(codigoVendaRepository, variacaoItemCardapioRepository);
+    }
+
+    @Bean
+    public IntegracaoCaixaLegadoService integracaoCaixaLegadoService(CaixaService caixaService,
+                                                                     VendaPagamentoRepository vendaPagamentoRepository) {
+        return new IntegracaoCaixaLegadoService(caixaService, vendaPagamentoRepository);
     }
 
     @Bean
@@ -479,8 +500,9 @@ public class AppConfig {
             MontagemComposicaoVendaService montagemComposicaoVendaService,
             CalculadoraCustoVendaService calculadoraCustoVendaService,
             IntegracaoCaixaLegadoService integracaoCaixaLegadoService,
-            LogRepository logRepository) {
-        return new FinalizacaoVendaService(
+            LogRepository logRepository,
+            SincronizadorEstoque sincronizadorEstoque) {
+        FinalizacaoVendaService finalizacaoVendaService = new FinalizacaoVendaService(
                 vendaRepository,
                 vendaItemRepository,
                 vendaItemConsumoRepository,
@@ -494,6 +516,8 @@ public class AppConfig {
                 integracaoCaixaLegadoService,
                 logRepository
         );
+        finalizacaoVendaService.setSincronizadorEstoque(sincronizadorEstoque);
+        return finalizacaoVendaService;
     }
 
     @Bean
@@ -507,8 +531,9 @@ public class AppConfig {
             MovimentoEstoqueRepository movimentoEstoqueRepository,
             RegistroIdempotenciaRepository registroIdempotenciaRepository,
             IntegracaoCaixaLegadoService integracaoCaixaLegadoService,
-            LogRepository logRepository) {
-        return new CancelamentoVendaService(
+            LogRepository logRepository,
+            SincronizadorEstoque sincronizadorEstoque) {
+        CancelamentoVendaService cancelamentoVendaService = new CancelamentoVendaService(
                 vendaRepository,
                 vendaItemRepository,
                 vendaItemConsumoRepository,
@@ -520,6 +545,8 @@ public class AppConfig {
                 integracaoCaixaLegadoService,
                 logRepository
         );
+        cancelamentoVendaService.setSincronizadorEstoque(sincronizadorEstoque);
+        return cancelamentoVendaService;
     }
 
     @Bean

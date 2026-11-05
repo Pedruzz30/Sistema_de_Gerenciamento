@@ -5,11 +5,11 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import model.Caixa;
 import model.FechamentoCaixa;
+import model.FormaPagamento;
 import model.ItemCardapio;
 import model.LogAcao;
 import model.MovimentacaoCaixa;
@@ -32,7 +32,6 @@ public class CaixaService {
     private final LogRepository logRepository;
     private final EstoqueService estoqueService;
     private final CardapioService cardapioService;
-    private final AtomicLong proximoIdMovimentacao;
 
     public CaixaService(CaixaRepository caixaRepository,
                         FechamentoCaixaRepository fechamentoCaixaRepository,
@@ -44,13 +43,6 @@ public class CaixaService {
         this.logRepository = logRepository;
         this.estoqueService = estoqueService;
         this.cardapioService = cardapioService;
-        this.proximoIdMovimentacao = new AtomicLong(
-                caixaRepository.listarTodos().stream()
-                        .flatMap(caixa -> caixa.getMovimentacoes().stream())
-                        .mapToLong(MovimentacaoCaixa::getId)
-                        .max()
-                        .orElse(0L) + 1
-        );
     }
 
     @Transactional
@@ -90,40 +82,139 @@ public class CaixaService {
                                BigDecimal valorInformado,
                                String descricao,
                                List<VendaItemInput> itensVendidos) {
+        registrarVenda(operador, numeroCaixa, valorInformado, descricao, itensVendidos, FormaPagamento.DINHEIRO, null);
+    }
+
+    /**
+     * Venda pela rota antiga ({@code /api/caixas/venda}).
+     *
+     * <p>Venda "so com valor", sem itens, nao baixa estoque. Por isso ela so e
+     * aceita com permissao de gerente ({@code VER_FINANCAS}): do proprio
+     * operador ou de um gerente que autorize na hora. O PDV usa
+     * {@code /api/vendas}.
+     */
+    @Transactional
+    public void registrarVenda(Usuario operador,
+                               int numeroCaixa,
+                               BigDecimal valorInformado,
+                               String descricao,
+                               List<VendaItemInput> itensVendidos,
+                               FormaPagamento formaPagamento,
+                               Usuario autorizador) {
         validarPermissao(operador, Permissao.VER_VENDAS);
+        boolean semItens = itensVendidos == null || itensVendidos.isEmpty();
+        Usuario autorizou = null;
+        if (semItens) {
+            autorizou = validarPermissaoOuAutorizacao(operador, autorizador, Permissao.VER_FINANCAS,
+                    "Venda sem itens nao baixa estoque e exige autorizacao do gerente. Use o PDV.");
+        }
 
         BigDecimal valorVenda = normalizarValorVenda(valorInformado, itensVendidos, operador, numeroCaixa, descricao);
-        registrarMovimentacao(operador, numeroCaixa,
-                TipoMovimentacaoCaixa.VENDA, valorVenda.doubleValue(), descricao);
+        registrarMovimentacao(operador, numeroCaixa, TipoMovimentacaoCaixa.VENDA, valorVenda,
+                anotarAutorizacao(descricao, autorizou),
+                formaPagamento == null ? FormaPagamento.DINHEIRO : formaPagamento, null);
+    }
+
+    /**
+     * Registra no caixa uma venda do PDV ({@code /api/vendas}) ja finalizada,
+     * uma movimentacao por forma de pagamento. So o dinheiro entra no saldo
+     * da gaveta (o troco ja vem descontado do valor).
+     */
+    @Transactional
+    public void registrarVendaPdv(Usuario operador,
+                                  int numeroCaixa,
+                                  long vendaId,
+                                  java.util.Map<FormaPagamento, BigDecimal> valoresPorForma) {
+        validarPermissao(operador, Permissao.VER_VENDAS);
+        if (valoresPorForma == null || valoresPorForma.isEmpty()) {
+            throw new IllegalArgumentException("Venda sem pagamentos.");
+        }
+        valoresPorForma.forEach((forma, valor) -> {
+            if (valor != null && valor.compareTo(BigDecimal.ZERO) > 0) {
+                registrarMovimentacao(operador, numeroCaixa, TipoMovimentacaoCaixa.VENDA,
+                        valor.setScale(2, RoundingMode.HALF_UP),
+                        "Venda #" + vendaId + " (" + forma.getLabel() + ")",
+                        forma, vendaId);
+            }
+        });
+    }
+
+    /**
+     * Devolucao ao cliente de uma venda cancelada (total ou parcial). Em
+     * dinheiro sai da gaveta; nas outras formas so abate os totais.
+     */
+    @Transactional
+    public void registrarEstornoVenda(Usuario operador,
+                                      int numeroCaixa,
+                                      long vendaId,
+                                      FormaPagamento forma,
+                                      BigDecimal valor,
+                                      String motivo) {
+        validarPermissao(operador, Permissao.VER_VENDAS);
+        if (forma == null) {
+            throw new IllegalArgumentException("Forma de pagamento do estorno e obrigatoria.");
+        }
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor do estorno deve ser maior que zero.");
+        }
+        String descricao = "Estorno venda #" + vendaId + " (" + forma.getLabel() + ")"
+                + (motivo == null || motivo.isBlank() ? "" : ": " + motivo.trim());
+        registrarMovimentacao(operador, numeroCaixa, TipoMovimentacaoCaixa.ESTORNO_VENDA,
+                valor.setScale(2, RoundingMode.HALF_UP), descricao, forma, vendaId);
     }
 
     @Transactional
     public void registrarSangria(Usuario operador, int numeroCaixa,
                                  double valor, String descricao) {
-        validarPermissao(operador, Permissao.VER_FINANCAS);
-        registrarMovimentacao(operador, numeroCaixa,
-                TipoMovimentacaoCaixa.SANGRIA, valor, descricao);
+        registrarSangria(operador, numeroCaixa, valor, descricao, null);
+    }
+
+    /**
+     * Sangria. Exige {@code VER_FINANCAS} do operador ou a autorizacao de um
+     * gerente na hora (o operador de caixa continua logado).
+     */
+    @Transactional
+    public void registrarSangria(Usuario operador, int numeroCaixa,
+                                 double valor, String descricao, Usuario autorizador) {
+        exigirOperadorDeCaixa(operador);
+        Usuario autorizou = validarPermissaoOuAutorizacao(operador, autorizador, Permissao.VER_FINANCAS,
+                "Sangria exige autorizacao do gerente.");
+        registrarMovimentacao(operador, numeroCaixa, TipoMovimentacaoCaixa.SANGRIA,
+                BigDecimal.valueOf(valor), anotarAutorizacao(descricao, autorizou), null, null);
     }
 
     @Transactional
     public void registrarSuprimento(Usuario operador, int numeroCaixa,
                                     double valor, String descricao) {
-        validarPermissao(operador, Permissao.VER_FINANCAS);
-        registrarMovimentacao(operador, numeroCaixa,
-                TipoMovimentacaoCaixa.SUPRIMENTO, valor, descricao);
+        registrarSuprimento(operador, numeroCaixa, valor, descricao, null);
+    }
+
+    @Transactional
+    public void registrarSuprimento(Usuario operador, int numeroCaixa,
+                                    double valor, String descricao, Usuario autorizador) {
+        exigirOperadorDeCaixa(operador);
+        Usuario autorizou = validarPermissaoOuAutorizacao(operador, autorizador, Permissao.VER_FINANCAS,
+                "Suprimento exige autorizacao do gerente.");
+        registrarMovimentacao(operador, numeroCaixa, TipoMovimentacaoCaixa.SUPRIMENTO,
+                BigDecimal.valueOf(valor), anotarAutorizacao(descricao, autorizou), null, null);
     }
 
     private void registrarMovimentacao(Usuario operador, int numeroCaixa,
                                        TipoMovimentacaoCaixa tipo,
-                                       double valor, String descricao) {
+                                       BigDecimal valorMovimento, String descricao,
+                                       FormaPagamento formaPagamento, Long vendaId) {
         Caixa caixa = buscarCaixaAbertoOuLancar(numeroCaixa);
+        double valor = valorMovimento.doubleValue();
 
+        // ID 0: o banco gera (sequence movimentacoes_caixa_id_seq).
         MovimentacaoCaixa mov = new MovimentacaoCaixa(
-                proximoIdMovimentacao.getAndIncrement(),
+                0,
                 tipo,
-                BigDecimal.valueOf(valor),
+                valorMovimento,
                 descricao,
-                operador
+                operador,
+                formaPagamento,
+                vendaId
         );
         caixa.registrarMovimentacao(mov);
         caixaRepository.salvar(caixa);
@@ -133,9 +224,10 @@ public class CaixaService {
                 operador.getRu(),
                 "MOVIMENTACAO_CAIXA",
                 String.format(
-                        "Caixa %d: %s de R$%s (%s)",
+                        "Caixa %d: %s%s de R$%s (%s)",
                         numeroCaixa,
                         tipo.name(),
+                        formaPagamento == null ? "" : " " + formaPagamento.name(),
                         formatarMoeda(BigDecimal.valueOf(valor)),
                         (descricao == null || descricao.isBlank()) ? "sem descricao" : descricao
                 )
@@ -154,9 +246,25 @@ public class CaixaService {
                                          int numeroCaixa,
                                          BigDecimal valorContado,
                                          String observacao) {
-        validarPermissao(operador, Permissao.VER_FINANCAS);
+        return encerrarCaixa(operador, numeroCaixa, valorContado, observacao, null);
+    }
+
+    /**
+     * Fechamento cego: o operador informa o dinheiro contado sem ver o valor
+     * esperado; a divergencia aparece so no resultado. Exige
+     * {@code VER_FINANCAS} ou autorizacao de gerente.
+     */
+    @Transactional
+    public FechamentoCaixa encerrarCaixa(Usuario operador,
+                                         int numeroCaixa,
+                                         BigDecimal valorContado,
+                                         String observacao,
+                                         Usuario autorizador) {
+        exigirOperadorDeCaixa(operador);
+        Usuario autorizou = validarPermissaoOuAutorizacao(operador, autorizador, Permissao.VER_FINANCAS,
+                "Encerramento de caixa exige autorizacao do gerente.");
         Caixa caixa = buscarCaixaAbertoOuLancar(numeroCaixa);
-        return encerrarCaixaInterno(operador, caixa, valorContado, observacao);
+        return encerrarCaixaInterno(operador, caixa, valorContado, anotarAutorizacao(observacao, autorizou));
     }
 
     private FechamentoCaixa encerrarCaixaInterno(Usuario operador,
@@ -273,6 +381,46 @@ public class CaixaService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Sessao de caixa " + caixaId + " nao encontrada."
                 ));
+    }
+
+    /**
+     * Aceita a operacao se o operador tem a permissao ou se um gerente ativo
+     * com a permissao autorizou. Retorna quem autorizou (ou {@code null} se o
+     * proprio operador tinha a permissao).
+     */
+    private Usuario validarPermissaoOuAutorizacao(Usuario operador,
+                                                  Usuario autorizador,
+                                                  Permissao permissao,
+                                                  String mensagem) {
+        if (possuiPermissao(operador, permissao)) {
+            return null;
+        }
+        if (autorizador != null && autorizador.isAtivo() && possuiPermissao(autorizador, permissao)) {
+            return autorizador;
+        }
+        throw new SecurityException(mensagem);
+    }
+
+    /** Quem opera o caixa: tem vendas ou finanças (perfil só financeiro continua podendo). */
+    private static void exigirOperadorDeCaixa(Usuario operador) {
+        if (!possuiPermissao(operador, Permissao.VER_VENDAS) && !possuiPermissao(operador, Permissao.VER_FINANCAS)) {
+            throw new SecurityException("Voce nao tem permissao para esta operacao.");
+        }
+    }
+
+    private static boolean possuiPermissao(Usuario usuario, Permissao permissao) {
+        return usuario != null
+                && usuario.getClasse() != null
+                && usuario.getClasse().possuiPermissao(permissao);
+    }
+
+    private static String anotarAutorizacao(String texto, Usuario autorizou) {
+        String base = texto == null ? "" : texto.trim();
+        if (autorizou == null) {
+            return base;
+        }
+        String nota = "[autorizado por " + autorizou.getNomeCompleto() + "]";
+        return base.isEmpty() ? nota : base + " " + nota;
     }
 
     private void validarPermissao(Usuario usuario, Permissao permissao) {

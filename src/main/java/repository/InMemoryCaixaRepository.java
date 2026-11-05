@@ -25,8 +25,6 @@ public class InMemoryCaixaRepository implements CaixaRepository {
         if (caixa == null) {
             throw new IllegalArgumentException("Caixa não pode ser nulo.");
         }
-        boolean movimentacoesJaPersistidas = caixa.getMovimentacoes().stream()
-                .allMatch(movimentacao -> movimentacao.getId() > 0);
         long idPersistido = caixa.getId();
         if (idPersistido <= 0) {
             idPersistido = sequenceId.getAndIncrement();
@@ -35,7 +33,15 @@ public class InMemoryCaixaRepository implements CaixaRepository {
             sequenceId.updateAndGet(atual -> Math.max(atual, caixaIdPersistido + 1));
         }
 
-        if (caixa.getId() > 0 && movimentacoesJaPersistidas) {
+        if (caixa.getId() > 0) {
+            // Simula o banco: gera o ID das movimentações novas no próprio objeto.
+            caixa.getMovimentacoes().forEach(movimentacao -> {
+                if (movimentacao.getId() > 0) {
+                    sequenceMovimentacaoId.updateAndGet(atual -> Math.max(atual, movimentacao.getId() + 1));
+                } else {
+                    movimentacao.atribuirIdGerado(sequenceMovimentacaoId.getAndIncrement());
+                }
+            });
             caixas.removeIf(c -> c.getId() == caixa.getId());
             caixas.add(caixa);
             return caixa;

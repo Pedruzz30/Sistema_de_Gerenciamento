@@ -552,6 +552,36 @@ create unique index uk_codigos_venda_padrao on codigos_venda (codigo) where padr
 - **Itens sem código** (caldo, porção, gelo): botões de atalho na tela + folha de códigos.
 - **Código repetido entre produtos diferentes** (acontece com marca própria/importado): o sistema pergunta qual é na primeira leitura.
 
+---
+
+## 12. Correções aplicadas (04/11/2026)
+
+Feitas do mais difícil para o mais fácil, na branch `feat/caixas-pdv-20261104`.
+
+| # | Problema | O que mudou | Onde |
+|---|---|---|---|
+| 3.12 | Dois saldos de estoque | O saldo decimal é o oficial. Cadastro, entrada/saída manual e nota fiscal passam por ele (a nota leva o custo, que o PDV exige). Venda, compra e estornos atualizam a coluna antiga como espelho. A migração copia os saldos atuais | `SincronizadorEstoque`, `EstoqueService`, `NotaFiscalService`, `V20261104_01` |
+| 3.1 | Toda venda como dinheiro na gaveta | Venda com pagamentos (dinheiro/Pix/débito/crédito/voucher, dividido, troco só no dinheiro). A soma precisa bater com o total. O caixa lança uma movimentação por forma e **só o dinheiro muda o saldo da gaveta**. A API sem pagamentos continua tratando a venda como dinheiro | `VendaPagamento`, `IntegracaoCaixaLegadoService`, `Caixa`, `POST /api/vendas/{id}/finalizar` |
+| 3.3 | Sem busca por código de barras | Tabela `codigos_venda` (código → variação, com padrão + alternativa para gelada/natural), conferência do dígito verificador EAN/GTIN e API `/api/pdv/codigos`. O PDV ganhou campo de leitura com multiplicador `6*`, bip de sucesso/erro, cache dos códigos e F4 para a variação alternativa | `CodigoVendaService`, `CodigoVendaController`, `pdv.js` |
+| 3.2 | Cancelamento como SANGRIA | Novo tipo `ESTORNO_VENDA`, lançado na forma em que o cliente pagou (eletrônicas primeiro, ou a forma escolhida). Estorno eletrônico não exige gaveta nem caixa aberto | `TipoMovimentacaoCaixa`, `IntegracaoCaixaLegadoService` |
+| 3.4 | Venda avulsa sem itens | `/api/caixas/venda` sem itens agora exige gerente (`VER_FINANCAS`) ou autorização na hora | `CaixaService.registrarVenda` |
+| 3.6 | Perfil CAIXA sem sangria/encerrar | Sangria, suprimento, encerramento e venda avulsa aceitam **login do gerente na hora**, sem trocar o operador. Fica anotado "[autorizado por …]" | `CaixaService`, `CaixaController`, `caixas.html` |
+| 3.7 | ID de movimentação em memória | Sequence no banco (`movimentacoes_caixa_id_seq`) e `@GeneratedValue`. Sem leitura de todo o histórico na inicialização | `MovimentacaoCaixa`, `V20261104_02` |
+| 3.10 | PDV da demonstração | Busca por código ou nome, `6*`, mudar quantidade e remover item, forma de pagamento e troco, carrinho limpo após a venda, teclado (F10, 1-4, Enter, Esc), sem fechar ao clicar fora. O simulador separa dinheiro de Pix/cartão | `preview-pdv.js`, `preview-mock.js`, `preview-scale.js` |
+| 3.8 | Modal do PDV fecha ao clicar fora | Não fecha mais. Esc/Fechar pedem confirmação se houver itens | `caixas.html`, `pdv.js` |
+| 3.5 | Fechamento não cego | O campo começa vazio e não mostra o esperado. A diferença aparece só no resultado ("Dinheiro esperado × contado") | `caixas.js`, `caixas.html` |
+| 3.9 | Moeda e visual | `R$ 1.234,56` em toda a tela de Caixas; abertura com data; card com "Dinheiro na gaveta", "Pix e cartões", nº de vendas e ticket médio; formas e operador no "Ver movs" | `caixas.js`, `app.css` |
+
+**Testes:**
+- 129 testes de unidade passando, 21 deles novos (`PdvVarejoNovoTest`, `VarejoPdvMigrationSqlNovoTest`).
+- Testes da demonstração passando (`check-preview`, `test-atomic-pdv-preview` com casos novos de Pix/troco/fechamento cego, `test-scale-preview`).
+- A demonstração foi testada no navegador: venda só pelo teclado com troco, venda no Pix sem mexer na gaveta, fechamento cego com diferença.
+
+**Ainda não verificado:**
+- Os **17 testes de integração com PostgreSQL** (Docker desligado). Eles cobrem as migrações novas no banco real, o mapeamento JPA das entidades novas e o ID gerado pela sequence.
+- Pode haver teste que conte movimentos de estoque e agora encontre um movimento a mais: o cadastro com quantidade inicial passou a registrar um ajuste no saldo oficial.
+- O **PDV real** (`pdv.js` com o backend) não foi aberto no navegador, porque precisa do Java rodando com banco.
+
 ## Fontes
 
 - [Guia Completo da NFC-e 2026 (Contmatic)](https://simplifique.contmatic.com.br/blogs/guia-completo-nfc-e-2026)

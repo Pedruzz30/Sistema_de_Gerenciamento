@@ -3,7 +3,9 @@ package controller;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import model.Caixa;
 import model.FechamentoCaixa;
@@ -71,10 +73,10 @@ public class CaixaController {
         long caixasAbertos = todos.stream()
                 .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
                 .count();
-        long totalMovimentacoesVenda = todos.stream()
+        long totalMovimentacoesVenda = contarVendas(todos.stream()
                 .flatMap(c -> c.getMovimentacoes().stream())
                 .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
-                .count();
+                .toList());
         BigDecimal ticketMedio = totalMovimentacoesVenda > 0
                 ? totalVendas.divide(BigDecimal.valueOf(totalMovimentacoesVenda), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -94,17 +96,40 @@ public class CaixaController {
     }
 
     static MetricasResponse calcularMetricasDia(List<Caixa> caixas, LocalDate dia) {
-        List<MovimentacaoCaixa> vendas = caixas.stream()
+        List<MovimentacaoCaixa> doDia = caixas.stream()
                 .flatMap(c -> c.getMovimentacoes().stream())
-                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
                 .filter(m -> m.getDataHora() != null && dia.equals(m.getDataHora().toLocalDate()))
                 .toList();
+        List<MovimentacaoCaixa> vendas = doDia.stream()
+                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+                .toList();
+        BigDecimal estornos = doDia.stream()
+                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA)
+                .map(MovimentacaoCaixa::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal total = vendas.stream().map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .subtract(estornos)
+                .setScale(2, RoundingMode.HALF_UP);
         long abertos = caixas.stream().filter(c -> c.getStatus() == Caixa.Status.ABERTO).count();
-        BigDecimal ticket = vendas.isEmpty() ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
-                : total.divide(BigDecimal.valueOf(vendas.size()), 2, RoundingMode.HALF_UP);
-        return new MetricasResponse(total, abertos, vendas.size(), ticket);
+        long quantidade = contarVendas(vendas);
+        BigDecimal ticket = quantidade == 0 ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                : total.divide(BigDecimal.valueOf(quantidade), 2, RoundingMode.HALF_UP);
+        return new MetricasResponse(total, abertos, quantidade, ticket);
+    }
+
+    /**
+     * Uma venda do PDV paga em duas formas gera duas movimentações; ela conta
+     * como uma venda só. Movimentações sem venda de origem contam uma a uma.
+     */
+    static long contarVendas(List<MovimentacaoCaixa> vendas) {
+        long semVenda = vendas.stream().filter(m -> m.getVendaId() == null || m.getVendaId() <= 0).count();
+        long comVenda = vendas.stream()
+                .map(MovimentacaoCaixa::getVendaId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .count();
+        return semVenda + comVenda;
     }
 
     @GetMapping("/{numero}")
@@ -240,7 +265,9 @@ public class CaixaController {
                     request.numeroCaixa(),
                     BigDecimal.valueOf(request.valor()),
                     request.descricao(),
-                    itens
+                    itens,
+                    model.FormaPagamento.parse(request.formaPagamento()),
+                    resolverAutorizador(request.autorizacao())
             );
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
@@ -256,7 +283,8 @@ public class CaixaController {
         if (erro != null) return erro;
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            caixaService.registrarSangria(ator, request.numeroCaixa(), request.valor(), request.descricao());
+            caixaService.registrarSangria(ator, request.numeroCaixa(), request.valor(), request.descricao(),
+                    resolverAutorizador(request.autorizacao()));
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -271,7 +299,8 @@ public class CaixaController {
         if (erro != null) return erro;
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            caixaService.registrarSuprimento(ator, request.numeroCaixa(), request.valor(), request.descricao());
+            caixaService.registrarSuprimento(ator, request.numeroCaixa(), request.valor(), request.descricao(),
+                    resolverAutorizador(request.autorizacao()));
             Caixa caixa = caixaService.buscarCaixaAberto(request.numeroCaixa());
             return ResponseEntity.ok(CaixaResponse.from(caixa));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -297,7 +326,8 @@ public class CaixaController {
                     ator,
                     request.numeroCaixa(),
                     request.valorContado(),
-                    request.observacao()
+                    request.observacao(),
+                    resolverAutorizador(request.autorizacao())
             );
             return ResponseEntity.ok(FechamentoResponse.from(fechamento));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -340,12 +370,26 @@ public class CaixaController {
 
     public record AbrirCaixaRequest(int numeroCaixa, double saldoInicial) {}
 
+    /**
+     * @param formaPagamento só para venda pela rota antiga (padrão: DINHEIRO)
+     * @param autorizacao    login de um gerente que autoriza na hora a
+     *                       operação (sangria, suprimento, venda sem itens)
+     */
     public record MovimentacaoRequest(
             int numeroCaixa,
             double valor,
             String descricao,
-            List<ItemVendaRequest> itens
-    ) {}
+            List<ItemVendaRequest> itens,
+            String formaPagamento,
+            AutorizacaoRequest autorizacao
+    ) {
+        public MovimentacaoRequest(int numeroCaixa, double valor, String descricao, List<ItemVendaRequest> itens) {
+            this(numeroCaixa, valor, descricao, itens, null, null);
+        }
+    }
+
+    /** Login do gerente que autoriza a operação sem trocar o operador logado. */
+    public record AutorizacaoRequest(String nome, String sobrenome, String senha) {}
 
     public record ItemVendaRequest(Integer produtoId, Integer itemCardapioId, int quantidade) {
         boolean possuiReferenciaValida() {
@@ -358,8 +402,13 @@ public class CaixaController {
     public record EncerrarCaixaRequest(
             int numeroCaixa,
             BigDecimal valorContado,
-            String observacao
-    ) {}
+            String observacao,
+            AutorizacaoRequest autorizacao
+    ) {
+        public EncerrarCaixaRequest(int numeroCaixa, BigDecimal valorContado, String observacao) {
+            this(numeroCaixa, valorContado, observacao, null);
+        }
+    }
 
     public record CaixaResponse(
             long caixaId,
@@ -373,9 +422,22 @@ public class CaixaController {
             BigDecimal totalSaidas,
             String nomeOperador,
             String dataAbertura,
-            String dataEncerramento
+            String dataEncerramento,
+            BigDecimal dinheiroNaGaveta,
+            Map<String, BigDecimal> vendasPorForma,
+            long quantidadeVendas,
+            BigDecimal ticketMedio
     ) {
         public static CaixaResponse from(Caixa c) {
+            Map<String, BigDecimal> porForma = new LinkedHashMap<>();
+            c.calcularVendasPorForma().forEach((forma, valor) -> porForma.put(forma.name(), valor));
+            long quantidade = contarVendas(c.getMovimentacoes().stream()
+                    .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+                    .toList());
+            BigDecimal totalVendas = c.calcularTotalVendas();
+            BigDecimal ticket = quantidade == 0
+                    ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                    : totalVendas.divide(BigDecimal.valueOf(quantidade), 2, RoundingMode.HALF_UP);
             return new CaixaResponse(
                     c.getId(),
                     c.getId(),
@@ -388,7 +450,11 @@ public class CaixaController {
                     c.calcularTotalSaidas(),
                     c.getOperadorAtual() != null ? c.getOperadorAtual().getNomeCompleto() : null,
                     c.getDataAbertura() != null ? c.getDataAbertura().toString() : null,
-                    c.getDataEncerramento() != null ? c.getDataEncerramento().toString() : null
+                    c.getDataEncerramento() != null ? c.getDataEncerramento().toString() : null,
+                    c.getSaldoAtual(),
+                    porForma,
+                    quantidade,
+                    ticket
             );
         }
     }
@@ -401,7 +467,9 @@ public class CaixaController {
             BigDecimal valor,
             String descricao,
             String dataHora,
-            String operador
+            String operador,
+            String formaPagamento,
+            Long vendaId
     ) {
         public static MovimentacaoCaixaResponse from(long caixaId, int numeroCaixa, MovimentacaoCaixa m) {
             return new MovimentacaoCaixaResponse(
@@ -412,7 +480,9 @@ public class CaixaController {
                     m.getValor(),
                     m.getDescricao(),
                     m.getDataHora().toString(),
-                    m.getOperador() != null ? m.getOperador().getNomeCompleto() : null
+                    m.getOperador() != null ? m.getOperador().getNomeCompleto() : null,
+                    m.getFormaPagamento() != null ? m.getFormaPagamento().name() : null,
+                    m.getVendaId()
             );
         }
     }
@@ -469,4 +539,22 @@ public class CaixaController {
     public record ConsolidadoResponse(String data, String resumo) {}
 
     public record ErroResponse(String erro) {}
+
+    /**
+     * Gerente que autoriza a operação na hora. Login inválido é recusado com
+     * mensagem clara; o operador logado continua o mesmo.
+     */
+    private Usuario resolverAutorizador(AutorizacaoRequest autorizacao) {
+        if (autorizacao == null
+                || autorizacao.nome() == null || autorizacao.nome().isBlank()
+                || autorizacao.senha() == null || autorizacao.senha().isBlank()) {
+            return null;
+        }
+        return usuarioRepository.buscarPorNomeSobrenomeESenha(
+                        autorizacao.nome().trim(),
+                        autorizacao.sobrenome() == null ? "" : autorizacao.sobrenome().trim(),
+                        autorizacao.senha())
+                .filter(Usuario::isAtivo)
+                .orElseThrow(() -> new SecurityException("Login do gerente invalido."));
+    }
 }

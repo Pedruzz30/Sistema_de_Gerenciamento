@@ -67,4 +67,39 @@ response=await request('/api/preview/transacoes/venda','POST',{
 assert.equal(response.status,409,'Closed cash drawer must deny sale');
 assert.equal((await request('/api/produtos')).data.find(p=>p.id===7).quantidadeAtual,stockBefore);
 
-console.log('PASS: atomic preview PDV sale, idempotency, insufficient stock, closed cash, and rollback');
+// Pix não passa pela gaveta: o total de vendas sobe, o dinheiro não.
+const antesPix=(await request('/api/caixas')).data.find(c=>c.numeroCaixa===1);
+const precoAgua=(await request('/api/produtos')).data.find(p=>p.id===7).precoUnitario;
+response=await request('/api/preview/transacoes/venda','POST',{
+  idempotencyKey:'pdv_pix_test_004',numeroCaixa:1,itens:[{idProduto:7,quantidade:1}],
+  pagamentos:[{forma:'PIX',valor:precoAgua}]
+});
+assert.equal(response.status,201,'Pix sale should be recorded');
+const depoisPix=(await request('/api/caixas')).data.find(c=>c.numeroCaixa===1);
+assert.equal(depoisPix.saldoAtual,antesPix.saldoAtual,'Pix must not change cash drawer');
+assert.equal(depoisPix.totalVendas,+(antesPix.totalVendas+precoAgua).toFixed(2),'Pix counts in sales total');
+assert.ok(depoisPix.vendasPorForma.PIX>=precoAgua,'Per-form totals exposed');
+assert.equal((await request('/api/caixas/sessoes/1/movimentacoes')).data[0].formaPagamento,'PIX');
+
+// Soma dos pagamentos diferente do total é recusada.
+response=await request('/api/preview/transacoes/venda','POST',{
+  idempotencyKey:'pdv_pix_test_005',numeroCaixa:1,itens:[{idProduto:7,quantidade:1}],
+  pagamentos:[{forma:'PIX',valor:precoAgua+1}]
+});
+assert.equal(response.status,400,'Payment sum must match the total');
+
+// Troco só no dinheiro: recebido maior que o valor gera troco e a gaveta recebe só o valor.
+const antesDinheiro=(await request('/api/caixas')).data.find(c=>c.numeroCaixa===1).saldoAtual;
+response=await request('/api/preview/transacoes/venda','POST',{
+  idempotencyKey:'pdv_cash_test_006',numeroCaixa:1,itens:[{idProduto:7,quantidade:1}],
+  pagamentos:[{forma:'DINHEIRO',valor:precoAgua,valorRecebido:precoAgua+10}]
+});
+assert.equal(response.status,201);
+assert.equal((await request('/api/caixas')).data.find(c=>c.numeroCaixa===1).saldoAtual,+(antesDinheiro+precoAgua).toFixed(2));
+
+// Fechamento cego: o resultado traz esperado, contado e diferença.
+response=await request('/api/caixas/encerrar','POST',{numeroCaixa:1,valorContado:0,observacao:''});
+assert.equal(response.status,200);
+assert.ok(typeof response.data.divergencia==='number'&&response.data.valorSistema>0,'Blind close returns the difference');
+
+console.log('PASS: atomic preview PDV sale, idempotency, insufficient stock, closed cash, rollback, payment forms and blind close');

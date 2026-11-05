@@ -171,7 +171,8 @@ public class VendaController {
                 usuario,
                 id,
                 chave,
-                request == null ? null : request.numeroCaixaLegado()
+                request == null ? null : request.numeroCaixaLegado(),
+                request == null ? null : request.pagamentosInput()
         );
         return ResponseEntity.ok(response(venda, usuario));
     }
@@ -190,7 +191,8 @@ public class VendaController {
                 usuario,
                 id,
                 request == null ? null : request.motivo(),
-                chave
+                chave,
+                request == null ? null : request.formaEstornoParseada()
         );
         return ResponseEntity.ok(response(venda, usuario));
     }
@@ -211,7 +213,8 @@ public class VendaController {
                 id,
                 itemId,
                 request == null ? null : request.motivo(),
-                chave
+                chave,
+                request == null ? null : request.formaEstornoParseada()
         );
         return ResponseEntity.ok(response(venda, usuario));
     }
@@ -315,9 +318,49 @@ public class VendaController {
             List<SelecaoModificadorRequest> selecoes
     ) {}
 
-    public record FinalizarVendaRequest(String idempotencyKey, Integer numeroCaixaLegado) {}
+    /**
+     * @param pagamentos formas de pagamento; a soma de {@code valor} deve ser
+     *                   igual ao total. Opcional: sem ela, tudo é dinheiro.
+     */
+    public record FinalizarVendaRequest(String idempotencyKey,
+                                        Integer numeroCaixaLegado,
+                                        List<PagamentoRequest> pagamentos) {
+        public FinalizarVendaRequest(String idempotencyKey, Integer numeroCaixaLegado) {
+            this(idempotencyKey, numeroCaixaLegado, null);
+        }
 
-    public record CancelarVendaRequest(String motivo, String idempotencyKey) {}
+        List<service.IntegracaoCaixaLegadoService.PagamentoInput> pagamentosInput() {
+            if (pagamentos == null) {
+                return null;
+            }
+            return pagamentos.stream()
+                    .map(p -> p == null ? null : new service.IntegracaoCaixaLegadoService.PagamentoInput(
+                            model.FormaPagamento.parse(p.forma()), p.valor(), p.valorRecebido(), p.nsu()))
+                    .toList();
+        }
+    }
+
+    /**
+     * @param forma         DINHEIRO, PIX, DEBITO, CREDITO ou VOUCHER
+     * @param valor         quanto este pagamento abate do total
+     * @param valorRecebido só no dinheiro: quanto o cliente entregou (gera troco)
+     * @param nsu           comprovante da maquininha (opcional)
+     */
+    public record PagamentoRequest(String forma, BigDecimal valor, BigDecimal valorRecebido, String nsu) {}
+
+    /**
+     * @param formaEstorno opcional: forma em que o valor volta ao cliente.
+     *                     Sem ela, volta nas formas em que a venda foi paga.
+     */
+    public record CancelarVendaRequest(String motivo, String idempotencyKey, String formaEstorno) {
+        public CancelarVendaRequest(String motivo, String idempotencyKey) {
+            this(motivo, idempotencyKey, null);
+        }
+
+        model.FormaPagamento formaEstornoParseada() {
+            return model.FormaPagamento.parse(formaEstorno);
+        }
+    }
 
     public record VendaResumoResponse(
             long id,

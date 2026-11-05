@@ -144,6 +144,25 @@
       }
       if(!Number.isSafeInteger(totalCentavos)||totalCentavos<=0)
         return respond({erro:'Total da venda inválido.'},400);
+      // Formas de pagamento (sem informar = dinheiro, como antes).
+      const FORMAS_OK=['DINHEIRO','PIX','DEBITO','CREDITO','VOUCHER'];
+      const pagamentosInformados=Array.isArray(body.pagamentos)&&body.pagamentos.length
+        ? body.pagamentos : [{forma:'DINHEIRO',valor:totalCentavos/100}];
+      let somaPagCentavos=0;
+      const pagamentosVenda=[];
+      for(const pg of pagamentosInformados){
+        const formaPg=String(pg&&pg.forma||'').toUpperCase();
+        const valorPg=Math.round(Number(pg&&pg.valor)*100);
+        if(!FORMAS_OK.includes(formaPg)||!Number.isSafeInteger(valorPg)||valorPg<=0)
+          return respond({erro:'Pagamento inválido.'},400);
+        const recebidoPg=pg.valorRecebido==null?null:Math.round(Number(pg.valorRecebido)*100);
+        if(recebidoPg!=null&&(recebidoPg<valorPg||(recebidoPg>valorPg&&formaPg!=='DINHEIRO')))
+          return respond({erro:'Troco só é permitido em dinheiro e o recebido não pode ser menor que o valor.'},400);
+        somaPagCentavos+=valorPg;
+        pagamentosVenda.push({forma:formaPg,valor:valorPg/100,valorRecebido:recebidoPg==null?null:recebidoPg/100});
+      }
+      if(somaPagCentavos!==totalCentavos)
+        return respond({erro:'A soma dos pagamentos precisa ser igual ao total da venda.'},400);
       const next=JSON.parse(JSON.stringify(db));
       const selected=next.caixas.find(c=>c.numeroCaixa===numero&&c.status==='ABERTO');
       const instant=new Date().toISOString();
@@ -161,23 +180,30 @@
         });
       }
       const valor=totalCentavos/100;
-      selected.totalVendas=+(Number(selected.totalVendas||0)+valor).toFixed(2);
-      selected.saldoAtual=+(Number(selected.saldoAtual||0)+valor).toFixed(2);
-      next.movimentacoesCaixa.unshift({
-        id:lastCash+1,caixaId:selected.id,numeroCaixa:numero,tipo:'VENDA',
-        valor,descricao:'Venda fictícia do PDV',dataHora:instant,operador:'Admin Demo'
-      });
       if(!Array.isArray(next.vendasPreview))next.vendasPreview=[];
+      const saleId=next.vendasPreview.length+1;
+      selected.totalVendas=+(Number(selected.totalVendas||0)+valor).toFixed(2);
+      let movIndex=0;
+      for(const pg of pagamentosVenda){
+        // Pix e cartão não passam pela gaveta: só o dinheiro muda o saldo.
+        if(pg.forma==='DINHEIRO')selected.saldoAtual=+(Number(selected.saldoAtual||0)+pg.valor).toFixed(2);
+        next.movimentacoesCaixa.unshift({
+          id:lastCash+(++movIndex),caixaId:selected.id,numeroCaixa:numero,tipo:'VENDA',
+          valor:pg.valor,descricao:'Venda fictícia do PDV #'+saleId,dataHora:instant,operador:'Admin Demo',
+          formaPagamento:pg.forma,vendaId:saleId
+        });
+      }
       const sale={
-        id:next.vendasPreview.length+1,idempotencyKey:key,fingerprint,numeroCaixa:numero,
-        itens:pedido,valor,criadaEm:instant,demonstracao:true
+        id:saleId,idempotencyKey:key,fingerprint,numeroCaixa:numero,
+        itens:pedido,valor,criadaEm:instant,demonstracao:true,
+        formaPagamento:pagamentosVenda.length===1?pagamentosVenda[0].forma:'MISTO',pagamentos:pagamentosVenda
       };
       next.vendasPreview.push(sale);
       db=next;
       save();
       return respond(sale,201);
     }
-    if(path==='/api/caixas' && method==='GET')return respond(db.caixas);
+    if(path==='/api/caixas' && method==='GET')return respond(db.caixas.map(enriquecerCaixa));
     if(path==='/api/caixas/metricas/hoje'){
       const t=db.caixas.reduce((a,c)=>a+Number(c.totalVendas||0),0);
       const n=db.caixas.filter(c=>c.status==='ABERTO').length;
@@ -236,7 +262,15 @@
     if(path==='/api/caixas/encerrar' && method==='POST'){
       const c=db.caixas.find(v=>v.numeroCaixa===Number(body.numeroCaixa)&&v.status==='ABERTO');
       if(!c)return respond({erro:'Caixa não encontrado ou já encerrado.'},404);
-      c.status='ENCERRADO';c.dataEncerramento=new Date().toISOString();save();return respond({caixaId:c.id,numeroCaixa:c.numeroCaixa,status:c.status});
+      const contado=Number(body.valorContado);
+      if(!Number.isFinite(contado)||contado<0)return respond({erro:'Valor contado é obrigatório.'},400);
+      const esperado=+Number(c.saldoAtual||0).toFixed(2);
+      c.status='ENCERRADO';c.dataEncerramento=new Date().toISOString();save();
+      return respond({caixaId:c.id,numeroCaixa:c.numeroCaixa,status:c.status,
+        abertoPor:c.nomeOperador,fechadoPor:'Admin Demo',timestamp:c.dataEncerramento,
+        saldoInicial:c.saldoInicial||0,totalVendas:c.totalVendas||0,totalEntradas:c.totalEntradas||0,totalSaidas:c.totalSaidas||0,
+        valorSistema:esperado,valorContado:+contado.toFixed(2),divergencia:+(contado-esperado).toFixed(2),
+        observacao:String(body.observacao||'')});
     }
     const cashChange=path.match(/^\/api\/caixas\/(sangria|suprimento|venda)$/);
     if(cashChange && method==='POST'){
@@ -249,13 +283,30 @@
       if(tipo==='venda')c.totalVendas=+(c.totalVendas+valor).toFixed(2);
       else if(direcao>0)c.totalEntradas=+(c.totalEntradas+valor).toFixed(2);
       else c.totalSaidas=+(c.totalSaidas+valor).toFixed(2);
-      db.movimentacoesCaixa.unshift({id:Date.now(),caixaId:c.id,numeroCaixa:c.numeroCaixa,tipo:tipo.toUpperCase(),valor,descricao:String(body.descricao||'Operação fictícia'),dataHora:new Date().toISOString(),operador:'Admin Demo'});
+      db.movimentacoesCaixa.unshift({id:Date.now(),caixaId:c.id,numeroCaixa:c.numeroCaixa,tipo:tipo.toUpperCase(),valor,descricao:String(body.descricao||'Operação fictícia'),dataHora:new Date().toISOString(),operador:'Admin Demo',formaPagamento:tipo==='venda'?'DINHEIRO':null});
       save();return respond(c);
     }
     const cashMov=path.match(/^\/api\/caixas\/sessoes\/(\d+)\/movimentacoes$/);
     if(cashMov && method==='GET')return respond(db.movimentacoesCaixa.filter(m=>m.caixaId===Number(cashMov[1])));
     // Never pretend that unsupported workflows succeeded.
     return respond({erro:'Função indisponível nesta demonstração. Use o ambiente real para concluir esta operação.'},501);
+  }
+  function enriquecerCaixa(c){
+    const movs=(db.movimentacoesCaixa||[]).filter(m=>m.caixaId===c.id);
+    const porForma={DINHEIRO:0,PIX:0,DEBITO:0,CREDITO:0,VOUCHER:0};
+    const vendas=new Set();let avulsas=0;
+    for(const m of movs){
+      if(m.tipo!=='VENDA'&&m.tipo!=='ESTORNO_VENDA')continue;
+      const forma=m.formaPagamento||'DINHEIRO';
+      porForma[forma]=+((porForma[forma]||0)+(m.tipo==='VENDA'?1:-1)*Number(m.valor||0)).toFixed(2);
+      if(m.tipo==='VENDA'){if(m.vendaId)vendas.add(m.vendaId);else avulsas++;}
+    }
+    const semMovimento=movs.length===0&&Number(c.totalVendas||0)>0;
+    if(semMovimento)porForma.DINHEIRO=Number(c.totalVendas||0);
+    const quantidade=semMovimento?0:vendas.size+avulsas;
+    const total=Number(c.totalVendas||0);
+    return {...c,dinheiroNaGaveta:c.saldoAtual,vendasPorForma:porForma,quantidadeVendas:quantidade,
+      ticketMedio:quantidade?+(total/quantidade).toFixed(2):0};
   }
   const nativeFetch = window.fetch.bind(window);
   window.fetch = function(input,init) {
