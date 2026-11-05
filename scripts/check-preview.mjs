@@ -15,8 +15,8 @@ assert.equal(await readFile('src/main/resources/static/js/dashboard.js','utf8'),
   await readFile('dist-preview/js/dashboard.js','utf8'),
   'Dashboard JS must come from canonical frontend');
 assert.equal(original.slice(original.indexOf('<body')),
-  html.slice(html.indexOf('<body')),
-  'Dashboard HTML body must come from canonical frontend');
+  html.slice(html.indexOf('<body')).replace(/<div class="comandas-demo-entry"[\s\S]*?<\/div>/, ''),
+  'Dashboard body must remain canonical, except the mock-only shortcut');
 assert.ok(html.includes('/js/preview-scale.js'),'Scale fixture injection absent');
 assert.ok(html.includes('/js/preview-beverages.js'),'Beverage fixture injection absent');
 assert.ok(html.indexOf('/js/preview-beverages.js') < html.indexOf('/js/preview-mock.js'),'Beverage fixture must initialize before mock');
@@ -47,16 +47,21 @@ const palette=await readFile('dist-preview/css/palette-original.css','utf8');
 assert.ok(palette.includes('--paper: oklch('));
 assert.ok(palette.includes('--accent: oklch('));
 assert.ok(!html.includes('Turno ativo · 26 abr 2026'),'Stale dashboard date');
+const demoComandas=await readFile('dist-preview/comandas-demo.html','utf8');
+assert.match(demoComandas,/comandas-demo-model.js/);
+assert.match(html,/comandas-demo-entry/);
+assert.doesNotMatch(original,/comandas-demo-entry/);
 const routes=await readFile('dist-preview/_redirects','utf8');
 assert.match(routes,/^\/dashboard \/dashboard.html 200$/m);
 assert.match(routes,/^\/estoque \/estoque.html 200$/m);
+assert.match(routes,/^\/comandas-demo \/comandas-demo.html 200$/m);
 for(const f of ['saas-admin.html','saas-comandas.html','application.properties']) {
   await assert.rejects(access(join('dist-preview',f)));
 }
 const mock=await readFile('dist-preview/js/preview-mock.js','utf8');
 assert.ok(mock.includes('DEMONSTRAÇÃO · dados fictícios'));
 assert.ok(mock.includes('Função indisponível nesta demonstração'));
-for(const file of ['scripts/build-preview.mjs','dist-preview/js/preview-scale.js','dist-preview/js/preview-beverages.js','dist-preview/js/preview-mock.js','dist-preview/js/preview-notes.js','dist-preview/js/preview-pdv.js','dist-preview/js/preview-cardapio.js','dist-preview/js/preview-design-review.js','dist-preview/js/dashboard.js','dist-preview/js/estoque.js', 'dist-preview/js/spa-navigation.js']) {
+for(const file of ['scripts/build-preview.mjs','dist-preview/js/comandas-demo.js','dist-preview/js/comandas-demo-model.js','dist-preview/js/preview-scale.js','dist-preview/js/preview-beverages.js','dist-preview/js/preview-mock.js','dist-preview/js/preview-notes.js','dist-preview/js/preview-pdv.js','dist-preview/js/preview-cardapio.js','dist-preview/js/preview-design-review.js','dist-preview/js/dashboard.js','dist-preview/js/estoque.js', 'dist-preview/js/spa-navigation.js']) {
   execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
 }
 console.log('PASS: preview isolado, navegação, fontes canônicas e JS');
