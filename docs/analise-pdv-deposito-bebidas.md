@@ -153,6 +153,14 @@ A branch `feat/demo-deposito-bebidas-2m-20261104` (`preview-source/js/preview-be
 - vendas com vários itens;
 - gaveta somando só o dinheiro.
 
+
+### 3.12 Dois saldos de estoque que não se conversam (crítico, ver seção 11)
+O sistema tem **dois saldos para o mesmo produto**:
+- `produtos.quantidade_atual` (inteiro, legado);
+- `estoque_produtos.quantidade_atual` (decimal, por filial).
+
+Telas diferentes mexem em saldos diferentes, então **o estoque que aparece na tela não é o que o PDV baixa**. Detalhes na seção 11.1.
+
 ---
 
 ## 4. Como funciona um PDV profissional (supermercado/mercearia)
@@ -398,10 +406,15 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 
 ## 10. Roteiro sugerido (em fases)
 
+**Fase 0 – Pré-requisitos do estoque (seção 11)**
+0a. **Um único saldo de estoque** (o decimal): cadastro, entrada manual, notas e tela de Estoque passam a usar `estoque_produtos`, com migração que copia os saldos atuais.
+0b. **Cadastro rápido de "produto de revenda"**: cria Produto + Item de cardápio + Variações (lata gelada, lata natural, fardo) de uma vez.
+0c. **Importar XML da NF-e** do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
+
 **Fase 1 – Abrir a loja (MVP do caixa)**
-1. Tabela `produto_codigos` + endpoint de busca por código + cadastro "bipe aqui".
+1. Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN.
 2. Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções).
-3. **Gelada × Natural:** `preco_gelado`, padrão "Gelada", tecla F4 e temperatura padrão por embalagem.
+3. **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
 5. **Troca rápida de operador por PIN (F12)**, com cada venda gravando quem passou. PIN de gerente para sangria, cancelamento e desconto.
 6. Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
@@ -414,7 +427,7 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 **Fase 2 – Substituir o caderno**
 12. Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário.
 13. Estoque mínimo e sugestão de compra por fornecedor.
-14. Inventário com o leitor (bipar a prateleira para contar).
+14. Inventário pelo celular (câmera no Chrome Android) ou leitor sem fio, bipando a prateleira para contar.
 15. Alerta de faturamento acumulado no ano (limite do MEI, se for o caso).
 16. Segundo caixa (Cenário B) em rede local, se o movimento pedir.
 
@@ -433,6 +446,112 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 
 ---
 
+
+---
+
+## 11. Estoque e código de barras (análise de 04/11/2026)
+
+### 11.1 Como o estoque funciona hoje
+| Ação | Tela / API | Saldo que muda |
+|---|---|---|
+| Cadastrar produto com quantidade inicial | Estoque → `POST /api/produtos` | **legado** (`produtos.quantidade_atual`) |
+| Entrada/Saída manual | Estoque → `POST /api/movimentacoes` (`EstoqueService.registrarMovimentacaoInterna`) | **legado** |
+| Confirmar nota de fornecedor | Notas → `POST /api/notas/{id}/confirmar` (`NotaFiscalService`) | **legado** |
+| Venda pela rota antiga | `POST /api/caixas/venda` | **legado** |
+| Compra com embalagem e custo médio | `POST /api/compras` (`CompraEstoqueService`), **sem tela no front** | **decimal** (`estoque_produtos`) |
+| Venda pelo PDV real | `POST /api/vendas/{id}/finalizar` (`FinalizacaoVendaService`) | **decimal** |
+| Estorno/cancelamento | `MovimentoEstoqueService`, `CancelamentoVendaService` | **decimal** |
+| O que a tela de Estoque mostra | `ProdutoResponse.from` → `p.getQuantidadeAtual()` | **legado** |
+
+**O que isso causa na loja:**
+1. A dona confirma a nota do distribuidor (entram 120 latas no saldo legado). O PDV real tenta vender e falha com "Produto sem estoque decimal configurado" ou "custo médio" (`FinalizacaoVendaService.java:362-380`), porque o saldo decimal está vazio.
+2. Se o saldo decimal for alimentado pela API de compras, o PDV vende e baixa o decimal, mas a **tela de Estoque continua mostrando o número antigo**. Os alertas de estoque mínimo também ficam errados.
+3. A migração `V20260713_01` criou `estoque_produtos`, mas **não copiou os saldos** de `produtos`.
+4. Os testes de integração alimentam o estoque por `/api/compras`, por isso passam, mas o caminho que a tela usa nunca chega ao PDV.
+
+**Recomendação (pré-requisito da Fase 1):** ter **um único saldo**, o decimal (`estoque_produtos` + `movimentos_estoque`), que já tem custo médio, trava e estorno.
+- Cadastro, entrada manual, nota e tela de Estoque passam a ler e gravar nele.
+- O campo legado vira só leitura (ou é removido), com uma migração que copia os saldos atuais.
+- A tela de Notas passa a usar `CompraEstoqueService`, que já aceita **embalagem** (fardo = 12 un) e calcula custo unitário.
+
+### 11.2 Outras lacunas do estoque para um depósito
+- **Nota de fornecedor é digitada à mão**, item por item (`NotaFiscalController.AdicionarItemRequest`: produto, quantidade inteira, preço). Não há importação do **XML da NF-e**, que o distribuidor manda por e-mail ou que se baixa pela chave de acesso.
+- **Produto novo criado pela nota** (`NovoProdutoRequest`) não pede código de barras nem embalagem.
+- **O cadastro de produto não tem campo de código de barras.** Ele só existe em `embalagens_produto`, sem índice único e sem tela.
+- **Para vender uma bebida, o PDV real exige 3 cadastros**: Produto (estoque) + Item de cardápio + Variação com `produto_direto_id` (`VendaController.ItemVendaRequest` só aceita `variacaoId`). Para ~300 bebidas, isso é inviável na mão.
+  - Precisa de um **cadastro rápido de "produto de revenda"** que crie os três de uma vez.
+
+**Uma boa notícia: a Variação resolve a gelada.** A `VariacaoItemCardapio` já tem `produto_direto_id` + `quantidade_produto_direto_base` + preço. Isso permite:
+- "Skol lata — **Gelada**" (R$ 4,50, baixa 1 lata) e "Skol lata — **Natural**" (R$ 3,99, baixa 1 lata), duas variações do mesmo produto e do mesmo estoque;
+- "Skol **fardo 12**" (R$ 38,90, baixa 12 latas), mais uma variação.
+
+Então o `preco_gelado` proposto na seção 5.2 pode virar **uma variação "Gelada"**, sem coluna nova no produto. O código de barras aponta para a variação padrão, e a tecla F4 troca para a variação irmã.
+
+### 11.3 Como os códigos de barras vão entrar no sistema
+Do mais automático para o mais manual:
+
+1. **Importar o XML da NF-e do distribuidor (o caminho principal).** Desde 2017 a NF-e é obrigada a trazer o GTIN nos campos `cEAN` (unidade comercial, ex.: o fardo/caixa) e `cEANTrib` (unidade tributável, ex.: a lata). Com o XML importado, o sistema:
+   - acha o produto pelo código; se não achar, propõe cadastrar ou "amarrar" a um produto existente (só na primeira vez);
+   - cria a embalagem com o fator (o `cEAN` do fardo vale 12 unidades do `cEANTrib`);
+   - traz **NCM, CEST, CFOP e custo**, que a NFC-e vai exigir depois;
+   - dá entrada no estoque.
+
+   Em poucas notas, a maior parte do catálogo de bebidas fica cadastrada com código, sem digitar nada.
+2. **"Bipe aqui" no cadastro:** no formulário de produto/embalagem, um campo onde se bipa a lata e o código é preenchido.
+3. **Produto não encontrado no PDV:** som de erro + janela "cadastrar agora" (pede PIN do gerente). O produto entra com o código já preenchido e a venda continua.
+4. **Consulta opcional por GTIN** (ex.: Bluesoft Cosmos, que devolve descrição e NCM a partir do código; confirmar termos e limites da API). Serve para preencher o nome automaticamente no cadastro.
+5. **Códigos internos para o que não tem EAN** (caldo, porção, gelo, carvão): `101`, `102`… e uma **folha plastificada com os códigos de barras impressos** ao lado do caixa. A operadora bipa a folha. É prática comum em mercearia e evita digitar.
+
+### 11.4 Modelo de dados proposto (atualizado)
+```sql
+create table codigos_venda (
+  id           bigserial primary key,
+  codigo       varchar(32) not null,
+  tipo         varchar(12) not null,  -- EAN13, EAN8, DUN14, INTERNO
+  variacao_id  bigint not null references variacoes_item_cardapio(id), -- o que é vendido (lata gelada, fardo...)
+  padrao       boolean not null default true, -- quando o mesmo código serve a 2 variações (gelada/natural)
+  ativo        boolean not null default true
+);
+create unique index uk_codigos_venda_padrao on codigos_venda (codigo) where padrao and ativo;
+```
+- `GET /api/pdv/codigo/{codigo}` → variação padrão + irmãs (ex.: Natural) + preço + estoque disponível.
+- O PDV baixa a **lista inteira de códigos na abertura do caixa**, algumas centenas de linhas, para cada leitura ser instantânea e funcionar mesmo com o servidor lento.
+
+### 11.5 Como o leitor funciona com o sistema (navegador)
+- Leitor USB comum = **teclado** (modo HID / "keyboard wedge"). Ele "digita" os números e aperta **Enter**. Não precisa driver nem programa: funciona em qualquer navegador.
+- **Configuração inicial**, pelos códigos do manual do leitor:
+  - sufixo **Enter** (o padrão de fábrica na maioria);
+  - teclado compatível com o Windows (ABNT2 ou US; os números saem iguais);
+  - bip ligado.
+- **No sistema:**
+  - o campo de leitura fica sempre com o foco;
+  - um "ouvinte" global detecta digitação muito rápida terminando em Enter (o leitor digita 13 dígitos em menos de ~50 ms; uma pessoa não). Assim, mesmo com o foco em outro lugar, a leitura é capturada como bipe;
+  - o multiplicador `6*` antes do bipe vale 6 unidades;
+  - bipar o mesmo item seguido soma na mesma linha.
+
+### 11.6 Investimento em leitor (preços pesquisados em 04/11/2026, varejo online, só referência)
+| Opção | Exemplos | Preço aproximado | Para quem |
+|---|---|---|---|
+| Econômica 1D com fio | Tanca TL-120, Elgin Flash II | **R$ 130–140** | Só código de barras comum, orçamento apertado |
+| **Recomendada: 2D com fio + suporte** | Tanca TL-320, Elgin EL250 | **R$ 360–450** | Lê também QR Code e código na tela do celular, lê melhor rótulo amassado/curvo e funciona apoiado no suporte (mãos livres) |
+| 2D de marca premium | Honeywell HH490, Zebra DS2208 | R$ 570–600 | Mais durável, para uso pesado |
+| Sem fio | Tanca TL-120W, Elgin EL 300-BT, Honeywell HH492 | R$ 390–1.130 | Para bipar fardos e caixas pesados no chão sem levantar, e para contar estoque nas prateleiras |
+| Fixo de mesa (tipo supermercado) | Elgin EL 720 / EL8600, Zebra SP20 / DS9308 | R$ 640–1.720 | Exagero para 1-2 caixas |
+
+**Recomendação para a cliente:** **um leitor 2D com fio e suporte (~R$ 400)** por caixa. Se o orçamento permitir, depois um **sem fio** para o estoque e os fardos pesados. Com 2 caixas: ~R$ 800 no total. É o item mais barato do kit (notebook, impressora térmica e gaveta custam mais).
+
+### 11.7 E sem comprar leitor? (câmera)
+- **Webcam do notebook no caixa: não recomendo.** Tem foco fixo e baixa resolução, a operadora teria que levar cada lata até a tela, e é mais lento que digitar. Além disso, a API nativa de leitura do Chrome (`BarcodeDetector`) **não funciona no Windows**, só em Android, macOS e ChromeOS. Seria preciso uma biblioteca (ex.: zxing-js), e o resultado depende muito da câmera.
+- **Celular como leitor para cadastro e inventário: vale a pena e é de graça.** No Chrome do Android a leitura pela câmera é nativa. Uma página "Inventário" no celular, na mesma rede, permite andar pelo depósito bipando prateleiras para contar o estoque ou cadastrar códigos.
+- **Conclusão:** **no caixa, leitor USB**. A câmera do celular serve só como apoio para estoque.
+
+### 11.8 Dicas práticas para bebidas
+- **Lata gelada "suando"** (gelo e condensação) e plástico de fardo refletem a luz e atrapalham a leitura. Leitor 2D (imager) lida melhor com isso que laser barato. Deixar um pano no caixa ajuda.
+- **Fardo fechado:** bipar o código do fardo (não o da lata) para baixar 12 de uma vez. Se o fardo não tiver código próprio, usar a folha de códigos ou `12*` + lata.
+- **Caixa de 24 pesada no chão:** leitor sem fio, ou a folha de códigos.
+- **Itens sem código** (caldo, porção, gelo): botões de atalho na tela + folha de códigos.
+- **Código repetido entre produtos diferentes** (acontece com marca própria/importado): o sistema pergunta qual é na primeira leitura.
+
 ## Fontes
 
 - [Guia Completo da NFC-e 2026 (Contmatic)](https://simplifique.contmatic.com.br/blogs/guia-completo-nfc-e-2026)
@@ -450,3 +569,12 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 - [Smart TEF integrada ao PDV (Tray)](https://tray.com.br/escola/tray-lanca-maquininha-smart-tef/)
 - [MEI dispensado de emitir nota para pessoa física a partir de 2027 (Mix Vale)](https://www.mixvale.com.br/2026/10/23/mei-fica-dispensado-de-emitir-nota-fiscal-eletronica-para-pessoa-fisica-a-partir-de-janeiro-de-2027/)
 - [NFC-e para MEI: regras 2026 (Nota Ágil)](https://notaagil.com.br/nfce-para-mei)
+- [Leitores de código de barras: preços (BZ Tech)](https://www.bztech.com.br/leitores/leitor-de-codigo-de-barras)
+- [Leitores com suporte (BZ Tech)](https://www.bztech.com.br/leitores/leitor-de-codigo-de-barras/com-suporte)
+- [Leitores fixos (BZ Tech)](https://www.bztech.com.br/leitores/leitor-de-codigo-de-barras/fixo)
+- [Leitores (Manchester Automação)](https://www.manchesterautomacao.com.br/leitor-de-codigo-de-barras)
+- [Melhores leitores 2026 (my-best)](https://br.my-best.com/18709)
+- [cEAN/cEANTrib obrigatórios na NF-e (Systax)](https://www.systax.com.br/?p=5066)
+- [Importação de notas e fator da caixa (Trier Sistemas)](https://documentacao.triersistemas.com.br/entrada-de-mercadorias/importação-de-notas)
+- [Compatibilidade da BarcodeDetector API (MDN/Chromium)](https://chromium.googlesource.com/external/github.com/mdn/browser-compat-data/+/HEAD/api/BarcodeDetector.json)
+- [Bluesoft Cosmos API (wrapper npm, não oficial)](https://www.npmjs.com/package/bluesoft-cosmos-api)
