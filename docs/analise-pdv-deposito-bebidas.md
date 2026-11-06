@@ -416,12 +416,12 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 2. Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções).
 3. **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
-5. **Troca rápida de operador por PIN (F12)**, com cada venda gravando quem passou. PIN de gerente para sangria, cancelamento e desconto.
+5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. PIN de gerente para sangria, cancelamento e desconto.
 6. Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
 7. Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso.
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
 9. Desligar a venda avulsa sem itens no PDV (só gerente).
-10. Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
+10. ✅ (seção 15) Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
 11. Instalação local no notebook (Docker) + backup diário automático.
 
 **Fase 2 – Substituir o caderno**
@@ -648,6 +648,41 @@ Na tela de Notas, o botão **Importar XML** recebe o arquivo da NF-e do forneced
 - O custo da nota é arredondado a 2 casas por unidade, então o total da nota no sistema pode diferir alguns centavos do XML.
 - Produtos vendidos em fração (chopp por litro) não entram por aqui.
 - Na demonstração o XML é lido no navegador, com regras simplificadas e sem a conferência da chave.
+
+---
+
+## 15. Login seguro e troca de operador por PIN (06/11/2026)
+
+**O que era o problema:** a API confiava no cabeçalho `X-User-RU`. Qualquer pessoa na rede podia dizer "sou o usuário 1" e agir como dono. As senhas ficavam em texto puro no banco.
+
+**O que mudou:**
+
+| Item | Como ficou |
+|---|---|
+| Identidade | Sessão no servidor, com cookie `HttpOnly` e `SameSite=Strict`. O banco guarda só o hash do token. O `X-User-RU` enviado pelo cliente é descartado por um filtro em `/api/*` |
+| Senhas e PINs | Hash BCrypt. Senhas antigas são convertidas ao subir o sistema e viram provisórias |
+| Senha provisória | Sem criar uma senha nova, a pessoa não usa o sistema. Vale para os usuários padrão (`1234`) e para funcionário novo |
+| Tentativas | 5 erros de senha ou PIN bloqueiam aquela pessoa por 5 minutos |
+| Autorização do gerente | Confere o hash e respeita o mesmo limite |
+| Sessão | Dura 14 horas (configurável), termina no logout e quando o usuário é desativado |
+
+**Troca de operador:** F12 no PDV, escolhe a pessoa e digita o PIN. A venda em andamento continua, e cada venda grava quem passou. Só aparece quem tem PIN e opera caixa.
+
+**Por segurança, quem entra por PIN fica preso à área de caixa, mesmo sendo o dono.** PIN é curto; ele não pode abrir cadastro de funcionários, estoque ou notas. Para isso, é preciso entrar com a senha.
+
+**Bug antigo corrigido:** a tela de login chamava `/api/auth/config`, que não existia no backend. Com isso, o botão "Entrar" ficava desativado no sistema real. A demonstração escondia o problema, porque não faz essa chamada.
+
+**Onde está:** `SessaoFilter`, `AuthController`, `SessaoService`, `AutenticacaoService`, `SenhaService`, `LimiteTentativas`, `V20261106_02`, `login.html`, `shared.js`, `pdv.js`.
+
+**Limites conhecidos:**
+- **Não há HTTPS.** Em rede local a senha trafega sem criptografia entre os notebooks. No mesmo notebook (`localhost`) isso não pesa. Antes de expor na Internet, é preciso HTTPS e ligar `stockos.auth.cookie-seguro`.
+- **Ninguém recupera senha esquecida pela tela ainda.** Falta um "redefinir senha" feito pelo gerente.
+- **O bloqueio de tentativas fica em memória:** reiniciar o sistema zera os contadores.
+- **As telas não têm login próprio:** o HTML abre sem sessão, mas sem nenhum dado, porque toda informação vem de `/api/*`.
+- **Os testes antigos** usam `stockos.auth.aceitar-header-legado=true`, só em `src/test/resources`. Essa opção nunca deve ser ligada em uma loja.
+- **Na demonstração** não há troca de operador nem criação de senha, porque não existe servidor.
+- **Plano Supabase:** o projeto tem branches de autenticação com Supabase, não integradas. Se esse caminho for retomado, esta sessão local precisará ser substituída ou convivida com ele.
+- A tela de login mostra o selo "Conexão segura", que já existia e não reflete a falta de HTTPS.
 
 ## Fontes
 

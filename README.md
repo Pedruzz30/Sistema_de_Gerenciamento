@@ -41,8 +41,8 @@ ficam em containers Docker, sem usar o PostgreSQL instalado no Windows.
 Para iniciar também o backend Java local: `docker compose --profile app up -d --build app`.
 
 **Supabase Cloud e Supabase Auth ainda não estão conectados nesta etapa.**
-Não exponha o backend na Internet enquanto o login legado `X-User-RU`
-não for substituído por autenticação verificada e autorização por usuário/tenant.
+Não exponha o backend na Internet: falta HTTPS e autorização por tenant. Em rede
+local, o login usa sessão em cookie (veja "Login e autorização da API").
 
 ## Requisitos
 
@@ -112,6 +112,8 @@ O login usa `nome`, `sobrenome` e `senha`.
 | Joao  | Silva     | estoquista        | 1234  |
 | Ana   | Caixa     | operadora de caixa| 1234  |
 
+Essas senhas são provisórias: viram hash ao subir o sistema e precisam ser trocadas no primeiro login.
+
 ## Rotas principais
 
 Paginas web:
@@ -141,23 +143,29 @@ APIs principais:
 - `/api/funcionarios`
 - `/api/logs`
 
-## Autorizacao da API
+## Login e autorização da API
 
-Depois do login, a maior parte dos endpoints exige o cabecalho `X-User-RU`.
+`POST /api/auth/login` cria uma sessão no servidor e devolve o cookie `STOCKOS_SESSAO`
+(`HttpOnly`, `SameSite=Strict`). Todas as rotas de `/api/*`, menos o login e
+`/api/auth/config`, exigem essa sessão. O cabeçalho `X-User-RU` enviado pelo cliente é descartado.
 
-Exemplo de login:
-
-```powershell
-curl -Method Post "http://localhost:8080/api/auth/login" `
-  -ContentType "application/json" `
-  -Body '{"nome":"Admin","sobrenome":"Superior","senha":"1234"}'
+```bash
+curl -c sessao.txt -H "Content-Type: application/json" -d '{"nome":"Admin","sobrenome":"Superior","senha":"sua-senha"}' http://localhost:8080/api/auth/login
 ```
 
-Use o `ru` retornado pela API nas chamadas protegidas:
-
-```powershell
-curl -Headers ${ "X-User-RU" = "<ru-retornado>" } "http://localhost:8080/api/produtos"
+```bash
+curl -b sessao.txt http://localhost:8080/api/caixas
 ```
+
+- **Senhas e PINs:** ficam como hash BCrypt. Senhas antigas são convertidas ao subir o sistema e exigem troca.
+- **Tentativas:** 5 erros de senha ou PIN bloqueiam aquela pessoa por 5 minutos.
+- **Troca de operador:** F12 no PDV, com o PIN de quem vai assumir. Até um novo login com senha, essa sessão só alcança a área de caixa.
+
+| Propriedade | Padrão | Para que serve |
+|---|---|---|
+| `stockos.auth.sessao-horas` | `14` | Duração da sessão |
+| `stockos.auth.cookie-seguro` | `false` | Ligue quando houver HTTPS |
+| `stockos.auth.aceitar-header-legado` | `false` | Só para os testes automatizados. **Nunca ligue em uma loja:** qualquer um se passaria por outro usuário |
 
 ## Testes
 
@@ -192,5 +200,4 @@ src/test/java
 
 - A classe principal da aplicacao web e `app.Main`.
 - Existe uma implementacao legada de console em `app.SistemaGerenciamentoEstoque`.
-- Senhas ainda sao armazenadas em texto simples e a autorizacao HTTP usa `X-User-RU`; isso serve para desenvolvimento e estudo, nao para producao.
 - A limpeza de catalogo nao implementa multitenancy, isolamento por estabelecimento ou onboarding; esses pontos continuam pendentes antes da comercializacao.

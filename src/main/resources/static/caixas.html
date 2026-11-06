@@ -225,7 +225,7 @@
         <span class="pdv-shell__icon" aria-hidden="true" data-icon="cart"></span>
         <div>
           <div class="pdv-shell__title">Terminal de Vendas</div>
-          <div class="pdv-shell__meta" id="pdv-caixa-label">Caixa —</div>
+          <div class="pdv-shell__meta"><span id="pdv-caixa-label">Caixa —</span> · Operando: <strong id="pdv-operador-label">—</strong> · <button type="button" class="pdv-trocar-operador" onclick="abrirTrocaOperadorPDV()">Trocar (F12)</button></div>
         </div>
       </div>
       <button class="pdv-shell__close" type="button" onclick="fecharPDV()" aria-label="Fechar terminal (Esc)">
@@ -242,7 +242,7 @@
                  onkeydown="lerCodigoPDV(event)">
           <div class="pdv-scan__hint">
             <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
-            <span>F2 buscar · F10 pagamento · Esc sair</span>
+            <span>F2 buscar · F10 pagamento · F12 operador · Esc sair</span>
           </div>
         </div>
         <div class="pdv-catalog-toolbar">
@@ -325,6 +325,46 @@
   </div>
 </div>
 
+
+<!-- ── Modal: trocar operador por PIN ── -->
+<div class="modal-overlay" id="modal-pdv-operador">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Quem vai operar o caixa?</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharTrocaOperadorPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-operador" role="status" aria-live="polite"></div>
+      <div id="pdv-operador-trocar">
+        <div class="field form-group">
+          <label for="pdv-operador-select">Operador</label>
+          <select class="select" id="pdv-operador-select"></select>
+        </div>
+        <div class="field form-group">
+          <label for="pdv-operador-pin">PIN</label>
+          <input class="input" type="password" id="pdv-operador-pin" inputmode="numeric" autocomplete="off" maxlength="6">
+        </div>
+        <p class="inline-note">A venda em andamento continua com o novo operador. Quem entra por PIN usa só o caixa.</p>
+      </div>
+      <button type="button" class="pdv-pag-dividir" onclick="alternarDefinirPinPDV()">Definir ou trocar o meu PIN</button>
+      <div id="pdv-operador-definir" hidden>
+        <div class="field form-group">
+          <label for="pdv-meu-pin-senha">Senha de <span id="pdv-meu-pin-nome">—</span></label>
+          <input class="input" type="password" id="pdv-meu-pin-senha" autocomplete="current-password">
+        </div>
+        <div class="field form-group">
+          <label for="pdv-meu-pin">Novo PIN (4 a 6 números)</label>
+          <input class="input" type="password" id="pdv-meu-pin" inputmode="numeric" autocomplete="off" maxlength="6">
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="salvarMeuPinPDV()">Salvar PIN</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharTrocaOperadorPDV()">Cancelar (Esc)</button>
+      <button class="btn btn-primary" type="button" id="btn-pdv-operador" onclick="confirmarTrocaOperadorPDV()">Trocar (Enter)</button>
+    </div>
+  </div>
+</div>
 
 <script src="/js/stockos-auth.js"></script>
 <script src="/js/shared.js"></script>

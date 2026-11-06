@@ -119,6 +119,7 @@ public class GlobalExceptionHandler {
                  "PAUSA_NAO_ENCONTRADA",
                  "REGRA_HORARIO_NAO_ENCONTRADA",
                  "CODIGO_VENDA_NAO_ENCONTRADO" -> HttpStatus.NOT_FOUND;
+            case "MUITAS_TENTATIVAS" -> HttpStatus.TOO_MANY_REQUESTS;
             default -> HttpStatus.BAD_REQUEST;
         };
     }

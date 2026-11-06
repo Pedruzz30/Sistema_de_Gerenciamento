@@ -59,6 +59,24 @@
         <p>Entre com suas credenciais para acessar o sistema.</p>
       </div>
 
+      <form id="senhaForm" class="senha-form" onsubmit="handleCriarSenha(event)" hidden>
+        <h2 class="senha-form__titulo">Olá, <span id="senhaFormNome"></span>. Crie sua senha</h2>
+        <p class="senha-form__texto">A senha atual é provisória. Escolha uma só sua, com pelo menos 6 caracteres.</p>
+        <div class="f-group full field">
+          <label for="novaSenha">Nova senha</label>
+          <input class="input" type="password" id="novaSenha" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="f-group full field">
+          <label for="confirmarSenha">Repita a nova senha</label>
+          <input class="input" type="password" id="confirmarSenha" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="f-group full field" id="pinCampo">
+          <label for="novoPin">PIN de 4 a 6 números, para trocar de operador no caixa (opcional)</label>
+          <input class="input" type="password" id="novoPin" inputmode="numeric" autocomplete="off" maxlength="6">
+        </div>
+        <p class="senha-form__aviso" id="senhaAviso" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-block">Salvar e entrar</button>
+      </form>
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="f-row grid-2" id="legacyNameFields">
           <div class="f-group field">
@@ -169,6 +187,70 @@
     });
   }
 
+  /** Primeira entrada: a senha veio de outra pessoa ou era a padrão, então precisa ser trocada. */
+  let senhaEmUso = null;
+  let senhaJaTrocada = false;
+
+  function mostrarCriacaoDeSenha(usuario, senhaAtual) {
+    document.getElementById('loginForm').hidden = true;
+    const form = document.getElementById('senhaForm');
+    form.hidden = false;
+    senhaEmUso = senhaAtual;
+    senhaJaTrocada = false;
+    document.getElementById('senhaFormNome').textContent = usuario.nome;
+    const operaCaixa = (usuario.permissoes || []).some(p => p === 'VER_VENDAS' || p === 'VER_FINANCAS');
+    document.getElementById('pinCampo').hidden = !operaCaixa;
+    document.getElementById('novaSenha').focus();
+  }
+
+  async function erroDaResposta(res, padrao) {
+    const corpo = await res.json().catch(() => null);
+    return (corpo && corpo.erro) || padrao;
+  }
+
+  async function handleCriarSenha(e) {
+    e.preventDefault();
+    const aviso = document.getElementById('senhaAviso');
+    const novaSenha = document.getElementById('novaSenha').value;
+    const confirmar = document.getElementById('confirmarSenha').value;
+    const pin = document.getElementById('novoPin').value.trim();
+    aviso.textContent = '';
+    if (novaSenha !== confirmar) {
+      aviso.textContent = 'As duas senhas não são iguais.';
+      return;
+    }
+    const json = { 'Content-Type': 'application/json' };
+    try {
+      if (!senhaJaTrocada) {
+        const res = await fetch('/api/auth/trocar-senha', {
+          method: 'POST',
+          headers: json,
+          body: JSON.stringify({ senhaAtual: senhaEmUso, novaSenha })
+        });
+        if (!res.ok) throw new Error(await erroDaResposta(res, 'Não foi possível trocar a senha.'));
+        persistirUsuario(await res.json());
+        // A senha já mudou: se o PIN der erro, tentar de novo não pode trocá-la outra vez.
+        senhaEmUso = novaSenha;
+        senhaJaTrocada = true;
+        document.getElementById('novaSenha').readOnly = true;
+        document.getElementById('confirmarSenha').readOnly = true;
+      }
+      if (pin) {
+        const resPin = await fetch('/api/auth/pin', {
+          method: 'POST',
+          headers: json,
+          body: JSON.stringify({ senhaAtual: senhaEmUso, pin })
+        });
+        if (!resPin.ok) throw new Error(await erroDaResposta(resPin, 'Não foi possível salvar o PIN.') + ' A senha já foi salva: corrija o PIN ou deixe em branco.');
+        persistirUsuario(await resPin.json());
+      }
+      senhaEmUso = null;
+      window.location.href = '/dashboard.html';
+    } catch (err) {
+      aviso.textContent = err.message;
+    }
+  }
+
   async function handleLogin(e) {
     e.preventDefault();
     const btn     = document.getElementById('btnSubmit');
@@ -179,6 +261,7 @@
     const sobrenome = document.getElementById('sobrenome').value.trim();
     const senha     = document.getElementById('senha').value;
 
+    let erroMostrado = null;
     btn.classList.add('loading');
     alert.className = 'alert';
 
@@ -207,9 +290,19 @@
         body: JSON.stringify({ nome, sobrenome, senha })
       });
 
+      if (res.status === 429) {
+        erroMostrado = 'Muitas tentativas erradas. Aguarde 5 minutos e tente de novo.';
+        throw new Error(erroMostrado);
+      }
       if (res.ok) {
         const usuario = await res.json();
         persistirUsuario(usuario);
+        if (usuario.senhaProvisoria) {
+          btn.classList.remove('loading');
+          alert.className = 'alert';
+          mostrarCriacaoDeSenha(usuario, senha);
+          return;
+        }
         alert.className = 'alert success';
         alertIcon.innerHTML = loginIconMarkup('checkCircle');
         alertMsg.textContent = `Bem-vindo, ${usuario.nome}! Redirecionando...`;
@@ -220,9 +313,9 @@
     } catch (err) {
       alert.className = 'alert error';
       alertIcon.innerHTML = loginIconMarkup('alertTriangle');
-      alertMsg.textContent = window.StockosAuth.isSupabase()
+      alertMsg.textContent = erroMostrado || (window.StockosAuth.isSupabase()
         ? 'Nao foi possivel entrar. Confira a conta e seu vinculo com o StockOS.'
-        : 'Nome, sobrenome ou senha incorretos.';
+        : 'Nome, sobrenome ou senha incorretos.');
       btn.classList.remove('loading');
       document.querySelectorAll('input').forEach(i => {
         i.style.borderColor = 'rgba(244,63,94,.5)';

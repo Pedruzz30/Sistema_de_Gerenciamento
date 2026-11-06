@@ -3648,3 +3648,11 @@ body.bridge-page .bridge-actions a {
 .xml-novo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
 .xml-novo[hidden], .xml-vincular[hidden] { display: none; }
 .xml-novo__nome { grid-column: 1 / -1; }
+
+/* ───────── Troca de operador e criação de senha ───────── */
+.pdv-trocar-operador { background: none; border: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.senha-form { display: grid; gap: 12px; }
+.senha-form[hidden] { display: none; }
+.senha-form__titulo { margin: 0; font-size: 18px; }
+.senha-form__texto { margin: 0; font-size: 13px; }
+.senha-form__aviso { margin: 0; min-height: 18px; color: #b91c1c; font-size: 13px; font-weight: 600; }

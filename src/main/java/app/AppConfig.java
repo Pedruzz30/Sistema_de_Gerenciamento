@@ -68,8 +68,9 @@ public class AppConfig {
 
     @Bean
     public AutenticacaoService autenticacaoService(UsuarioRepository usuarioRepository,
-                                                   LogRepository logRepository) {
-        return new AutenticacaoService(usuarioRepository, logRepository);
+                                                   LogRepository logRepository,
+                                                   SenhaService senhaService) {
+        return new AutenticacaoService(usuarioRepository, logRepository, senhaService, new LimiteTentativas());
     }
 
     @Bean
@@ -593,8 +594,51 @@ public class AppConfig {
 
     @Bean
     public CadastroFuncionarioService cadastroFuncionarioService(UsuarioRepository usuarioRepository,
-                                                                 LogRepository logRepository) {
-        return new CadastroFuncionarioService(usuarioRepository, logRepository);
+                                                                 LogRepository logRepository,
+                                                                 SenhaService senhaService) {
+        CadastroFuncionarioService cadastroFuncionarioService = new CadastroFuncionarioService(usuarioRepository, logRepository);
+        cadastroFuncionarioService.setSenhaService(senhaService);
+        return cadastroFuncionarioService;
+    }
+
+    @Bean
+    public SenhaService senhaService() {
+        return new SenhaService();
+    }
+
+    @Bean
+    public SessaoService sessaoService(SessaoUsuarioRepository sessaoUsuarioRepository,
+                                       UsuarioRepository usuarioRepository,
+                                       AutenticacaoService autenticacaoService,
+                                       LogRepository logRepository,
+                                       @Value("${stockos.auth.sessao-horas:14}") long sessaoHoras) {
+        return new SessaoService(sessaoUsuarioRepository, usuarioRepository, autenticacaoService, logRepository,
+                java.time.Duration.ofHours(sessaoHoras), java.time.Clock.systemDefaultZone());
+    }
+
+    /** Toda chamada a /api/* passa por aqui: a identidade vem da sessão, não do cabeçalho. */
+    @Bean
+    public org.springframework.boot.web.servlet.FilterRegistrationBean<controller.SessaoFilter> filtroSessao(
+            SessaoService sessaoService,
+            @Value("${stockos.auth.aceitar-header-legado:false}") boolean aceitarHeaderLegado) {
+        var registro = new org.springframework.boot.web.servlet.FilterRegistrationBean<>(
+                new controller.SessaoFilter(sessaoService, aceitarHeaderLegado));
+        registro.addUrlPatterns("/api/*");
+        registro.setOrder(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 100);
+        return registro;
+    }
+
+    /** Converte as senhas em texto puro de bancos antigos e dos usuários padrão. */
+    @Bean
+    public org.springframework.boot.ApplicationRunner migracaoDeSenhas(AutenticacaoService autenticacaoService,
+                                                                       Usuario adminSuperior) {
+        return argumentos -> {
+            int convertidas = autenticacaoService.migrarSenhasAntigas();
+            if (convertidas > 0) {
+                org.slf4j.LoggerFactory.getLogger(AppConfig.class)
+                        .info("{} senha(s) convertida(s) para hash; a troca sera exigida no proximo login.", convertidas);
+            }
+        };
     }
 
     // ── Shared privileged user ────────────────────────────────────────────────

@@ -16,6 +16,13 @@ public class CadastroFuncionarioService {
     private final UsuarioRepository usuarioRepository;
     private final LogRepository logRepository;
 
+    private SenhaService senhaService;
+
+    /** Com ele, a senha inicial vira hash e precisa ser trocada no primeiro login. */
+    public void setSenhaService(SenhaService senhaService) {
+        this.senhaService = senhaService;
+    }
+
     public CadastroFuncionarioService(UsuarioRepository usuarioRepository, LogRepository logRepository) {
         this.usuarioRepository = usuarioRepository;
         this.logRepository = logRepository;
@@ -44,6 +51,9 @@ public class CadastroFuncionarioService {
                 .anyMatch(usuario -> usuario.getCpfBruto().equals(novoUsuario.getCpfBruto()));
         if (cpfJaCadastrado) {
             throw new IllegalArgumentException("Já existe um funcionário cadastrado com este CPF.");
+        }
+        if (senhaService != null) {
+            novoUsuario.definirSenha(senhaService.gerarHash(senhaInicial), true);
         }
         Usuario salvo = usuarioRepository.salvar(novoUsuario);
 

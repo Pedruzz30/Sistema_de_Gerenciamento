@@ -29,10 +29,13 @@ public class CaixaController {
     private final CaixaService caixaService;
     private final CaixaRepository caixaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final service.AutenticacaoService autenticacaoService;
 
     public CaixaController(CaixaService caixaService,
                            CaixaRepository caixaRepository,
-                           UsuarioRepository usuarioRepository) {
+                           UsuarioRepository usuarioRepository,
+                           service.AutenticacaoService autenticacaoService) {
+        this.autenticacaoService = autenticacaoService;
         this.caixaService = caixaService;
         this.caixaRepository = caixaRepository;
         this.usuarioRepository = usuarioRepository;
@@ -550,11 +553,10 @@ public class CaixaController {
                 || autorizacao.senha() == null || autorizacao.senha().isBlank()) {
             return null;
         }
-        return usuarioRepository.buscarPorNomeSobrenomeESenha(
+        return autenticacaoService.conferirCredenciais(
                         autorizacao.nome().trim(),
                         autorizacao.sobrenome() == null ? "" : autorizacao.sobrenome().trim(),
                         autorizacao.senha())
-                .filter(Usuario::isAtivo)
                 .orElseThrow(() -> new SecurityException("Login do gerente invalido."));
     }
 }

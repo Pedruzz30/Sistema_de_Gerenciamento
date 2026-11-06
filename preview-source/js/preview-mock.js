@@ -85,6 +85,7 @@
     let body={};
     try{body=JSON.parse(init.body||'{}');}catch(e){}
     if(path==='/api/auth/login' && method==='POST')return respond(user);
+    if(path==='/api/auth/logout' && method==='POST')return respond({});
     if(path==='/api/produtos' && method==='GET')return respond(db.produtos);
     // Demonstração do cadastro rápido. O sistema real cria variações que baixam
     // o mesmo estoque; aqui o fardo vira um produto fictício separado.

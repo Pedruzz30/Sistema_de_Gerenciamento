@@ -37,6 +37,7 @@ async function abrirPDV(numeroCaixa) {
   limparAlert('alert-pdv');
 
   abrirModal('modal-pdv');
+  atualizarOperadorPDV();
   cancelarPagamentoPDV();
   pdvProximoAlternativo = false;
   atualizarIndicadorAlternativoPDV();
@@ -1327,13 +1328,123 @@ function fecharPDV() {
   fecharModal('modal-pdv');
 }
 
+// ── Troca de operador por PIN ─────────────────────────────────────────────
+
+function nomeDoOperadorAtual() {
+  return [usuario.nome, usuario.sobrenome].filter(Boolean).join(' ') || '—';
+}
+
+function atualizarOperadorPDV() {
+  const el = document.getElementById('pdv-operador-label');
+  if (el) el.textContent = nomeDoOperadorAtual();
+}
+
+async function abrirTrocaOperadorPDV() {
+  limparAlert('alert-pdv-operador');
+  document.getElementById('pdv-operador-pin').value = '';
+  document.getElementById('pdv-operador-trocar').hidden = false;
+  document.getElementById('pdv-operador-definir').hidden = true;
+  document.getElementById('btn-pdv-operador').hidden = false;
+  document.getElementById('pdv-meu-pin-nome').textContent = nomeDoOperadorAtual();
+  const select = document.getElementById('pdv-operador-select');
+  select.replaceChildren();
+  abrirModal('modal-pdv-operador');
+  try {
+    const resp = await fetch('/api/auth/operadores');
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível listar os operadores.'));
+    const operadores = (await resp.json()).filter(o => Number(o.ru) !== Number(usuario.ru));
+    select.replaceChildren(...operadores.map(o => {
+      const option = document.createElement('option');
+      option.value = o.ru;
+      option.textContent = o.nome;
+      return option;
+    }));
+    if (operadores.length === 0) {
+      mostrarAlert('alert-pdv-operador', 'Ninguém mais tem PIN. Cada pessoa define o seu ao entrar com a própria senha.', 'error');
+    }
+    document.getElementById('pdv-operador-pin').focus();
+  } catch (error) {
+    mostrarAlert('alert-pdv-operador', error.message, 'error');
+  }
+}
+
+function fecharTrocaOperadorPDV() {
+  fecharModal('modal-pdv-operador');
+  focarLeituraPDV();
+}
+
+async function confirmarTrocaOperadorPDV() {
+  limparAlert('alert-pdv-operador');
+  const ru = Number(document.getElementById('pdv-operador-select').value);
+  const campoPin = document.getElementById('pdv-operador-pin');
+  if (!ru) return;
+  try {
+    const resp = await fetch('/api/auth/trocar-operador', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ru, pin: campoPin.value })
+    });
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível trocar de operador.'));
+    Object.assign(usuario, await resp.json());
+    persistirUsuario(usuario);
+    atualizarOperadorPDV();
+    fecharTrocaOperadorPDV();
+    showToast(`${nomeDoOperadorAtual()} está operando o caixa.`, 'success');
+  } catch (error) {
+    mostrarAlert('alert-pdv-operador', error.message, 'error');
+    campoPin.value = '';
+    campoPin.focus();
+  }
+}
+
+function alternarDefinirPinPDV() {
+  const definir = document.getElementById('pdv-operador-definir');
+  definir.hidden = !definir.hidden;
+  document.getElementById('pdv-operador-trocar').hidden = !definir.hidden;
+  document.getElementById('btn-pdv-operador').hidden = !definir.hidden;
+  if (!definir.hidden) document.getElementById('pdv-meu-pin-senha').focus();
+}
+
+async function salvarMeuPinPDV() {
+  limparAlert('alert-pdv-operador');
+  const senha = document.getElementById('pdv-meu-pin-senha');
+  const pin = document.getElementById('pdv-meu-pin');
+  try {
+    const resp = await fetch('/api/auth/pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senhaAtual: senha.value, pin: pin.value })
+    });
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível salvar o PIN.'));
+    Object.assign(usuario, await resp.json());
+    persistirUsuario(usuario);
+    mostrarAlert('alert-pdv-operador', 'PIN salvo.', 'success');
+    senha.value = '';
+    pin.value = '';
+    alternarDefinirPinPDV();
+  } catch (error) {
+    mostrarAlert('alert-pdv-operador', error.message, 'error');
+  }
+}
+
 /** Atalhos do PDV (só com o terminal aberto). */
 function atalhosPDV(event) {
   const modal = document.getElementById('modal-pdv');
   if (!modal || !modal.classList.contains('open')) return;
+  if (document.getElementById('modal-pdv-operador')?.classList.contains('open')) {
+    if (event.key === 'Escape') { event.preventDefault(); fecharTrocaOperadorPDV(); return; }
+    if (event.key === 'F12') { event.preventDefault(); return; }
+    if (event.key === 'Enter' && event.target.tagName !== 'BUTTON') {
+      event.preventDefault();
+      if (document.getElementById('pdv-operador-definir').hidden) confirmarTrocaOperadorPDV();
+      else salvarMeuPinPDV();
+    }
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
+  if (event.key === 'F12') { event.preventDefault(); abrirTrocaOperadorPDV(); return; }
   if (event.key === 'F10') { event.preventDefault(); if (!pagamentoAberto) abrirPagamentoPDV(); return; }
   if (event.key === 'F4') { event.preventDefault(); alternarProximoAlternativoPDV(); return; }
   if (event.key === 'F2') { event.preventDefault(); document.getElementById('pdv-busca')?.focus(); return; }
@@ -1420,6 +1531,11 @@ window.StockOSPDV = {
       formatarMoedaPDV,
       lerCodigoPDV,
       focarLeituraPDV,
+      abrirTrocaOperadorPDV,
+      fecharTrocaOperadorPDV,
+      confirmarTrocaOperadorPDV,
+      alternarDefinirPinPDV,
+      salvarMeuPinPDV,
       alternarProximoAlternativoPDV,
       abrirPagamentoPDV,
       cancelarPagamentoPDV,

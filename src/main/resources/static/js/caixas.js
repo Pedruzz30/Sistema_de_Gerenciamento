@@ -56,12 +56,14 @@ function podeExecutarMovimentacao(tipo) {
 }
 
 /** Operador sem permissão financeira precisa da autorização do gerente. */
-const PRECISA_AUTORIZACAO_GERENTE = PODE_OPERAR_CAIXA && !PODE_GERIR_FINANCAS_CAIXA;
+function precisaAutorizacaoGerente() {
+  return !temPermissao(PERMISSOES.VER_FINANCAS);
+}
 
 function prepararAutorizacao(prefixo) {
   const bloco = document.getElementById(prefixo + '-autorizacao');
   if (!bloco) return;
-  bloco.hidden = !PRECISA_AUTORIZACAO_GERENTE;
+  bloco.hidden = !precisaAutorizacaoGerente();
   ['nome', 'sobrenome', 'senha'].forEach(campo => {
     const el = document.getElementById(prefixo + '-gerente-' + campo);
     if (el) el.value = '';
@@ -69,7 +71,7 @@ function prepararAutorizacao(prefixo) {
 }
 
 function lerAutorizacao(prefixo) {
-  if (!PRECISA_AUTORIZACAO_GERENTE) return null;
+  if (!precisaAutorizacaoGerente()) return null;
   const valor = campo => (document.getElementById(prefixo + '-gerente-' + campo)?.value || '').trim();
   const nome = valor('nome');
   const senha = document.getElementById(prefixo + '-gerente-senha')?.value || '';

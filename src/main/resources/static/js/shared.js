@@ -59,7 +59,9 @@ function lerUsuarioPersistido() {
 const usuario = lerUsuarioPersistido();
 if (!usuario) window.location.href = '/login.html';
 
-// ── X-User-RU header injection ──────────────────────────────────────────────
+// ── Chamadas à API ──────────────────────────────────────────────────────────
+// A identidade vem do cookie de sessão (HttpOnly). O servidor descarta o
+// X-User-RU enviado daqui; ele só serve aos testes automatizados.
 (function () {
   const originalFetch = window.fetch.bind(window);
 
@@ -99,7 +101,20 @@ if (!usuario) window.location.href = '/login.html';
       init = Object.assign({}, init || {}, { headers });
     }
 
-    return originalFetch(input, init);
+    const resposta = await originalFetch(input, init);
+    if (isApiCall && !requestUrl.includes('/api/auth/login')) {
+      if (resposta.status === 401) {
+        limparUsuarioPersistido();
+        window.location.href = '/login.html';
+      } else if (resposta.status === 403) {
+        const corpo = await resposta.clone().json().catch(function () { return null; });
+        if (corpo && corpo.codigo === 'SENHA_PROVISORIA') {
+          limparUsuarioPersistido();
+          window.location.href = '/login.html';
+        }
+      }
+    }
+    return resposta;
   };
 })();
 
@@ -178,6 +193,8 @@ window.getCanalVendaAtual = getCanalVendaAtual;
 async function logout() {
   if (window.StockosAuth && window.StockosAuth.isSupabase()) {
     await window.StockosAuth.signOut();
+  } else {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(function () {});
   }
   limparUsuarioPersistido();
   window.location.href = '/login.html';
