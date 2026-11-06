@@ -312,7 +312,7 @@ try {
   await passo(admin, 'F12 com PIN errado nao troca', async () => {
     await admin.keyboard.press('F12');
     await admin.waitForSelector('#modal-pdv-operador.open');
-    await admin.waitForSelector('#pdv-operador-select option');
+    await admin.waitForSelector('#pdv-operador-select option', { state: 'attached' });
     await admin.selectOption('#pdv-operador-select', { label: 'Ana Caixa' });
     await admin.focus('#pdv-operador-pin');
     await admin.keyboard.type('0000');
