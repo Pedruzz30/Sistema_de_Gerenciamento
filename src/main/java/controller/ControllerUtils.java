@@ -1,10 +1,17 @@
 package controller;
 
+import app.security.LinkedStockosUserFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import model.Permissao;
 import model.Usuario;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import repository.UsuarioRepository;
+
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -24,6 +31,19 @@ public final class ControllerUtils {
      * Requests are denied when identity is missing, malformed, unknown or inactive.
      */
     public static Usuario resolveUser(String ruHeader, UsuarioRepository repo) {
+        // In Supabase mode, the security filter already matched the verified
+        // JWT subject to an ACTIVE user; never trust caller-supplied RU.
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes requestAttrs) {
+            HttpServletRequest request = requestAttrs.getRequest();
+            Object linked = request.getAttribute(LinkedStockosUserFilter.VERIFIED_USER_ATTRIBUTE);
+            if (linked instanceof Usuario verified) return verified;
+        }
+        // If a JWT is present but the verified request binding is missing,
+        // fail closed rather than falling back to an X-User-RU header.
+        if (SecurityContextHolder.getContext().getAuthentication() instanceof
+                org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken) {
+            throw new SecurityException("Identidade Supabase nao vinculada ao usuario operacional.");
+        }
         if (ruHeader == null || ruHeader.isBlank()) {
             log.warn("X-User-RU ausente.");
             throw new SecurityException("Identidade ausente. Informe o cabecalho X-User-RU.");
