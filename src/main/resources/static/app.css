@@ -3597,6 +3597,14 @@ body.bridge-page .bridge-actions a {
   }
 }
 
+/* ───────── Painel de backup no Dashboard ───────── */
+.backup-painel { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.backup-painel__texto { min-width: 0; overflow-wrap: anywhere; }
+.backup-painel .btn { flex-shrink: 0; }
+.backup-painel--ok { background: #f0fdf4; border-color: #bbf7d0; }
+.backup-painel--atencao { background: #fffbeb; border-color: #fde68a; }
+.backup-painel--erro { background: #fef2f2; border-color: #fecaca; }
+
 /* O atributo hidden sempre esconde, mesmo em elemento cuja classe define display. */
 [hidden] { display: none !important; }
 

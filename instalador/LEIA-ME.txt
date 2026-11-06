@@ -1,0 +1,30 @@
+STOCKOS - INSTALAÇÃO NA LOJA
+
+Instalar
+1. Extraia este ZIP (botão direito, "Extrair tudo").
+2. Na pasta extraída, abra "Instalar.cmd".
+   Se o Windows avisar sobre o arquivo, clique em "Mais informações" e "Executar assim mesmo".
+3. O sistema abre no navegador. Primeiro acesso: nome Admin, sobrenome Superior, senha 1234.
+   Ele pede para criar uma senha nova e um PIN. Anote em lugar seguro.
+
+Não precisa de internet, de Docker nem de administrador.
+Depois de instalar, esta pasta extraída pode ser apagada.
+
+No dia a dia
+- O sistema liga sozinho quando alguém entra no Windows.
+- Use o atalho StockOS na Área de Trabalho.
+
+Backup
+- O sistema faz backup sozinho a cada 3 horas e a cada fechamento de caixa, em C:\StockOS\backups.
+- Para ter uma cópia fora do notebook, crie uma pasta chamada StockOS-Backups em um pen drive
+  ou no OneDrive. A cópia é automática sempre que ela estiver disponível.
+- O Dashboard avisa quando o backup está com problema.
+
+Atualizar
+Extraia o ZIP da versão nova e abra "Instalar.cmd". Os dados não são apagados.
+
+Voltar um backup
+Abra "Restaurar backup.cmd" na pasta C:\StockOS.
+
+Notebook novo
+Instale normalmente, abra "Restaurar backup.cmd" e escolha o arquivo do pen drive.

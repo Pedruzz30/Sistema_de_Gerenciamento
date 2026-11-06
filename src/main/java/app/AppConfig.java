@@ -6,6 +6,7 @@ import service.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.time.Clock;
 import java.time.ZoneId;
@@ -23,6 +24,7 @@ import java.time.ZoneId;
  * the same instances throughout the application lifetime.
  */
 @Configuration
+@EnableScheduling
 public class AppConfig {
 
     private static final String CPF_ADMIN_SUPERIOR = "52998224725";
@@ -50,6 +52,28 @@ public class AppConfig {
     @Bean
     public Clock appClock(@Value("${stockos.timezone:America/Sao_Paulo}") String timezone) {
         return Clock.system(ZoneId.of(timezone));
+    }
+
+    /** Desligado sem stockos.backup.pasta: só a instalação da loja preenche essa opção. */
+    @Bean
+    public BackupService backupService(
+            @Value("${stockos.backup.pasta:}") String pasta,
+            @Value("${stockos.backup.pg-bin:}") String pgBin,
+            @Value("${stockos.backup.intervalo-horas:3}") long intervaloHoras,
+            @Value("${spring.datasource.url}") String url,
+            @Value("${spring.datasource.username}") String usuario,
+            @Value("${spring.datasource.password:}") String senha,
+            Clock appClock) {
+        return new BackupService(
+                pasta.isBlank() ? null : java.nio.file.Path.of(pasta),
+                pgBin.isBlank() ? null : java.nio.file.Path.of(pgBin),
+                url,
+                usuario,
+                senha,
+                java.time.Duration.ofHours(intervaloHoras),
+                BackupService::destinosPadrao,
+                BackupService::executarProcesso,
+                appClock);
     }
 
     @Bean

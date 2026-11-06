@@ -30,6 +30,12 @@ public class CaixaController {
     private final CaixaRepository caixaRepository;
     private final UsuarioRepository usuarioRepository;
     private final service.AutenticacaoService autenticacaoService;
+    private service.BackupService backupService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setBackupService(service.BackupService backupService) {
+        this.backupService = backupService;
+    }
 
     public CaixaController(CaixaService caixaService,
                            CaixaRepository caixaRepository,
@@ -332,6 +338,7 @@ public class CaixaController {
                     request.observacao(),
                     resolverAutorizador(request.autorizacao())
             );
+            if (backupService != null) backupService.executarEmSegundoPlano("fechamento de caixa");
             return ResponseEntity.ok(FechamentoResponse.from(fechamento));
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));

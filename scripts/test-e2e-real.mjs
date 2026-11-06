@@ -480,6 +480,21 @@ try {
     assert.equal((await api(dono, '/api/funcionarios')).status, 200);
   });
 
+  if (process.env.E2E_BACKUP === '1') {
+    await passo(dono, 'Dashboard mostra o backup e faz na hora', async () => {
+      await dono.waitForSelector('#backup-painel:not([hidden])');
+      await esperarTexto(dono, '#backup-painel', 'só neste notebook');
+      await naTela(dono, '#btn-backup-agora');
+      await dono.click('#btn-backup-agora');
+      await esperarTexto(dono, '#backup-painel', 'Último backup: hoje');
+    });
+  } else {
+    await passo(dono, 'Fora da loja o painel de backup nao aparece', async () => {
+      assert.equal((await api(dono, '/api/sistema/backup')).corpo.monitorado, false);
+      assert.equal(await dono.locator('#backup-painel').isVisible(), false);
+    });
+  }
+
   await passo(dono, 'Importar XML mostra a conferencia', async () => {
     await dono.goto(`${BASE}/notas.html`);
     await dono.click('#btn-importar-nfe');

@@ -1,0 +1,78 @@
+name: StockOS instalador da loja
+
+# Monta o ZIP de instalação e testa em um Windows limpo: instalar, vender no navegador,
+# fazer backup, restaurar, queda de energia, atualização e notebook perdido.
+
+on:
+  push:
+    branches: ["feat/caixas-pdv-*"]
+    paths:
+      - "pom.xml"
+      - "src/main/**"
+      - "instalador/**"
+      - "scripts/test-e2e-real.mjs"
+      - ".github/workflows/stockos-instalador.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build application
+        shell: pwsh
+        run: mvn -B -ntp -DskipTests package
+
+      - name: Build package
+        shell: pwsh
+        run: |
+          $jar = Get-ChildItem target -Filter 'sistema-gerenciamento-*.jar' | Select-Object -First 1
+          ./instalador/construir-pacote.ps1 -Jar $jar.FullName
+
+      - name: Install browser
+        shell: pwsh
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1
+          npx playwright install chromium
+
+      - name: Test installation and disasters
+        shell: pwsh
+        run: ./instalador/testar-instalacao.ps1 -Zip (Resolve-Path instalador/saida/StockOS-Loja.zip).Path
+
+      - name: Show logs
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem C:\StockOS\logs -ErrorAction SilentlyContinue | ForEach-Object { "--- $($_.Name)"; Get-Content $_.FullName -Tail 60 }
+
+      - name: Keep screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-evidencias
+          path: |
+            e2e-artifacts/
+            C:\StockOS\logs\
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Keep store package
+        uses: actions/upload-artifact@v4
+        with:
+          name: StockOS-Loja
+          path: instalador/saida/StockOS-Loja.zip
+          retention-days: 30
+          compression-level: 0

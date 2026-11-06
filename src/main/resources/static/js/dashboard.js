@@ -22,7 +22,77 @@ function dataLocalHojeIso() {
   return [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
 }
 
+// ── Backup da loja: só aparece na instalação local, para quem cuida do financeiro.
+function descreverDataBackup(iso) {
+  const data = new Date(iso);
+  const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const hoje = new Date();
+  if (data.toDateString() === hoje.toDateString()) return 'hoje às ' + hora;
+  return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + hora;
+}
+
+function renderSituacaoBackup(situacao) {
+  const painel = document.getElementById('backup-painel');
+  if (!painel) return;
+  if (!situacao || !situacao.monitorado) { painel.hidden = true; return; }
+
+  const ultimo = situacao.ultimoBackup ? 'Último backup: ' + descreverDataBackup(situacao.ultimoBackup) + '.' : 'Ainda não há backup.';
+  let nivel = 'ok';
+  let titulo = 'Backup em dia.';
+  let detalhe = situacao.ultimaCopiaExterna
+    ? 'Cópia fora do notebook: ' + descreverDataBackup(situacao.ultimaCopiaExterna) + ' em ' + situacao.destinoExterno + '.'
+    : '';
+  if (situacao.atrasado) {
+    nivel = 'erro';
+    titulo = 'O backup está com problema.';
+    detalhe = situacao.ultimoErro || 'O último backup já passou de 12 horas.';
+  } else if (situacao.erroCopia) {
+    nivel = 'atencao';
+    titulo = 'A cópia do backup não foi gravada.';
+    detalhe = situacao.erroCopia;
+  } else if (situacao.semCopiaExterna) {
+    nivel = 'atencao';
+    titulo = 'Os backups estão só neste notebook.';
+    detalhe = 'Se ele quebrar ou for roubado, perde tudo. Crie uma pasta chamada StockOS-Backups em um pen drive ou no OneDrive e deixe conectado: a cópia é automática.';
+  }
+
+  painel.className = 'backup-painel backup-painel--' + nivel;
+  painel.innerHTML = '<div class="backup-painel__texto"><strong>' + escapeHtml(titulo) + '</strong> '
+    + escapeHtml(ultimo) + (detalhe ? '<br>' + escapeHtml(detalhe) : '') + '</div>'
+    + '<button class="btn btn-secondary btn-sm" type="button" id="btn-backup-agora">Fazer backup agora</button>';
+  painel.hidden = false;
+  document.getElementById('btn-backup-agora').addEventListener('click', fazerBackupAgora);
+}
+
+async function carregarSituacaoBackup() {
+  if (!PODE_VER_RENTABILIDADE_DASH) return;
+  try {
+    const resp = await fetch('/api/sistema/backup');
+    if (resp.ok) renderSituacaoBackup(await resp.json());
+  } catch {
+    // Sem servidor de backup (demonstração): o painel continua escondido.
+  }
+}
+
+async function fazerBackupAgora() {
+  const botao = document.getElementById('btn-backup-agora');
+  botao.disabled = true;
+  botao.textContent = 'Fazendo backup...';
+  try {
+    const resp = await fetch('/api/sistema/backup', { method: 'POST' });
+    if (resp.status === 409) showToast('Já há um backup em andamento.', 'info');
+    const situacao = await resp.json();
+    renderSituacaoBackup(situacao);
+    if (resp.ok && !situacao.ultimoErro) showToast('Backup concluído.', 'success');
+  } catch {
+    showToast('Não foi possível fazer o backup.', 'error');
+    botao.disabled = false;
+    botao.textContent = 'Fazer backup agora';
+  }
+}
+
 async function carregarDados() {
+  carregarSituacaoBackup();
   const pedir = async (url, fallback) => {
     const inicio = performance.now();
     try {
