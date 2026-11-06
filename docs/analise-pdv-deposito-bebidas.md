@@ -406,21 +406,23 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 
 ## 10. Roteiro sugerido (em fases)
 
+Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem marca: não começou.
+
 **Fase 0 – Pré-requisitos do estoque (seção 11)**
-0a. **Um único saldo de estoque** (o decimal): cadastro, entrada manual, notas e tela de Estoque passam a usar `estoque_produtos`, com migração que copia os saldos atuais.
+0a. ✅ (seção 12) **Um único saldo de estoque** (o decimal): cadastro, entrada manual, notas e tela de Estoque passam a usar `estoque_produtos`, com migração que copia os saldos atuais.
 0b. ✅ **Cadastro rápido de "produto de revenda"** (seção 13): cria Produto + Item de cardápio + Variações (lata gelada, lata natural, fardo) de uma vez.
 0c. ✅ **Importar XML da NF-e** (seção 14) do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
 
 **Fase 1 – Abrir a loja (MVP do caixa)**
-1. Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN.
-2. Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções).
-3. **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
-4. `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
-5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. PIN de gerente para sangria, cancelamento e desconto.
-6. Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
-7. Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso.
+1. 🔶 Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN. **Falta:** a folha de códigos e vincular código a um produto que já existe.
+2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). **Falta:** os atalhos e cadastrar na hora quando o código não é encontrado.
+3. ✅ **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
+4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
+5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. **Falta:** tela de cancelar venda finalizada e desconto (seção 16).
+6. ✅ Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
+7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. **Falta:** resumo por operador e impressão.
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
-9. Desligar a venda avulsa sem itens no PDV (só gerente).
+9. ✅ Desligar a venda avulsa sem itens no PDV (só gerente).
 10. ✅ (seção 15) Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
 11. Instalação local no notebook (Docker) + backup diário automático.
 
@@ -435,6 +437,8 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 17. NFC-e via API de emissão, obrigatória se a loja for Simples ou Presumido (ver 8.1).
 18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
 19. Delivery pelo WhatsApp (se existir).
+
+**Pedido fora das fases:** redefinir senha pelo gerente (hoje, quem esquece a senha fica sem acesso).
 
 **Fora do escopo (confirmado):** fiado, casco retornável e comandas/cobrança por mesa.
 
@@ -683,6 +687,40 @@ Na tela de Notas, o botão **Importar XML** recebe o arquivo da NF-e do forneced
 - **Na demonstração** não há troca de operador nem criação de senha, porque não existe servidor.
 - **Plano Supabase:** o projeto tem branches de autenticação com Supabase, não integradas. Se esse caminho for retomado, esta sessão local precisará ser substituída ou convivida com ele.
 - A tela de login mostra o selo "Conexão segura", que já existia e não reflete a falta de HTTPS.
+
+## 16. Teste de ponta a ponta no navegador (06/11/2026)
+
+**O que é:** `scripts/test-e2e-real.mjs`, rodado pelo workflow `stockos-e2e.yml` a cada envio que mexa no sistema. Sobe o PostgreSQL e o Java em modo de produção, sem o cabeçalho legado, e abre um Chromium em janela de notebook (1366×650). Guarda um print de cada passo, por 7 dias, na página da execução no GitHub.
+
+**O que ele percorre (35 passos):** login com senha errada e certa, criação de senha e PIN, Bebida rápida só pelo teclado, abertura de caixa, venda bipada com `2*` e fardo, troco, gelada × natural com F4, Pix, venda dividida, troca de operador por PIN, sangria com gerente, fechamento cego e importação de XML, incluindo a nota repetida.
+
+**O que ele revelou, já corrigido:**
+
+| Problema | Efeito na loja | Como foi achado |
+|---|---|---|
+| O atributo `hidden` não valia nas telas | O painel de pagamento ficava sempre aberto e espremia a lista de itens a zero. O operador não via o que estava vendendo | Olhando os prints: o teste passava, porque os itens existiam na página |
+| Teclas 1 a 4 no pagamento | Com o foco no campo de valor, digitavam o número em vez de trocar a forma. Agora são F5 a F8 | Revisão para escrever o teste |
+| Finalizar e avisos fora da tela | Em notebook, o erro ficava abaixo da área visível. O aviso subiu; pagando, a lista de itens dá lugar ao pagamento (Esc volta) | Prints |
+| F5 fora do pagamento | Recarregava a página no meio da venda. Agora o PDV bloqueia | Revisão dos atalhos |
+| Menu de quem entrou por PIN | Mostrava telas que essa pessoa não pode abrir. Agora mostra só Caixas PDV | Prints |
+| Tela no nome da pessoa anterior | Depois de trocar de operador, a tela seguia com os dados de quem saiu. Agora atualiza ao sair do PDV | Prints |
+
+**Lição:** o teste agora confere se o elemento está à vista (inteiro, sem corte e sem nada por cima), e não só se existe.
+
+**O que este teste não cobre:**
+- **Leitor de verdade.** A leitura é simulada digitando o código e Enter, que é o que o leitor USB faz, mas nenhum aparelho foi testado.
+- **F5 no Chrome real.** O teste confirma que o PDV bloqueia a tecla; o navegador automatizado não recarrega com F5 de qualquer forma.
+- **Windows e Chrome instalado.** Roda em Chromium no Linux.
+- **Petiscos e caldos, Cardápio, Fornecedores, Funcionários e o conteúdo do Dashboard.** Essas telas não entram no percurso.
+- **XML real de distribuidor.** A nota do teste é gerada pelo próprio script.
+
+**Faltas achadas ao conferir o roteiro no código (ver seção 10):**
+- **Cancelar uma venda já finalizada:** o servidor faz, com estorno, mas nenhuma tela chama. Hoje um erro do operador depois de finalizar só se resolve direto na API.
+- **Desconto:** não existe na tela do PDV.
+- **Vendas por operador e fechamento impresso:** cada movimento grava quem passou, mas não há resumo por pessoa nem impressão.
+- **Atalhos de caldo, gelo e porções, e folha de códigos** para itens sem código de barras: não existem.
+
+---
 
 ## Fontes
 
