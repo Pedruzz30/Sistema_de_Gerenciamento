@@ -1334,7 +1334,7 @@ function atalhosPDV(event) {
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
-  if (event.key === 'F10' || event.key === 'F12') { event.preventDefault(); if (!pagamentoAberto) abrirPagamentoPDV(); return; }
+  if (event.key === 'F10') { event.preventDefault(); if (!pagamentoAberto) abrirPagamentoPDV(); return; }
   if (event.key === 'F4') { event.preventDefault(); alternarProximoAlternativoPDV(); return; }
   if (event.key === 'F2') { event.preventDefault(); document.getElementById('pdv-busca')?.focus(); return; }
   if (event.key === 'Escape') {
