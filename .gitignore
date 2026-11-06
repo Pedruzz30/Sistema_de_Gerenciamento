@@ -1,6 +1,9 @@
 # Maven
 target/
 
+# Teste de ponta a ponta
+e2e-artifacts/
+
 # Compiled files
 *.class
 

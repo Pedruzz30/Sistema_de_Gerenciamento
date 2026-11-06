@@ -1042,10 +1042,10 @@ let pdvPagamentos = [];
 let pdvFormaSelecionada = 'DINHEIRO';
 
 const PDV_FORMAS = [
-  { codigo: 'DINHEIRO', rotulo: 'Dinheiro', tecla: '1' },
-  { codigo: 'PIX', rotulo: 'Pix', tecla: '2' },
-  { codigo: 'DEBITO', rotulo: 'Débito', tecla: '3' },
-  { codigo: 'CREDITO', rotulo: 'Crédito', tecla: '4' }
+  { codigo: 'DINHEIRO', rotulo: 'Dinheiro', tecla: 'F5' },
+  { codigo: 'PIX', rotulo: 'Pix', tecla: 'F6' },
+  { codigo: 'DEBITO', rotulo: 'Débito', tecla: 'F7' },
+  { codigo: 'CREDITO', rotulo: 'Crédito', tecla: 'F8' }
 ];
 
 function focarLeituraPDV() {
@@ -1454,9 +1454,13 @@ function atalhosPDV(event) {
     return;
   }
   if (pagamentoAberto) {
-    const alvoTexto = event.target && event.target.tagName === 'INPUT';
     const forma = PDV_FORMAS.find(f => f.tecla === event.key);
-    if (forma && !alvoTexto) { event.preventDefault(); selecionarFormaPDV(forma.codigo); return; }
+    if (forma) {
+      event.preventDefault();
+      selecionarFormaPDV(forma.codigo);
+      if (forma.codigo === 'DINHEIRO') document.getElementById('pdv-pag-recebido')?.focus();
+      return;
+    }
     if (event.key === 'Enter') { event.preventDefault(); confirmarPagamentoPDV(); }
     return;
   }

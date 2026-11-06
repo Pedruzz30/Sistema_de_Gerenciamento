@@ -13,6 +13,7 @@
     "test:design": "node scripts/test-design-review.mjs",
     "test:performance": "node scripts/test-preview-performance.mjs",
     "test:spa": "node scripts/test-spa-preview.mjs",
-    "test:atomic-pdv": "node scripts/test-atomic-pdv-preview.mjs"
+    "test:atomic-pdv": "node scripts/test-atomic-pdv-preview.mjs",
+    "test:e2e": "node scripts/test-e2e-real.mjs"
   }
 }

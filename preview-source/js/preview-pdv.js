@@ -12,7 +12,7 @@
   const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const moeda = v => BRL.format(Number(v || 0));
   const FORMAS = [
-    ['DINHEIRO', 'Dinheiro', '1'], ['PIX', 'Pix', '2'], ['DEBITO', 'Débito', '3'], ['CREDITO', 'Crédito', '4']
+    ['DINHEIRO', 'Dinheiro', 'F5'], ['PIX', 'Pix', 'F6'], ['DEBITO', 'Débito', 'F7'], ['CREDITO', 'Crédito', 'F8']
   ];
   const el = (tag, attrs = {}, ...children) => {
     const e = document.createElement(tag);
@@ -236,7 +236,7 @@
         if (e.key === 'F10') { e.preventDefault(); if (!pagando) abrirPagamento(); return; }
         if (pagando) {
           const f = FORMAS.find(x => x[2] === e.key);
-          if (f && e.target !== recebido) { e.preventDefault(); escolherForma(f[0]); return; }
+          if (f) { e.preventDefault(); escolherForma(f[0]); return; }
           if (e.key === 'Enter') { e.preventDefault(); registrar(); }
           return;
         }
