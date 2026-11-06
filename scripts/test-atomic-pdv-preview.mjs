@@ -97,9 +97,28 @@ response=await request('/api/preview/transacoes/venda','POST',{
 assert.equal(response.status,201);
 assert.equal((await request('/api/caixas')).data.find(c=>c.numeroCaixa===1).saldoAtual,+(antesDinheiro+precoAgua).toFixed(2));
 
+// Cadastro rápido: o código bipado passa a achar o produto e não pode repetir.
+const eanDemo='4006381333931';
+assert.equal((await request('/api/pdv/codigos/'+eanDemo)).status,404);
+response=await request('/api/produtos/revenda','POST',{
+  nome:'Bebida rápida demo',codigoBarras:eanDemo,precoVenda:3.99,precoGelado:4.5,custoUnitario:2.75,
+  quantidadeInicial:24,quantidadeMinima:6,fardo:{quantidadeUnidades:12,preco:38.9,codigoBarras:'5901234123457'}
+});
+assert.equal(response.status,200,'Quick registration should work');
+assert.deepEqual(response.data.variacoes.map(v=>v.nome),['Gelada','Natural','Fardo 12']);
+const lida=await request('/api/pdv/codigos/'+eanDemo);
+assert.equal(lida.status,200);
+assert.equal(lida.data.variacao.itemNome,'Bebida rápida demo');
+response=await request('/api/produtos/revenda','POST',{
+  nome:'Outra bebida demo',codigoBarras:eanDemo,precoVenda:3,custoUnitario:2
+});
+assert.equal(response.status,409,'Repeated barcode must be rejected');
+response=await request('/api/produtos/revenda','POST',{nome:'Sem custo demo',precoVenda:3});
+assert.equal(response.status,400,'Cost is mandatory');
+
 // Fechamento cego: o resultado traz esperado, contado e diferença.
 response=await request('/api/caixas/encerrar','POST',{numeroCaixa:1,valorContado:0,observacao:''});
 assert.equal(response.status,200);
 assert.ok(typeof response.data.divergencia==='number'&&response.data.valorSistema>0,'Blind close returns the difference');
 
-console.log('PASS: atomic preview PDV sale, idempotency, insufficient stock, closed cash, rollback, payment forms and blind close');
+console.log('PASS: atomic preview PDV sale, idempotency, insufficient stock, closed cash, rollback, payment forms, quick registration and blind close');

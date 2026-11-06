@@ -52,7 +52,7 @@
 
       const scan = el('input', { class: 'stockos-preview-pdv__scan', type: 'text', autocomplete: 'off',
         'aria-label': 'Código ou nome do produto',
-        placeholder: 'Código (nº do produto) ou nome · 6*12 = 6 unidades do produto 12 · Enter',
+        placeholder: 'Código de barras, nº do produto ou nome · 6* antes = 6 unidades · Enter',
         style: 'width:100%;font-size:20px;padding:12px;border-radius:10px;border:2px solid #e8a33d;background:#0d1828;color:#fff' });
       const sugestoes = el('div', { class: 'stockos-preview-pdv__sugestoes', style: 'display:grid;gap:4px' });
       modal.append(scan, sugestoes);
@@ -147,7 +147,9 @@
         const n = m ? Number(m[1]) : 1;
         const termo = m ? m[2].trim() : bruto;
         if (!Number.isInteger(n) || n <= 0) { avisar('Quantidade inválida.'); return; }
-        let p = /^\d+$/.test(termo) ? products.find(x => x.id === Number(termo)) : null;
+        // Código de barras primeiro; na demonstração, o nº do produto também vale.
+        let p = products.find(x => x.codigoBarras === termo)
+          || (/^\d+$/.test(termo) ? products.find(x => x.id === Number(termo)) : null);
         if (!p) {
           const achados = buscar(termo);
           if (achados.length === 1) p = achados[0];

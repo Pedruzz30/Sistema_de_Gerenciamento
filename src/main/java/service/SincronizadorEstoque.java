@@ -133,6 +133,20 @@ public class SincronizadorEstoque {
     }
 
     /**
+     * Define o custo médio de um produto ainda sem saldo, para o PDV poder
+     * vendê-lo quando o estoque entrar (mesmo por entrada manual, sem custo).
+     */
+    @Transactional
+    public void definirCustoInicial(Produto produto, BigDecimal custoUnitario) {
+        if (custoUnitario == null || custoUnitario.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Custo unitario deve ser maior que zero.");
+        }
+        EstoqueProduto estoque = obterComLockOuCriar(produto);
+        estoque.redefinirQuantidadeECusto(estoque.getQuantidadeAtual(), custoUnitario);
+        estoqueProdutoRepository.salvar(estoque);
+    }
+
+    /**
      * Copia o saldo decimal (arredondado para baixo, nunca negativo) para a
      * coluna legada {@code produtos.quantidade_atual}. Só a filial padrão é
      * espelhada, porque a coluna legada não conhece filiais.

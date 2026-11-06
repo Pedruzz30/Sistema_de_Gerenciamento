@@ -3620,3 +3620,10 @@ body.bridge-page .bridge-actions a {
 .autorizacao-gerente legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
 .mov-caixa-meta { display: block; font-size: 11px; color: var(--text-muted, #6b6760); }
 .mov-caixa-badge.estorno_venda { background: #fef3c7; color: #92400e; }
+
+/* ───────── Bebida rápida (cadastro com leitor) ───────── */
+.revenda-bipe { font-size: 20px; font-family: var(--font-mono, ui-monospace, monospace); border: 2px solid var(--accent, #c2410c); }
+.revenda-fardo { display: grid; gap: 8px; border: 1px dashed var(--border, #d6d3cc); border-radius: 8px; padding: 10px; margin: 0 0 12px; }
+.revenda-fardo legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
+.revenda-status--erro { color: #b91c1c; font-weight: 600; }
+#alert-revenda { position: sticky; top: 0; z-index: 2; margin-bottom: 10px; }

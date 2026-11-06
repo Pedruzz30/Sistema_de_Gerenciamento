@@ -150,7 +150,7 @@ public class CaixaService {
                                       FormaPagamento forma,
                                       BigDecimal valor,
                                       String motivo) {
-        validarPermissao(operador, Permissao.VER_VENDAS);
+        exigirOperadorDeCaixa(operador);
         if (forma == null) {
             throw new IllegalArgumentException("Forma de pagamento do estorno e obrigatoria.");
         }

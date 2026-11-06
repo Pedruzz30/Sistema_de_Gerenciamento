@@ -252,6 +252,14 @@ public class EstoqueService {
                 custoUnitario, origemTipo, origemId);
     }
 
+    /** Custo do produto sem saldo inicial (sem efeito no modo console legado). */
+    @Transactional
+    public void definirCustoInicial(Produto produto, BigDecimal custoUnitario) {
+        if (sincronizador != null) {
+            sincronizador.definirCustoInicial(produto, custoUnitario);
+        }
+    }
+
     /** Saldo oficial disponível do produto (decimal quando o saldo único está ativo). */
     public BigDecimal saldoDisponivel(Produto produto) {
         if (sincronizador == null) {

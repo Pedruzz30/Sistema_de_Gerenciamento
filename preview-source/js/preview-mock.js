@@ -86,6 +86,54 @@
     try{body=JSON.parse(init.body||'{}');}catch(e){}
     if(path==='/api/auth/login' && method==='POST')return respond(user);
     if(path==='/api/produtos' && method==='GET')return respond(db.produtos);
+    // Demonstração do cadastro rápido. O sistema real cria variações que baixam
+    // o mesmo estoque; aqui o fardo vira um produto fictício separado.
+    const codigoLido=path.match(/^\/api\/pdv\/codigos\/([^/]+)$/);
+    if(codigoLido && method==='GET'){
+      const codigo=decodeURIComponent(codigoLido[1]);
+      const dono=db.produtos.find(p=>p.codigoBarras===codigo);
+      if(!dono)return respond({erro:'Produto não cadastrado para o código '+codigo+'.'},404);
+      return respond({codigo,variacao:{variacaoId:dono.id,variacaoNome:'Unidade',itemNome:dono.nome,precoVenda:dono.precoUnitario},alternativas:[]});
+    }
+    if(path==='/api/produtos/revenda' && method==='POST'){
+      const nome=String(body.nome||'').trim().slice(0,120);
+      const precoVenda=Number(body.precoVenda),precoGelado=body.precoGelado==null?null:Number(body.precoGelado);
+      const custo=Number(body.custoUnitario);
+      if(!nome)return respond({erro:'Nome do produto é obrigatório.'},400);
+      if(!(precoVenda>0)||!(custo>0)||(precoGelado!==null&&!(precoGelado>0)))
+        return respond({erro:'Informe preço e custo maiores que zero.'},400);
+      if(db.produtos.some(p=>String(p.nome).toLowerCase()===nome.toLowerCase()))
+        return respond({erro:'Já existe um produto chamado '+nome+'.'},409);
+      const codigos=[body.codigoBarras,body.fardo&&body.fardo.codigoBarras].map(c=>String(c||'')).filter(Boolean);
+      const usado=codigos.find(c=>db.produtos.some(p=>p.codigoBarras===c));
+      if(usado)return respond({erro:'O código '+usado+' já está cadastrado.'},409);
+      if(new Set(codigos).size!==codigos.length)return respond({erro:'A unidade e o fardo precisam ter códigos diferentes.'},400);
+      const novoProduto=(nomeProduto,quantidade,preco,custoProduto,codigo)=>{
+        const id=Math.max(0,...db.produtos.map(p=>p.id))+1;
+        const minima=Math.max(0,Number(body.quantidadeMinima)||0);
+        const produto={id,nome:nomeProduto,quantidadeAtual:quantidade,quantidadeMinima:minima,precoUnitario:preco,precoCusto:custoProduto,
+          ativo:true,controladoPorEstoque:true,categoriaEstoque:body.categoriaEstoque||'BEBIDAS',
+          nivelEstoque:level(quantidade,minima),codigoBarras:codigo||null};
+        db.produtos.push(produto);
+        return produto;
+      };
+      const quantidade=Math.max(0,Math.trunc(Number(body.quantidadeInicial)||0));
+      const unidade=novoProduto(nome,quantidade,precoGelado??precoVenda,custo,String(body.codigoBarras||''));
+      const variacoes=precoGelado!==null
+        ?[{id:unidade.id,nome:'Gelada',precoVenda:precoGelado,padrao:true},{id:unidade.id,nome:'Natural',precoVenda,padrao:false}]
+        :[{id:unidade.id,nome:'Unidade',precoVenda,padrao:true}];
+      if(body.fardo){
+        const n=Number(body.fardo.quantidadeUnidades),precoFardo=Number(body.fardo.preco);
+        if(!Number.isInteger(n)||n<2||!(precoFardo>0)){
+          db.produtos=db.produtos.filter(p=>p.id!==unidade.id);
+          return respond({erro:'Fardo inválido.'},400);
+        }
+        const fardo=novoProduto(nome+' · Fardo '+n,Math.floor(quantidade/n),precoFardo,+(custo*n).toFixed(2),String(body.fardo.codigoBarras||''));
+        variacoes.push({id:fardo.id,nome:'Fardo '+n,precoVenda:precoFardo,padrao:false});
+      }
+      save();
+      return respond({produtoId:unidade.id,nome,quantidadeAtual:quantidade,itemCardapioId:unidade.id,variacoes,codigos});
+    }
     if(path==='/api/produtos' && method==='POST'){
       const id=Math.max(0,...db.produtos.map(p=>p.id))+1;
       const quantidadeAtual=Math.max(0,Number(body.quantidadeInicial)||0);

@@ -26,6 +26,8 @@ async function iniciarEstoqueSPA() {
   if (!temPermissao(PERMISSOES.EDITAR_ESTOQUE)) {
     const btn = document.getElementById('btn-novo-produto');
     if (btn) btn.hidden = true;
+    const btnRevenda = document.getElementById('btn-revenda');
+    if (btnRevenda) btnRevenda.hidden = true;
   }
 
   preencherSelectCategorias('c-categoria');
@@ -40,6 +42,9 @@ window.StockOSPages.estoque = {
     Object.assign(window, {
       carregarProdutos,
       cadastrarProduto,
+      abrirModalRevenda,
+      salvarRevenda,
+      teclaRevenda,
       atualizarProduto,
       confirmarMovimentacao,
       renderTabela,
@@ -524,6 +529,199 @@ function mostrarAlertaModal(el, tipo, msg) {
   el.className = `alert-modal ${tipo}`;
   el.textContent = msg;
 }
+// ── Bebida rápida: cadastro com leitor de código de barras ────────────────
+// O leitor digita o código e aperta Enter, então Enter aqui passa para o
+// próximo campo e nunca salva sozinho. Ctrl+Enter salva.
+
+const REVENDA_ORDEM = ['r-ean', 'r-nome', 'r-preco-gelado', 'r-preco', 'r-custo', 'r-qtd', 'r-min',
+  'r-fardo-qtd', 'r-fardo-preco', 'r-fardo-ean'];
+const REVENDA_CATEGORIAS_PADRAO = [
+  { codigo: 'bebidas', nome: 'Bebidas' },
+  { codigo: 'petiscos', nome: 'Petiscos' }
+];
+const REVENDA_MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+let revendaSalvando = false;
+
+async function abrirModalRevenda() {
+  limparFormRevenda();
+  document.getElementById('alert-revenda').className = 'alert-modal';
+  document.getElementById('modal-revenda').classList.add('open');
+  document.getElementById('r-ean').focus();
+  await carregarCategoriasRevenda();
+}
+
+async function carregarCategoriasRevenda() {
+  const select = document.getElementById('r-categoria');
+  const selecionada = select.value || 'bebidas';
+  const categorias = [...REVENDA_CATEGORIAS_PADRAO];
+  try {
+    const resp = await fetch('/api/cardapio/categorias');
+    if (resp.ok) {
+      for (const categoria of await resp.json()) {
+        const codigo = String(categoria.codigo || '').toLowerCase();
+        if (codigo && !categorias.some(c => c.codigo === codigo)) {
+          categorias.push({ codigo, nome: categoria.nomeExibicao || categoria.codigo });
+        }
+      }
+    }
+  } catch (_) { /* segue com as categorias padrão */ }
+  select.replaceChildren(...categorias.map(categoria => {
+    const option = document.createElement('option');
+    option.value = categoria.codigo;
+    option.textContent = categoria.nome;
+    return option;
+  }));
+  select.value = categorias.some(c => c.codigo === selecionada) ? selecionada : 'bebidas';
+}
+
+function limparFormRevenda() {
+  REVENDA_ORDEM.forEach(id => { document.getElementById(id).value = ''; });
+  statusCodigoRevenda('r-ean', 'Sem código? Deixe vazio ou digite um código curto, como 101.');
+  statusCodigoRevenda('r-fardo-ean', '');
+}
+
+function statusCodigoRevenda(campoId, texto, erro) {
+  const el = document.getElementById(campoId + '-status');
+  if (!el) return;
+  el.textContent = texto;
+  el.classList.toggle('revenda-status--erro', Boolean(erro));
+}
+
+function normalizarCodigoRevenda(valor) {
+  return String(valor || '').replace(/\s+/g, '');
+}
+
+/** Dígito verificador GS1 (EAN-8, UPC-A, EAN-13, GTIN-14). Códigos internos passam. */
+function codigoBarrasConfere(codigo) {
+  if (!/^\d+$/.test(codigo) || ![8, 12, 13, 14].includes(codigo.length)) return true;
+  let soma = 0;
+  let peso = 3;
+  for (let i = codigo.length - 2; i >= 0; i--) {
+    soma += Number(codigo[i]) * peso;
+    peso = peso === 3 ? 1 : 3;
+  }
+  return (10 - (soma % 10)) % 10 === Number(codigo[codigo.length - 1]);
+}
+
+/** Confere o código lido. Retorna true se pode seguir para o próximo campo. */
+async function conferirCodigoRevenda(campoId) {
+  const campo = document.getElementById(campoId);
+  const codigo = normalizarCodigoRevenda(campo.value);
+  campo.value = codigo;
+  if (!codigo) return true;
+  if (!codigoBarrasConfere(codigo)) {
+    statusCodigoRevenda(campoId, 'Código inválido: o dígito verificador não confere. Bipe de novo.', true);
+    campo.select();
+    return false;
+  }
+  const outroId = campoId === 'r-ean' ? 'r-fardo-ean' : 'r-ean';
+  if (codigo === normalizarCodigoRevenda(document.getElementById(outroId).value)) {
+    statusCodigoRevenda(campoId, 'A unidade e o fardo precisam ter códigos diferentes.', true);
+    campo.select();
+    return false;
+  }
+  try {
+    const resp = await fetch('/api/pdv/codigos/' + encodeURIComponent(codigo));
+    if (resp.ok) {
+      const leitura = await resp.json();
+      const dono = leitura.variacao ? `${leitura.variacao.itemNome} (${leitura.variacao.variacaoNome})` : 'outro produto';
+      statusCodigoRevenda(campoId, `Este código já é de ${dono}.`, true);
+      campo.select();
+      return false;
+    }
+  } catch (_) { /* sem conexão: o servidor confere ao salvar */ }
+  statusCodigoRevenda(campoId, 'Código lido.');
+  return true;
+}
+
+async function teclaRevenda(event) {
+  if (event.key !== 'Enter' || event.target.tagName === 'BUTTON') return;
+  event.preventDefault();
+  if (event.ctrlKey) { salvarRevenda(); return; }
+  const id = event.target.id;
+  if ((id === 'r-ean' || id === 'r-fardo-ean') && !(await conferirCodigoRevenda(id))) return;
+  const proximo = REVENDA_ORDEM[REVENDA_ORDEM.indexOf(id) + 1];
+  if (proximo) document.getElementById(proximo).focus();
+}
+
+function numeroRevenda(id) {
+  const texto = document.getElementById(id).value.trim().replace(',', '.');
+  return texto === '' ? null : Number(texto);
+}
+
+function montarCadastroRevenda() {
+  const nome = document.getElementById('r-nome').value.trim();
+  const precoVenda = numeroRevenda('r-preco');
+  const precoGelado = numeroRevenda('r-preco-gelado');
+  const custoUnitario = numeroRevenda('r-custo');
+  const fardoQtd = numeroRevenda('r-fardo-qtd');
+  const fardoPreco = numeroRevenda('r-fardo-preco');
+  const fardoCodigo = normalizarCodigoRevenda(document.getElementById('r-fardo-ean').value);
+  const select = document.getElementById('r-categoria');
+
+  if (!nome) return { erro: 'Informe o nome do produto.', campo: 'r-nome' };
+  if (!(precoVenda > 0)) return { erro: 'Informe o preço de venda.', campo: 'r-preco' };
+  if (precoGelado !== null && !(precoGelado > 0)) return { erro: 'Preço da gelada inválido.', campo: 'r-preco-gelado' };
+  if (!(custoUnitario > 0)) return { erro: 'Informe o custo da unidade: o caixa não vende produto sem custo.', campo: 'r-custo' };
+  const temFardo = fardoQtd !== null || fardoPreco !== null || fardoCodigo !== '';
+  if (temFardo && !(Number.isInteger(fardoQtd) && fardoQtd >= 2)) return { erro: 'Informe quantas unidades vêm no fardo.', campo: 'r-fardo-qtd' };
+  if (temFardo && !(fardoPreco > 0)) return { erro: 'Informe o preço do fardo.', campo: 'r-fardo-preco' };
+
+  const codigo = select.value || 'bebidas';
+  return {
+    dados: {
+      nome,
+      categoriaCardapioCodigo: codigo,
+      categoriaCardapioNome: select.options[select.selectedIndex]?.textContent || null,
+      categoriaEstoque: codigo === 'bebidas' ? 'BEBIDAS' : 'SECO',
+      codigoBarras: normalizarCodigoRevenda(document.getElementById('r-ean').value),
+      precoVenda,
+      precoGelado,
+      custoUnitario,
+      quantidadeInicial: Math.max(0, Math.trunc(numeroRevenda('r-qtd') || 0)),
+      quantidadeMinima: Math.max(0, Math.trunc(numeroRevenda('r-min') || 0)),
+      fardo: temFardo ? { quantidadeUnidades: fardoQtd, preco: fardoPreco, codigoBarras: fardoCodigo } : null
+    }
+  };
+}
+
+async function salvarRevenda() {
+  if (revendaSalvando) return;
+  const alerta = document.getElementById('alert-revenda');
+  const montagem = montarCadastroRevenda();
+  if (montagem.erro) {
+    mostrarAlertaModal(alerta, 'error', montagem.erro);
+    document.getElementById(montagem.campo).focus();
+    return;
+  }
+  if (!(await conferirCodigoRevenda('r-ean'))) return;
+  if (!(await conferirCodigoRevenda('r-fardo-ean'))) return;
+
+  revendaSalvando = true;
+  document.getElementById('btn-salvar-revenda').disabled = true;
+  try {
+    const resp = await fetch('/api/produtos/revenda', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(montagem.dados)
+    });
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Erro ao cadastrar o produto.'));
+    const criado = await resp.json();
+    const resumo = (criado.variacoes || [])
+      .map(v => `${v.nome} ${REVENDA_MOEDA.format(Number(v.precoVenda))}`)
+      .join(' · ');
+    mostrarAlertaModal(alerta, 'success', `${criado.nome} cadastrado: ${resumo}. Pode bipar o próximo.`);
+    limparFormRevenda();
+    await carregarProdutos();
+    document.getElementById('r-ean').focus();
+  } catch (e) {
+    mostrarAlertaModal(alerta, 'error', e.message);
+  } finally {
+    revendaSalvando = false;
+    document.getElementById('btn-salvar-revenda').disabled = false;
+  }
+}
+
 // Expose inline HTML handlers for direct navigation as well as SPA mounts.
 if (/^\/estoque(?:\.html)?\/?$/.test(location.pathname)) {
   window.StockOSPages.estoque.activate();

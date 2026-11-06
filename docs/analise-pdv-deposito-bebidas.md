@@ -408,7 +408,7 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 
 **Fase 0 – Pré-requisitos do estoque (seção 11)**
 0a. **Um único saldo de estoque** (o decimal): cadastro, entrada manual, notas e tela de Estoque passam a usar `estoque_produtos`, com migração que copia os saldos atuais.
-0b. **Cadastro rápido de "produto de revenda"**: cria Produto + Item de cardápio + Variações (lata gelada, lata natural, fardo) de uma vez.
+0b. ✅ **Cadastro rápido de "produto de revenda"** (seção 13): cria Produto + Item de cardápio + Variações (lata gelada, lata natural, fardo) de uma vez.
 0c. **Importar XML da NF-e** do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
 
 **Fase 1 – Abrir a loja (MVP do caixa)**
@@ -581,6 +581,36 @@ Feitas do mais difícil para o mais fácil, na branch `feat/caixas-pdv-20261104`
 - Os **17 testes de integração com PostgreSQL** (Docker desligado). Eles cobrem as migrações novas no banco real, o mapeamento JPA das entidades novas e o ID gerado pela sequence.
 - Pode haver teste que conte movimentos de estoque e agora encontre um movimento a mais: o cadastro com quantidade inicial passou a registrar um ajuste no saldo oficial.
 - O **PDV real** (`pdv.js` com o backend) não foi aberto no navegador, porque precisa do Java rodando com banco.
+
+---
+
+## 13. Cadastro rápido de bebida (06/11/2026)
+
+Na tela de Estoque, o botão **+ Bebida rápida** abre um formulário feito para o leitor de código de barras. Uma única tela cria, numa só transação, tudo o que o PDV precisa:
+
+| Preenchido | O que é criado |
+|---|---|
+| Sempre | Produto, item de cardápio e saldo oficial com custo médio |
+| Preço de gelada | Variações "Gelada" (padrão) e "Natural", que baixam o mesmo estoque |
+| Sem preço de gelada | Variação "Unidade" |
+| Código da unidade | Bipe leva à gelada; a natural fica como alternativa (F4) |
+| Fardo | Variação "Fardo N" que baixa N unidades, embalagem para compras e código próprio |
+
+**Regras:**
+- O Enter do leitor passa para o próximo campo e nunca salva sozinho. Ctrl+Enter salva, limpa o formulário e volta ao campo de bipe.
+- Código com dígito verificador errado é recusado na hora. Código já cadastrado mostra de qual produto é.
+- O custo é obrigatório, porque o PDV recusa vender produto sem custo médio. Sem estoque inicial, o custo já fica guardado para a entrada futura.
+- Nome repetido é recusado. Se algo falhar, nada é criado.
+- Só quem tem `EDITAR_ESTOQUE` cadastra.
+
+**Onde está:** `ProdutoRevendaService`, `ProdutoRevendaController` (`POST /api/produtos/revenda`), `estoque.html`, `estoque.js`.
+
+**Na demonstração:** a gelada vira o preço do produto e o fardo vira um produto fictício separado, com estoque próprio. A variação Natural e a baixa de 12 unidades pelo fardo só existem no sistema real.
+
+**Ainda falta:**
+- vincular código a um produto que já existe (hoje só pela API);
+- cadastrar pelo próprio PDV quando o código não é encontrado;
+- categoria "Petiscos" usa o estoque `SECO`; caldos e porções continuam pelo Cardápio, com ficha técnica.
 
 ## Fontes
 

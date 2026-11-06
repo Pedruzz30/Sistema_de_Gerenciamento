@@ -482,6 +482,27 @@ public class AppConfig {
     }
 
     @Bean
+    public ProdutoRevendaService produtoRevendaService(EstoqueService estoqueService,
+                                                       ProdutoEstoqueService produtoEstoqueService,
+                                                       CardapioService cardapioService,
+                                                       VariacaoItemCardapioService variacaoItemCardapioService,
+                                                       CodigoVendaService codigoVendaService,
+                                                       CodigoVendaRepository codigoVendaRepository,
+                                                       ProdutoRepository produtoRepository,
+                                                       UnidadeMedidaService unidadeMedidaService) {
+        return new ProdutoRevendaService(
+                estoqueService,
+                produtoEstoqueService,
+                cardapioService,
+                variacaoItemCardapioService,
+                codigoVendaService,
+                codigoVendaRepository,
+                produtoRepository,
+                unidadeMedidaService
+        );
+    }
+
+    @Bean
     public IntegracaoCaixaLegadoService integracaoCaixaLegadoService(CaixaService caixaService,
                                                                      VendaPagamentoRepository vendaPagamentoRepository) {
         return new IntegracaoCaixaLegadoService(caixaService, vendaPagamentoRepository);
