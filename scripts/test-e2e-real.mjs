@@ -49,7 +49,7 @@ let contador = 0;
 const errosDePagina = [];
 
 async function novaPagina(navegador) {
-  const contexto = await navegador.newContext({ viewport: { width: 1366, height: 768 }, locale: 'pt-BR' });
+  const contexto = await navegador.newContext({ viewport: { width: 1366, height: 650 }, locale: 'pt-BR' });
   const pagina = await contexto.newPage();
   pagina.setDefaultTimeout(15000);
   pagina.on('pageerror', erro => errosDePagina.push(`${pagina.url()}: ${erro.message}`));
@@ -100,6 +100,31 @@ async function esperarTexto(pagina, seletor, esperado) {
   } catch {
     assert.fail(`Esperava "${esperado}" em ${seletor}, mas estava: "${await textoDe(pagina, seletor).catch(() => '(não encontrado)')}"`);
   }
+}
+
+/** O elemento precisa estar à vista: inteiro na janela, sem corte e sem nada por cima. */
+async function naTela(pagina, seletor) {
+  const problema = await pagina.evaluate(s => {
+    const el = document.querySelector(s);
+    if (!el) return 'não existe';
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return `sem tamanho (${r.width}x${r.height})`;
+    let topo = 0;
+    let base = window.innerHeight;
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const estilo = getComputedStyle(p);
+      if (estilo.overflowY !== 'visible' || estilo.overflowX !== 'visible') {
+        const q = p.getBoundingClientRect();
+        topo = Math.max(topo, q.top);
+        base = Math.min(base, q.bottom);
+      }
+    }
+    if (r.top < topo - 1 || r.bottom > base + 1) return `cortado (de ${r.top} a ${r.bottom}, área visível de ${topo} a ${base})`;
+    const meio = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!meio || !(el === meio || el.contains(meio) || meio.contains(el))) return 'coberto por outro elemento';
+    return null;
+  }, seletor);
+  assert.equal(problema, null, `${seletor} precisa estar à vista: ${problema}`);
 }
 
 async function entrar(pagina, nome, sobrenome, senha) {
@@ -238,6 +263,13 @@ try {
     assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 100,00');
   });
 
+  await passo(admin, 'Dono faz sangria sem pedir autorizacao', async () => {
+    await cardDoCaixa(admin, 1).locator('button:has-text("Sangria")').click();
+    await admin.waitForSelector('#modal-mov.open');
+    assert.equal(await admin.locator('#mov-autorizacao').isVisible(), false);
+    await admin.evaluate(() => fecharModal('modal-mov'));
+  });
+
   await passo(admin, 'PDV abre com foco na leitura e nao fecha ao clicar fora', async () => {
     await cardDoCaixa(admin, 1).locator('button:has-text("PDV")').click();
     await admin.waitForSelector('#modal-pdv.open');
@@ -246,20 +278,31 @@ try {
     await admin.mouse.click(5, 5);
     assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Clique fora não pode fechar o PDV');
     await admin.focus('#pdv-leitura');
+    assert.equal(await admin.locator('#pdv-pagamento').isVisible(), false, 'Pagamento só aparece depois do F10');
   });
 
-  await passo(admin, 'Bipar com multiplicador e fardo', async () => {
+  await passo(admin, 'Bipar com multiplicador e fardo mostra os itens', async () => {
     await bipar(admin, `2*${EAN_LATA}`);
     await esperarTexto(admin, '#pdv-total', 'R$ 9,00');
+    await bipar(admin, EAN_LATA);
+    await esperarTexto(admin, '#pdv-total', 'R$ 13,50');
+    assert.equal(await admin.locator('.pdv-item-row').count(), 1, 'Bipar de novo soma na mesma linha');
     await bipar(admin, EAN_FARDO);
-    await esperarTexto(admin, '#pdv-total', 'R$ 47,90');
+    await esperarTexto(admin, '#pdv-total', 'R$ 52,40');
     assert.equal(await admin.locator('.pdv-item-row').count(), 2);
+    await naTela(admin, '.pdv-item-row');
+    await naTela(admin, '.pdv-item-row:last-child');
+    await naTela(admin, '#btn-pdv-finalizar');
   });
 
-  await passo(admin, 'Bipar de novo soma na mesma linha e codigo desconhecido avisa', async () => {
+  await passo(admin, 'Codigo desconhecido avisa a vista e F5 nao recarrega', async () => {
     await bipar(admin, EAN_NOVO);
     await esperarTexto(admin, '#alert-pdv', 'não cadastrado');
-    await esperarTexto(admin, '#pdv-total', 'R$ 47,90');
+    await naTela(admin, '#alert-pdv');
+    await esperarTexto(admin, '#pdv-total', 'R$ 52,40');
+    await admin.evaluate(() => window.addEventListener('keydown', e => { window.__f5Bloqueado = e.defaultPrevented; }, { once: true }));
+    await admin.keyboard.press('F5');
+    assert.equal(await admin.evaluate(() => window.__f5Bloqueado), true, 'F5 não pode recarregar a página e perder a venda');
   });
 
   await passo(admin, 'Pagar em dinheiro mostra o troco', async () => {
@@ -267,10 +310,16 @@ try {
     await admin.waitForSelector('#pdv-pagamento:not([hidden])');
     await admin.waitForFunction(() => document.activeElement.id === 'pdv-pag-recebido');
     await admin.keyboard.type('100');
-    await esperarTexto(admin, '#pdv-pag-troco', 'R$ 52,10');
+    await esperarTexto(admin, '#pdv-pag-troco', 'R$ 47,60');
+    await naTela(admin, '#pdv-pag-troco');
+    await naTela(admin, '#pdv-pag-recebido');
+    await naTela(admin, '#btn-pdv-confirmar-pagamento');
+    await naTela(admin, '[data-forma-pdv="CREDITO"]');
     await admin.keyboard.press('Enter');
-    await esperarTexto(admin, '#alert-pdv', 'TROCO R$ 52,10');
+    await esperarTexto(admin, '#alert-pdv', 'TROCO R$ 47,60');
+    await naTela(admin, '#alert-pdv');
     await esperarTexto(admin, '#pdv-total', 'R$ 0,00');
+    assert.equal(await admin.locator('#pdv-pagamento').isVisible(), false);
     await admin.waitForFunction(() => document.activeElement.id === 'pdv-leitura');
   });
 
@@ -295,11 +344,11 @@ try {
     });
     const { corpo } = await api(admin, '/api/caixas');
     const caixa = corpo.find(c => c.numeroCaixa === 1);
-    assert.equal(caixa.dinheiroNaGaveta, 147.9);
-    assert.equal(caixa.totalVendas, 51.89);
+    assert.equal(caixa.dinheiroNaGaveta, 152.4);
+    assert.equal(caixa.totalVendas, 56.39);
     assert.equal(caixa.vendasPorForma.PIX, 3.99);
     const produtos = await api(admin, '/api/produtos');
-    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 33, '48 - 2 - 12 - 1');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 32, '48 - 3 - 12 - 1');
   });
 
   const ana = await novaPagina(navegador);
@@ -338,6 +387,7 @@ try {
     await admin.fill('#pdv-pag-valor', '2.00');
     await admin.click('#pdv-pagamento .pdv-pag-dividir');
     await esperarTexto(admin, '#pdv-pag-restante', 'R$ 2,50');
+    await naTela(admin, '#btn-pdv-confirmar-pagamento');
     await admin.keyboard.press('F5');
     await admin.waitForSelector('[data-forma-pdv="DINHEIRO"].pdv-forma--ativa');
     await admin.fill('#pdv-pag-recebido', '5');
@@ -347,7 +397,7 @@ try {
 
     const { corpo } = await api(admin, '/api/caixas');
     const caixa = corpo.find(c => c.numeroCaixa === 1);
-    assert.equal(caixa.dinheiroNaGaveta, 150.4);
+    assert.equal(caixa.dinheiroNaGaveta, 154.9);
     assert.equal(caixa.quantidadeVendas, 3, 'Venda em duas formas conta como uma');
     const movimentos = await api(admin, `/api/caixas/sessoes/${caixa.caixaId}/movimentacoes`);
     const daAna = movimentos.corpo.filter(m => /Ana/.test(m.operador || ''));
@@ -360,18 +410,26 @@ try {
     assert.equal(corpo.codigo, 'ACESSO_RESTRITO_PIN');
   });
 
-  await passo(admin, 'Esc sai do PDV sem itens', async () => {
+  await passo(admin, 'Sair do PDV deixa a tela no nome da Ana', async () => {
     await admin.focus('#pdv-leitura');
+    const recarregou = admin.waitForEvent('load');
     await admin.keyboard.press('Escape');
-    await admin.waitForSelector('#modal-pdv:not(.open)', { state: 'attached' });
+    await recarregou;
+    await esperarTexto(admin, '#user-name', 'Ana Caixa');
+  });
+
+  await passo(admin, 'Menu de quem entrou por PIN mostra so o caixa', async () => {
+    await admin.waitForSelector('#nav-items a');
+    assert.deepEqual((await admin.locator('#nav-items a').allTextContents()).map(limpar), ['Caixas PDV']);
+    await admin.goto(`${BASE}/estoque.html`);
+    await admin.waitForURL('**/caixas.html');
   });
 
   await passo(admin, 'Tela do caixa em portugues e com dinheiro separado', async () => {
-    await admin.reload();
     await cardDoCaixa(admin, 1).waitFor();
-    assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 150,40');
+    assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 154,90');
     assert.equal(await linhaDoCard(admin, 1, 'Pix e cartões'), 'R$ 5,99');
-    assert.equal(await linhaDoCard(admin, 1, 'Total Vendas'), 'R$ 56,39');
+    assert.equal(await linhaDoCard(admin, 1, 'Total Vendas'), 'R$ 60,89');
     assert.match(await linhaDoCard(admin, 1, 'Abertura'), /^\d{2}\/\d{2}/, 'Abertura precisa mostrar a data');
   });
 
@@ -391,21 +449,21 @@ try {
     await admin.fill('#mov-gerente-senha', SENHA_ADMIN);
     await admin.click('#btn-confirmar-mov');
     await admin.waitForSelector('#modal-mov:not(.open)', { state: 'attached' });
-    await admin.waitForFunction(() => document.querySelector('.caixa-card')?.textContent.replace(/ /g, ' ').includes('R$ 100,40'));
+    await admin.waitForFunction(() => document.querySelector('.caixa-card')?.textContent.replace(/ /g, ' ').includes('R$ 104,90'));
   });
 
   await passo(admin, 'Fechamento cego so mostra a diferenca no fim', async () => {
     await cardDoCaixa(admin, 1).locator('button:has-text("Encerrar")').click();
     await admin.waitForSelector('#modal-encerrar.open');
     assert.equal(await admin.inputValue('#encerrar-valor-contado'), '', 'O campo começa vazio');
-    assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('100,40'), 'Não pode mostrar o valor esperado');
+    assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('104,90'), 'Não pode mostrar o valor esperado');
     await admin.fill('#encerrar-valor-contado', '100');
     await admin.fill('#encerrar-gerente-nome', 'Admin');
     await admin.fill('#encerrar-gerente-sobrenome', 'Superior');
     await admin.fill('#encerrar-gerente-senha', SENHA_ADMIN);
     await admin.click('#btn-confirmar-encerrar');
-    await esperarTexto(admin, '#fechamento-container', 'R$ 100,40');
-    await esperarTexto(admin, '#fechamento-container', '-R$ 0,40');
+    await esperarTexto(admin, '#fechamento-container', 'R$ 104,90');
+    await esperarTexto(admin, '#fechamento-container', '-R$ 4,90');
   });
 
   await admin.context().close();
@@ -446,7 +504,7 @@ try {
     await dono.waitForSelector('#modal-xml:not(.open)', { state: 'attached' });
     await dono.waitForSelector('text=Distribuidora Exemplo LTDA');
     const { corpo } = await api(dono, '/api/produtos');
-    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 92, '32 + 60');
+    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 91, '31 + 60');
     assert.equal(corpo.find(p => p.nome === 'Agua Mineral 500ml').quantidadeAtual, 24);
     const leitura = await api(dono, `/api/pdv/codigos/${EAN_NOVO}`);
     assert.equal(leitura.status, 200, 'O código da nota precisa funcionar no caixa');

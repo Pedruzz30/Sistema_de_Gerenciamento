@@ -1326,9 +1326,12 @@ function fecharPDV() {
   }
   cancelarPagamentoPDV();
   fecharModal('modal-pdv');
+  if (pdvOperadorTrocado) window.location.reload();
 }
 
 // ── Troca de operador por PIN ─────────────────────────────────────────────
+
+let pdvOperadorTrocado = false;
 
 function nomeDoOperadorAtual() {
   return [usuario.nome, usuario.sobrenome].filter(Boolean).join(' ') || '—';
@@ -1387,6 +1390,7 @@ async function confirmarTrocaOperadorPDV() {
     if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível trocar de operador.'));
     Object.assign(usuario, await resp.json());
     persistirUsuario(usuario);
+    pdvOperadorTrocado = true;
     atualizarOperadorPDV();
     fecharTrocaOperadorPDV();
     showToast(`${nomeDoOperadorAtual()} está operando o caixa.`, 'success');
@@ -1444,6 +1448,7 @@ function atalhosPDV(event) {
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
+  if (/^F[5-8]$/.test(event.key)) event.preventDefault();
   if (event.key === 'F12') { event.preventDefault(); abrirTrocaOperadorPDV(); return; }
   if (event.key === 'F10') { event.preventDefault(); if (!pagamentoAberto) abrirPagamentoPDV(); return; }
   if (event.key === 'F4') { event.preventDefault(); alternarProximoAlternativoPDV(); return; }

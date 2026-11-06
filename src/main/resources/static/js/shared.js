@@ -406,7 +406,10 @@ function renderSidebar() {
   const atual = paginaAtual();
 
   nav.innerHTML = NAV_ITENS
-    .filter(function (item) { return !item.permsAny || temAlgumaPermissao(item.permsAny); })
+    .filter(function (item) {
+      if (usuario.viaPin) return item.id === 'caixas';
+      return !item.permsAny || temAlgumaPermissao(item.permsAny);
+    })
     .map(function (item) {
       return '<a href="' + item.href + '" class="nav-item ' + (item.id === atual ? 'active' : '') + '">' +
         '<span class="nav-icon" aria-hidden="true">' + iconMarkup(item.icon) + '</span>' +
@@ -428,6 +431,10 @@ const PERMISSOES_POR_PAGINA = {
 
 function garantirPermissaoDaPagina() {
   const pagina = paginaAtual();
+  if (usuario.viaPin && pagina !== 'caixas') {
+    window.location.replace('/caixas.html');
+    return false;
+  }
   const permissoesNecessarias = PERMISSOES_POR_PAGINA[pagina];
   if (!permissoesNecessarias || temAlgumaPermissao(permissoesNecessarias)) {
     return true;
