@@ -409,7 +409,7 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 **Fase 0 – Pré-requisitos do estoque (seção 11)**
 0a. **Um único saldo de estoque** (o decimal): cadastro, entrada manual, notas e tela de Estoque passam a usar `estoque_produtos`, com migração que copia os saldos atuais.
 0b. ✅ **Cadastro rápido de "produto de revenda"** (seção 13): cria Produto + Item de cardápio + Variações (lata gelada, lata natural, fardo) de uma vez.
-0c. **Importar XML da NF-e** do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
+0c. ✅ **Importar XML da NF-e** (seção 14) do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
 
 **Fase 1 – Abrir a loja (MVP do caixa)**
 1. Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN.
@@ -577,10 +577,9 @@ Feitas do mais difícil para o mais fácil, na branch `feat/caixas-pdv-20261104`
 - Testes da demonstração passando (`check-preview`, `test-atomic-pdv-preview` com casos novos de Pix/troco/fechamento cego, `test-scale-preview`).
 - A demonstração foi testada no navegador: venda só pelo teclado com troco, venda no Pix sem mexer na gaveta, fechamento cego com diferença.
 
-**Ainda não verificado:**
-- Os **17 testes de integração com PostgreSQL** (Docker desligado). Eles cobrem as migrações novas no banco real, o mapeamento JPA das entidades novas e o ID gerado pela sequence.
-- Pode haver teste que conte movimentos de estoque e agora encontre um movimento a mais: o cadastro com quantidade inicial passou a registrar um ajuste no saldo oficial.
-- O **PDV real** (`pdv.js` com o backend) não foi aberto no navegador, porque precisa do Java rodando com banco.
+**Verificação no banco real (atualizado em 06/11/2026):** a suíte completa com PostgreSQL roda pelo GitHub Actions (`stockos-backend-docker.yml`), porque o Docker não sobe na máquina de desenvolvimento. Migrações, mapeamento JPA, ID pela sequence, venda dividida, estorno e autorização do gerente passaram.
+
+**Ainda não verificado:** o **PDV real** (`pdv.js` com o backend) não foi aberto no navegador, porque precisa do Java rodando com banco.
 
 ---
 
@@ -611,6 +610,44 @@ Na tela de Estoque, o botão **+ Bebida rápida** abre um formulário feito para
 - vincular código a um produto que já existe (hoje só pela API);
 - cadastrar pelo próprio PDV quando o código não é encontrado;
 - categoria "Petiscos" usa o estoque `SECO`; caldos e porções continuam pelo Cardápio, com ficha técnica.
+
+---
+
+## 14. Importar o XML da nota do distribuidor (06/11/2026)
+
+Na tela de Notas, o botão **Importar XML** recebe o arquivo da NF-e do fornecedor em dois passos:
+
+1. **Conferência (nada é gravado):** mostra número, fornecedor, destinatário e cada item com a conta "5 CX × 12 = 60 unidades · custo R$ 2,75/un".
+2. **Entrada:** com tudo conferido, numa única transação, cadastra o que falta, registra a nota confirmada e dá entrada no estoque. Se algo falhar, nada fica pela metade.
+
+**Como cada item é reconhecido, nesta ordem:**
+| Origem | Como funciona |
+|---|---|
+| Vínculo | O código do produto naquele fornecedor, lembrado da nota anterior, com as unidades por embalagem |
+| Código de barras | `cEAN` / `cEANTrib` já cadastrados no sistema |
+| Produto novo | Pede nome e preços; o código de barras, o NCM e o CEST vêm da nota |
+
+**Unidades por embalagem:** vêm da própria nota (`qTrib ÷ qCom`) quando ela informa. Se a nota não informa, a descrição ("C/12", "6X2L") vira só um palpite, e o item fica destacado para conferir. O campo é sempre editável.
+
+**Custo de cada item:** produto + frete + seguro + outras despesas + IPI + ICMS-ST + FCP-ST − desconto, dividido pelas unidades. **Essa fórmula deve ser validada por um contador.**
+
+**Segurança e regras:**
+- O XML vem de fora: DOCTYPE e entidades externas são recusados (XXE).
+- Quantidades e valores são sempre lidos do XML no servidor, nunca do navegador.
+- A chave de acesso tem o dígito verificador conferido e não pode entrar duas vezes.
+- NFC-e é recusada, por não ser nota de compra.
+- Item sem custo ou que não dá unidades inteiras é recusado, e pode ser marcado como "Não dar entrada".
+- Linhas repetidas do mesmo produto viram um item, com o custo médio entre elas.
+
+**Onde está:** `NfeXmlParser`, `ImportacaoNfeService`, `ImportacaoNfeController`, `VinculoProdutoFornecedor`, `V20261106_01`, `notas.html`, `notas.js`.
+
+**Limites conhecidos:**
+- **A assinatura digital não é validada e a SEFAZ não é consultada:** uma nota cancelada depois de emitida não é detectada.
+- **Não confere se a nota é mesmo para a loja:** o sistema ainda não sabe o CNPJ da loja, então mostra o destinatário para a pessoa conferir.
+- **Ainda não foi testado com um XML real de distribuidor,** só com arquivos gerados pelos testes. Peça um à cliente: cada distribuidor preenche unidades e códigos do seu jeito.
+- O custo da nota é arredondado a 2 casas por unidade, então o total da nota no sistema pode diferir alguns centavos do XML.
+- Produtos vendidos em fração (chopp por litro) não entram por aqui.
+- Na demonstração o XML é lido no navegador, com regras simplificadas e sem a conferência da chave.
 
 ## Fontes
 

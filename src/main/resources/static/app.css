@@ -3627,3 +3627,24 @@ body.bridge-page .bridge-actions a {
 .revenda-fardo legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
 .revenda-status--erro { color: #b91c1c; font-weight: 600; }
 #alert-revenda { position: sticky; top: 0; z-index: 2; margin-bottom: 10px; }
+
+/* ───────── Importar XML da NF-e ───────── */
+.modal--xml { max-width: 920px; width: min(920px, calc(100vw - 32px)); }
+.xml-arquivo { display: grid; gap: 8px; }
+.xml-resumo { display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: rgba(127, 127, 127, .1); margin-bottom: 10px; }
+.xml-avisos { margin: 0 0 10px; padding-left: 18px; color: #b45309; font-weight: 600; }
+.xml-avisos:empty { display: none; }
+.xml-itens { display: grid; gap: 10px; }
+.xml-item { border: 1px solid var(--border, #d6d3cc); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.xml-item header { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.xml-item--ignorado { opacity: .55; }
+.xml-conta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-weight: 600; }
+.xml-conta input { width: 76px; }
+.xml-conta--conferir input { border: 2px solid #d97706; }
+.xml-conta__erro { color: #b91c1c; }
+.xml-conferir { margin: 0; color: #b45309; font-size: 12px; font-weight: 600; }
+.xml-decisao { display: grid; gap: 8px; font-size: 12px; }
+.xml-decisao label { display: grid; gap: 4px; }
+.xml-novo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.xml-novo[hidden], .xml-vincular[hidden] { display: none; }
+.xml-novo__nome { grid-column: 1 / -1; }

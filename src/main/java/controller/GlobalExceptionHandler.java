@@ -107,7 +107,8 @@ public class GlobalExceptionHandler {
                  "PAUSA_JA_ENCERRADA",
                  "REGRA_HORARIO_SOBREPOSTA",
                  "CODIGO_VENDA_DUPLICADO",
-                 "PRODUTO_DUPLICADO" -> HttpStatus.CONFLICT;
+                 "PRODUTO_DUPLICADO",
+                 "NFE_JA_IMPORTADA" -> HttpStatus.CONFLICT;
             case "VENDA_NAO_ENCONTRADA",
                  "ITEM_VENDA_NAO_ENCONTRADO",
                  "VARIACAO_NAO_ENCONTRADA",

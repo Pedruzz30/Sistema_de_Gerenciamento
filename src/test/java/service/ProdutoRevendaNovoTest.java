@@ -183,7 +183,7 @@ class ProdutoRevendaNovoTest {
     }
 
     /** O projeto não tem repositório de variações em memória: este simula o banco. */
-    private static final class VariacoesEmMemoria implements VariacaoItemCardapioRepository {
+    static final class VariacoesEmMemoria implements VariacaoItemCardapioRepository {
         private final List<VariacaoItemCardapio> lista = new ArrayList<>();
         private long sequencia = 1;
 

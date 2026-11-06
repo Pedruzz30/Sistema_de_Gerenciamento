@@ -267,7 +267,9 @@ public class NotaFiscalController {
             String status,
             String dataEmissao,
             BigDecimal total,
-            List<ItemResponse> itens
+            List<ItemResponse> itens,
+            String numeroNfe,
+            String chaveAcesso
     ) {
         public static NotaResponse from(NotaFiscal n) {
             List<ItemResponse> itens = n.getItens().stream()
@@ -280,7 +282,9 @@ public class NotaFiscalController {
                     n.getStatus().name(),
                     n.getDataEmissao().toString(),
                     n.calcularTotal(),
-                    itens
+                    itens,
+                    n.getNumeroNfe(),
+                    n.getChaveAcesso()
             );
         }
     }

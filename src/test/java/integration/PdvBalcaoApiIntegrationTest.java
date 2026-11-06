@@ -217,6 +217,116 @@ class PdvBalcaoApiIntegrationTest {
         assertEquals(HttpStatus.BAD_REQUEST, errado.getStatusCode(), errado.getBody());
     }
 
+    @Test
+    void importarXmlCriaProdutoVendeEReconheceNaSegundaNota() throws Exception {
+        String sufixo = sufixoUnico();
+        long numero = Long.parseLong(sufixo);
+        String codigo = "P" + sufixo;
+        String eanUnidade = ean13(sufixo + "4");
+        String eanCaixa = ean13(sufixo + "5");
+        service.NfeXmlExemplo.Linha linha = new service.NfeXmlExemplo.Linha(
+                codigo, "CERV TESTE LT 350ML", eanCaixa, eanUnidade, "CX", "5.0000", "UN", "60.0000", "150.00", null);
+        String primeira = service.NfeXmlExemplo.nota(numero, linha);
+
+        // Operadora de caixa não importa nota.
+        assertEquals(HttpStatus.FORBIDDEN,
+                post("/api/notas/importacao/previa", Map.of("xml", primeira), caixa).getStatusCode());
+
+        // A prévia entende 5 CX = 60 UN e ainda não conhece o produto.
+        JsonNode previa = json(assertOk(post("/api/notas/importacao/previa", Map.of("xml", primeira), gerente)));
+        JsonNode itemPrevia = previa.path("itens").get(0);
+        assertEquals(12, itemPrevia.path("unidadesPorEmbalagem").asInt());
+        assertFalse(itemPrevia.path("conferir").asBoolean());
+        assertTrue(itemPrevia.path("produtoId").isNull());
+        assertEquals("22030000", itemPrevia.path("ncm").asText());
+
+        Map<String, Object> criar = new LinkedHashMap<>();
+        criar.put("numeroItem", 1);
+        criar.put("acao", "CRIAR");
+        criar.put("unidadesPorEmbalagem", 12);
+        criar.put("nome", "Cerveja importada " + sufixo);
+        criar.put("precoVenda", "4.00");
+        criar.put("precoGelado", "5.00");
+        criar.put("precoFardo", "40.00");
+        JsonNode resultado = json(assertOk(post("/api/notas/importacao",
+                Map.of("xml", primeira, "itens", List.of(criar)), gerente)));
+        assertEquals(60, resultado.path("unidades").asInt());
+        assertEquals(1, resultado.path("produtosCriados").asInt());
+
+        // Os códigos da nota já funcionam no caixa: a lata leva à gelada e a caixa ao fardo de 12.
+        JsonNode lata = json(assertOk(get("/api/pdv/codigos/" + eanUnidade, caixa)));
+        assertEquals("Gelada", lata.path("variacao").path("variacaoNome").asText());
+        JsonNode caixaFechada = json(assertOk(get("/api/pdv/codigos/" + eanCaixa, caixa)));
+        assertBig("12", caixaFechada.path("variacao").path("quantidadeProdutoBase").decimalValue());
+
+        int produtoId = lata.path("variacao").path("produtoId").asInt();
+        assertEquals(60, quantidadeNaTelaDeEstoque(produtoId));
+        JsonNode estoque = json(assertOk(get("/api/produtos/" + produtoId + "/estoque", gerente)));
+        assertBig("60", estoque.path("quantidadeAtual").decimalValue());
+        assertBig("2.50", estoque.path("custoMedio").decimalValue());
+
+        // A nota aparece confirmada, com a chave de acesso.
+        JsonNode nota = json(assertOk(get("/api/notas/" + resultado.path("notaId").asLong(), gerente)));
+        assertEquals("CONFIRMADA", nota.path("status").asText());
+        assertEquals(service.NfeXmlExemplo.chave(numero), nota.path("chaveAcesso").asText());
+
+        // O produto vindo da nota vende no PDV.
+        JsonNode venda = json(assertOk(post("/api/vendas", Map.of("filialId", 1, "canal", "BALCAO", "itens", List.of(
+                Map.of("variacaoId", lata.path("variacao").path("variacaoId").asLong(), "quantidade", "1")
+        )), caixa)));
+        assertOk(postIdempotente("/api/vendas/" + venda.path("id").asLong() + "/finalizar", Map.of(), caixa, "xml-venda-" + sufixo));
+        assertEquals(59, quantidadeNaTelaDeEstoque(produtoId));
+
+        // Segunda nota do mesmo fornecedor: reconhecida pelo código dele, mesmo sem GTIN.
+        String segunda = service.NfeXmlExemplo.nota(numero + 1, new service.NfeXmlExemplo.Linha(
+                codigo, "CERV TESTE LT 350ML", "SEM GTIN", "SEM GTIN", "CX", "5", "CX", "5", "210.00", null));
+        JsonNode segundaPrevia = json(assertOk(post("/api/notas/importacao/previa", Map.of("xml", segunda), gerente)));
+        JsonNode segundoItem = segundaPrevia.path("itens").get(0);
+        assertEquals("VINCULO", segundoItem.path("origem").asText());
+        assertEquals(produtoId, segundoItem.path("produtoId").asInt());
+        assertEquals(12, segundoItem.path("unidadesPorEmbalagem").asInt());
+
+        assertOk(post("/api/notas/importacao", Map.of("xml", segunda, "itens", List.of(Map.of(
+                "numeroItem", 1, "acao", "VINCULAR", "produtoId", produtoId, "unidadesPorEmbalagem", 12))), gerente));
+        assertEquals(119, quantidadeNaTelaDeEstoque(produtoId));
+
+        // A mesma nota não entra duas vezes.
+        ResponseEntity<String> repetida = post("/api/notas/importacao", Map.of("xml", segunda, "itens", List.of(Map.of(
+                "numeroItem", 1, "acao", "VINCULAR", "produtoId", produtoId, "unidadesPorEmbalagem", 12))), gerente);
+        assertEquals(HttpStatus.CONFLICT, repetida.getStatusCode(), repetida.getBody());
+        assertEquals(119, quantidadeNaTelaDeEstoque(produtoId));
+        assertFalse(json(assertOk(post("/api/notas/importacao/previa", Map.of("xml", segunda), gerente)))
+                .path("notaExistenteId").isNull());
+    }
+
+    @Test
+    void importacaoComErroNaoDeixaNadaPelaMetade() throws Exception {
+        String sufixo = sufixoUnico();
+        long numero = Long.parseLong(sufixo);
+        String nomeNovo = "Item que nao pode ficar " + sufixo;
+        // Dois itens: o primeiro criaria um produto; o segundo falha por não dar unidades inteiras.
+        String xml = service.NfeXmlExemplo.nota(numero,
+                new service.NfeXmlExemplo.Linha("A" + sufixo, "NOVO", "SEM GTIN", "SEM GTIN", "UN", "2", "UN", "2", "10.00", null),
+                new service.NfeXmlExemplo.Linha("B" + sufixo, "CHOPP", "SEM GTIN", "SEM GTIN", "L", "2.5", "L", "2.5", "10.00", null));
+        Map<String, Object> primeiro = new LinkedHashMap<>();
+        primeiro.put("numeroItem", 1);
+        primeiro.put("acao", "CRIAR");
+        primeiro.put("unidadesPorEmbalagem", 1);
+        primeiro.put("nome", nomeNovo);
+        primeiro.put("precoVenda", "9.00");
+        Map<String, Object> segundo = new LinkedHashMap<>(primeiro);
+        segundo.put("numeroItem", 2);
+        segundo.put("nome", nomeNovo + " B");
+
+        ResponseEntity<String> resposta = post("/api/notas/importacao", Map.of("xml", xml, "itens", List.of(primeiro, segundo)), gerente);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resposta.getStatusCode(), resposta.getBody());
+        for (JsonNode produto : json(assertOk(get("/api/produtos", gerente)))) {
+            assertFalse(nomeNovo.equals(produto.path("nome").asText()), "Importacao com erro deixou produto criado");
+        }
+        assertTrue(json(assertOk(post("/api/notas/importacao/previa", Map.of("xml", xml), gerente))).path("notaExistenteId").isNull());
+    }
+
     private static Map<String, Object> revenda(String nome, String ean, String eanFardo) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("nome", nome);

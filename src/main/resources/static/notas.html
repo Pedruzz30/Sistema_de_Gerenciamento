@@ -48,6 +48,7 @@
         <p class="page-sub header-sub" id="header-sub">Resolva produto novo e vínculo com fornecedor no mesmo fluxo.</p>
       </div>
       <div class="topbar-right header-right">
+        <button class="btn btn-secondary" onclick="abrirModalXml()" id="btn-importar-nfe">Importar XML</button>
         <button class="btn btn-accent btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">
           <span class="btn-inline-icon" data-icon="plus"></span>
           Nova Nota
@@ -267,6 +268,35 @@
         </div>
       </div>
     </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Importar XML da NF-e ──
+     Não fecha ao clicar fora: a conferência dá trabalho e não pode se perder. -->
+<div class="modal-overlay" id="modal-xml">
+  <div class="modal modal--wide modal--xml">
+    <div class="modal-header">
+      <h3 class="modal-title">Importar nota do fornecedor (XML)</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModalXml()">✕</button>
+    </div>
+    <div class="modal-body modal-body--scroll">
+      <div class="alert-modal" id="alert-xml" role="status" aria-live="polite"></div>
+      <div id="xml-arquivo" class="xml-arquivo">
+        <label for="xml-input">Escolha o arquivo XML que o distribuidor mandou</label>
+        <input class="input" type="file" id="xml-input" accept=".xml,text/xml,application/xml" onchange="lerArquivoXml(this)">
+        <p class="inline-note">Nada é gravado agora: primeiro você confere os itens.</p>
+        <div id="xml-exemplo-slot"></div>
+      </div>
+      <div id="xml-conferencia" hidden>
+        <div class="xml-resumo" id="xml-resumo"></div>
+        <ul class="xml-avisos" id="xml-avisos"></ul>
+        <div class="xml-itens" id="xml-itens"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharModalXml()">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btn-importar-xml" onclick="confirmarImportacaoXml()" hidden>Dar entrada no estoque</button>
     </div>
   </div>
 </div>

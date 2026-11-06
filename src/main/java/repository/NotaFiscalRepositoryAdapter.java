@@ -23,6 +23,11 @@ public class NotaFiscalRepositoryAdapter implements NotaFiscalRepository {
     }
 
     @Override
+    public Optional<NotaFiscal> buscarPorChaveAcesso(String chaveAcesso) {
+        return delegate.findByChaveAcesso(chaveAcesso);
+    }
+
+    @Override
     public NotaFiscal salvar(NotaFiscal nota) {
         return delegate.save(nota);
     }

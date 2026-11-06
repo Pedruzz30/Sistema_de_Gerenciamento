@@ -19,5 +19,8 @@ public interface NotaFiscalRepository {
 
     List<NotaFiscal> listarTodos();
 
+    /** Nota já importada com esta chave de acesso da NF-e. */
+    Optional<NotaFiscal> buscarPorChaveAcesso(String chaveAcesso);
+
     void deletar(long id);
 }

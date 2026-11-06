@@ -653,11 +653,288 @@ function limparAlert(id) {
 }
 
 /* Page-scoped bridge: legacy inline event handlers resolve only against the active page. */
+// ── Importar XML da NF-e ──────────────────────────────────────────────────
+// Dois passos: a prévia não grava nada. Quantidades e valores vêm do XML; aqui
+// a pessoa só decide o que fazer com cada item e confere as unidades por embalagem.
+
+let nfeAtual = null;
+let nfeImportando = false;
+const NFE_MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const NFE_MAX_BYTES = 5 * 1024 * 1024;
+
+function abrirModalXml() {
+  nfeAtual = null;
+  limparAlert('alert-xml');
+  document.getElementById('xml-input').value = '';
+  document.getElementById('xml-arquivo').hidden = false;
+  document.getElementById('xml-conferencia').hidden = true;
+  document.getElementById('btn-importar-xml').hidden = true;
+  abrirModal('modal-xml');
+}
+
+function fecharModalXml() {
+  if (nfeAtual && !window.confirm('Sair sem importar? A conferência desta nota será perdida.')) return;
+  nfeAtual = null;
+  fecharModal('modal-xml');
+}
+
+/** Respeita o encoding declarado no arquivo (há notas em ISO-8859-1). */
+function decodificarXml(buffer) {
+  const inicio = new TextDecoder('latin1').decode(buffer.slice(0, 200));
+  const declarado = inicio.match(/encoding=["']([\w-]+)["']/i);
+  try {
+    return new TextDecoder(declarado ? declarado[1] : 'utf-8').decode(buffer);
+  } catch (_) {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+}
+
+async function lerArquivoXml(input) {
+  const arquivo = input.files && input.files[0];
+  if (!arquivo) return;
+  limparAlert('alert-xml');
+  if (arquivo.size > NFE_MAX_BYTES) {
+    mostrarAlert('alert-xml', 'Arquivo grande demais para uma NF-e.', 'error');
+    return;
+  }
+  await processarTextoNfe(decodificarXml(await arquivo.arrayBuffer()));
+}
+
+async function processarTextoNfe(xml) {
+  limparAlert('alert-xml');
+  try {
+    const resp = await fetch('/api/notas/importacao/previa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ xml })
+    });
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível ler o arquivo.'));
+    const previa = await resp.json();
+    await carregarTodosProdutos();
+    nfeAtual = { xml, previa };
+    renderPreviaNfe(previa);
+  } catch (e) {
+    nfeAtual = null;
+    mostrarAlert('alert-xml', e.message, 'error');
+  }
+}
+
+function nfeUnidades(item, fator) {
+  return Number(item.quantidadeComercial) * fator;
+}
+
+function nfeEhInteiro(valor) {
+  return Math.abs(valor - Math.round(valor)) < 0.000001 && valor > 0;
+}
+
+function renderPreviaNfe(previa) {
+  const emissao = previa.dataEmissao ? new Date(previa.dataEmissao).toLocaleDateString('pt-BR') : '—';
+  const situacaoFornecedor = previa.fornecedorId
+    ? (previa.fornecedorInativo ? 'inativo: reative antes de importar' : 'já cadastrado')
+    : 'novo: será cadastrado';
+  document.getElementById('xml-resumo').innerHTML = `
+    <div><strong>NF-e ${escapeHtml(previa.numero)}</strong> · série ${escapeHtml(previa.serie)} · emitida em ${emissao} · total ${NFE_MOEDA.format(Number(previa.valorTotal))}</div>
+    <div>Fornecedor: <strong>${escapeHtml(previa.fornecedorNome)}</strong> (${situacaoFornecedor})</div>
+    <div>Nota emitida para: ${escapeHtml(previa.destinatarioNome || '—')}. Confira se é a sua loja.</div>`;
+
+  const avisos = [...(previa.avisos || [])];
+  const bloqueada = Boolean(previa.notaExistenteId) || previa.fornecedorInativo;
+  if (previa.notaExistenteId) avisos.unshift(`Esta nota já foi importada (nota #${previa.notaExistenteId}). Não pode entrar de novo.`);
+  document.getElementById('xml-avisos').innerHTML = avisos.map(a => `<li>${escapeHtml(a)}</li>`).join('');
+
+  const opcoesProduto = [...todosOsProdutos]
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
+    .map(p => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`)
+    .join('');
+
+  document.getElementById('xml-itens').innerHTML = previa.itens.map(item => {
+    const n = item.numero;
+    const origem = item.origem === 'VINCULO' ? 'Reconhecido deste fornecedor'
+      : item.origem === 'CODIGO_BARRAS' ? 'Reconhecido pelo código de barras' : 'Produto novo';
+    return `
+      <article class="xml-item" data-item="${n}">
+        <header>
+          <strong>${n}. ${escapeHtml(item.descricao)}</strong>
+          <span class="badge ${item.origem ? 'badge-green' : 'badge-amber'}">${origem}</span>
+        </header>
+        <p class="inline-note">Cód. ${escapeHtml(item.codigoFornecedor)} · NCM ${escapeHtml(item.ncm || '—')} · Código de barras ${escapeHtml(item.eanTributavel || item.eanComercial || 'sem GTIN')}</p>
+        <div class="xml-conta ${item.conferir ? 'xml-conta--conferir' : ''}">
+          <span>${Number(item.quantidadeComercial).toLocaleString('pt-BR')} ${escapeHtml(item.unidadeComercial)} ×</span>
+          <input class="input" type="number" id="xml-fator-${n}" min="1" max="1000" step="1" value="${item.unidadesPorEmbalagem}" aria-label="Unidades por embalagem" oninput="atualizarContaXml(${n})">
+          <span id="xml-conta-${n}"></span>
+        </div>
+        ${item.conferir ? '<p class="xml-conferir">Confira: a nota não diz quantas unidades vêm nesta embalagem.</p>' : ''}
+        <div class="xml-decisao">
+          <label>O que fazer
+            <select class="select" id="xml-acao-${n}" onchange="atualizarDecisaoXml(${n})">
+              <option value="CRIAR">Cadastrar produto novo</option>
+              <option value="VINCULAR">Já tenho este produto</option>
+              <option value="IGNORAR">Não dar entrada</option>
+            </select>
+          </label>
+          <label class="xml-vincular" id="xml-vincular-${n}">Produto
+            <select class="select" id="xml-produto-${n}"><option value="">Escolha…</option>${opcoesProduto}</select>
+          </label>
+          <div class="xml-novo" id="xml-novo-${n}">
+            <label class="xml-novo__nome">Nome no sistema
+              <input class="input" type="text" id="xml-nome-${n}" value="${escapeHtml(item.descricao)}">
+            </label>
+            <label>Preço gelada (R$)
+              <input class="input" type="number" id="xml-gelado-${n}" min="0.01" step="0.01" placeholder="Vazio = não vende gelada">
+            </label>
+            <label>Preço natural / unidade (R$)
+              <input class="input" type="number" id="xml-preco-${n}" min="0.01" step="0.01">
+            </label>
+            <label id="xml-fardo-wrap-${n}">Preço do fardo (R$)
+              <input class="input" type="number" id="xml-fardo-${n}" min="0.01" step="0.01" placeholder="Vazio = não vende fechado">
+            </label>
+            <label>Categoria
+              <select class="select" id="xml-categoria-${n}">
+                <option value="bebidas">Bebidas</option>
+                <option value="petiscos">Petiscos</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </article>`;
+  }).join('');
+
+  previa.itens.forEach(item => {
+    document.getElementById(`xml-acao-${item.numero}`).value = item.produtoId ? 'VINCULAR' : 'CRIAR';
+    if (item.produtoId) document.getElementById(`xml-produto-${item.numero}`).value = String(item.produtoId);
+    atualizarDecisaoXml(item.numero);
+    atualizarContaXml(item.numero);
+  });
+
+  document.getElementById('xml-arquivo').hidden = true;
+  document.getElementById('xml-conferencia').hidden = false;
+  const botao = document.getElementById('btn-importar-xml');
+  botao.hidden = false;
+  botao.disabled = bloqueada;
+}
+
+function nfeItem(numero) {
+  return nfeAtual && nfeAtual.previa.itens.find(i => i.numero === numero);
+}
+
+function atualizarDecisaoXml(numero) {
+  const acao = document.getElementById(`xml-acao-${numero}`).value;
+  document.getElementById(`xml-vincular-${numero}`).hidden = acao !== 'VINCULAR';
+  document.getElementById(`xml-novo-${numero}`).hidden = acao !== 'CRIAR';
+  document.querySelector(`.xml-item[data-item="${numero}"]`).classList.toggle('xml-item--ignorado', acao === 'IGNORAR');
+  atualizarContaXml(numero);
+}
+
+function atualizarContaXml(numero) {
+  const item = nfeItem(numero);
+  if (!item) return;
+  const fator = Number(document.getElementById(`xml-fator-${numero}`).value);
+  const unidades = nfeUnidades(item, fator);
+  const conta = document.getElementById(`xml-conta-${numero}`);
+  if (!Number.isInteger(fator) || fator < 1 || !nfeEhInteiro(unidades)) {
+    conta.textContent = 'não dá unidades inteiras';
+    conta.classList.add('xml-conta__erro');
+  } else {
+    const custo = Number(item.custoTotal) / unidades;
+    conta.textContent = `un = ${unidades.toLocaleString('pt-BR')} unidades · custo ${NFE_MOEDA.format(custo)}/un`;
+    conta.classList.remove('xml-conta__erro');
+  }
+  document.getElementById(`xml-fardo-wrap-${numero}`).hidden = !(Number.isInteger(fator) && fator >= 2);
+}
+
+function numeroXml(id) {
+  const texto = document.getElementById(id).value.trim().replace(',', '.');
+  return texto === '' ? null : Number(texto);
+}
+
+function montarDecisoesXml() {
+  const decisoes = [];
+  for (const item of nfeAtual.previa.itens) {
+    const n = item.numero;
+    const acao = document.getElementById(`xml-acao-${n}`).value;
+    const fator = Number(document.getElementById(`xml-fator-${n}`).value);
+    if (acao === 'IGNORAR') {
+      decisoes.push({ numeroItem: n, acao, unidadesPorEmbalagem: 1 });
+      continue;
+    }
+    if (!Number.isInteger(fator) || fator < 1 || !nfeEhInteiro(nfeUnidades(item, fator))) {
+      return { erro: `Item ${n}: confira as unidades por embalagem.`, campo: `xml-fator-${n}` };
+    }
+    if (acao === 'VINCULAR') {
+      const produtoId = Number(document.getElementById(`xml-produto-${n}`).value);
+      if (!produtoId) return { erro: `Item ${n}: escolha o produto.`, campo: `xml-produto-${n}` };
+      decisoes.push({ numeroItem: n, acao, produtoId, unidadesPorEmbalagem: fator });
+      continue;
+    }
+    const nome = document.getElementById(`xml-nome-${n}`).value.trim();
+    const precoVenda = numeroXml(`xml-preco-${n}`);
+    const precoGelado = numeroXml(`xml-gelado-${n}`);
+    const precoFardo = fator >= 2 ? numeroXml(`xml-fardo-${n}`) : null;
+    if (!nome) return { erro: `Item ${n}: informe o nome.`, campo: `xml-nome-${n}` };
+    if (!(precoVenda > 0)) return { erro: `Item ${n}: informe o preço de venda.`, campo: `xml-preco-${n}` };
+    const categoria = document.getElementById(`xml-categoria-${n}`);
+    decisoes.push({
+      numeroItem: n,
+      acao,
+      unidadesPorEmbalagem: fator,
+      nome,
+      precoVenda,
+      precoGelado,
+      precoFardo,
+      categoriaCardapioCodigo: categoria.value,
+      categoriaCardapioNome: categoria.options[categoria.selectedIndex].textContent,
+      categoriaEstoque: categoria.value === 'bebidas' ? 'BEBIDAS' : 'SECO'
+    });
+  }
+  return { decisoes };
+}
+
+async function confirmarImportacaoXml() {
+  if (!nfeAtual || nfeImportando) return;
+  limparAlert('alert-xml');
+  const montagem = montarDecisoesXml();
+  if (montagem.erro) {
+    mostrarAlert('alert-xml', montagem.erro, 'error');
+    document.getElementById(montagem.campo)?.focus();
+    return;
+  }
+  nfeImportando = true;
+  const botao = document.getElementById('btn-importar-xml');
+  botao.disabled = true;
+  try {
+    const resp = await fetch('/api/notas/importacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ xml: nfeAtual.xml, itens: montagem.decisoes })
+    });
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível importar a nota.'));
+    const r = await resp.json();
+    nfeAtual = null;
+    fecharModal('modal-xml');
+    const novos = r.produtosCriados ? `, ${r.produtosCriados} produto(s) novo(s)` : '';
+    showToast(`Nota importada: ${Number(r.unidades).toLocaleString('pt-BR')} unidades no estoque${novos}.`, 'success');
+    await Promise.all([carregarNotas(), carregarTodosProdutos()]);
+  } catch (e) {
+    mostrarAlert('alert-xml', e.message, 'error');
+    document.querySelector('#modal-xml .modal-body')?.scrollTo({ top: 0 });
+    botao.disabled = false;
+  } finally {
+    nfeImportando = false;
+  }
+}
+
 window.StockOSPages = window.StockOSPages || {};
 window.StockOSPages.notas = {
   mount: stockOSMount_notas,
   activate() {
     Object.assign(window, {
+    abrirModalXml,
+    fecharModalXml,
+    lerArquivoXml,
+    processarTextoNfe,
+    atualizarDecisaoXml,
+    atualizarContaXml,
+    confirmarImportacaoXml,
     carregarNotas,
     carregarFornecedores,
     carregarTodosProdutos,

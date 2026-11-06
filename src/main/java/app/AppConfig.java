@@ -503,6 +503,27 @@ public class AppConfig {
     }
 
     @Bean
+    public ImportacaoNfeService importacaoNfeService(FornecedorRepository fornecedorRepository,
+                                                     NotaFiscalRepository notaFiscalRepository,
+                                                     NotaFiscalService notaFiscalService,
+                                                     ProdutoRepository produtoRepository,
+                                                     CodigoVendaRepository codigoVendaRepository,
+                                                     VinculoProdutoFornecedorRepository vinculoProdutoFornecedorRepository,
+                                                     ProdutoRevendaService produtoRevendaService,
+                                                     LogRepository logRepository) {
+        return new ImportacaoNfeService(
+                fornecedorRepository,
+                notaFiscalRepository,
+                notaFiscalService,
+                produtoRepository,
+                codigoVendaRepository,
+                vinculoProdutoFornecedorRepository,
+                produtoRevendaService,
+                logRepository
+        );
+    }
+
+    @Bean
     public IntegracaoCaixaLegadoService integracaoCaixaLegadoService(CaixaService caixaService,
                                                                      VendaPagamentoRepository vendaPagamentoRepository) {
         return new IntegracaoCaixaLegadoService(caixaService, vendaPagamentoRepository);

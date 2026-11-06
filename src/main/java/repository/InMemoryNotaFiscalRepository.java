@@ -19,6 +19,11 @@ public class InMemoryNotaFiscalRepository implements NotaFiscalRepository {
     }
 
     @Override
+    public synchronized Optional<NotaFiscal> buscarPorChaveAcesso(String chaveAcesso) {
+        return notas.stream().filter(n -> chaveAcesso != null && chaveAcesso.equals(n.getChaveAcesso())).findFirst();
+    }
+
+    @Override
     public synchronized NotaFiscal salvar(NotaFiscal nota) {
         if (nota == null) {
             throw new IllegalArgumentException("Nota fiscal nao pode ser nula.");

@@ -188,21 +188,21 @@ public class EstoqueService {
         PoliticaFalta politicaFinal = politicaFalta != null ? politicaFalta : produtoAtual.getPoliticaFalta();
         Boolean ativoFinal = ativo != null ? ativo : produtoAtual.isAtivo();
 
-        Produto produtoAtualizado = produtoRepository.salvar(
-                new Produto(
-                        produtoAtual.getId(),
-                        nome,
-                        produtoAtual.getQuantidadeAtual(),
-                        quantidadeMinima,
-                        preco,
-                        categoriaEstoque,
-                        produtoAtual.isControladoPorEstoque(),
-                        unidadeFinal,
-                        politicaFinal,
-                        ativoFinal
-                )
+        Produto alterado = new Produto(
+                produtoAtual.getId(),
+                nome,
+                produtoAtual.getQuantidadeAtual(),
+                quantidadeMinima,
+                preco,
+                categoriaEstoque,
+                produtoAtual.isControladoPorEstoque(),
+                unidadeFinal,
+                politicaFinal,
+                ativoFinal
         );
-        return produtoAtualizado;
+        // Editar o produto não pode apagar NCM e CEST.
+        alterado.preencherDadosFiscais(produtoAtual.getNcm(), produtoAtual.getCest());
+        return produtoRepository.salvar(alterado);
     }
 
     public Optional<Produto> buscarProdutoPorId(int id) {
