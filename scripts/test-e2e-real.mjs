@@ -478,6 +478,7 @@ try {
     await entrar(dono, 'Admin', 'Superior', SENHA_ADMIN);
     await dono.waitForURL('**/dashboard.html');
     assert.equal((await api(dono, '/api/funcionarios')).status, 200);
+    await esperarTexto(dono, '#summary-grid', 'R$ 60,89');
   });
 
   if (process.env.E2E_BACKUP === '1') {
@@ -487,6 +488,9 @@ try {
       await naTela(dono, '#btn-backup-agora');
       await dono.click('#btn-backup-agora');
       await esperarTexto(dono, '#backup-painel', 'Último backup: hoje');
+      // O botão é trocado quando o backup termina: o texto acima já podia estar na tela.
+      await esperarTexto(dono, '#btn-backup-agora', 'Fazer backup agora');
+      assert.equal(await dono.isDisabled('#btn-backup-agora'), false);
     });
   } else {
     await passo(dono, 'Fora da loja o painel de backup nao aparece', async () => {

@@ -225,7 +225,7 @@ function renderSummaryCards(produtos, caixas, metricasHoje) {
     },
     {
       label: 'Vendas do Dia',
-      value: Number.isFinite(vendasDia) ? 'R$' + vendasDia.toFixed(2) : '—',
+      value: Number.isFinite(vendasDia) ? formatarMoedaBR(vendasDia) : '—',
       icon: 'wallet',
       tone: 'green',
       trend: 'up',
@@ -354,9 +354,9 @@ function renderFinanceiro(caixas, metricasHoje) {
   var caixasAbertos = metricasHoje ? metricasHoje.caixasAbertos : caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
   var ticketMedio = metricasHoje ? Number(metricasHoje.ticketMedio) : null;
 
-  document.getElementById('fin-total-vendas').textContent = Number.isFinite(totalVendas) ? 'R$' + totalVendas.toFixed(2) : '—';
+  document.getElementById('fin-total-vendas').textContent = Number.isFinite(totalVendas) ? formatarMoedaBR(totalVendas) : '—';
   document.getElementById('fin-caixas-abertos').textContent = caixasAbertos;
-  document.getElementById('fin-ticket-medio').textContent = Number.isFinite(ticketMedio) ? 'R$' + ticketMedio.toFixed(2) : '—';
+  document.getElementById('fin-ticket-medio').textContent = Number.isFinite(ticketMedio) ? formatarMoedaBR(ticketMedio) : '—';
 
   var caixaList = document.getElementById('caixa-list');
   if (caixas.length === 0) {
@@ -372,7 +372,7 @@ function renderFinanceiro(caixas, metricasHoje) {
     return '<div class="caixa-item">' +
            '<span class="caixa-name">Caixa ' + c.numeroCaixa + (c.nomeOperador ? ' — ' + c.nomeOperador : '') + '</span>' +
            '<span class="caixa-status ' + c.status.toLowerCase() + '">' + c.status + '</span>' +
-           '<span class="caixa-valor">' + (c.status === 'ABERTO' ? 'R$' + (c.totalVendas || 0).toFixed(2) : '—') + '</span>' +
+           '<span class="caixa-valor">' + (c.status === 'ABERTO' ? formatarMoedaBR(c.totalVendas || 0) : '—') + '</span>' +
            '</div>';
   }).join('');
 }
@@ -1232,7 +1232,7 @@ function renderGraficoCaixas(caixas) {
         },
         tooltip: {
           ...TOOLTIP_BASE,
-          callbacks: { label: ctx => ` ${ctx.dataset.label}: R$${ctx.raw.toFixed(2)}` },
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatarMoedaBR(ctx.raw)}` },
         },
       },
       scales: {
