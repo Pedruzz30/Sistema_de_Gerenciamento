@@ -327,7 +327,7 @@ E a movimentação do caixa ganha a coluna `forma_pagamento`. O **saldo da gavet
 | Nobreak | Pequeno | Queda de luz no meio da venda corrompe a operação |
 | Internet | Qualquer, com 4G de reserva no celular | Necessária para NFC-e e backup, **não** para vender |
 
-**Onde rodar:** a recomendação é rodar **no próprio notebook** (Docker com Postgres + app, que vocês já têm em `compose.yaml`), com **backup automático diário para a nuvem**. Se a internet cair, o caixa continua vendendo, e a NFC-e entra em contingência offline e é transmitida depois. Se rodar só na nuvem (Netlify + backend remoto), **sem internet não há venda**, e isso num depósito em dia de jogo é inaceitável.
+**Onde rodar:** a recomendação é rodar **no próprio notebook** (pacote sem Docker, seção 17), com **backup automático para pen drive ou nuvem**. Se a internet cair, o caixa continua vendendo, e a NFC-e entra em contingência offline e é transmitida depois. Se rodar só na nuvem (Netlify + backend remoto), **sem internet não há venda**, e isso num depósito em dia de jogo é inaceitável.
 
 ---
 
@@ -424,7 +424,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
 9. ✅ Desligar a venda avulsa sem itens no PDV (só gerente).
 10. ✅ (seção 15) Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
-11. Instalação local no notebook (Docker) + backup diário automático.
+11. ✅ (seção 17) Instalação local no notebook, sem Docker, + backup automático. **Falta:** conferir no notebook real.
 
 **Fase 2 – Substituir o caderno**
 12. Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário.
@@ -719,6 +719,49 @@ Na tela de Notas, o botão **Importar XML** recebe o arquivo da NF-e do forneced
 - **Desconto:** não existe na tela do PDV.
 - **Vendas por operador e fechamento impresso:** cada movimento grava quem passou, mas não há resumo por pessoa nem impressão.
 - **Atalhos de caldo, gelo e porções, e folha de códigos** para itens sem código de barras: não existem.
+
+---
+
+## 17. Instalação na loja com backup (06/11/2026)
+
+**Decisão: sem Docker.** O roteiro previa Docker, mas ele não subiu na própria máquina de desenvolvimento, por causa da virtualização do Windows, e seria o mesmo risco no notebook da loja. O pacote traz o sistema, o Java e o PostgreSQL prontos, em um ZIP. Guia para a loja: `docs/instalacao-loja.md`.
+
+| Item | Como ficou |
+|---|---|
+| Instalação | `Instalar.cmd` em `C:\StockOS`, sem internet. Cria banco com senha aleatória, atalho na Área de Trabalho e início ao entrar no Windows |
+| Acesso | Sistema e banco atendem só neste computador. Isso também resolve, por enquanto, a falta de HTTPS da seção 15 |
+| Backup | Dentro do próprio sistema, a cada 3 horas e a cada fechamento de caixa. Assim, nenhuma janela abre por cima do caixa e tira o foco do leitor |
+| Conferência | O arquivo só ganha o nome definitivo depois de passar pelo `pg_restore --list` |
+| Cópia externa | Qualquer pasta chamada `StockOS-Backups` em disco, pen drive ou nuvem recebe cópia. O pen drive conectado depois recebe o último backup em até 15 minutos |
+| Guarda | Tudo de 2 dias, um por dia por 30 dias, um por mês por um ano. Arquivos com outro nome nunca são apagados |
+| Aviso | Painel no Dashboard: em dia, sem cópia externa há mais de 7 dias, ou com problema |
+| Restauração | Carrega em um banco novo e só troca no fim. Antes, guarda uma cópia. Se o sistema não subir, volta o banco anterior |
+| Atualização | O mesmo `Instalar.cmd`. Guarda uma cópia antes e volta sozinho se a versão nova não subir |
+
+**O que é testado em um Windows limpo a cada envio (`stockos-instalador.yml`), com o PowerShell que vem no Windows:**
+- instalação a partir de uma pasta com espaço e acento;
+- os 36 passos no navegador, com backup pela tela;
+- backup com cópia, e backup disparado pelo fechamento de caixa;
+- restauração, incluindo a recusa de um arquivo que não é backup;
+- queda de energia, com os processos encerrados à força e retomada pelo início automático;
+- atualização boa e atualização com programa quebrado;
+- notebook perdido: apaga tudo, instala do zero e restaura da pasta externa, com a senha antiga funcionando;
+- pasta fechada para outros usuários, sistema inacessível pela rede e ordem alfabética em português.
+
+**O que este teste não cobre (conferir na primeira instalação real):**
+- **Reinício de verdade do notebook.** O teste roda o script de início, mas não reinicia o Windows nem usa o atalho da pasta Inicializar.
+- **Janela piscando durante o backup.** O Java promete rodar o programa de backup sem janela, mas o teste não tem tela para ver. Se piscar, o leitor pode perder um código.
+- **Usuário sem administrador.** O usuário do teste é administrador. A instalação foi feita para não depender disso, mas não foi testada assim.
+- **Windows sem o runtime do Visual C++.** O pacote traz os arquivos, mas o Windows do teste já os tem.
+- **Pen drive e OneDrive de verdade.** O teste usa uma pasta `C:\StockOS-Backups`.
+- **Antivírus e aviso do SmartScreen.** O pacote não é assinado.
+- **Notebook fraco.** Os tempos do teste são de uma máquina do GitHub.
+
+**Limites conhecidos:**
+- **Backup sem criptografia:** quem pegar o pen drive lê vendas e cadastros. As senhas ficam só como hash.
+- **O PostgreSQL 17.11 não tem hash publicado pelo fabricante:** o valor fixado no script é o do download feito em 06/11/2026, então ele garante que o arquivo não mudou, mas não a origem.
+- **Depois de reiniciar,** o sistema só liga quando alguém entra no Windows.
+- **O pacote expira em 30 dias** no GitHub e exige login. Para a loja, vale guardar uma cópia.
 
 ---
 

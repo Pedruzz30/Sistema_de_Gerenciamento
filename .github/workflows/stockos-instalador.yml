@@ -58,17 +58,6 @@ jobs:
         run: |
           Get-ChildItem C:\StockOS\logs -ErrorAction SilentlyContinue | ForEach-Object { "--- $($_.Name)"; Get-Content $_.FullName -Tail 60 }
 
-      - name: Keep screenshots and logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: instalador-evidencias
-          path: |
-            e2e-artifacts/
-            C:\StockOS\logs\
-          retention-days: 7
-          if-no-files-found: ignore
-
       - name: Keep store package
         uses: actions/upload-artifact@v4
         with:
@@ -76,3 +65,23 @@ jobs:
           path: instalador/saida/StockOS-Loja.zip
           retention-days: 30
           compression-level: 0
+
+      # Copia antes de enviar: o sistema e o banco seguem com os registros abertos.
+      - name: Collect logs
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path e2e-artifacts/logs | Out-Null
+          Get-ChildItem C:\StockOS\logs -File -ErrorAction SilentlyContinue | ForEach-Object {
+            try { Copy-Item $_.FullName e2e-artifacts/logs/ -ErrorAction Stop } catch { Write-Host "Sem copia de $($_.Name)" }
+          }
+
+      - name: Keep screenshots and logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-evidencias
+          path: e2e-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore

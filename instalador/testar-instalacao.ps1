@@ -8,8 +8,6 @@ $Raiz = 'C:\StockOS'
 $PenDrive = 'C:\StockOS-Backups'
 $Base = 'http://localhost:8080'
 $Senha = 'SenhaDoDono1'
-$Evidencias = Join-Path $PWD 'instalador-evidencias'
-New-Item -ItemType Directory -Force -Path $Evidencias | Out-Null
 
 # Pasta com espaço e acento, como "Downloads\Instalação da loja" no computador de alguém.
 $Extraido = 'C:\Temp\Instalação da Loja'
