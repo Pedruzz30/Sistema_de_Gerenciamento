@@ -1333,6 +1333,219 @@ function fecharPDV() {
 
 let pdvOperadorTrocado = false;
 
+// ── Vendas deste caixa e cancelamento (F9) ───────────────────────────────
+// A lista sai das movimentações da sessão: cada venda tem uma linha por forma paga,
+// e um cancelamento aparece como estorno da mesma venda.
+
+let pdvVendasDoCaixa = [];
+let pdvVendaSelecionada = null;
+let pdvChaveCancelamento = null;
+
+const ROTULO_FORMA_PDV = { DINHEIRO: 'Dinheiro', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito', VOUCHER: 'Voucher' };
+
+function horaPDV(iso) {
+  const data = new Date(iso);
+  return Number.isNaN(data.getTime()) ? '' : data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function agruparVendasPDV(movimentos) {
+  const porVenda = new Map();
+  for (const m of movimentos || []) {
+    if (!m.vendaId || (m.tipo !== 'VENDA' && m.tipo !== 'ESTORNO_VENDA')) continue;
+    const venda = porVenda.get(m.vendaId)
+      || { vendaId: m.vendaId, total: 0, estornado: 0, formas: {}, operador: m.operador, dataHora: m.dataHora };
+    const valor = Number(m.valor) || 0;
+    if (m.tipo === 'VENDA') {
+      venda.total += valor;
+      venda.formas[m.formaPagamento] = (venda.formas[m.formaPagamento] || 0) + valor;
+      venda.operador = m.operador;
+      if (String(m.dataHora) < String(venda.dataHora)) venda.dataHora = m.dataHora;
+    } else {
+      venda.estornado += valor;
+    }
+    porVenda.set(m.vendaId, venda);
+  }
+  return [...porVenda.values()]
+    .filter(v => v.total > 0)
+    .sort((a, b) => String(b.dataHora).localeCompare(String(a.dataHora)) || b.vendaId - a.vendaId);
+}
+
+function situacaoVendaPDV(venda) {
+  if (venda.estornado >= venda.total - 0.005) return 'Cancelada';
+  if (venda.estornado > 0) return 'Cancelada em parte';
+  return '';
+}
+
+function descreverFormasPDV(formas) {
+  return Object.entries(formas)
+    .map(([forma, valor]) => `${ROTULO_FORMA_PDV[forma] || forma} ${formatarMoedaPDV(valor)}`)
+    .join(' · ');
+}
+
+async function abrirVendasPDV() {
+  pdvVendaSelecionada = null;
+  limparAlert('alert-pdv-vendas');
+  document.getElementById('pdv-venda-detalhe').hidden = true;
+  document.getElementById('btn-pdv-cancelar-venda').hidden = true;
+  const lista = document.getElementById('pdv-vendas-lista');
+  lista.innerHTML = '<p class="inline-note">Carregando as vendas...</p>';
+  abrirModal('modal-pdv-vendas');
+  try {
+    const respCaixas = await fetch('/api/caixas');
+    if (!respCaixas.ok) throw new Error(await safeReadErrorMessage(respCaixas, 'Não foi possível ver o caixa.'));
+    const caixa = (await respCaixas.json()).find(c => c.numeroCaixa === pdvNumeroCaixa && c.status === 'ABERTO');
+    if (!caixa) throw new Error('Este caixa não está aberto.');
+    const resp = await fetch(`/api/caixas/sessoes/${caixa.caixaId}/movimentacoes`);
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível carregar as vendas.'));
+    pdvVendasDoCaixa = agruparVendasPDV(await resp.json());
+    renderVendasPDV();
+  } catch (error) {
+    lista.innerHTML = '';
+    mostrarAlert('alert-pdv-vendas', error.message, 'error');
+  }
+}
+
+function renderVendasPDV() {
+  const lista = document.getElementById('pdv-vendas-lista');
+  if (pdvVendasDoCaixa.length === 0) {
+    lista.innerHTML = '<p class="inline-note">Nenhuma venda neste caixa ainda.</p>';
+    return;
+  }
+  lista.innerHTML = pdvVendasDoCaixa.map(v => {
+    const situacao = situacaoVendaPDV(v);
+    return `<button type="button" class="pdv-venda-linha${situacao ? ' pdv-venda-linha--cancelada' : ''}" data-venda-pdv="${v.vendaId}">`
+      + `<span class="pdv-venda-linha__hora">${escapeHtml(horaPDV(v.dataHora))}</span>`
+      + `<span>Venda #${v.vendaId} · ${escapeHtml(v.operador || '—')}${situacao ? `<span class="pdv-venda-selo">${situacao}</span>` : ''}</span>`
+      + `<strong>${formatarMoedaPDV(v.total)}</strong>`
+      + `<span class="pdv-venda-linha__formas">${escapeHtml(descreverFormasPDV(v.formas))}</span>`
+      + '</button>';
+  }).join('');
+  lista.querySelectorAll('[data-venda-pdv]').forEach(botao => {
+    botao.addEventListener('click', () => selecionarVendaPDV(Number(botao.dataset.vendaPdv)));
+  });
+  lista.querySelector('[data-venda-pdv]')?.focus();
+}
+
+async function selecionarVendaPDV(vendaId) {
+  const venda = pdvVendasDoCaixa.find(v => v.vendaId === vendaId);
+  if (!venda) return;
+  pdvVendaSelecionada = venda;
+  pdvChaveCancelamento = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `cancelar-${vendaId}-${Date.now()}`;
+  limparAlert('alert-pdv-vendas');
+  document.querySelectorAll('[data-venda-pdv]').forEach(b => b.classList.toggle('pdv-venda-linha--ativa', Number(b.dataset.vendaPdv) === vendaId));
+
+  const detalhe = document.getElementById('pdv-venda-detalhe');
+  const resumo = document.getElementById('pdv-venda-resumo');
+  const campos = document.getElementById('pdv-cancelar-campos');
+  const botao = document.getElementById('btn-pdv-cancelar-venda');
+  resumo.innerHTML = '<p class="inline-note">Carregando os itens...</p>';
+  detalhe.hidden = false;
+
+  let itens = [];
+  try {
+    const resp = await fetch(`/api/vendas/${vendaId}`);
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível abrir a venda.'));
+    itens = ((await resp.json()).itens || []).filter(i => i.status !== 'CANCELADO');
+  } catch (error) {
+    mostrarAlert('alert-pdv-vendas', error.message, 'error');
+  }
+  if (pdvVendaSelecionada !== venda) return;
+
+  const situacao = situacaoVendaPDV(venda);
+  const linhas = itens.map(i => `<li><span>${escapeHtml(String(Number(i.quantidade)))} × ${escapeHtml(i.item)}${i.variacao ? ' (' + escapeHtml(i.variacao) + ')' : ''}</span><span>${formatarMoedaPDV(i.subtotal)}</span></li>`).join('');
+  const dinheiro = venda.formas.DINHEIRO || 0;
+  resumo.innerHTML = `<strong>Venda #${venda.vendaId} · ${escapeHtml(horaPDV(venda.dataHora))} · ${formatarMoedaPDV(venda.total)}</strong>`
+    + (linhas ? `<ul class="pdv-venda-itens">${linhas}</ul>` : '')
+    + (situacao
+      ? `<p class="pdv-venda-devolver">Esta venda já foi ${situacao.toLowerCase()}.</p>`
+      : `<p class="pdv-venda-devolver">Devolver ao cliente: ${escapeHtml(descreverFormasPDV(venda.formas))}.`
+        + (dinheiro > 0 ? ` ${formatarMoedaPDV(dinheiro)} sai da gaveta.` : ' Nada sai da gaveta.') + ' Os itens voltam para o estoque.</p>');
+
+  const podeCancelar = !situacao;
+  campos.hidden = !podeCancelar;
+  botao.hidden = !podeCancelar;
+  if (!podeCancelar) return;
+  document.getElementById('pdv-cancelar-motivo').value = '';
+  const precisaGerente = !temAlgumaPermissao([PERMISSOES.VER_FINANCAS, PERMISSOES.EDITAR_ESTOQUE]);
+  document.getElementById('pdv-cancelar-autorizacao').hidden = !precisaGerente;
+  ['nome', 'sobrenome', 'senha'].forEach(campo => { document.getElementById('pdv-cancelar-gerente-' + campo).value = ''; });
+  document.getElementById('pdv-cancelar-motivo').focus();
+}
+
+async function confirmarCancelamentoPDV() {
+  const venda = pdvVendaSelecionada;
+  if (!venda) return;
+  limparAlert('alert-pdv-vendas');
+  const motivo = document.getElementById('pdv-cancelar-motivo').value.trim();
+  if (!motivo) {
+    mostrarAlert('alert-pdv-vendas', 'Informe o motivo do cancelamento.', 'error');
+    document.getElementById('pdv-cancelar-motivo').focus();
+    return;
+  }
+  const corpo = { motivo };
+  if (!document.getElementById('pdv-cancelar-autorizacao').hidden) {
+    const nome = document.getElementById('pdv-cancelar-gerente-nome').value.trim();
+    const sobrenome = document.getElementById('pdv-cancelar-gerente-sobrenome').value.trim();
+    const senha = document.getElementById('pdv-cancelar-gerente-senha').value;
+    if (!nome || !senha) {
+      mostrarAlert('alert-pdv-vendas', 'O gerente precisa digitar nome, sobrenome e senha.', 'error');
+      document.getElementById('pdv-cancelar-gerente-nome').focus();
+      return;
+    }
+    corpo.autorizacao = { nome, sobrenome, senha };
+  }
+
+  const botao = document.getElementById('btn-pdv-cancelar-venda');
+  setLoading(botao, true);
+  try {
+    const resp = await fetch(`/api/vendas/${venda.vendaId}/cancelar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pdvChaveCancelamento },
+      body: JSON.stringify(corpo)
+    });
+    if (!resp.ok) {
+      const mensagem = await safeReadErrorMessage(resp, 'Não foi possível cancelar a venda.');
+      // Nova tentativa é outro pedido: a mesma chave com outro gerente seria recusada.
+      pdvChaveCancelamento = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `cancelar-${venda.vendaId}-${Date.now()}`;
+      mostrarAlert('alert-pdv-vendas', /gerente|permiss/i.test(mensagem) ? 'Login do gerente não confere ou ele não pode cancelar vendas.' : mensagem, 'error');
+      const senha = document.getElementById('pdv-cancelar-gerente-senha');
+      if (senha) senha.value = '';
+      return;
+    }
+    const dinheiro = venda.formas.DINHEIRO || 0;
+    const aviso = dinheiro > 0 ? ` Devolva ${formatarMoedaPDV(dinheiro)} em dinheiro ao cliente.` : '';
+    showToast(`Venda #${venda.vendaId} cancelada.${aviso}`, 'success');
+    if (typeof carregarCaixas === 'function') carregarCaixas();
+    await abrirVendasPDV();
+    mostrarAlert('alert-pdv-vendas', `Venda #${venda.vendaId} cancelada.${aviso}`, 'success');
+  } finally {
+    setLoading(botao, false);
+  }
+}
+
+function fecharVendasPDV() {
+  fecharModal('modal-pdv-vendas');
+  pdvVendaSelecionada = null;
+  focarLeituraPDV();
+}
+
+function atalhosVendasPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharVendasPDV(); return; }
+  if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
+  const alvo = event.target;
+  if (alvo && alvo.dataset && alvo.dataset.vendaPdv && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    event.preventDefault();
+    const linhas = [...document.querySelectorAll('[data-venda-pdv]')];
+    const posicao = linhas.indexOf(alvo) + (event.key === 'ArrowDown' ? 1 : -1);
+    linhas[Math.max(0, Math.min(linhas.length - 1, posicao))]?.focus();
+    return;
+  }
+  if (event.key === 'Enter' && alvo && alvo.tagName === 'INPUT' && alvo.closest('#pdv-cancelar-campos')) {
+    event.preventDefault();
+    confirmarCancelamentoPDV();
+  }
+}
+
 function nomeDoOperadorAtual() {
   return [usuario.nome, usuario.sobrenome].filter(Boolean).join(' ') || '—';
 }
@@ -1445,8 +1658,14 @@ function atalhosPDV(event) {
     }
     return;
   }
+  if (document.getElementById('modal-pdv-vendas')?.classList.contains('open')) {
+    atalhosVendasPDV(event);
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
+
+  if (event.key === 'F9') { event.preventDefault(); if (!pagamentoAberto) abrirVendasPDV(); return; }
 
   if (/^F[5-8]$/.test(event.key)) event.preventDefault();
   if (event.key === 'F12') { event.preventDefault(); abrirTrocaOperadorPDV(); return; }

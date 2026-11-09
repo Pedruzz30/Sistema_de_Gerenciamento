@@ -202,6 +202,67 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void operadoraCancelaVendaSoComAutorizacaoEADevolucaoSaiDaFormaPaga() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "1");
+        int numeroCaixa = numeroCaixaUnico();
+        JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda(
+                "Cancelavel " + sufixo, eanLata, ""), gerente)));
+        int produtoId = cadastro.path("produtoId").asInt();
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+
+        assertOk(post("/api/caixas/abrir", Map.of("numeroCaixa", numeroCaixa, "saldoInicial", 20), caixa));
+        long vendaId = json(assertOk(post("/api/vendas", Map.of("filialId", 1, "canal", "BALCAO", "itens", List.of(
+                Map.of("variacaoId", gelada, "quantidade", "2"))), caixa))).path("id").asLong();
+        Map<String, Object> dinheiro = new LinkedHashMap<>();
+        dinheiro.put("forma", "DINHEIRO");
+        dinheiro.put("valor", "6.00");
+        dinheiro.put("valorRecebido", "6.00");
+        assertOk(postIdempotente("/api/vendas/" + vendaId + "/finalizar", Map.of(
+                "numeroCaixaLegado", numeroCaixa,
+                "pagamentos", List.of(Map.of("forma", "PIX", "valor", "4.00"), dinheiro)
+        ), caixa, "pag-" + sufixo));
+        assertEquals(22, quantidadeNaTelaDeEstoque(produtoId));
+        assertBig("26", caixaAberto(numeroCaixa).path("dinheiroNaGaveta").decimalValue());
+
+        // Sem o gerente, a operadora não cancela.
+        ResponseEntity<String> semGerente = postIdempotente("/api/vendas/" + vendaId + "/cancelar",
+                Map.of("motivo", "Cliente desistiu"), caixa, "cancelar-sem-" + sufixo);
+        assertEquals(HttpStatus.FORBIDDEN, semGerente.getStatusCode(), semGerente.getBody());
+        assertEquals(22, quantidadeNaTelaDeEstoque(produtoId));
+
+        assertOk(postIdempotente("/api/vendas/" + vendaId + "/cancelar", Map.of(
+                "motivo", "Cliente desistiu",
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")
+        ), caixa, "cancelar-" + sufixo));
+
+        // Estoque volta, a gaveta devolve só a parte em dinheiro e o estorno fica no caixa da operadora.
+        assertEquals(24, quantidadeNaTelaDeEstoque(produtoId));
+        JsonNode sessao = caixaAberto(numeroCaixa);
+        assertBig("20", sessao.path("dinheiroNaGaveta").decimalValue());
+        assertBig("0", sessao.path("totalVendas").decimalValue());
+        assertBig("0", sessao.path("vendasPorForma").path("PIX").decimalValue());
+        JsonNode movimentos = json(assertOk(get("/api/caixas/sessoes/" + sessao.path("caixaId").asLong() + "/movimentacoes", caixa)));
+        int estornos = 0;
+        for (JsonNode movimento : movimentos) {
+            if (!"ESTORNO_VENDA".equals(movimento.path("tipo").asText())) continue;
+            estornos++;
+            assertEquals(vendaId, movimento.path("vendaId").asLong());
+            assertTrue(movimento.path("descricao").asText().contains("autorizado por Admin Superior"), movimento.toString());
+            assertTrue(movimento.path("operador").asText().contains("Ana"), movimento.toString());
+        }
+        assertEquals(2, estornos, "Um estorno por forma paga");
+
+        JsonNode cancelada = json(assertOk(get("/api/vendas/" + vendaId, caixa)));
+        assertEquals("CANCELADA", cancelada.path("status").asText());
+        ResponseEntity<String> deNovo = postIdempotente("/api/vendas/" + vendaId + "/cancelar", Map.of(
+                "motivo", "De novo",
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")
+        ), caixa, "cancelar-de-novo-" + sufixo);
+        assertTrue(deNovo.getStatusCode().is4xxClientError(), "Venda cancelada não cancela de novo: " + deNovo.getBody());
+    }
+
+    @Test
     void codigoRepetidoEInvalidoSaoRecusadosPelaApi() throws Exception {
         String sufixo = sufixoUnico();
         String ean = ean13(sufixo + "3");

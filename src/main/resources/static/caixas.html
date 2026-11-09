@@ -242,7 +242,7 @@
                  onkeydown="lerCodigoPDV(event)">
           <div class="pdv-scan__hint">
             <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
-            <span>F2 buscar · F10 pagamento · F12 operador · Esc sair</span>
+            <span>F2 buscar · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
           </div>
         </div>
         <div class="pdv-catalog-toolbar">
@@ -361,6 +361,45 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" type="button" onclick="fecharTrocaOperadorPDV()">Cancelar (Esc)</button>
       <button class="btn btn-primary" type="button" id="btn-pdv-operador" onclick="confirmarTrocaOperadorPDV()">Trocar (Enter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: vendas deste caixa e cancelamento (F9 no PDV) ── -->
+<div class="modal-overlay" id="modal-pdv-vendas">
+  <div class="modal modal--wide" role="dialog" aria-labelledby="pdv-vendas-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="pdv-vendas-titulo">Vendas deste caixa</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharVendasPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-vendas" role="status" aria-live="polite"></div>
+      <div id="pdv-vendas-lista" class="pdv-vendas-lista"></div>
+      <div id="pdv-venda-detalhe" class="pdv-venda-detalhe" hidden>
+        <div id="pdv-venda-resumo"></div>
+        <div id="pdv-cancelar-campos">
+          <div class="field form-group">
+            <label for="pdv-cancelar-motivo">Motivo do cancelamento</label>
+            <input class="input" type="text" id="pdv-cancelar-motivo" list="pdv-motivos" autocomplete="off" placeholder="Ex.: cliente desistiu">
+            <datalist id="pdv-motivos">
+              <option value="Cliente desistiu"></option>
+              <option value="Item lançado errado"></option>
+              <option value="Forma de pagamento errada"></option>
+            </datalist>
+          </div>
+          <fieldset class="field form-group autorizacao-gerente" id="pdv-cancelar-autorizacao" hidden>
+            <legend>Autorização do gerente</legend>
+            <p class="inline-note">Cancelar precisa do gerente. Ele digita o login aqui; você continua no caixa.</p>
+            <input class="input" type="text" id="pdv-cancelar-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+            <input class="input" type="text" id="pdv-cancelar-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+            <input class="input" type="password" id="pdv-cancelar-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+          </fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharVendasPDV()">Voltar ao caixa (Esc)</button>
+      <button class="btn btn-danger" type="button" id="btn-pdv-cancelar-venda" onclick="confirmarCancelamentoPDV()" hidden>Cancelar esta venda</button>
     </div>
   </div>
 </div>

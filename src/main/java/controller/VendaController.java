@@ -46,6 +46,13 @@ public class VendaController {
     private final CancelamentoVendaService cancelamentoService;
     private final UsuarioRepository usuarioRepository;
 
+    private service.AutenticacaoService autenticacaoService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAutenticacaoService(service.AutenticacaoService autenticacaoService) {
+        this.autenticacaoService = autenticacaoService;
+    }
+
     public VendaController(VendaService vendaService,
                            FinalizacaoVendaService finalizacaoService,
                            CancelamentoVendaService cancelamentoService,
@@ -189,6 +196,7 @@ public class VendaController {
                 : request == null ? null : request.idempotencyKey();
         Venda venda = cancelamentoService.cancelarVenda(
                 usuario,
+                resolverAutorizador(request == null ? null : request.autorizacao()),
                 id,
                 request == null ? null : request.motivo(),
                 chave,
@@ -252,14 +260,31 @@ public class VendaController {
         );
     }
 
+    /** Quem opera o caixa entra aqui; sem permissão própria, o serviço exige o gerente. */
     private Usuario validarCancelamento(String ruHeader) {
         return ControllerUtils.resolveUserAndRequireAnyPermission(
                 ruHeader,
                 usuarioRepository,
                 "Voce nao tem permissao para cancelar vendas.",
+                Permissao.VER_VENDAS,
                 Permissao.VER_FINANCAS,
                 Permissao.EDITAR_ESTOQUE
         );
+    }
+
+    private Usuario resolverAutorizador(CaixaController.AutorizacaoRequest autorizacao) {
+        if (autorizacao == null || autorizacao.nome() == null || autorizacao.nome().isBlank()
+                || autorizacao.senha() == null || autorizacao.senha().isBlank()) {
+            return null;
+        }
+        if (autenticacaoService == null) {
+            throw new SecurityException("Autorizacao de gerente indisponivel.");
+        }
+        return autenticacaoService.conferirCredenciais(
+                        autorizacao.nome().trim(),
+                        autorizacao.sobrenome() == null ? "" : autorizacao.sobrenome().trim(),
+                        autorizacao.senha())
+                .orElseThrow(() -> new SecurityException("Login do gerente invalido."));
     }
 
     private boolean podeVerCustos(Usuario usuario) {
@@ -352,9 +377,14 @@ public class VendaController {
      * @param formaEstorno opcional: forma em que o valor volta ao cliente.
      *                     Sem ela, volta nas formas em que a venda foi paga.
      */
-    public record CancelarVendaRequest(String motivo, String idempotencyKey, String formaEstorno) {
+    public record CancelarVendaRequest(String motivo, String idempotencyKey, String formaEstorno,
+                                       CaixaController.AutorizacaoRequest autorizacao) {
         public CancelarVendaRequest(String motivo, String idempotencyKey) {
-            this(motivo, idempotencyKey, null);
+            this(motivo, idempotencyKey, null, null);
+        }
+
+        public CancelarVendaRequest(String motivo, String idempotencyKey, String formaEstorno) {
+            this(motivo, idempotencyKey, formaEstorno, null);
         }
 
         model.FormaPagamento formaEstornoParseada() {

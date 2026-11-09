@@ -410,6 +410,62 @@ try {
     assert.equal(corpo.codigo, 'ACESSO_RESTRITO_PIN');
   });
 
+  await passo(admin, 'F9 mostra as vendas do caixa', async () => {
+    await admin.focus('#pdv-leitura');
+    await admin.keyboard.press('F9');
+    await admin.waitForSelector('#modal-pdv-vendas.open');
+    await admin.waitForSelector('[data-venda-pdv]');
+    assert.equal(await admin.locator('[data-venda-pdv]').count(), 3);
+    const primeira = limpar(await admin.locator('[data-venda-pdv]').first().textContent());
+    assert.match(primeira, /Ana Caixa/, 'A mais nova aparece primeiro');
+    assert.match(primeira, /R\$ 4,50/);
+    assert.match(primeira, /Pix R\$ 2,00 · Dinheiro R\$ 2,50/);
+    await naTela(admin, '[data-venda-pdv]');
+  });
+
+  await passo(admin, 'Cancelar venda pede motivo e o gerente', async () => {
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#pdv-venda-resumo', 'Skol lata 350ml');
+    await esperarTexto(admin, '#pdv-venda-resumo', 'R$ 2,50 sai da gaveta');
+    assert.equal(await admin.locator('#pdv-cancelar-autorizacao').isVisible(), true, 'A Ana precisa do gerente');
+    await admin.waitForFunction(() => document.activeElement.id === 'pdv-cancelar-motivo');
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv-vendas', 'motivo');
+    await admin.keyboard.type('Cliente desistiu');
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv-vendas', 'gerente');
+    await admin.fill('#pdv-cancelar-gerente-nome', 'Admin');
+    await admin.fill('#pdv-cancelar-gerente-sobrenome', 'Superior');
+    await admin.fill('#pdv-cancelar-gerente-senha', 'errada');
+    await admin.click('#btn-pdv-cancelar-venda');
+    await esperarTexto(admin, '#alert-pdv-vendas', 'não confere');
+    const { corpo } = await api(admin, '/api/caixas');
+    assert.equal(corpo.find(c => c.numeroCaixa === 1).dinheiroNaGaveta, 154.9, 'Senha errada não cancela');
+  });
+
+  await passo(admin, 'Cancelar com o gerente devolve dinheiro e estoque', async () => {
+    await admin.fill('#pdv-cancelar-gerente-senha', SENHA_ADMIN);
+    await naTela(admin, '#btn-pdv-cancelar-venda');
+    await admin.click('#btn-pdv-cancelar-venda');
+    await esperarTexto(admin, '#alert-pdv-vendas', 'Devolva R$ 2,50 em dinheiro');
+    await esperarTexto(admin, '#pdv-vendas-lista', 'Cancelada');
+    const { corpo } = await api(admin, '/api/caixas');
+    const caixa = corpo.find(c => c.numeroCaixa === 1);
+    assert.equal(caixa.dinheiroNaGaveta, 152.4, 'Sai da gaveta só a parte em dinheiro');
+    assert.equal(caixa.totalVendas, 56.39);
+    const produtos = await api(admin, '/api/produtos');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 32, 'A lata volta ao estoque');
+  });
+
+  await passo(admin, 'Venda cancelada nao cancela de novo e Esc volta ao caixa', async () => {
+    await admin.locator('[data-venda-pdv]').first().click();
+    await esperarTexto(admin, '#pdv-venda-resumo', 'já foi cancelada');
+    assert.equal(await admin.locator('#btn-pdv-cancelar-venda').isVisible(), false);
+    await admin.keyboard.press('Escape');
+    await admin.waitForSelector('#modal-pdv-vendas:not(.open)', { state: 'attached' });
+    await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
+  });
+
   await passo(admin, 'Sair do PDV deixa a tela no nome da Ana', async () => {
     await admin.focus('#pdv-leitura');
     const recarregou = admin.waitForEvent('load');
@@ -427,9 +483,9 @@ try {
 
   await passo(admin, 'Tela do caixa em portugues e com dinheiro separado', async () => {
     await cardDoCaixa(admin, 1).waitFor();
-    assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 154,90');
-    assert.equal(await linhaDoCard(admin, 1, 'Pix e cartões'), 'R$ 5,99');
-    assert.equal(await linhaDoCard(admin, 1, 'Total Vendas'), 'R$ 60,89');
+    assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 152,40');
+    assert.equal(await linhaDoCard(admin, 1, 'Pix e cartões'), 'R$ 3,99');
+    assert.equal(await linhaDoCard(admin, 1, 'Total Vendas'), 'R$ 56,39');
     assert.match(await linhaDoCard(admin, 1, 'Abertura'), /^\d{2}\/\d{2}/, 'Abertura precisa mostrar a data');
   });
 
@@ -449,21 +505,21 @@ try {
     await admin.fill('#mov-gerente-senha', SENHA_ADMIN);
     await admin.click('#btn-confirmar-mov');
     await admin.waitForSelector('#modal-mov:not(.open)', { state: 'attached' });
-    await admin.waitForFunction(() => document.querySelector('.caixa-card')?.textContent.replace(/ /g, ' ').includes('R$ 104,90'));
+    await admin.waitForFunction(() => document.querySelector('.caixa-card')?.textContent.replace(/ /g, ' ').includes('R$ 102,40'));
   });
 
   await passo(admin, 'Fechamento cego so mostra a diferenca no fim', async () => {
     await cardDoCaixa(admin, 1).locator('button:has-text("Encerrar")').click();
     await admin.waitForSelector('#modal-encerrar.open');
     assert.equal(await admin.inputValue('#encerrar-valor-contado'), '', 'O campo começa vazio');
-    assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('104,90'), 'Não pode mostrar o valor esperado');
+    assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('102,40'), 'Não pode mostrar o valor esperado');
     await admin.fill('#encerrar-valor-contado', '100');
     await admin.fill('#encerrar-gerente-nome', 'Admin');
     await admin.fill('#encerrar-gerente-sobrenome', 'Superior');
     await admin.fill('#encerrar-gerente-senha', SENHA_ADMIN);
     await admin.click('#btn-confirmar-encerrar');
-    await esperarTexto(admin, '#fechamento-container', 'R$ 104,90');
-    await esperarTexto(admin, '#fechamento-container', '-R$ 4,90');
+    await esperarTexto(admin, '#fechamento-container', 'R$ 102,40');
+    await esperarTexto(admin, '#fechamento-container', '-R$ 2,40');
   });
 
   await admin.context().close();
@@ -478,7 +534,7 @@ try {
     await entrar(dono, 'Admin', 'Superior', SENHA_ADMIN);
     await dono.waitForURL('**/dashboard.html');
     assert.equal((await api(dono, '/api/funcionarios')).status, 200);
-    await esperarTexto(dono, '#summary-grid', 'R$ 60,89');
+    await esperarTexto(dono, '#summary-grid', 'R$ 56,39');
   });
 
   if (process.env.E2E_BACKUP === '1') {
@@ -523,7 +579,7 @@ try {
     await dono.waitForSelector('#modal-xml:not(.open)', { state: 'attached' });
     await dono.waitForSelector('text=Distribuidora Exemplo LTDA');
     const { corpo } = await api(dono, '/api/produtos');
-    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 91, '31 + 60');
+    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 92, '32 + 60');
     assert.equal(corpo.find(p => p.nome === 'Agua Mineral 500ml').quantidadeAtual, 24);
     const leitura = await api(dono, `/api/pdv/codigos/${EAN_NOVO}`);
     assert.equal(leitura.status, 200, 'O código da nota precisa funcionar no caixa');

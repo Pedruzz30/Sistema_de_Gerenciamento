@@ -3597,6 +3597,20 @@ body.bridge-page .bridge-actions a {
   }
 }
 
+/* ───────── Vendas do caixa e cancelamento (F9 no PDV) ───────── */
+.pdv-vendas-lista { display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.pdv-venda-linha { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; width: 100%; padding: 10px 12px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; background: var(--paper-raised, #fff); text-align: left; font: inherit; font-size: 13px; cursor: pointer; }
+.pdv-venda-linha:focus-visible, .pdv-venda-linha--ativa { outline: 2px solid var(--accent, #c2410c); outline-offset: 1px; }
+.pdv-venda-linha__hora { font-family: var(--font-mono, ui-monospace, monospace); color: var(--text-muted, #6b6760); }
+.pdv-venda-linha__formas { grid-column: 2 / 4; color: var(--text-muted, #6b6760); font-size: 12px; }
+.pdv-venda-linha--cancelada { opacity: .65; }
+.pdv-venda-linha--cancelada strong { text-decoration: line-through; }
+.pdv-venda-selo { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: #fef2f2; color: #b91c1c; font-size: 11px; font-weight: 700; }
+.pdv-venda-detalhe { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule, #e5e2dc); }
+.pdv-venda-itens { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.pdv-venda-itens li { display: flex; justify-content: space-between; gap: 12px; }
+.pdv-venda-devolver { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fffbeb; font-size: 13px; }
+
 /* ───────── Painel de backup no Dashboard ───────── */
 .backup-painel { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; font-size: 13px; line-height: 1.5; }
 .backup-painel__texto { min-width: 0; overflow-wrap: anywhere; }
