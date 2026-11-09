@@ -419,7 +419,7 @@ try {
     const primeira = limpar(await admin.locator('[data-venda-pdv]').first().textContent());
     assert.match(primeira, /Ana Caixa/, 'A mais nova aparece primeiro');
     assert.match(primeira, /R\$ 4,50/);
-    assert.match(primeira, /Pix R\$ 2,00 · Dinheiro R\$ 2,50/);
+    assert.match(primeira, /Dinheiro R\$ 2,50 · Pix R\$ 2,00/);
     await naTela(admin, '[data-venda-pdv]');
   });
 

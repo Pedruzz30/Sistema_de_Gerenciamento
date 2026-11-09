@@ -1376,8 +1376,11 @@ function situacaoVendaPDV(venda) {
   return '';
 }
 
+// Sempre na mesma ordem, seja qual for a ordem em que as formas foram lançadas.
 function descreverFormasPDV(formas) {
+  const ordem = Object.keys(ROTULO_FORMA_PDV);
   return Object.entries(formas)
+    .sort(([a], [b]) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99))
     .map(([forma, valor]) => `${ROTULO_FORMA_PDV[forma] || forma} ${formatarMoedaPDV(valor)}`)
     .join(' · ');
 }
