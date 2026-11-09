@@ -202,6 +202,41 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void caixaCadastraCodigoDesconhecidoSoComOGerente() throws Exception {
+        String sufixo = sufixoUnico();
+        String ean = ean13(sufixo + "7");
+        String outroEan = ean13(sufixo + "8");
+        Map<String, Object> autorizacao = Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234");
+        Map<String, Object> produto = revenda("Gelo " + sufixo, ean, "");
+
+        assertEquals(HttpStatus.FORBIDDEN,
+                post("/api/pdv/cadastro/produto", Map.of("produto", produto), caixa).getStatusCode(),
+                "Sem o gerente, a operadora não cadastra");
+        JsonNode cadastro = json(assertOk(post("/api/pdv/cadastro/produto",
+                Map.of("produto", produto, "autorizacao", autorizacao), caixa)));
+        assertEquals(24, cadastro.path("quantidadeAtual").asInt());
+
+        JsonNode leitura = json(assertOk(get("/api/pdv/codigos/" + ean, caixa)));
+        assertEquals("Gelada", leitura.path("variacao").path("variacaoNome").asText());
+        long natural = leitura.path("alternativas").get(0).path("variacaoId").asLong();
+
+        // Código novo para um produto que já existe.
+        assertEquals(HttpStatus.FORBIDDEN, post("/api/pdv/cadastro/codigo",
+                Map.of("codigo", outroEan, "variacaoId", natural), caixa).getStatusCode());
+        assertOk(post("/api/pdv/cadastro/codigo",
+                Map.of("codigo", outroEan, "variacaoId", natural, "autorizacao", autorizacao), caixa));
+        assertEquals(natural, json(assertOk(get("/api/pdv/codigos/" + outroEan, caixa)))
+                .path("variacao").path("variacaoId").asLong());
+
+        // O gerente sozinho não precisa de autorização; o mesmo vínculo não se repete.
+        assertTrue(post("/api/pdv/cadastro/codigo",
+                Map.of("codigo", outroEan, "variacaoId", natural), gerente).getStatusCode().is4xxClientError());
+        // Código inválido é recusado.
+        assertTrue(post("/api/pdv/cadastro/codigo",
+                Map.of("codigo", "7891000100999", "variacaoId", natural), gerente).getStatusCode().is4xxClientError());
+    }
+
+    @Test
     void descontoNoPagamentoPedeGerenteEFechaOTotalExato() throws Exception {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "1");

@@ -3597,6 +3597,21 @@ body.bridge-page .bridge-actions a {
   }
 }
 
+/* ───────── Código desconhecido no PDV ───────── */
+.pdv-alerta-acao { margin-left: 8px; }
+.pdv-novo-abas { display: flex; gap: 6px; margin-bottom: 10px; }
+.pdv-novo-aba { padding: 6px 10px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; background: none; font: inherit; font-size: 13px; cursor: pointer; }
+.pdv-novo-aba--ativa { border-color: var(--accent, #c2410c); color: var(--accent, #c2410c); font-weight: 700; }
+.pdv-novo-campos { display: grid; gap: 8px; font-size: 13px; }
+.pdv-novo-campos label { display: grid; gap: 4px; }
+.pdv-novo-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pdv-novo-resultados { display: grid; gap: 6px; max-height: 32vh; overflow-y: auto; }
+.pdv-novo-produto { padding: 8px 10px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; }
+.pdv-novo-produto strong { display: block; margin-bottom: 6px; }
+.pdv-novo-variacoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.pdv-novo-variacao { padding: 5px 9px; border: 1px solid var(--rule, #e5e2dc); border-radius: 6px; background: var(--paper-raised, #fff); font: inherit; font-size: 12px; cursor: pointer; }
+.pdv-novo-variacao--escolhida { border-color: var(--accent, #c2410c); background: rgba(194, 65, 12, .08); font-weight: 700; }
+
 /* ───────── Vendas do caixa e cancelamento (F9 no PDV) ───────── */
 .pdv-vendas-lista { display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
 .pdv-venda-linha { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; width: 100%; padding: 10px 12px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; background: var(--paper-raised, #fff); text-align: left; font: inherit; font-size: 13px; cursor: pointer; }

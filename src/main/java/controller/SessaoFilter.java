@@ -94,6 +94,10 @@ public class SessaoFilter extends OncePerRequestFilter {
         if (dentroDe(caminho, "/api/pdv/codigos")) {
             return leitura;
         }
+        // Cadastro feito do caixa: quem não pode cadastrar precisa do login do gerente no pedido.
+        if (dentroDe(caminho, "/api/pdv/cadastro")) {
+            return "POST".equalsIgnoreCase(metodo);
+        }
         if (dentroDe(caminho, "/api/cardapio/admin")) {
             return false;
         }

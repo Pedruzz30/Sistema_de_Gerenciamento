@@ -385,6 +385,49 @@
   </div>
 </div>
 
+<!-- ── Modal: código bipado que não existe ── -->
+<div class="modal-overlay" id="modal-pdv-novo-codigo">
+  <div class="modal modal--wide" role="dialog" aria-labelledby="pdv-novo-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="pdv-novo-titulo">Código <span id="pdv-novo-codigo">—</span></h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharNovoCodigoPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-novo" role="status" aria-live="polite"></div>
+      <div class="pdv-novo-abas" role="tablist">
+        <button type="button" class="pdv-novo-aba pdv-novo-aba--ativa" id="pdv-novo-aba-produto" onclick="escolherAbaNovoCodigoPDV('produto')">Produto novo</button>
+        <button type="button" class="pdv-novo-aba" id="pdv-novo-aba-vincular" onclick="escolherAbaNovoCodigoPDV('vincular')">Produto que já existe</button>
+      </div>
+      <div id="pdv-novo-produto" class="pdv-novo-campos">
+        <label>Nome do produto <input class="input" type="text" id="pdv-novo-nome" autocomplete="off" placeholder="Ex.: Gelo 5kg"></label>
+        <div class="pdv-novo-linha">
+          <label>Preço gelada (R$) <input class="input" type="text" inputmode="decimal" id="pdv-novo-preco-gelado" placeholder="Vazio = não vende gelada"></label>
+          <label>Preço natural / unidade (R$) <input class="input" type="text" inputmode="decimal" id="pdv-novo-preco"></label>
+        </div>
+        <div class="pdv-novo-linha">
+          <label>Custo da unidade (R$) <input class="input" type="text" inputmode="decimal" id="pdv-novo-custo"></label>
+          <label>Quantas tem na loja agora <input class="input" type="text" inputmode="numeric" id="pdv-novo-qtd"></label>
+        </div>
+      </div>
+      <div id="pdv-novo-vincular" class="pdv-novo-campos" hidden>
+        <label>Procurar produto <input class="input" type="text" id="pdv-novo-busca" autocomplete="off" placeholder="Digite parte do nome" oninput="buscarProdutoNovoCodigoPDV()"></label>
+        <div id="pdv-novo-resultados" class="pdv-novo-resultados"></div>
+      </div>
+      <fieldset class="field form-group autorizacao-gerente" id="pdv-novo-autorizacao" hidden>
+        <legend>Autorização do gerente</legend>
+        <p class="inline-note">Cadastrar precisa do gerente. Ele digita o login aqui; você continua no caixa.</p>
+        <input class="input" type="text" id="pdv-novo-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+        <input class="input" type="text" id="pdv-novo-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+        <input class="input" type="password" id="pdv-novo-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+      </fieldset>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharNovoCodigoPDV()">Voltar ao caixa (Esc)</button>
+      <button class="btn btn-primary" type="button" id="btn-pdv-novo-salvar" onclick="salvarNovoCodigoPDV()">Salvar e vender (Enter)</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Modal: vendas deste caixa e cancelamento (F9 no PDV) ── -->
 <div class="modal-overlay" id="modal-pdv-vendas">
   <div class="modal modal--wide" role="dialog" aria-labelledby="pdv-vendas-titulo">

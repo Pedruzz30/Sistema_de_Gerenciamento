@@ -42,6 +42,8 @@ function chaveNfe(numero) {
 const EAN_LATA = gtin('789100010010');
 const EAN_FARDO = gtin('789100010011');
 const EAN_NOVO = gtin('789100010020');
+const EAN_GELO = gtin('789100010030');
+const EAN_SKOL_OUTRO = gtin('789100010040');
 
 const limpar = texto => String(texto || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -315,6 +317,32 @@ try {
     assert.equal(await admin.evaluate(() => window.__f5Bloqueado), true, 'F5 não pode recarregar a página e perder a venda');
   });
 
+  await passo(admin, 'Codigo novo se cadastra no caixa e entra na venda', async () => {
+    await admin.focus('#pdv-leitura');
+    await bipar(admin, EAN_GELO);
+    await esperarTexto(admin, '#alert-pdv', 'não cadastrado');
+    await naTela(admin, '#btn-pdv-cadastrar-codigo');
+    await admin.click('#btn-pdv-cadastrar-codigo');
+    await admin.waitForSelector('#modal-pdv-novo-codigo.open');
+    await esperarTexto(admin, '#pdv-novo-codigo', EAN_GELO);
+    assert.equal(await admin.locator('#pdv-novo-autorizacao').isVisible(), false, 'O dono cadastra sem pedir o gerente');
+    await admin.waitForFunction(() => document.activeElement.id === 'pdv-novo-nome');
+    await admin.keyboard.type('Gelo 5kg');
+    await admin.fill('#pdv-novo-preco', '10');
+    await admin.fill('#pdv-novo-custo', '6');
+    await admin.focus('#pdv-novo-qtd');
+    await admin.keyboard.type('20');
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv', 'cadastrado e lançado');
+    await esperarTexto(admin, '#pdv-total', 'R$ 62,40');
+    const { corpo } = await api(admin, '/api/produtos');
+    assert.equal(corpo.find(p => p.nome === 'Gelo 5kg').quantidadeAtual, 20);
+    // Sai da venda para o roteiro seguir com os mesmos valores.
+    await admin.locator('.pdv-item-row', { hasText: 'Gelo 5kg' }).locator('.pdv-item-btn--remove').click();
+    await esperarTexto(admin, '#pdv-total', 'R$ 52,40');
+    await admin.focus('#pdv-leitura');
+  });
+
   await passo(admin, 'Esc volta do pagamento e desistir de sair mantem o PDV', async () => {
     await admin.keyboard.press('F10');
     await admin.waitForSelector('#pdv-pagamento:not([hidden])');
@@ -487,6 +515,32 @@ try {
     await admin.waitForSelector('#modal-pdv-vendas:not(.open)', { state: 'attached' });
     assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Esc na lista de vendas volta ao PDV, sem fechá-lo');
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
+  });
+
+  await passo(admin, 'Codigo novo se liga a um produto que ja existe, com o gerente', async () => {
+    await admin.focus('#pdv-leitura');
+    await bipar(admin, EAN_SKOL_OUTRO);
+    await esperarTexto(admin, '#alert-pdv', 'não cadastrado');
+    await admin.click('#btn-pdv-cadastrar-codigo');
+    await admin.waitForSelector('#modal-pdv-novo-codigo.open');
+    await admin.click('#pdv-novo-aba-vincular');
+    await admin.fill('#pdv-novo-busca', 'skol');
+    await admin.waitForSelector('[data-variacao-novo]');
+    await admin.locator('.pdv-novo-produto', { hasText: 'Skol lata 350ml' })
+      .locator('[data-variacao-novo]', { hasText: 'Natural' }).click();
+    assert.equal(await admin.locator('#pdv-novo-autorizacao').isVisible(), true, 'A Ana precisa do gerente');
+    await admin.click('#btn-pdv-novo-salvar');
+    await esperarTexto(admin, '#alert-pdv-novo', 'gerente');
+    await admin.fill('#pdv-novo-gerente-nome', 'Admin');
+    await admin.fill('#pdv-novo-gerente-sobrenome', 'Superior');
+    await admin.fill('#pdv-novo-gerente-senha', SENHA_ADMIN);
+    await naTela(admin, '#btn-pdv-novo-salvar');
+    await admin.click('#btn-pdv-novo-salvar');
+    await esperarTexto(admin, '#alert-pdv', 'cadastrado e lançado');
+    await esperarTexto(admin, '#pdv-total', 'R$ 3,99');
+    await admin.locator('.pdv-item-row', { hasText: 'Skol' }).locator('.pdv-item-btn--remove').click();
+    await esperarTexto(admin, '#pdv-total', 'R$ 0,00');
+    await admin.focus('#pdv-leitura');
   });
 
   await passo(admin, 'Desconto pede o gerente e fecha no valor pedido', async () => {

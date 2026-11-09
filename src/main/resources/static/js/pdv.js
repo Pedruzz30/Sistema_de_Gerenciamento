@@ -1244,7 +1244,7 @@ async function lerCodigoPDV(event) {
     const leitura = await buscarCodigoPDV(codigo);
     if (!leitura || !leitura.variacao) {
       bipPDV(false);
-      mostrarAlert('alert-pdv', `Produto não cadastrado para o código ${codigo}. Peça ao gerente para cadastrar no Cardápio/Estoque.`, 'error');
+      avisarCodigoDesconhecidoPDV(codigo, quantidade);
       return;
     }
     const usarAlternativa = pdvProximoAlternativo && (leitura.alternativas || []).length > 0;
@@ -1457,6 +1457,163 @@ function fecharPDV() {
 // ── Troca de operador por PIN ─────────────────────────────────────────────
 
 let pdvOperadorTrocado = false;
+
+// ── Código bipado que não existe: cadastrar ou ligar a um produto, sem sair do caixa ──
+
+let pdvCodigoNovo = null;
+let pdvNovoAba = 'produto';
+let pdvNovoVariacaoId = null;
+
+function avisarCodigoDesconhecidoPDV(codigo, quantidade) {
+  pdvCodigoNovo = { codigo, quantidade };
+  mostrarAlert('alert-pdv', `Código ${codigo} não cadastrado.`, 'error');
+  const botao = document.createElement('button');
+  botao.type = 'button';
+  botao.className = 'btn btn-secondary btn-sm pdv-alerta-acao';
+  botao.id = 'btn-pdv-cadastrar-codigo';
+  botao.textContent = 'Cadastrar este código';
+  botao.addEventListener('click', abrirNovoCodigoPDV);
+  document.getElementById('alert-pdv').append(botao);
+}
+
+function abrirNovoCodigoPDV() {
+  if (!pdvCodigoNovo) return;
+  limparAlert('alert-pdv-novo');
+  document.getElementById('pdv-novo-codigo').textContent = pdvCodigoNovo.codigo;
+  ['nome', 'preco-gelado', 'preco', 'custo', 'qtd', 'busca', 'gerente-nome', 'gerente-sobrenome', 'gerente-senha']
+    .forEach(campo => { document.getElementById('pdv-novo-' + campo).value = ''; });
+  document.getElementById('pdv-novo-resultados').innerHTML = '';
+  pdvNovoVariacaoId = null;
+  document.getElementById('pdv-novo-autorizacao').hidden = temPermissao(PERMISSOES.EDITAR_ESTOQUE);
+  abrirModal('modal-pdv-novo-codigo');
+  escolherAbaNovoCodigoPDV('produto');
+}
+
+function escolherAbaNovoCodigoPDV(aba) {
+  pdvNovoAba = aba;
+  document.getElementById('pdv-novo-produto').hidden = aba !== 'produto';
+  document.getElementById('pdv-novo-vincular').hidden = aba !== 'vincular';
+  document.getElementById('pdv-novo-aba-produto').classList.toggle('pdv-novo-aba--ativa', aba === 'produto');
+  document.getElementById('pdv-novo-aba-vincular').classList.toggle('pdv-novo-aba--ativa', aba === 'vincular');
+  document.getElementById(aba === 'produto' ? 'pdv-novo-nome' : 'pdv-novo-busca').focus();
+}
+
+function fecharNovoCodigoPDV() {
+  fecharModal('modal-pdv-novo-codigo');
+  focarLeituraPDV();
+}
+
+function normalizarBuscaPDV(texto) {
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+async function buscarProdutoNovoCodigoPDV() {
+  const termo = normalizarBuscaPDV(document.getElementById('pdv-novo-busca').value.trim());
+  const area = document.getElementById('pdv-novo-resultados');
+  pdvNovoVariacaoId = null;
+  if (termo.length < 2) { area.innerHTML = ''; return; }
+  const achados = pdvItens.filter(item => normalizarBuscaPDV(item.nome).includes(termo)).slice(0, 8);
+  if (achados.length === 0) {
+    area.innerHTML = '<p class="inline-note">Nenhum produto com esse nome. Use "Produto novo".</p>';
+    return;
+  }
+  const blocos = await Promise.all(achados.map(async item => {
+    const variacoes = (await carregarVariacoesItemPDV(item.id).catch(() => [])).filter(v => v.ativa);
+    const botoes = variacoes.map(v => `<button type="button" class="pdv-novo-variacao" data-variacao-novo="${v.id}">`
+      + `${escapeHtml(v.nome)} · ${formatarMoedaPDV(v.precoVenda)}</button>`).join('');
+    return `<div class="pdv-novo-produto"><strong>${escapeHtml(item.nome)}</strong><div class="pdv-novo-variacoes">${botoes}</div></div>`;
+  }));
+  if (normalizarBuscaPDV(document.getElementById('pdv-novo-busca').value.trim()) !== termo) return;
+  area.innerHTML = blocos.join('');
+  area.querySelectorAll('[data-variacao-novo]').forEach(botao => botao.addEventListener('click', () => {
+    pdvNovoVariacaoId = Number(botao.dataset.variacaoNovo);
+    area.querySelectorAll('[data-variacao-novo]').forEach(b => b.classList.toggle('pdv-novo-variacao--escolhida', b === botao));
+  }));
+}
+
+function numeroNovoPDV(id) {
+  const texto = document.getElementById(id).value.trim().replace(',', '.');
+  return texto === '' ? null : Number(texto);
+}
+
+async function salvarNovoCodigoPDV() {
+  if (!pdvCodigoNovo) return;
+  limparAlert('alert-pdv-novo');
+  let url;
+  let corpo;
+  if (pdvNovoAba === 'produto') {
+    const nome = document.getElementById('pdv-novo-nome').value.trim();
+    const precoGelado = numeroNovoPDV('pdv-novo-preco-gelado');
+    const precoVenda = numeroNovoPDV('pdv-novo-preco');
+    const custo = numeroNovoPDV('pdv-novo-custo');
+    const quantidade = numeroNovoPDV('pdv-novo-qtd');
+    if (!nome || !(precoVenda > 0) || !(custo > 0) || quantidade == null || !(quantidade >= 0)
+        || (precoGelado != null && !(precoGelado > 0))) {
+      mostrarAlert('alert-pdv-novo', 'Preencha nome, preço, custo e quantos tem na loja.', 'error');
+      return;
+    }
+    url = '/api/pdv/cadastro/produto';
+    corpo = { produto: {
+      nome, categoriaCardapioCodigo: 'bebidas', categoriaCardapioNome: 'Bebidas', categoriaEstoque: 'BEBIDAS',
+      codigoBarras: pdvCodigoNovo.codigo, precoVenda, precoGelado, custoUnitario: custo,
+      quantidadeInicial: Math.trunc(quantidade), quantidadeMinima: 0, fardo: null
+    } };
+  } else {
+    if (!pdvNovoVariacaoId) {
+      mostrarAlert('alert-pdv-novo', 'Procure o produto e escolha qual versão este código vende.', 'error');
+      return;
+    }
+    url = '/api/pdv/cadastro/codigo';
+    corpo = { codigo: pdvCodigoNovo.codigo, variacaoId: pdvNovoVariacaoId };
+  }
+  if (!document.getElementById('pdv-novo-autorizacao').hidden) {
+    const nome = document.getElementById('pdv-novo-gerente-nome').value.trim();
+    const sobrenome = document.getElementById('pdv-novo-gerente-sobrenome').value.trim();
+    const senha = document.getElementById('pdv-novo-gerente-senha').value;
+    if (!nome || !senha) {
+      mostrarAlert('alert-pdv-novo', 'O gerente precisa digitar nome, sobrenome e senha.', 'error');
+      document.getElementById('pdv-novo-gerente-nome').focus();
+      return;
+    }
+    corpo.autorizacao = { nome, sobrenome, senha };
+  }
+
+  const botao = document.getElementById('btn-pdv-novo-salvar');
+  setLoading(botao, true);
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    if (!resp.ok) {
+      const mensagem = await safeReadErrorMessage(resp, 'Não foi possível cadastrar.');
+      mostrarAlert('alert-pdv-novo', /gerente|autoriz/i.test(mensagem) && corpo.autorizacao
+        ? 'Login do gerente não confere ou ele não pode cadastrar produtos.' : mensagem, 'error');
+      document.getElementById('pdv-novo-gerente-senha').value = '';
+      return;
+    }
+    const { codigo, quantidade } = pdvCodigoNovo;
+    pdvCodigoNovo = null;
+    fecharModal('modal-pdv-novo-codigo');
+    delete pdvCodigosCache[codigo];
+    if (pdvNovoAba === 'produto') await carregarCardapioPDV();
+    const leitura = await buscarCodigoPDV(codigo);
+    if (leitura && leitura.variacao) await adicionarVariacaoPorCodigoPDV(leitura.variacao, quantidade);
+    bipPDV(true);
+    mostrarAlert('alert-pdv', `Código ${codigo} cadastrado e lançado na venda.`, 'success');
+  } catch (error) {
+    mostrarAlert('alert-pdv', error.message || 'Cadastrado, mas não foi possível lançar o item. Bipe de novo.', 'error');
+  } finally {
+    setLoading(botao, false);
+    focarLeituraPDV();
+  }
+}
+
+function atalhosNovoCodigoPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharNovoCodigoPDV(); return; }
+  if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
+  if (event.key === 'Enter' && event.target && event.target.tagName === 'INPUT') {
+    event.preventDefault();
+    salvarNovoCodigoPDV();
+  }
+}
 
 // ── Vendas deste caixa e cancelamento (F9) ───────────────────────────────
 // A lista sai das movimentações da sessão: cada venda tem uma linha por forma paga,
@@ -1795,6 +1952,10 @@ function atalhosPDV(event) {
     atalhosVendasPDV(event);
     return;
   }
+  if (document.getElementById('modal-pdv-novo-codigo')?.classList.contains('open')) {
+    atalhosNovoCodigoPDV(event);
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
@@ -1908,6 +2069,10 @@ window.StockOSPDV = {
       focarLeituraPDV,
       abrirTrocaOperadorPDV,
       abrirVendasPDV,
+      fecharNovoCodigoPDV,
+      escolherAbaNovoCodigoPDV,
+      buscarProdutoNovoCodigoPDV,
+      salvarNovoCodigoPDV,
       fecharVendasPDV,
       confirmarCancelamentoPDV,
       fecharTrocaOperadorPDV,
