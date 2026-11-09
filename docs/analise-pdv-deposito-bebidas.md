@@ -414,8 +414,8 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 0c. ✅ **Importar XML da NF-e** (seção 14) do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
 
 **Fase 1 – Abrir a loja (MVP do caixa)**
-1. 🔶 Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN. **Falta:** a folha de códigos e vincular código a um produto que já existe.
-2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). **Falta:** os atalhos e cadastrar na hora quando o código não é encontrado.
+1. 🔶 Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN. Vincular código a um produto que já existe, pelo PDV (seção 21). **Falta:** a folha de códigos.
+2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). Cadastrar na hora quando o código não é encontrado (seção 21). **Falta:** os atalhos de caldo, gelo e porções.
 3. ✅ **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
 5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). Desconto no total pelo F3, com o gerente (seção 20).
@@ -855,6 +855,34 @@ A tela de login explica os dois caminhos.
 - **Só no total.** Não há desconto em um item escolhido, como "esta lata sai por 4".
 - **Não há limite automático de desconto.** O controle é a senha do gerente para quem opera o caixa. Se a dona quiser, por exemplo, "até 5% sem gerente", isso pode virar uma opção.
 - **A demonstração não tem o F3.**
+
+---
+
+## 21. Cadastrar pelo PDV quando o código não existe (09/11/2026)
+
+**O que era o problema:** um código desconhecido parava a venda com "Peça ao gerente para cadastrar no Cardápio/Estoque". O cliente esperava enquanto alguém saía do caixa, abria outra tela e voltava.
+
+**Como ficou:** o aviso do código desconhecido ganha o botão **"Cadastrar este código"**, que abre uma janela com duas opções:
+
+| Opção | Quando usar | O que pede |
+|---|---|---|
+| Produto novo | O produto ainda não existe no sistema | Nome, preço gelada (opcional), preço natural, custo e quantos tem na loja |
+| Produto que já existe | Mesma bebida com código diferente (outra fábrica ou embalagem) | Procurar pelo nome e escolher a versão: gelada, natural ou fardo |
+
+- **Ao salvar, o item já entra na venda**, com o multiplicador digitado (`6*`).
+- **Quem não pode cadastrar** (o caixa) precisa do login do gerente na hora. Funciona também para quem entrou por PIN, sempre com essa autorização. O dono e o gerente cadastram sozinhos.
+- O cadastro fica no log, com quem estava no caixa e quem autorizou.
+
+**Onde está:** `PdvCadastroController` (`/api/pdv/cadastro/produto` e `/api/pdv/cadastro/codigo`), que usa o mesmo cadastro rápido e o mesmo vínculo de código das outras telas; janela `#modal-pdv-novo-codigo` no PDV.
+
+**Testado:**
+- **Banco:** a operadora é recusada sem o gerente nas duas opções, e passa com ele; o código novo é lido no caixa; o vínculo repetido e o código inválido são recusados.
+- **Navegador real:** o dono cadastra "Gelo 5kg" pelo PDV e o item entra na venda com o estoque informado; a Ana, que entrou por PIN, liga um código novo à Skol natural com o gerente, e o item entra na venda.
+
+**Limites conhecidos:**
+- **O produto novo entra na categoria Bebidas e sem fardo.** Para fardo, petisco ou outra categoria, ajuste depois em Estoque ou Cardápio.
+- **Não confere se o código é de outro produto real.** Um código lido errado vira um cadastro errado; quem autoriza precisa olhar a embalagem.
+- **A demonstração não tem esta janela.**
 
 ---
 
