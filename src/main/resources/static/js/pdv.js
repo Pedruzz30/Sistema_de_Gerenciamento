@@ -900,9 +900,129 @@ function renderCarrinho() {
     container.appendChild(row);
   });
 
+  const desconto = descontoAtualPDV();
   elTotal.textContent = formatarMoedaPDV(total);
-  if (elSub) elSub.textContent = formatarMoedaPDV(total);
+  if (elSub) elSub.textContent = formatarMoedaPDV(total + desconto);
+  const linhaDesconto = document.getElementById('pdv-desconto-linha');
+  if (linhaDesconto) {
+    linhaDesconto.hidden = desconto <= 0;
+    document.getElementById('pdv-desconto-valor').textContent = '-' + formatarMoedaPDV(desconto);
+  }
   if (!document.getElementById('pdv-pagamento')?.hidden) renderPagamentoPDV();
+}
+
+// ── Desconto no pagamento (F3) ────────────────────────────────────────────
+// Vale para o total e é dado depois de bipar tudo. Voltar aos itens retira o desconto,
+// para ele não mudar sozinho quando a quantidade de um item mudar.
+
+function descontoAtualPDV() {
+  return arred2(itensAtivosVendaPDV().reduce((soma, item) =>
+    soma + Number(item.descontoUnitario || 0) * Number(item.quantidade || 0), 0));
+}
+
+function lerDescontoPDV(texto) {
+  const limpo = String(texto || '').replace(/\s/g, '').replace(',', '.');
+  if (!limpo) return { valor: 0 };
+  if (limpo.endsWith('%')) {
+    const percentual = Number(limpo.slice(0, -1));
+    return Number.isFinite(percentual) ? { percentual } : null;
+  }
+  if (limpo.startsWith('=')) {
+    const alvo = Number(limpo.slice(1));
+    return Number.isFinite(alvo) ? { valor: arred2(calcularTotalCarrinho() + descontoAtualPDV() - alvo) } : null;
+  }
+  const valor = Number(limpo);
+  return Number.isFinite(valor) ? { valor } : null;
+}
+
+function abrirDescontoPDV() {
+  if (document.getElementById('pdv-pagamento').hidden) return;
+  limparAlert('alert-pdv');
+  document.getElementById('pdv-desconto-form').hidden = false;
+  document.getElementById('pdv-desconto-autorizacao').hidden = true;
+  ['entrada', 'gerente-nome', 'gerente-sobrenome', 'gerente-senha'].forEach(campo => {
+    document.getElementById('pdv-desconto-' + campo).value = '';
+  });
+  document.getElementById('pdv-desconto-entrada').focus();
+}
+
+function fecharDescontoPDV() {
+  const form = document.getElementById('pdv-desconto-form');
+  if (form) form.hidden = true;
+  document.getElementById('pdv-pag-recebido')?.focus();
+}
+
+async function enviarDescontoPDV(corpo) {
+  const resp = await fetch(`/api/vendas/${pdvVendaAtual.id}/desconto`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo)
+  });
+  if (resp.ok) {
+    pdvVendaAtual = await resp.json();
+    pdvPagamentos = [];
+    renderCarrinho();
+  }
+  return resp;
+}
+
+async function aplicarDescontoPDV() {
+  if (!pdvVendaAtual) return;
+  limparAlert('alert-pdv');
+  const pedido = lerDescontoPDV(document.getElementById('pdv-desconto-entrada').value);
+  if (!pedido) {
+    mostrarAlert('alert-pdv', 'Digite o desconto: 5 para R$ 5, 10% ou =50 para fechar em R$ 50.', 'error');
+    return;
+  }
+  const corpo = { ...pedido };
+  const comDesconto = (pedido.valor || pedido.percentual || 0) > 0;
+  const autorizacao = document.getElementById('pdv-desconto-autorizacao');
+  if (comDesconto && !temPermissao(PERMISSOES.VER_FINANCAS)) {
+    if (autorizacao.hidden) {
+      autorizacao.hidden = false;
+      mostrarAlert('alert-pdv', 'O desconto precisa do gerente: ele digita o login aqui.', 'error');
+      document.getElementById('pdv-desconto-gerente-nome').focus();
+      return;
+    }
+    const nome = document.getElementById('pdv-desconto-gerente-nome').value.trim();
+    const sobrenome = document.getElementById('pdv-desconto-gerente-sobrenome').value.trim();
+    const senha = document.getElementById('pdv-desconto-gerente-senha').value;
+    if (!nome || !senha) {
+      mostrarAlert('alert-pdv', 'O gerente precisa digitar nome, sobrenome e senha.', 'error');
+      return;
+    }
+    corpo.autorizacao = { nome, sobrenome, senha };
+  }
+  const botao = document.getElementById('btn-pdv-aplicar-desconto');
+  setLoading(botao, true);
+  try {
+    const resp = await enviarDescontoPDV(corpo);
+    if (!resp.ok) {
+      const mensagem = await safeReadErrorMessage(resp, 'Não foi possível aplicar o desconto.');
+      mostrarAlert('alert-pdv', /gerente|permiss|autoriz/i.test(mensagem) && corpo.autorizacao
+        ? 'Login do gerente não confere ou ele não pode dar desconto.' : mensagem, 'error');
+      document.getElementById('pdv-desconto-gerente-senha').value = '';
+      return;
+    }
+    selecionarFormaPDV(pdvFormaSelecionada);
+    fecharDescontoPDV();
+    const desconto = descontoAtualPDV();
+    mostrarAlert('alert-pdv', desconto > 0
+      ? `Desconto de ${formatarMoedaPDV(desconto)} aplicado. Total: ${formatarMoedaPDV(calcularTotalCarrinho())}.`
+      : 'Desconto retirado.', 'success');
+  } finally {
+    setLoading(botao, false);
+  }
+}
+
+async function retirarDescontoPDV() {
+  if (!pdvVendaAtual || descontoAtualPDV() <= 0) return;
+  const resp = await enviarDescontoPDV({ valor: 0 });
+  if (resp.ok) {
+    mostrarAlert('alert-pdv', 'Desconto retirado. Se ainda valer, aplique de novo no pagamento (F3).', 'info');
+  } else {
+    mostrarAlert('alert-pdv', await safeReadErrorMessage(resp, 'Não foi possível retirar o desconto.'), 'error');
+  }
 }
 
 async function finalizarVendaPDV() {
@@ -1221,6 +1341,9 @@ function abrirPagamentoPDV() {
 
 function cancelarPagamentoPDV() {
   pdvPagamentos = [];
+  const formDesconto = document.getElementById('pdv-desconto-form');
+  if (formDesconto) formDesconto.hidden = true;
+  retirarDescontoPDV();
   document.getElementById('pdv-pagamento').hidden = true;
   document.getElementById('btn-pdv-finalizar').hidden = false;
   focarLeituraPDV();
@@ -1680,9 +1803,19 @@ function atalhosPDV(event) {
   if (event.key === 'F10') { event.preventDefault(); if (!pagamentoAberto) abrirPagamentoPDV(); return; }
   if (event.key === 'F4') { event.preventDefault(); alternarProximoAlternativoPDV(); return; }
   if (event.key === 'F2') { event.preventDefault(); document.getElementById('pdv-busca')?.focus(); return; }
+  if (event.key === 'F3') {
+    event.preventDefault();
+    // O pagamento põe o foco no valor recebido logo depois de abrir; o desconto vem em seguida.
+    if (!pagamentoAberto && pdvCarrinho.length > 0) { abrirPagamentoPDV(); setTimeout(abrirDescontoPDV, 60); }
+    else abrirDescontoPDV();
+    return;
+  }
   if (event.key === 'Escape') {
     event.preventDefault();
-    if (pagamentoAberto) cancelarPagamentoPDV(); else fecharPDV();
+    const descontoAberto = !document.getElementById('pdv-desconto-form')?.hidden;
+    if (pagamentoAberto && descontoAberto) fecharDescontoPDV();
+    else if (pagamentoAberto) cancelarPagamentoPDV();
+    else fecharPDV();
     return;
   }
   if (pagamentoAberto) {
@@ -1693,7 +1826,11 @@ function atalhosPDV(event) {
       if (forma.codigo === 'DINHEIRO') document.getElementById('pdv-pag-recebido')?.focus();
       return;
     }
-    if (event.key === 'Enter') { event.preventDefault(); confirmarPagamentoPDV(); }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (event.target && event.target.closest && event.target.closest('#pdv-desconto-form')) aplicarDescontoPDV();
+      else confirmarPagamentoPDV();
+    }
     return;
   }
   // Leitor bipando com o foco fora do campo: manda para o campo de leitura.
@@ -1777,6 +1914,8 @@ window.StockOSPDV = {
       salvarMeuPinPDV,
       alternarProximoAlternativoPDV,
       abrirPagamentoPDV,
+      abrirDescontoPDV,
+      aplicarDescontoPDV,
       cancelarPagamentoPDV,
       selecionarFormaPDV,
       adicionarPagamentoPDV,

@@ -489,6 +489,59 @@ try {
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
   });
 
+  await passo(admin, 'Desconto pede o gerente e fecha no valor pedido', async () => {
+    await bipar(admin, `2*${EAN_LATA}`);
+    await esperarTexto(admin, '#pdv-total', 'R$ 9,00');
+    await admin.keyboard.press('F3');
+    await admin.waitForSelector('#pdv-desconto-form:not([hidden])');
+    await admin.waitForFunction(() => document.activeElement.id === 'pdv-desconto-entrada');
+    await admin.keyboard.type('=8');
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv', 'gerente');
+    await admin.fill('#pdv-desconto-gerente-nome', 'Admin');
+    await admin.fill('#pdv-desconto-gerente-sobrenome', 'Superior');
+    await admin.fill('#pdv-desconto-gerente-senha', SENHA_ADMIN);
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv', 'Desconto de R$ 1,00 aplicado');
+    await esperarTexto(admin, '#pdv-total', 'R$ 8,00');
+    await esperarTexto(admin, '#pdv-desconto-valor', 'R$ 1,00');
+    await esperarTexto(admin, '#pdv-pag-restante', 'R$ 8,00');
+    await naTela(admin, '#pdv-desconto-linha');
+    await naTela(admin, '#btn-pdv-confirmar-pagamento');
+  });
+
+  await passo(admin, 'Voltar aos itens retira o desconto', async () => {
+    await admin.keyboard.press('Escape');
+    await admin.waitForSelector('#pdv-pagamento', { state: 'hidden' });
+    await esperarTexto(admin, '#alert-pdv', 'Desconto retirado');
+    await esperarTexto(admin, '#pdv-total', 'R$ 9,00');
+    assert.equal(await admin.locator('#pdv-desconto-linha').isVisible(), false);
+  });
+
+  await passo(admin, 'Venda com desconto entra no caixa pelo valor com desconto', async () => {
+    await admin.focus('#pdv-leitura');
+    await admin.keyboard.press('F3');
+    await admin.waitForSelector('#pdv-pagamento:not([hidden])');
+    await admin.waitForFunction(() => document.activeElement.id === 'pdv-desconto-entrada');
+    await admin.keyboard.type('1');
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv', 'gerente');
+    await admin.fill('#pdv-desconto-gerente-nome', 'Admin');
+    await admin.fill('#pdv-desconto-gerente-sobrenome', 'Superior');
+    await admin.fill('#pdv-desconto-gerente-senha', SENHA_ADMIN);
+    await admin.click('#btn-pdv-aplicar-desconto');
+    await esperarTexto(admin, '#pdv-total', 'R$ 8,00');
+    await admin.waitForFunction(() => document.activeElement.id === 'pdv-pag-recebido');
+    await admin.keyboard.type('10');
+    await esperarTexto(admin, '#pdv-pag-troco', 'R$ 2,00');
+    await admin.keyboard.press('Enter');
+    await esperarTexto(admin, '#alert-pdv', 'TROCO R$ 2,00');
+    const { corpo } = await api(admin, '/api/caixas');
+    const caixa = corpo.find(c => c.numeroCaixa === 1);
+    assert.equal(caixa.dinheiroNaGaveta, 160.4);
+    assert.equal(caixa.totalVendas, 64.39);
+  });
+
   await passo(admin, 'Sair do PDV deixa a tela no nome da Ana', async () => {
     await admin.focus('#pdv-leitura');
     const recarregou = admin.waitForEvent('load');
@@ -506,9 +559,9 @@ try {
 
   await passo(admin, 'Tela do caixa em portugues e com dinheiro separado', async () => {
     await cardDoCaixa(admin, 1).waitFor();
-    assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 152,40');
+    assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 160,40');
     assert.equal(await linhaDoCard(admin, 1, 'Pix e cartões'), 'R$ 3,99');
-    assert.equal(await linhaDoCard(admin, 1, 'Total Vendas'), 'R$ 56,39');
+    assert.equal(await linhaDoCard(admin, 1, 'Total Vendas'), 'R$ 64,39');
     assert.match(await linhaDoCard(admin, 1, 'Abertura'), /^\d{2}\/\d{2}/, 'Abertura precisa mostrar a data');
   });
 
@@ -528,21 +581,21 @@ try {
     await admin.fill('#mov-gerente-senha', SENHA_ADMIN);
     await admin.click('#btn-confirmar-mov');
     await admin.waitForSelector('#modal-mov:not(.open)', { state: 'attached' });
-    await admin.waitForFunction(() => document.querySelector('.caixa-card')?.textContent.replace(/ /g, ' ').includes('R$ 102,40'));
+    await admin.waitForFunction(() => document.querySelector('.caixa-card')?.textContent.replace(/ /g, ' ').includes('R$ 110,40'));
   });
 
   await passo(admin, 'Fechamento cego so mostra a diferenca no fim', async () => {
     await cardDoCaixa(admin, 1).locator('button:has-text("Encerrar")').click();
     await admin.waitForSelector('#modal-encerrar.open');
     assert.equal(await admin.inputValue('#encerrar-valor-contado'), '', 'O campo começa vazio');
-    assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('102,40'), 'Não pode mostrar o valor esperado');
+    assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('110,40'), 'Não pode mostrar o valor esperado');
     await admin.fill('#encerrar-valor-contado', '100');
     await admin.fill('#encerrar-gerente-nome', 'Admin');
     await admin.fill('#encerrar-gerente-sobrenome', 'Superior');
     await admin.fill('#encerrar-gerente-senha', SENHA_ADMIN);
     await admin.click('#btn-confirmar-encerrar');
-    await esperarTexto(admin, '#fechamento-container', 'R$ 102,40');
-    await esperarTexto(admin, '#fechamento-container', '-R$ 2,40');
+    await esperarTexto(admin, '#fechamento-container', 'R$ 110,40');
+    await esperarTexto(admin, '#fechamento-container', '-R$ 10,40');
   });
 
   await admin.context().close();
@@ -558,8 +611,8 @@ try {
     await dono.waitForURL('**/dashboard.html');
     assert.equal((await api(dono, '/api/funcionarios')).status, 200);
     const produtos = await api(dono, '/api/produtos');
-    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 32, 'A lata da venda cancelada voltou ao estoque');
-    await esperarTexto(dono, '#summary-grid', 'R$ 56,39');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 30, 'A lata da venda cancelada voltou, e 2 saíram com desconto');
+    await esperarTexto(dono, '#summary-grid', 'R$ 64,39');
   });
 
   if (process.env.E2E_BACKUP === '1') {
@@ -634,7 +687,7 @@ try {
     await dono.waitForSelector('#modal-xml:not(.open)', { state: 'attached' });
     await dono.waitForSelector('text=Distribuidora Exemplo LTDA');
     const { corpo } = await api(dono, '/api/produtos');
-    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 92, '32 + 60');
+    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 90, '30 + 60');
     assert.equal(corpo.find(p => p.nome === 'Agua Mineral 500ml').quantidadeAtual, 24);
     const leitura = await api(dono, `/api/pdv/codigos/${EAN_NOVO}`);
     assert.equal(leitura.status, 200, 'O código da nota precisa funcionar no caixa');

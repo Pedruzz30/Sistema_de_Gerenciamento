@@ -242,7 +242,7 @@
                  onkeydown="lerCodigoPDV(event)">
           <div class="pdv-scan__hint">
             <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
-            <span>F2 buscar · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
+            <span>F2 buscar · F3 desconto · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
           </div>
         </div>
         <div class="pdv-catalog-toolbar">
@@ -287,6 +287,10 @@
             <span class="pdv-summary-label">Subtotal</span>
             <span class="pdv-summary-value pdv-summary-value--muted" id="pdv-subtotal">R$ 0,00</span>
           </div>
+          <div class="pdv-summary-row pdv-desconto-linha" id="pdv-desconto-linha" hidden>
+            <span class="pdv-summary-label">Desconto</span>
+            <span class="pdv-summary-value" id="pdv-desconto-valor">R$ 0,00</span>
+          </div>
           <div class="pdv-summary-row pdv-summary-row--total">
             <span class="pdv-summary-label pdv-summary-label--total">Total</span>
             <span class="pdv-summary-value pdv-summary-value--total" id="pdv-total">R$ 0,00</span>
@@ -302,6 +306,20 @@
               <button type="button" class="pdv-forma" data-forma-pdv="PIX" onclick="selecionarFormaPDV('PIX')"><kbd>F6</kbd> Pix</button>
               <button type="button" class="pdv-forma" data-forma-pdv="DEBITO" onclick="selecionarFormaPDV('DEBITO')"><kbd>F7</kbd> Débito</button>
               <button type="button" class="pdv-forma" data-forma-pdv="CREDITO" onclick="selecionarFormaPDV('CREDITO')"><kbd>F8</kbd> Crédito</button>
+            </div>
+            <div class="pdv-desconto">
+              <button type="button" class="pdv-pag-dividir" onclick="abrirDescontoPDV()">Desconto (F3)</button>
+              <div id="pdv-desconto-form" class="pdv-desconto-form" hidden>
+                <label for="pdv-desconto-entrada">Desconto: <code>5</code> = R$ 5 · <code>10%</code> · <code>=50</code> fecha em R$ 50</label>
+                <input id="pdv-desconto-entrada" class="input" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 5,00 ou 10% ou =50">
+                <fieldset class="autorizacao-gerente" id="pdv-desconto-autorizacao" hidden>
+                  <legend>Autorização do gerente</legend>
+                  <input class="input" type="text" id="pdv-desconto-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+                  <input class="input" type="text" id="pdv-desconto-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+                  <input class="input" type="password" id="pdv-desconto-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+                </fieldset>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-pdv-aplicar-desconto" onclick="aplicarDescontoPDV()">Aplicar desconto (Enter)</button>
+              </div>
             </div>
             <div class="pdv-pag-campos">
               <label>Valor desta forma

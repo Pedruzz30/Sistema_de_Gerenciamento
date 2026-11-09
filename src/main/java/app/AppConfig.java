@@ -54,6 +54,13 @@ public class AppConfig {
         return Clock.system(ZoneId.of(timezone));
     }
 
+    @Bean
+    public DescontoVendaService descontoVendaService(VendaRepository vendaRepository,
+                                                     VendaItemRepository vendaItemRepository,
+                                                     LogRepository logRepository) {
+        return new DescontoVendaService(vendaRepository, vendaItemRepository, logRepository);
+    }
+
     /** Desligado sem stockos.backup.pasta: só a instalação da loja preenche essa opção. */
     @Bean
     public BackupService backupService(

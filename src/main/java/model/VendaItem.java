@@ -272,6 +272,12 @@ public class VendaItem {
         );
     }
 
+    /** Desconto por unidade dado no pagamento, sobre o preço já com acréscimos. */
+    public void aplicarDescontoUnitario(BigDecimal descontoUnitario) {
+        validar(status == StatusVendaItem.ATIVO, "Item cancelado nao recebe desconto.");
+        aplicarSnapshotComercialComPrecoBase(variacaoItemCardapio, precoUnitarioBase, descontoUnitario, acrescimoUnitario);
+    }
+
     public void atualizarRascunho(VariacaoItemCardapio variacao,
                                   BigDecimal quantidade,
                                   String observacao) {

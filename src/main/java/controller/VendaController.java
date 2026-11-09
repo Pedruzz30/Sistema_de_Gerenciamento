@@ -47,10 +47,16 @@ public class VendaController {
     private final UsuarioRepository usuarioRepository;
 
     private service.AutenticacaoService autenticacaoService;
+    private service.DescontoVendaService descontoService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setAutenticacaoService(service.AutenticacaoService autenticacaoService) {
         this.autenticacaoService = autenticacaoService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDescontoService(service.DescontoVendaService descontoService) {
+        this.descontoService = descontoService;
     }
 
     public VendaController(VendaService vendaService,
@@ -183,6 +189,28 @@ public class VendaController {
         );
         return ResponseEntity.ok(response(venda, usuario));
     }
+
+    /** Desconto no total, dado no pagamento. Zero retira. Operadora sem financeiro precisa do gerente. */
+    @PostMapping("/{id}/desconto")
+    public ResponseEntity<VendaResponse> aplicarDesconto(
+            @PathVariable long id,
+            @RequestBody DescontoRequest request,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario usuario = validarVenda(ruHeader);
+        if (descontoService == null) {
+            throw new IllegalStateException("Desconto indisponivel.");
+        }
+        Venda venda = descontoService.aplicar(
+                usuario,
+                resolverAutorizador(request == null ? null : request.autorizacao()),
+                id,
+                request == null ? null : request.valor(),
+                request == null ? null : request.percentual());
+        return ResponseEntity.ok(response(venda, usuario));
+    }
+
+    public record DescontoRequest(BigDecimal valor, BigDecimal percentual,
+                                  CaixaController.AutorizacaoRequest autorizacao) {}
 
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<VendaResponse> cancelar(

@@ -202,6 +202,61 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void descontoNoPagamentoPedeGerenteEFechaOTotalExato() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "1");
+        String eanFardo = ean13(sufixo + "2");
+        int numeroCaixa = numeroCaixaUnico();
+        JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda("Desconto " + sufixo, eanLata, eanFardo), gerente)));
+        int produtoId = cadastro.path("produtoId").asInt();
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+        long fardo = json(assertOk(get("/api/pdv/codigos/" + eanFardo, caixa))).path("variacao").path("variacaoId").asLong();
+
+        assertOk(post("/api/caixas/abrir", Map.of("numeroCaixa", numeroCaixa, "saldoInicial", 0), caixa));
+        // 3 geladas (15,00) + 1 fardo (40,00) = 55,00; o cliente pede "faz por 50".
+        long vendaId = json(assertOk(post("/api/vendas", Map.of("filialId", 1, "canal", "BALCAO", "itens", List.of(
+                Map.of("variacaoId", gelada, "quantidade", "3"),
+                Map.of("variacaoId", fardo, "quantidade", "1"))), caixa))).path("id").asLong();
+
+        assertEquals(HttpStatus.FORBIDDEN, post("/api/vendas/" + vendaId + "/desconto",
+                Map.of("valor", "5.00"), caixa).getStatusCode(), "Sem o gerente, a operadora não dá desconto");
+        assertEquals(HttpStatus.BAD_REQUEST.value() / 100, post("/api/vendas/" + vendaId + "/desconto", Map.of(
+                "valor", "55.00",
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")), caixa).getStatusCode().value() / 100,
+                "Desconto do total inteiro é recusado");
+
+        JsonNode comDesconto = json(assertOk(post("/api/vendas/" + vendaId + "/desconto", Map.of(
+                "valor", "5.00",
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")), caixa)));
+        BigDecimal soma = BigDecimal.ZERO;
+        for (JsonNode item : comDesconto.path("itens")) soma = soma.add(item.path("subtotal").decimalValue());
+        assertBig("50", soma.setScale(2, java.math.RoundingMode.HALF_UP));
+
+        // Retirar é livre; aplicar de novo em porcentagem (10% de 55 = 5,50) pelo gerente sozinho.
+        assertOk(post("/api/vendas/" + vendaId + "/desconto", Map.of("valor", "0"), caixa));
+        assertOk(post("/api/vendas/" + vendaId + "/desconto", Map.of("percentual", "10"), gerente));
+        assertOk(post("/api/vendas/" + vendaId + "/desconto", Map.of(
+                "valor", "5.00",
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")), caixa));
+
+        // Pagamento do total com desconto; a soma diferente seria recusada.
+        Map<String, Object> dinheiro = new LinkedHashMap<>();
+        dinheiro.put("forma", "DINHEIRO");
+        dinheiro.put("valor", "50.00");
+        dinheiro.put("valorRecebido", "50.00");
+        JsonNode finalizada = json(assertOk(postIdempotente("/api/vendas/" + vendaId + "/finalizar", Map.of(
+                "numeroCaixaLegado", numeroCaixa, "pagamentos", List.of(dinheiro)), caixa, "pag-desc-" + sufixo)));
+        assertBig("55", finalizada.path("subtotal").decimalValue().setScale(0, java.math.RoundingMode.HALF_UP));
+        assertBig("5.00", finalizada.path("descontoTotal").decimalValue().setScale(2, java.math.RoundingMode.HALF_UP));
+        assertBig("50.00", finalizada.path("valorTotal").decimalValue().setScale(2, java.math.RoundingMode.HALF_UP));
+        assertBig("50", caixaAberto(numeroCaixa).path("dinheiroNaGaveta").decimalValue());
+        assertEquals(24 - 3 - 12, quantidadeNaTelaDeEstoque(produtoId));
+
+        // Depois de finalizar, não muda mais.
+        assertTrue(post("/api/vendas/" + vendaId + "/desconto", Map.of("valor", "1.00"), gerente).getStatusCode().is4xxClientError());
+    }
+
+    @Test
     void operadoraCancelaVendaSoComAutorizacaoEADevolucaoSaiDaFormaPaga() throws Exception {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "1");

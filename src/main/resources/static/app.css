@@ -3640,7 +3640,10 @@ body.bridge-page .bridge-actions a {
 .pdv-cart-footer { min-height: 0; flex-shrink: 1; overflow-y: auto; }
 .pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-cart-items { display: none; }
 .pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-cart-footer { flex: 1 1 auto; padding: 10px 16px; }
-.pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-summary-row:not(.pdv-summary-row--total, .pdv-troco, .pdv-pagamento .pdv-summary-row) { display: none; }
+.pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-summary-row:not(.pdv-summary-row--total, .pdv-troco, .pdv-desconto-linha, .pdv-pagamento .pdv-summary-row) { display: none; }
+.pdv-desconto-linha .pdv-summary-value { color: #b45309; font-weight: 700; }
+.pdv-desconto-form { display: grid; gap: 6px; padding: 8px; border: 1px dashed var(--border, #d6d3cc); border-radius: 8px; font-size: 12px; }
+.pdv-desconto-form code { font-size: 11px; }
 .pdv-pagamento .pdv-summary-row { margin-bottom: 0; }
 .pdv-pagamento #btn-pdv-confirmar-pagamento { position: sticky; bottom: 0; z-index: 1; min-height: 42px; }
 #alert-pdv { margin-bottom: 8px; }
