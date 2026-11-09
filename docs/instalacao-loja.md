@@ -17,7 +17,7 @@ O pacote fica disponível por 30 dias depois de cada execução. Guarde uma cóp
 1. Extraia o ZIP (botão direito, **Extrair tudo**).
 2. Abra `Instalar.cmd`. Se o Windows avisar sobre o arquivo, clique em **Mais informações** e **Executar assim mesmo**.
 3. Quando o navegador abrir, entre com nome `Admin`, sobrenome `Superior` e senha `1234`.
-4. O sistema pede uma senha nova e um PIN. Anote em lugar seguro: hoje ninguém recupera uma senha esquecida pela tela.
+4. O sistema pede uma senha nova e um PIN. Anote em lugar seguro.
 
 O sistema fica em `C:\StockOS`. Instale com o usuário do Windows que vai usar o caixa: só ele tem acesso à pasta, e o sistema liga quando ele entra no Windows.
 
@@ -58,18 +58,25 @@ O painel aparece só para quem tem acesso ao financeiro e entrou com senha. Quem
 
 Vendas e cadastros feitos depois daquele backup saem do sistema. Antes de trocar, ele guarda uma cópia de como estava, com nome `stockos-antes-restauracao-...`. Se o backup não puder ser carregado, nada muda.
 
-## 6. Notebook novo (quebrou ou foi roubado)
+## 6. Esqueceu a senha
+
+- **Funcionário:** o gerente entra, vai em **Funcionários** e clica em **Redefinir senha** na linha da pessoa. Aparece uma senha temporária, uma vez só. A pessoa entra com ela e cria uma senha nova e um PIN.
+- **Dono:** no notebook da loja, abra `C:\StockOS\Redefinir senha do dono.cmd`, digite `SIM` e use a senha temporária que aparecer. Se houver mais de um dono, ele pede o número de quem esqueceu.
+
+Se aparecer "muitas tentativas", espere 5 minutos.
+
+## 7. Notebook novo (quebrou ou foi roubado)
 
 1. Instale o sistema no notebook novo, como no item 2. Não precisa criar senha no sistema vazio.
 2. Conecte o pen drive.
 3. Abra `C:\StockOS\Restaurar backup.cmd` e escolha o backup mais novo.
 4. Entre com a sua senha de sempre.
 
-## 7. Atualizar o sistema
+## 8. Atualizar o sistema
 
 Baixe o pacote novo, extraia e abra `Instalar.cmd`. Os dados continuam. Antes de trocar, ele guarda uma cópia. Se a versão nova não ligar, ele volta sozinho para a anterior, com os dados de antes da atualização.
 
-## 8. Se algo der errado
+## 9. Se algo der errado
 
 | Problema | O que tentar |
 |---|---|

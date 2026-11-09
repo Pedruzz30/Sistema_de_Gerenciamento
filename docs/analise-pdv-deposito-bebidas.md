@@ -438,7 +438,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
 19. Delivery pelo WhatsApp (se existir).
 
-**Pedido fora das fases:** redefinir senha pelo gerente (hoje, quem esquece a senha fica sem acesso).
+**Pedido fora das fases:** ✅ redefinir senha esquecida, pelo gerente ou, para o dono, no notebook (seção 19).
 
 **Fora do escopo (confirmado):** fiado, casco retornável e comandas/cobrança por mesa.
 
@@ -789,6 +789,39 @@ Na tela de Notas, o botão **Importar XML** recebe o arquivo da NF-e do forneced
 - **Só as vendas do caixa aberto.** Uma venda de um caixa já encerrado não aparece na lista; para devolver dinheiro dela, o servidor exige um caixa aberto com o mesmo número.
 - **A senha errada do gerente conta no limite de 5 tentativas da conta dele:** quem errar muitas vezes no caixa bloqueia o login do gerente por 5 minutos.
 - **A demonstração não tem o F9.**
+
+---
+
+## 19. Redefinir senha esquecida (09/11/2026)
+
+**O que era o problema:** ninguém recuperava uma senha esquecida. Um funcionário ficava sem acesso, e, se fosse o dono, a loja inteira ficava sem quem administrasse.
+
+**Funcionário:** em Funcionários, o gerente clica em **Redefinir senha**.
+
+| Regra | Por quê |
+|---|---|
+| A senha temporária tem 8 caracteres, sem O/0, I/1 e L | Para ditar em voz alta sem confusão |
+| Aparece uma vez e some ao fechar a janela | Não fica exposta na tela |
+| A senha antiga para de valer na hora, e quem estava logado com ela sai | Se a senha vazou, o acesso acaba ali |
+| O bloqueio por tentativas erradas é liberado | A pessoa entra logo |
+| No próximo acesso, o sistema pede uma senha nova e um PIN | Nem o gerente fica sabendo da senha definitiva |
+| Ninguém redefine a própria senha por ali | Para isso, existe a troca com a senha atual |
+| Um gerente não redefine a senha de um dono | Senão ele poderia tomar a conta do dono |
+
+**Dono:** `Redefinir senha do dono.cmd`, na pasta `C:\StockOS` do notebook da loja, faz o mesmo direto no banco. Só funciona nesse notebook: quem chega até ali já tem acesso ao computador e aos dados. Com mais de um dono, ele pede o número de quem esqueceu.
+
+A tela de login explica os dois caminhos.
+
+**Corrigido no caminho:** o botão **Classe** em Funcionários não funcionava, porque o nome da pessoa entrava com aspas e quebrava o botão.
+
+**Testado:**
+- **Regras:** testes de unidade (senha antiga, sessão aberta, bloqueio, permissões, dono e gerente).
+- **Navegador real:** o dono redefine a senha da Ana, a senha antiga é recusada, e a Ana entra com a temporária e cria outra.
+- **Windows limpo:** o atalho do dono gera a senha, a antiga deixa de valer, e o dono entra com a temporária e troca.
+
+**Limites conhecidos:**
+- **A senha temporária não expira sozinha.** Ela vale até ser usada ou redefinida de novo.
+- **O atalho do dono só está na instalação da loja,** não no servidor de desenvolvimento.
 
 ---
 
