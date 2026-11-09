@@ -1651,6 +1651,11 @@ async function salvarMeuPinPDV() {
 function atalhosPDV(event) {
   const modal = document.getElementById('modal-pdv');
   if (!modal || !modal.classList.contains('open')) return;
+  // Com o PDV aberto, o Esc é só dele: o atalho geral da página fecharia o PDV junto
+  // (ao voltar do pagamento, ao desistir de sair ou ao fechar uma janela por cima).
+  if (event.key === 'Escape' && !document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) {
+    event.stopImmediatePropagation();
+  }
   if (document.getElementById('modal-pdv-operador')?.classList.contains('open')) {
     if (event.key === 'Escape') { event.preventDefault(); fecharTrocaOperadorPDV(); return; }
     if (event.key === 'F12') { event.preventDefault(); return; }

@@ -315,6 +315,20 @@ try {
     assert.equal(await admin.evaluate(() => window.__f5Bloqueado), true, 'F5 não pode recarregar a página e perder a venda');
   });
 
+  await passo(admin, 'Esc volta do pagamento e desistir de sair mantem o PDV', async () => {
+    await admin.keyboard.press('F10');
+    await admin.waitForSelector('#pdv-pagamento:not([hidden])');
+    await admin.keyboard.press('Escape');
+    await admin.waitForSelector('#pdv-pagamento', { state: 'hidden' });
+    assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Esc no pagamento não pode fechar o PDV');
+    admin.once('dialog', dialogo => dialogo.dismiss());
+    await admin.keyboard.press('Escape');
+    await admin.waitForTimeout(300);
+    assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Quem desiste de sair continua no PDV');
+    await esperarTexto(admin, '#pdv-total', 'R$ 52,40');
+    await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
+  });
+
   await passo(admin, 'Pagar em dinheiro mostra o troco', async () => {
     await admin.keyboard.press('F10');
     await admin.waitForSelector('#pdv-pagamento:not([hidden])');
@@ -471,6 +485,7 @@ try {
     assert.equal(await admin.locator('#btn-pdv-cancelar-venda').isVisible(), false);
     await admin.keyboard.press('Escape');
     await admin.waitForSelector('#modal-pdv-vendas:not(.open)', { state: 'attached' });
+    assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Esc na lista de vendas volta ao PDV, sem fechá-lo');
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
   });
 
