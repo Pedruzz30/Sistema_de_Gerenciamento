@@ -623,7 +623,8 @@ try {
 
   await passo(dono, 'Sair encerra a sessao', async () => {
     await dono.goto(`${BASE}/estoque.html`);
-    await dono.evaluate(() => logout());
+    // Sair troca de página: chamar depois de responder evita disputar com a navegação.
+    await dono.evaluate(() => { setTimeout(() => logout(), 0); });
     await dono.waitForURL('**/login.html');
     const resposta = await dono.request.get(`${BASE}/api/caixas`);
     assert.equal(resposta.status(), 401);
