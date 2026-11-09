@@ -420,7 +420,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
 5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). Desconto no total pelo F3, com o gerente (seção 20).
 6. ✅ Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
-7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. **Falta:** resumo por operador e impressão.
+7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. Resumo por operador e impressão do fechamento (seção 22). **Falta:** cupom na bobina de 80 mm.
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
 9. ✅ Desligar a venda avulsa sem itens no PDV (só gerente).
 10. ✅ (seção 15) Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
@@ -883,6 +883,36 @@ A tela de login explica os dois caminhos.
 - **O produto novo entra na categoria Bebidas e sem fardo.** Para fardo, petisco ou outra categoria, ajuste depois em Estoque ou Cardápio.
 - **Não confere se o código é de outro produto real.** Um código lido errado vira um cadastro errado; quem autoriza precisa olhar a embalagem.
 - **A demonstração não tem esta janela.**
+
+---
+
+## 22. Resumo por operador e impressão do fechamento (09/11/2026)
+
+**O que era o problema:** cada movimentação já gravava quem operava, mas nenhuma tela juntava isso. Com duas ou três pessoas se revezando no caixa, a dona não via quem vendeu quanto, quem cancelou ou quem tirou dinheiro da gaveta.
+
+**Como ficou:** no fechamento do caixa e em **Ver movs**, uma tabela mostra, por pessoa:
+
+| Coluna | O que conta |
+|---|---|
+| Vendas e Vendido | Vendas finalizadas por ela, antes dos cancelamentos |
+| Dinheiro / Pix e cartões | Em que forma entrou |
+| Cancelou | Quantas vendas ela cancelou e o valor devolvido |
+| Descontos | Desconto dado nas vendas que ela finalizou |
+| Sangrias | Dinheiro que ela tirou da gaveta |
+
+Venda conta para quem finalizou; cancelamento e sangria, para quem fez. Quem mais vendeu aparece primeiro.
+
+**Impressão:** o botão **Imprimir fechamento** manda para a impressora só o fechamento e a tabela, sem menu nem cards. Funciona com qualquer impressora instalada no Windows.
+
+**Testado:**
+- **Unidade:** venda em duas formas conta como uma, e o cancelamento em duas formas também; desconto, sangria e suprimento.
+- **Banco:** resumo de uma venda com desconto.
+- **Navegador real:** a tabela no fechamento do caminho completo, com a dona e a Ana, e a página como sai no papel.
+
+**Limites conhecidos:**
+- **A tabela é larga.** Numa impressora térmica de 80 mm, ela sai reduzida ou cortada, conforme o driver. Para a bobina, faria falta um layout estreito próprio, junto com o cupom (próximo item do roteiro).
+- **A impressão não foi feita numa impressora de verdade.** O teste confere a página no modo de impressão do navegador.
+- **É por sessão de caixa.** Ainda não há o mesmo resumo por dia ou por mês.
 
 ---
 
