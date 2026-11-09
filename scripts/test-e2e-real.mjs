@@ -463,8 +463,6 @@ try {
     const caixa = corpo.find(c => c.numeroCaixa === 1);
     assert.equal(caixa.dinheiroNaGaveta, 152.4, 'Sai da gaveta só a parte em dinheiro');
     assert.equal(caixa.totalVendas, 56.39);
-    const produtos = await api(admin, '/api/produtos');
-    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 32, 'A lata volta ao estoque');
   });
 
   await passo(admin, 'Venda cancelada nao cancela de novo e Esc volta ao caixa', async () => {
@@ -544,6 +542,8 @@ try {
     await entrar(dono, 'Admin', 'Superior', SENHA_ADMIN);
     await dono.waitForURL('**/dashboard.html');
     assert.equal((await api(dono, '/api/funcionarios')).status, 200);
+    const produtos = await api(dono, '/api/produtos');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 32, 'A lata da venda cancelada voltou ao estoque');
     await esperarTexto(dono, '#summary-grid', 'R$ 56,39');
   });
 

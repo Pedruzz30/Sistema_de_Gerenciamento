@@ -418,7 +418,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). **Falta:** os atalhos e cadastrar na hora quando o código não é encontrado.
 3. ✅ **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
-5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. **Falta:** tela de cancelar venda finalizada e desconto (seção 16).
+5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). **Falta:** desconto.
 6. ✅ Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
 7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. **Falta:** resumo por operador e impressão.
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
@@ -762,6 +762,33 @@ Na tela de Notas, o botão **Importar XML** recebe o arquivo da NF-e do forneced
 - **O PostgreSQL 17.11 não tem hash publicado pelo fabricante:** o valor fixado no script é o do download feito em 06/11/2026, então ele garante que o arquivo não mudou, mas não a origem.
 - **Depois de reiniciar,** o sistema só liga quando alguém entra no Windows.
 - **O pacote expira em 30 dias** no GitHub e exige login. Para a loja, vale guardar uma cópia.
+
+---
+
+## 18. Cancelar venda finalizada pelo PDV (09/11/2026)
+
+**O que era o problema:** o servidor já cancelava uma venda com estorno, mas nenhuma tela chamava isso, e só dono ou gerente podiam usar. Um erro do operador depois de finalizar não tinha como ser desfeito no balcão.
+
+**Como ficou:**
+
+| Passo | O que acontece |
+|---|---|
+| F9 no PDV | Lista as vendas deste caixa, da mais nova para a mais antiga, com hora, operador, valor, formas pagas e se já foi cancelada |
+| Escolher a venda | Mostra os itens e quanto volta ao cliente em cada forma, avisando quanto sai da gaveta |
+| Motivo | Obrigatório, com sugestões ("Cliente desistiu", "Item lançado errado", "Forma de pagamento errada") |
+| Gerente | Quem não é gerente pede o login dele na hora, como na sangria. A senha errada é recusada e apagada do campo |
+| Resultado | O estoque volta, a gaveta devolve só a parte paga em dinheiro, e Pix e cartões só abatem os totais. O estorno fica no caixa em nome de quem opera, com "autorizado por" na descrição; a venda fica em nome de quem autorizou |
+| Venda já cancelada | Aparece marcada e não pode ser cancelada de novo |
+
+**Testado:** no banco (operadora sem gerente é recusada; com gerente, estoque, gaveta, totais e um estorno por forma), e no navegador real, no meio do caminho da loja (lista, recusa sem motivo, recusa com senha errada, cancelamento e valores seguintes).
+
+**Achado pelo caminho:** o PDV só deixa os botões da tela usarem as funções que ele exporta. As novas tinham ficado de fora, e o clique em "Cancelar esta venda" não fazia nada; só o Enter funcionava. O teste no navegador agora confere, em Estoque, Caixas e Notas, se todo botão chama uma função que existe.
+
+**Limites conhecidos:**
+- **Só a venda inteira.** O servidor também cancela um item, mas não há tela para isso.
+- **Só as vendas do caixa aberto.** Uma venda de um caixa já encerrado não aparece na lista; para devolver dinheiro dela, o servidor exige um caixa aberto com o mesmo número.
+- **A senha errada do gerente conta no limite de 5 tentativas da conta dele:** quem errar muitas vezes no caixa bloqueia o login do gerente por 5 minutos.
+- **A demonstração não tem o F9.**
 
 ---
 
