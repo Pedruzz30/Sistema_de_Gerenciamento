@@ -308,7 +308,6 @@
               <button type="button" class="pdv-forma" data-forma-pdv="CREDITO" onclick="selecionarFormaPDV('CREDITO')"><kbd>F8</kbd> Crédito</button>
             </div>
             <div class="pdv-desconto">
-              <button type="button" class="pdv-pag-dividir" onclick="abrirDescontoPDV()">Desconto (F3)</button>
               <div id="pdv-desconto-form" class="pdv-desconto-form" hidden>
                 <label for="pdv-desconto-entrada">Desconto: <code>5</code> = R$ 5 · <code>10%</code> · <code>=50</code> fecha em R$ 50</label>
                 <input id="pdv-desconto-entrada" class="input" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 5,00 ou 10% ou =50">
@@ -329,7 +328,10 @@
                 <input id="pdv-pag-recebido" class="input" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Ex.: 50,00" oninput="renderPagamentoPDV()">
               </label>
             </div>
-            <button type="button" class="pdv-pag-dividir" onclick="adicionarPagamentoPDV()">+ Dividir: lançar este valor e pagar o resto em outra forma</button>
+            <div class="pdv-pag-links">
+              <button type="button" class="pdv-pag-dividir" onclick="adicionarPagamentoPDV()" title="Lança este valor e deixa o resto para outra forma">+ Dividir em outra forma</button>
+              <button type="button" class="pdv-pag-link" onclick="abrirDescontoPDV()">Desconto (F3)</button>
+            </div>
             <div id="pdv-pag-lista" class="pdv-pag-lista"></div>
             <div class="pdv-summary-row"><span class="pdv-summary-label">Falta pagar</span><span class="pdv-summary-value" id="pdv-pag-restante">R$ 0,00</span></div>
             <div class="pdv-summary-row pdv-troco"><span class="pdv-summary-label">TROCO</span><span class="pdv-summary-value" id="pdv-pag-troco">R$ 0,00</span></div>

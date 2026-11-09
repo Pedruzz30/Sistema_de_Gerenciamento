@@ -1331,6 +1331,8 @@ function restantePDV() {
 
 function abrirPagamentoPDV() {
   if (!pdvVendaAtual || pdvCarrinho.length === 0) return;
+  // Aviso antigo (ex.: código não cadastrado) ocuparia o espaço do troco.
+  limparAlert('alert-pdv');
   pdvPagamentos = [];
   selecionarFormaPDV('DINHEIRO');
   document.getElementById('pdv-pagamento').hidden = false;

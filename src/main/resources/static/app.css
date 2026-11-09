@@ -3644,6 +3644,8 @@ body.bridge-page .bridge-actions a {
 .pdv-desconto-linha .pdv-summary-value { color: #b45309; font-weight: 700; }
 .pdv-desconto-form { display: grid; gap: 6px; padding: 8px; border: 1px dashed var(--border, #d6d3cc); border-radius: 8px; font-size: 12px; }
 .pdv-desconto-form code { font-size: 11px; }
+.pdv-pag-links { display: flex; justify-content: space-between; gap: 8px; }
+.pdv-pag-link { background: none; border: none; color: #0369a1; font-size: 12px; cursor: pointer; padding: 0; }
 .pdv-pagamento .pdv-summary-row { margin-bottom: 0; }
 .pdv-pagamento #btn-pdv-confirmar-pagamento { position: sticky; bottom: 0; z-index: 1; min-height: 42px; }
 #alert-pdv { margin-bottom: 8px; }
