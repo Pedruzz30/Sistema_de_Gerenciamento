@@ -127,6 +127,14 @@ async function naTela(pagina, seletor) {
   assert.equal(problema, null, `${seletor} precisa estar à vista: ${problema}`);
 }
 
+/** Todo botão da tela chama uma função que existe: os scripts só expõem o que exportam. */
+async function botoesLigados(pagina) {
+  const faltando = await pagina.evaluate(() => [...new Set([...document.querySelectorAll('[onclick]')]
+    .map(el => (el.getAttribute('onclick').match(/^\s*([A-Za-z_$][\w$]*)\s*\(/) || [])[1])
+    .filter(nome => nome && typeof window[nome] !== 'function'))]);
+  assert.deepEqual(faltando, [], `Botões de ${pagina.url()} chamam funções que não existem`);
+}
+
 async function entrar(pagina, nome, sobrenome, senha) {
   await pagina.goto(`${BASE}/login.html`);
   await pagina.waitForFunction(() => !document.getElementById('btnSubmit').disabled);
@@ -216,6 +224,7 @@ try {
 
   await passo(admin, 'Bebida rapida recusa codigo errado', async () => {
     await admin.goto(`${BASE}/estoque.html`);
+    await botoesLigados(admin);
     await admin.click('#btn-revenda');
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'r-ean');
     await admin.keyboard.type(EAN_LATA.slice(0, 12) + ((Number(EAN_LATA[12]) + 1) % 10));
@@ -271,6 +280,7 @@ try {
   });
 
   await passo(admin, 'PDV abre com foco na leitura e nao fecha ao clicar fora', async () => {
+    await botoesLigados(admin);
     await cardDoCaixa(admin, 1).locator('button:has-text("PDV")').click();
     await admin.waitForSelector('#modal-pdv.open');
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
@@ -557,6 +567,7 @@ try {
 
   await passo(dono, 'Importar XML mostra a conferencia', async () => {
     await dono.goto(`${BASE}/notas.html`);
+    await botoesLigados(dono);
     await dono.click('#btn-importar-nfe');
     await dono.setInputFiles('#xml-input', arquivoNota);
     await dono.waitForSelector('#xml-conferencia:not([hidden])');
