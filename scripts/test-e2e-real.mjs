@@ -652,6 +652,31 @@ try {
     await esperarTexto(admin, '#fechamento-container', '-R$ 10,40');
   });
 
+  await passo(admin, 'Fechamento mostra quanto cada pessoa movimentou', async () => {
+    await admin.waitForSelector('#fechamento-operadores .resumo-operadores');
+    const linhas = admin.locator('#fechamento-operadores tbody tr');
+    assert.equal(await linhas.count(), 2);
+    const dono = limpar(await linhas.nth(0).textContent());
+    assert.match(dono, /^Admin Superior/, 'Quem mais vendeu vem primeiro');
+    for (const valor of ['R$ 56,39', 'R$ 52,40', 'R$ 3,99']) assert.ok(dono.includes(valor), `${valor} na linha do dono: ${dono}`);
+    const ana = limpar(await linhas.nth(1).textContent());
+    for (const valor of ['R$ 12,50', 'R$ 10,50', 'R$ 2,00', '1 · R$ 4,50', 'R$ 1,00', 'R$ 50,00']) {
+      assert.ok(ana.includes(valor), `${valor} na linha da Ana: ${ana}`);
+    }
+  });
+
+  await passo(admin, 'Impressao do fechamento sai sem o resto da tela', async () => {
+    await admin.evaluate(() => document.body.classList.add('imprimindo-fechamento'));
+    await admin.emulateMedia({ media: 'print' });
+    assert.equal(await admin.locator('#fechamento-container .fechamento-card').isVisible(), true);
+    assert.equal(await admin.locator('aside').first().isVisible(), false, 'O menu não sai no papel');
+    assert.equal(await admin.locator('.caixa-card').first().isVisible(), false, 'Os cards dos caixas não saem no papel');
+    assert.equal(await admin.locator('.fechamento-imprimir').isVisible(), false, 'O botão não sai no papel');
+    await print(admin, 'como-sai-no-papel');
+    await admin.emulateMedia({ media: 'screen' });
+    await admin.evaluate(() => document.body.classList.remove('imprimindo-fechamento'));
+  });
+
   await admin.context().close();
   const dono = await novaPagina(navegador);
   const xmlNota = notaXml(910001, [

@@ -383,6 +383,7 @@ async function abrirModalMovsLista(caixaId, numeroCaixa) {
     `Movimentações — Caixa ${numeroCaixa} (Sessao ${caixaId})`;
   document.getElementById('movs-lista').innerHTML = '<div class="loading">Carregando</div>';
   abrirModal('modal-movs-lista');
+  preencherResumoOperadores('movs-operadores', caixaId);
   try {
     const resp = await fetch(`/api/caixas/sessoes/${caixaId}/movimentacoes`);
     if (!resp.ok) throw new Error();
@@ -411,6 +412,59 @@ async function abrirModalMovsLista(caixaId, numeroCaixa) {
     document.getElementById('movs-lista').innerHTML =
       '<div class="empty">Erro ao carregar movimentações.</div>';
   }
+}
+
+// ── Resumo por operador (fechamento e movimentações) ─────────────────────
+
+async function carregarResumoOperadores(caixaId) {
+  const resp = await fetch(`/api/caixas/sessoes/${caixaId}/resumo-operadores`);
+  if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível montar o resumo por operador.'));
+  return resp.json();
+}
+
+function tabelaResumoOperadores(linhas) {
+  if (!linhas || linhas.length === 0) return '<p class="inline-note">Nenhuma movimentação nesta sessão.</p>';
+  const valor = v => Number(v || 0) > 0 ? moeda(v) : '—';
+  const corpo = linhas.map(l => `
+      <tr>
+        <td>${escapeHtml(l.operador)}</td>
+        <td class="num">${l.vendas}</td>
+        <td class="num">${moeda(l.vendido)}</td>
+        <td class="num">${valor(l.dinheiro)}</td>
+        <td class="num">${valor(l.pixECartoes)}</td>
+        <td class="num">${l.cancelamentos > 0 ? `${l.cancelamentos} · ${moeda(l.cancelado)}` : '—'}</td>
+        <td class="num">${valor(l.descontos)}</td>
+        <td class="num">${valor(l.sangrias)}</td>
+      </tr>`).join('');
+  return `
+    <div class="resumo-operadores-rolagem">
+      <table class="resumo-operadores">
+        <thead><tr>
+          <th>Operador</th><th class="num">Vendas</th><th class="num">Vendido</th><th class="num">Dinheiro</th>
+          <th class="num">Pix e cartões</th><th class="num">Cancelou</th><th class="num">Descontos</th><th class="num">Sangrias</th>
+        </tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+    </div>
+    <p class="inline-note">Venda conta para quem finalizou; cancelamento e sangria, para quem fez. "Vendido" é antes dos cancelamentos.</p>`;
+}
+
+async function preencherResumoOperadores(destinoId, caixaId) {
+  const destino = document.getElementById(destinoId);
+  if (!destino) return;
+  destino.innerHTML = '<div class="loading">Carregando</div>';
+  try {
+    destino.innerHTML = tabelaResumoOperadores(await carregarResumoOperadores(caixaId));
+  } catch (error) {
+    destino.innerHTML = `<p class="inline-note">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+/** Imprime só o fechamento, em qualquer impressora instalada no Windows. */
+function imprimirFechamento() {
+  document.body.classList.add('imprimindo-fechamento');
+  window.addEventListener('afterprint', () => document.body.classList.remove('imprimindo-fechamento'), { once: true });
+  window.print();
 }
 
 // ── Card de fechamento ────────────────────────────────────────────────────
@@ -466,7 +520,11 @@ function mostrarFechamento(data, erroMsg) {
           <div class="fechamento-row total"><span class="label">Observação</span>
             <span class="value">${observacao}</span></div>
         </div>
+        <h4 class="fechamento-subtitulo">Por operador</h4>
+        <div id="fechamento-operadores"></div>
+        <button class="btn btn-secondary btn-sm fechamento-imprimir" type="button" onclick="imprimirFechamento()">Imprimir fechamento</button>
       </div>`;
+    if (data.caixaId) preencherResumoOperadores('fechamento-operadores', data.caixaId);
   }
   container.hidden = false;
   container.scrollIntoView({ behavior: 'smooth' });
@@ -535,6 +593,7 @@ window.StockOSPages.caixas = {
     abrirModalEncerrar,
     confirmarEncerrar,
     abrirModalMovsLista,
+    imprimirFechamento,
     mostrarFechamento,
     abrirModal,
     fecharModal,

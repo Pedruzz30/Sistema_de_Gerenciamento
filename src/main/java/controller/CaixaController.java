@@ -31,6 +31,12 @@ public class CaixaController {
     private final UsuarioRepository usuarioRepository;
     private final service.AutenticacaoService autenticacaoService;
     private service.BackupService backupService;
+    private repository.VendaRepository vendaRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setVendaRepository(repository.VendaRepository vendaRepository) {
+        this.vendaRepository = vendaRepository;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setBackupService(service.BackupService backupService) {
@@ -214,6 +220,34 @@ public class CaixaController {
                     .map(movimentacao -> MovimentacaoCaixaResponse.from(caixa.getId(), caixa.getNumeroCaixa(), movimentacao))
                     .toList();
             return ResponseEntity.ok(movs);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /** Quanto cada pessoa vendeu, cancelou, deu de desconto e tirou da gaveta nesta sessão. */
+    @GetMapping("/sessoes/{caixaId}/resumo-operadores")
+    public ResponseEntity<?> resumoPorOperador(@PathVariable long caixaId,
+                                               @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        ControllerUtils.resolveUserAndRequireAnyPermission(
+                ruHeader,
+                usuarioRepository,
+                "Voce nao tem permissao para visualizar movimentacoes de caixa.",
+                Permissao.VER_VENDAS,
+                Permissao.VER_FINANCAS
+        );
+        try {
+            List<model.MovimentacaoCaixa> movimentacoes = caixaService.listarMovimentacoesPorCaixaId(caixaId);
+            Map<Long, BigDecimal> descontos = new java.util.HashMap<>();
+            if (vendaRepository != null) {
+                movimentacoes.stream()
+                        .filter(m -> m.getTipo() == model.TipoMovimentacaoCaixa.VENDA && m.getVendaId() != null)
+                        .map(model.MovimentacaoCaixa::getVendaId)
+                        .distinct()
+                        .forEach(id -> vendaRepository.buscarPorId(id).ifPresent(
+                                venda -> descontos.put(id, venda.getDescontoTotal())));
+            }
+            return ResponseEntity.ok(service.ResumoOperadoresCaixa.calcular(movimentacoes, descontos));
         } catch (IllegalStateException e) {
             return ResponseEntity.notFound().build();
         }

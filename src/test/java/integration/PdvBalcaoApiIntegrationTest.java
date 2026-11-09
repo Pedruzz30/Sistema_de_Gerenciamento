@@ -287,6 +287,15 @@ class PdvBalcaoApiIntegrationTest {
         assertBig("50", caixaAberto(numeroCaixa).path("dinheiroNaGaveta").decimalValue());
         assertEquals(24 - 3 - 12, quantidadeNaTelaDeEstoque(produtoId));
 
+        // O resumo por operador mostra a venda e o desconto no nome de quem operou.
+        JsonNode resumo = json(assertOk(get("/api/caixas/sessoes/" + caixaAberto(numeroCaixa).path("caixaId").asLong()
+                + "/resumo-operadores", caixa)));
+        assertEquals(1, resumo.size());
+        assertTrue(resumo.get(0).path("operador").asText().contains("Ana"));
+        assertEquals(1, resumo.get(0).path("vendas").asInt());
+        assertBig("50", resumo.get(0).path("vendido").decimalValue());
+        assertBig("5", resumo.get(0).path("descontos").decimalValue());
+
         // Depois de finalizar, não muda mais.
         assertTrue(post("/api/vendas/" + vendaId + "/desconto", Map.of("valor", "1.00"), gerente).getStatusCode().is4xxClientError());
     }

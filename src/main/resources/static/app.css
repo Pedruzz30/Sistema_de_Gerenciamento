@@ -3597,6 +3597,24 @@ body.bridge-page .bridge-actions a {
   }
 }
 
+/* ───────── Resumo por operador e impressão do fechamento ───────── */
+.resumo-operadores-rolagem { overflow-x: auto; }
+.resumo-operadores { width: 100%; border-collapse: collapse; font-size: 13px; }
+.resumo-operadores th, .resumo-operadores td { padding: 6px 8px; border-bottom: 1px solid var(--rule, #e5e2dc); text-align: left; white-space: nowrap; }
+.resumo-operadores th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #6b6760); }
+.resumo-operadores .num { text-align: right; font-variant-numeric: tabular-nums; }
+.fechamento-subtitulo { margin: 16px 0 6px; font-size: 14px; }
+.fechamento-imprimir { margin-top: 10px; }
+.movs-operadores { margin-bottom: 12px; }
+@media print {
+  body.imprimindo-fechamento * { visibility: hidden !important; }
+  body.imprimindo-fechamento #fechamento-container,
+  body.imprimindo-fechamento #fechamento-container * { visibility: visible !important; }
+  body.imprimindo-fechamento #fechamento-container { position: absolute; inset: 0 auto auto 0; width: 100%; opacity: 1 !important; transform: none !important; animation: none !important; }
+  body.imprimindo-fechamento .fechamento-imprimir { display: none !important; }
+  body.imprimindo-fechamento .resumo-operadores { font-size: 11px; }
+}
+
 /* ───────── Código desconhecido no PDV ───────── */
 .pdv-alerta-acao { margin-left: 8px; }
 .pdv-novo-abas { display: flex; gap: 6px; margin-bottom: 10px; }
