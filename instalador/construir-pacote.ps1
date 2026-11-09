@@ -70,7 +70,9 @@ Get-ChildItem (Join-Path $PSScriptRoot 'scripts') -Filter '*.ps1' | ForEach-Obje
 }
 Copy-Texto (Join-Path $PSScriptRoot 'Instalar.cmd') (Join-Path $Trabalho 'Instalar.cmd') $false
 Copy-Texto (Join-Path $PSScriptRoot 'LEIA-ME.txt') (Join-Path $Trabalho 'LEIA-ME.txt') $true
-Copy-Texto (Join-Path $PSScriptRoot 'Restaurar backup.cmd') (Join-Path $Programa 'atalhos\Restaurar backup.cmd') $false
+foreach ($atalho in 'Restaurar backup.cmd', 'Redefinir senha do dono.cmd') {
+    Copy-Texto (Join-Path $PSScriptRoot $atalho) (Join-Path $Programa "atalhos\$atalho") $false
+}
 
 $versaoPostgres = ($Downloads.pgsql.url -replace '.*postgresql-(\d+)\..*', '$1')
 $versao = if ($env:GITHUB_SHA) { $env:GITHUB_SHA.Substring(0, 7) } else { 'local' }

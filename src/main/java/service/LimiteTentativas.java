@@ -55,4 +55,9 @@ public class LimiteTentativas {
     public void registrarSucesso(String chave) {
         estados.remove(chave);
     }
+
+    /** Desbloqueia na hora, quando o gerente redefine a senha. */
+    public void liberar(String chave) {
+        estados.remove(chave);
+    }
 }

@@ -88,6 +88,12 @@ public class SessaoService {
         });
     }
 
+    /** Depois de redefinir a senha: quem estava logado como essa pessoa sai. */
+    @Transactional
+    public void encerrarDoUsuario(long ru) {
+        sessaoRepository.encerrarDoUsuario(ru, LocalDateTime.now(relogio));
+    }
+
     /** Quem pode assumir o caixa por PIN. */
     @Transactional(readOnly = true)
     public List<Usuario> listarOperadores() {

@@ -32,4 +32,11 @@ public class InMemorySessaoUsuarioRepository implements SessaoUsuarioRepository 
     public synchronized void removerExpiradas(LocalDateTime agora) {
         sessoes.removeIf(s -> s.expirada(agora));
     }
+
+    @Override
+    public synchronized void encerrarDoUsuario(long ru, LocalDateTime agora) {
+        sessoes.stream()
+                .filter(s -> s.getUsuario().getRu() == ru && !s.expirada(agora))
+                .forEach(s -> s.encerrar(agora));
+    }
 }

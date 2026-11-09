@@ -29,4 +29,10 @@ public class SessaoUsuarioRepositoryAdapter implements SessaoUsuarioRepository {
     public void removerExpiradas(LocalDateTime agora) {
         delegate.removerExpiradas(agora);
     }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void encerrarDoUsuario(long ru, LocalDateTime agora) {
+        delegate.encerrarDoUsuario(ru, agora);
+    }
 }

@@ -114,8 +114,10 @@ function renderTabela() {
     const classeLabel = CLASSE_LABEL[f.nomeClasse] || f.nomeClasse || '—';
     const classeBadge = CLASSE_BADGE[f.nomeClasse] || 'badge-gray';
     const perms = Array.isArray(f.permissoes) ? f.permissoes.length : 0;
-    const nomeCompletoJs = JSON.stringify(`${f.nome || ''} ${f.sobrenome || ''}`.trim());
-    const nomeClasseJs = JSON.stringify(f.nomeClasse || '');
+    // Escapado para caber dentro do atributo onclick, que usa aspas duplas.
+    const nomeCompletoJs = escapeHtml(JSON.stringify(`${f.nome || ''} ${f.sobrenome || ''}`.trim()));
+    const nomeClasseJs = escapeHtml(JSON.stringify(f.nomeClasse || ''));
+    const podeRedefinir = f.ru !== usuario.ru && (f.perfil !== 'ADMIN' || usuario.perfil === 'ADMIN');
 
     return `
       <tr>
@@ -135,6 +137,7 @@ function renderTabela() {
           <div class="acoes">
             ${f.ativo ? `
               <button class="btn-acao" onclick="abrirModalClasse(${f.ru}, ${nomeCompletoJs}, ${nomeClasseJs})">Classe</button>
+              ${podeRedefinir ? `<button class="btn-acao" data-redefinir-senha="${f.ru}" onclick="redefinirSenhaFuncionario(${f.ru}, ${nomeCompletoJs})">Redefinir senha</button>` : ''}
               <button class="btn-acao saida" onclick="desativar(${f.ru})">Desativar</button>
             ` : `
               <span class="status-placeholder">Inativo</span>
@@ -220,6 +223,24 @@ async function desativar(ru) {
   await carregarFuncionarios();
 }
 
+async function redefinirSenhaFuncionario(ru, nome) {
+  if (!confirm(`Redefinir a senha de ${nome}? A senha atual para de valer na hora.`)) return;
+  const resp = await fetch(`/api/funcionarios/${ru}/redefinir-senha`, { method: 'POST' });
+  if (!resp.ok) {
+    showToast(await safeReadErrorMessage(resp, 'Não foi possível redefinir a senha.'), 'error');
+    return;
+  }
+  const { senhaTemporaria } = await resp.json();
+  document.getElementById('senha-temp-nome').textContent = nome;
+  document.getElementById('senha-temp-valor').textContent = senhaTemporaria;
+  abrirModal('modal-senha-temporaria');
+}
+
+function fecharSenhaTemporaria() {
+  document.getElementById('senha-temp-valor').textContent = '';
+  fecharModal('modal-senha-temporaria');
+}
+
 // ── Modal helpers ─────────────────────────────────────────────────────────
 
 function abrirModalCadastro() {
@@ -257,6 +278,8 @@ window.StockOSPages.funcionarios = {
     abrirModalClasse,
     confirmarMudarClasse,
     desativar,
+    redefinirSenhaFuncionario,
+    fecharSenhaTemporaria,
     abrirModalCadastro,
     abrirModal,
     fecharModal,

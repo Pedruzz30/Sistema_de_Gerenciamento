@@ -144,6 +144,24 @@
   </div>
 </div>
 
+<!-- ── Modal: senha temporária (aparece uma vez) ── -->
+<div class="modal-overlay" id="modal-senha-temporaria">
+  <div class="modal" role="dialog" aria-labelledby="senha-temp-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="senha-temp-titulo">Senha temporária</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharSenhaTemporaria()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Passe esta senha para <strong id="senha-temp-nome">—</strong>. Ela vale só para o próximo acesso: o sistema pede uma senha nova e um PIN.</p>
+      <div class="senha-temporaria" id="senha-temp-valor" aria-live="polite"></div>
+      <p class="inline-note">Ela não aparece de novo depois que você fechar esta janela. Quem estava usando o sistema com a senha antiga foi desconectado.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" onclick="fecharSenhaTemporaria()">Já passei a senha</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Modal: Mudar Classe ── -->
 <div class="modal-overlay" id="modal-classe" onclick="fecharModalSeClicouFora(event,'modal-classe')">
   <div class="modal">

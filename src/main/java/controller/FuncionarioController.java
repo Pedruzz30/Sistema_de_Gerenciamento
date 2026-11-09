@@ -20,6 +20,15 @@ public class FuncionarioController {
     private final CadastroFuncionarioService funcionarioService;
     private final UsuarioRepository usuarioRepository;
 
+    private service.AutenticacaoService autenticacaoService;
+    private service.SessaoService sessaoService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSenhas(service.AutenticacaoService autenticacaoService, service.SessaoService sessaoService) {
+        this.autenticacaoService = autenticacaoService;
+        this.sessaoService = sessaoService;
+    }
+
     public FuncionarioController(CadastroFuncionarioService funcionarioService,
                                  UsuarioRepository usuarioRepository) {
         this.funcionarioService = funcionarioService;
@@ -118,6 +127,25 @@ public class FuncionarioController {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
         }
     }
+
+    // POST /api/funcionarios/{ru}/redefinir-senha — para quem esqueceu a senha
+    @PostMapping("/{ru}/redefinir-senha")
+    public ResponseEntity<?> redefinirSenha(@PathVariable long ru,
+                                            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        if (autenticacaoService == null || sessaoService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErroResponse("Indisponível."));
+        }
+        try {
+            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
+            String temporaria = autenticacaoService.redefinirSenha(ator, ru);
+            sessaoService.encerrarDoUsuario(ru);
+            return ResponseEntity.ok(new SenhaTemporariaResponse(temporaria));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage()));
+        }
+    }
+
+    public record SenhaTemporariaResponse(String senhaTemporaria) {}
 
     // GET /api/funcionarios/classes — lists available employee classes
     @GetMapping("/classes")

@@ -36,7 +36,7 @@ function Set-Atalhos([hashtable]$C) {
     $scripts = Join-Path $C.Programa 'scripts'
     New-Atalho (Join-Path ([Environment]::GetFolderPath('Desktop')) 'StockOS.lnk') (Join-Path $scripts 'abrir.ps1') 'Abre o StockOS'
     New-Atalho (Join-Path ([Environment]::GetFolderPath('Startup')) 'StockOS (iniciar).lnk') (Join-Path $scripts 'iniciar.ps1') 'Liga o StockOS ao entrar no Windows'
-    Copy-Item -LiteralPath (Join-Path $C.Programa 'atalhos\Restaurar backup.cmd') -Destination $C.Raiz -Force
+    Get-ChildItem -LiteralPath (Join-Path $C.Programa 'atalhos') -Filter '*.cmd' | Copy-Item -Destination $C.Raiz -Force
 }
 
 function Copy-Programa([hashtable]$C) {

@@ -80,6 +80,47 @@ class LoginSeguroNovoTest {
         return usuarios.buscarPorRu(usuario.getRu()).orElseThrow();
     }
 
+    // ── Redefinir senha ───────────────────────────────────────────────────────
+
+    @Test
+    void gerenteRedefineSenhaEsquecidaQueViraProvisoria() {
+        autenticacao.migrarSenhasAntigas();
+        Usuario anaComSenha = autenticacao.trocarSenha(recarregar(ana), "1234", "senhaDaAna1");
+        String token = sessaoService.criar(anaComSenha);
+        for (int i = 0; i < LimiteTentativas.MAX_FALHAS; i++) {
+            autenticacao.autenticar("Ana", "Caixa", "esqueci");
+        }
+        assertThrows(ErroNegocioException.class, () -> autenticacao.autenticar("Ana", "Caixa", "senhaDaAna1"));
+
+        String temporaria = autenticacao.redefinirSenha(recarregar(dona), ana.getRu());
+        sessaoService.encerrarDoUsuario(ana.getRu());
+
+        assertTrue(temporaria.matches("[A-HJ-NP-Z2-9]{8}"), temporaria);
+        assertTrue(sessaoService.resolver(token).isEmpty(), "Quem estava logado como a Ana sai");
+        assertTrue(autenticacao.autenticar("Ana", "Caixa", "senhaDaAna1").isEmpty(), "A senha antiga para de valer");
+        Usuario entrou = autenticacao.autenticar("Ana", "Caixa", temporaria).orElseThrow();
+        assertTrue(entrou.isSenhaProvisoria(), "Precisa criar uma senha nova");
+        assertTrue(senhas.ehHash(entrou.getSenhaInterna()));
+        assertNotEquals(temporaria, autenticacao.redefinirSenha(recarregar(dona), ana.getRu()));
+    }
+
+    @Test
+    void soQuemGerenciaFuncionariosRedefineENuncaODonoPeloGerente() {
+        autenticacao.migrarSenhasAntigas();
+        Usuario gerente = usuarios.salvar(new Usuario(0, "Gil", "Gerente", "111.444.777-35", "senhaGil1",
+                classe(7, Permissao.GERENCIAR_FUNCIONARIOS, Permissao.VER_FINANCAS), Usuario.Perfil.OPERADOR));
+
+        assertThrows(SecurityException.class, () -> autenticacao.redefinirSenha(recarregar(ana), dona.getRu()));
+        assertThrows(SecurityException.class, () -> autenticacao.redefinirSenha(gerente, dona.getRu()),
+                "Gerente não toma a conta do dono");
+        assertThrows(IllegalArgumentException.class, () -> autenticacao.redefinirSenha(recarregar(dona), dona.getRu()));
+        assertThrows(IllegalArgumentException.class, () -> autenticacao.redefinirSenha(recarregar(dona), 9999));
+
+        assertTrue(autenticacao.redefinirSenha(gerente, ana.getRu()).length() == 8, "Gerente redefine a da operadora");
+        recarregar(ana).desativar();
+        assertThrows(IllegalArgumentException.class, () -> autenticacao.redefinirSenha(recarregar(dona), ana.getRu()));
+    }
+
     // ── Senhas ────────────────────────────────────────────────────────────────
 
     @Test

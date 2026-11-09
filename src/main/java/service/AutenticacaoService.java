@@ -135,6 +135,40 @@ public class AutenticacaoService {
         return false;
     }
 
+    /**
+     * O gerente redefine a senha de outra pessoa que esqueceu a dela. Devolve uma senha
+     * temporária para ele entregar; no próximo acesso o sistema pede uma senha nova.
+     * Só o dono redefine a senha de outro dono: um gerente não pode tomar a conta dele.
+     */
+    @Transactional
+    public String redefinirSenha(Usuario gerente, long ru) {
+        if (gerente == null || gerente.getClasse() == null
+                || !gerente.getClasse().possuiPermissao(model.Permissao.GERENCIAR_FUNCIONARIOS)) {
+            throw new SecurityException("Você não tem permissão para redefinir senhas.");
+        }
+        Usuario alvo = usuarioRepository.buscarPorRu(ru)
+                .orElseThrow(() -> new IllegalArgumentException("Funcionário não encontrado."));
+        if (alvo.getRu() == gerente.getRu()) {
+            throw new IllegalArgumentException("A sua própria senha não se redefine por aqui. Se esqueceu, peça a outro dono ou use Redefinir senha do dono no notebook da loja.");
+        }
+        if (!alvo.isAtivo()) {
+            throw new IllegalArgumentException("Funcionário inativo não entra no sistema.");
+        }
+        if (alvo.getPerfil() == Usuario.Perfil.ADMIN && gerente.getPerfil() != Usuario.Perfil.ADMIN) {
+            throw new SecurityException("Só o dono pode redefinir a senha de outro dono.");
+        }
+        String temporaria = SenhaService.gerarTemporaria();
+        alvo.definirSenha(senhaService.gerarHash(temporaria), true);
+        Usuario salvo = usuarioRepository.salvar(alvo);
+        limite.liberar("login:" + salvo.getNome().trim().toLowerCase(Locale.ROOT) + "|"
+                + salvo.getSobrenome().trim().toLowerCase(Locale.ROOT));
+        limite.liberar("senha:" + salvo.getRu());
+        limite.liberar("pin:" + salvo.getRu());
+        logRepository.salvar(new LogAcao(0, gerente.getRu(), "SENHA_REDEFINIDA",
+                "Senha de " + salvo.getNomeCompleto() + " (RU " + salvo.getRu() + ") redefinida por " + gerente.getNomeCompleto()));
+        return temporaria;
+    }
+
     /** Converte senhas em texto puro. Retorna quantas foram convertidas. */
     @Transactional
     public int migrarSenhasAntigas() {

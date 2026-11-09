@@ -169,5 +169,23 @@ $sessao = Assert-DadosDaLoja 'no notebook novo'
 $situacao = Invoke-RestMethod -Uri "$Base/api/sistema/backup" -WebSession $sessao
 Assert $situacao.monitorado 'backup segue ligado no notebook novo'
 
+Step 'Dono esqueceu a senha'
+Assert (Test-Path "$Raiz\Redefinir senha do dono.cmd") 'atalho na pasta do sistema'
+$saida = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$Raiz\programa\scripts\redefinir-senha-dono.ps1" -Confirmado | Out-String
+Write-Host $saida
+Assert ($LASTEXITCODE -eq 0) 'senha temporária criada'
+$temporaria = ([regex]::Match($saida, 'SENHA TEMPORARIA: (\S+)')).Groups[1].Value
+Assert ($temporaria -match '^[A-HJ-NP-Z2-9]{8}$') 'senha temporária legível'
+$recusou = $false
+try { Connect-Dono | Out-Null } catch { $recusou = $true }
+Assert $recusou 'senha esquecida parou de valer'
+$sessao = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$entrou = Invoke-RestMethod -Method Post -Uri "$Base/api/auth/login" -WebSession $sessao -ContentType 'application/json; charset=utf-8' `
+    -Body (@{ nome = 'Admin'; sobrenome = 'Superior'; senha = $temporaria } | ConvertTo-Json)
+Assert $entrou.senhaProvisoria 'entra com a temporária e precisa criar outra'
+Invoke-RestMethod -Method Post -Uri "$Base/api/auth/trocar-senha" -WebSession $sessao -ContentType 'application/json; charset=utf-8' `
+    -Body (@{ senhaAtual = $temporaria; novaSenha = $Senha } | ConvertTo-Json) | Out-Null
+Assert-DadosDaLoja 'com a senha nova do dono' | Out-Null
+
 Write-Host ''
 Write-Host 'PASS: instalação, backup, restauração e desastres no Windows.' -ForegroundColor Green

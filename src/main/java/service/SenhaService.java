@@ -21,6 +21,19 @@ public class SenhaService {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
+    /** Sem letras e números que se confundem (O e 0, I e 1, L), para ditar em voz alta. */
+    private static final String ALFABETO_TEMPORARIA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private static final java.security.SecureRandom ALEATORIO = new java.security.SecureRandom();
+
+    /** Senha de uso único, entregue pelo gerente: o sistema pede uma nova no próximo acesso. */
+    public static String gerarTemporaria() {
+        StringBuilder senha = new StringBuilder(8);
+        for (int i = 0; i < 8; i++) {
+            senha.append(ALFABETO_TEMPORARIA.charAt(ALEATORIO.nextInt(ALFABETO_TEMPORARIA.length())));
+        }
+        return senha.toString();
+    }
+
     public String gerarHash(String texto) {
         return encoder.encode(texto);
     }

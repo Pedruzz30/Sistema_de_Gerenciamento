@@ -26,5 +26,9 @@ Extraia o ZIP da versão nova e abra "Instalar.cmd". Os dados não são apagados
 Voltar um backup
 Abra "Restaurar backup.cmd" na pasta C:\StockOS.
 
+Esqueceu a senha
+- Funcionário: o gerente redefine em Funcionários, botão "Redefinir senha".
+- Dono: abra "Redefinir senha do dono.cmd" na pasta C:\StockOS deste notebook.
+
 Notebook novo
 Instale normalmente, abra "Restaurar backup.cmd" e escolha o arquivo do pen drive.

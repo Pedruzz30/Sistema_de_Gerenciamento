@@ -580,6 +580,35 @@ try {
     });
   }
 
+  let senhaTemporariaAna = '';
+  await passo(dono, 'Gerente redefine a senha esquecida da Ana', async () => {
+    await dono.goto(`${BASE}/funcionarios.html`);
+    await botoesLigados(dono);
+    const linha = dono.locator('tr', { hasText: 'Ana' }).filter({ hasText: 'Caixa' }).first();
+    await linha.locator('button:has-text("Classe")').click();
+    await dono.waitForSelector('#modal-classe.open');
+    await esperarTexto(dono, '#classe-func-nome', 'Ana Caixa');
+    await dono.evaluate(() => fecharModal('modal-classe'));
+    assert.equal(await dono.locator('tr', { hasText: 'Admin' }).locator('[data-redefinir-senha]').count(), 0, 'A própria senha não se redefine por aqui');
+    dono.once('dialog', dialogo => dialogo.accept());
+    await linha.locator('[data-redefinir-senha]').click();
+    await dono.waitForSelector('#modal-senha-temporaria.open');
+    await naTela(dono, '#senha-temp-valor');
+    senhaTemporariaAna = limpar(await dono.textContent('#senha-temp-valor'));
+    assert.match(senhaTemporariaAna, /^[A-HJ-NP-Z2-9]{8}$/);
+    await dono.click('#modal-senha-temporaria .btn-primary');
+    assert.equal(await dono.textContent('#senha-temp-valor'), '', 'A senha some da tela ao fechar');
+  });
+
+  await passo(dono, 'Ana entra com a temporaria e cria outra senha', async () => {
+    const outra = await novaPagina(navegador);
+    await entrar(outra, 'Ana', 'Caixa', SENHA_ANA);
+    await esperarTexto(outra, '#alertMsg', 'incorretos');
+    await entrar(outra, 'Ana', 'Caixa', senhaTemporariaAna);
+    await criarSenha(outra, 'OutraDaAna2', PIN_ANA);
+    await outra.context().close();
+  });
+
   await passo(dono, 'Importar XML mostra a conferencia', async () => {
     await dono.goto(`${BASE}/notas.html`);
     await botoesLigados(dono);
