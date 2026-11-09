@@ -418,7 +418,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). **Falta:** os atalhos e cadastrar na hora quando o código não é encontrado.
 3. ✅ **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
-5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). **Falta:** desconto.
+5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). Desconto no total pelo F3, com o gerente (seção 20).
 6. ✅ Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
 7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. **Falta:** resumo por operador e impressão.
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
@@ -822,6 +822,39 @@ A tela de login explica os dois caminhos.
 **Limites conhecidos:**
 - **A senha temporária não expira sozinha.** Ela vale até ser usada ou redefinida de novo.
 - **O atalho do dono só está na instalação da loja,** não no servidor de desenvolvimento.
+
+---
+
+## 20. Desconto no PDV (09/11/2026)
+
+**Como funciona:** depois de bipar tudo, no pagamento, **F3** abre o desconto. Também funciona direto da lista de itens, porque o F3 já abre o pagamento.
+
+| O que digitar | Efeito |
+|---|---|
+| `5` ou `5,00` | Tira R$ 5,00 |
+| `10%` | Tira 10% |
+| `=50` | Fecha a venda em R$ 50,00 ("faz por 50") |
+| `0` | Retira o desconto |
+
+- **Quem cuida do financeiro** (dono, gerente) dá o desconto sozinho. **Quem só opera o caixa** precisa do login do gerente na hora, como na sangria e no cancelamento.
+- O resumo mostra **Subtotal, Desconto e Total**. O que falta pagar e o troco já usam o total com desconto.
+- **Voltar aos itens (Esc) retira o desconto.** Assim ele não muda sozinho se a quantidade de um item mudar. É só aplicar de novo.
+- Cada desconto fica registrado no log, com o valor, o operador e quem autorizou.
+
+**Como o valor é gravado:** o servidor reparte o desconto entre os itens, na proporção de cada um, e grava por unidade. A sobra do arredondamento vai para o item de menor quantidade, e o total fecha no centavo pedido. Isso mantém certos:
+- o pagamento, conferido no centavo;
+- o cancelamento, que devolve o valor de cada item com o desconto;
+- a margem por produto nos relatórios.
+
+**Testado:**
+- **Unidade:** repartição exata em vários carrinhos e valores, porcentagem, recusas e quem pode dar desconto.
+- **Banco:** operadora sem gerente é recusada; com gerente, o total fecha em R$ 50,00, o pagamento passa, a gaveta e o estoque conferem, e, depois de finalizada, a venda não aceita mais desconto.
+- **Navegador real:** "=8" com o gerente, linha de desconto, Esc retirando o desconto, e nova venda com R$ 1 de desconto e troco.
+
+**Limites conhecidos:**
+- **Só no total.** Não há desconto em um item escolhido, como "esta lata sai por 4".
+- **Não há limite automático de desconto.** O controle é a senha do gerente para quem opera o caixa. Se a dona quiser, por exemplo, "até 5% sem gerente", isso pode virar uma opção.
+- **A demonstração não tem o F3.**
 
 ---
 
