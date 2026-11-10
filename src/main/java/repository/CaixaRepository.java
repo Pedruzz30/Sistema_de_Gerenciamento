@@ -25,4 +25,12 @@ public interface CaixaRepository {
     List<Caixa> buscarEncerradosPorData(LocalDate data);
 
     List<Caixa> listarTodos();
+
+    /** Sessões que estiveram abertas em algum momento do período. */
+    default List<Caixa> listarAtivosNoPeriodo(java.time.LocalDateTime inicio, java.time.LocalDateTime fim) {
+        return listarTodos().stream()
+                .filter(c -> c.getDataAbertura() != null && c.getDataAbertura().isBefore(fim))
+                .filter(c -> c.getDataEncerramento() == null || !c.getDataEncerramento().isBefore(inicio))
+                .toList();
+    }
 }

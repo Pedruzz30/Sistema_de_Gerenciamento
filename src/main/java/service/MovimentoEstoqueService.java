@@ -30,6 +30,19 @@ public class MovimentoEstoqueService {
         this.estoqueProdutoRepository = estoqueProdutoRepository;
     }
 
+    /** Saldo único: espelha o saldo decimal na coluna legada (nulo em testes antigos). */
+    private SincronizadorEstoque sincronizadorEstoque;
+
+    public void setSincronizadorEstoque(SincronizadorEstoque sincronizadorEstoque) {
+        this.sincronizadorEstoque = sincronizadorEstoque;
+    }
+
+    private void espelharNoLegado(EstoqueProduto estoque) {
+        if (sincronizadorEstoque != null) {
+            sincronizadorEstoque.espelharNoLegado(estoque);
+        }
+    }
+
     public List<MovimentoEstoque> listarTodos() {
         return movimentoEstoqueRepository.listarTodos();
     }
@@ -88,6 +101,7 @@ public class MovimentoEstoqueService {
         BigDecimal custoMedioPosterior = estoque.getCustoMedio();
         BigDecimal valorEstoquePosterior = estoque.valorEstoque();
         estoqueProdutoRepository.salvar(estoque);
+        espelharNoLegado(estoque);
 
         return movimentoEstoqueRepository.salvar(new MovimentoEstoque(
                 0,

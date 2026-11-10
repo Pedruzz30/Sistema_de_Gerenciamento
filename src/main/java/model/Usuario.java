@@ -80,7 +80,15 @@ public class Usuario {
     private String cpf;      // 11 dígitos sem formatação, validado
 
     @Column(nullable = false, length = 120)
-    private String senha;    // ⚠ texto simples — hash em produção
+    private String senha;    // hash BCrypt; texto puro só em bancos antigos, até a migração
+
+    /** Hash do PIN usado na troca rápida de operador. Nulo: ainda não definiu. */
+    @Column(name = "pin_hash", length = 72)
+    private String pinHash;
+
+    /** Verdadeiro: precisa criar uma senha nova antes de usar o sistema. */
+    @Column(name = "senha_provisoria", nullable = false)
+    private boolean senhaProvisoria;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -181,7 +189,10 @@ public class Usuario {
      */
     public Usuario comRu(long novoRu) {
         validar(novoRu > 0, "Novo RU deve ser maior que zero.");
-        return new Usuario(novoRu, nome, sobrenome, cpf, senha, classe, perfil, ativo);
+        Usuario copia = new Usuario(novoRu, nome, sobrenome, cpf, senha, classe, perfil, ativo);
+        copia.pinHash = pinHash;
+        copia.senhaProvisoria = senhaProvisoria;
+        return copia;
     }
 
     // ── Autenticação ──────────────────────────────────────────────────────────
@@ -272,6 +283,27 @@ public class Usuario {
      */
     public String getSenhaInterna() {
         return senha;
+    }
+
+    public String getPinHash() {
+        return pinHash;
+    }
+
+    public boolean isSenhaProvisoria() {
+        return senhaProvisoria;
+    }
+
+    /** Recebe a senha já como hash. */
+    public void definirSenha(String senhaHash, boolean provisoria) {
+        validar(senhaHash != null && !senhaHash.isBlank(), "Senha é obrigatória.");
+        this.senha = senhaHash;
+        this.senhaProvisoria = provisoria;
+    }
+
+    /** Recebe o PIN já como hash. */
+    public void definirPinHash(String hash) {
+        validar(hash != null && !hash.isBlank(), "PIN é obrigatório.");
+        this.pinHash = hash;
     }
 
     // ── Infraestrutura de objeto ──────────────────────────────────────────────

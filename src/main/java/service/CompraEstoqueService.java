@@ -63,6 +63,19 @@ public class CompraEstoqueService {
         this.unidadeMedidaService = unidadeMedidaService;
     }
 
+    /** Saldo único: espelha o saldo decimal na coluna legada (nulo em testes antigos). */
+    private SincronizadorEstoque sincronizadorEstoque;
+
+    public void setSincronizadorEstoque(SincronizadorEstoque sincronizadorEstoque) {
+        this.sincronizadorEstoque = sincronizadorEstoque;
+    }
+
+    private void espelharNoLegado(EstoqueProduto estoque) {
+        if (sincronizadorEstoque != null) {
+            sincronizadorEstoque.espelharNoLegado(estoque);
+        }
+    }
+
     @Transactional
     public CompraEstoque criarCompra(Usuario usuario, Long fornecedorId) {
         validarPermissaoEdicao(usuario);
@@ -177,6 +190,7 @@ public class CompraEstoqueService {
             BigDecimal custoMedioPosterior = estoque.getCustoMedio();
             BigDecimal valorEstoquePosterior = estoque.valorEstoque();
             estoqueProdutoRepository.salvar(estoque);
+            espelharNoLegado(estoque);
 
             movimentoEstoqueRepository.salvar(new MovimentoEstoque(
                     0,

@@ -1,0 +1,102 @@
+name: StockOS E2E real
+
+# Navegador de verdade + Java + PostgreSQL, sem o cabeçalho legado.
+# Cobre o que os testes de API e a demonstração não veem: as telas reais com o servidor.
+
+on:
+  push:
+    branches: ["feat/caixas-pdv-*"]
+    paths:
+      - "pom.xml"
+      - "src/main/**"
+      - "scripts/test-e2e-real.mjs"
+      - ".github/workflows/stockos-e2e.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "pom.xml"
+      - "src/main/**"
+      - "scripts/test-e2e-real.mjs"
+      - ".github/workflows/stockos-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Start isolated PostgreSQL via Compose
+        shell: bash
+        run: |
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          export STOCKOS_DB_PASSWORD="$password"
+          echo "STOCKOS_DB_PASSWORD=$password" >> "$GITHUB_ENV"
+          docker compose up -d --wait db
+
+      - name: Build application
+        run: mvn -B -ntp -DskipTests package
+
+      - name: Start application in production mode
+        shell: bash
+        env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5433/stockos_dev
+          DB_USERNAME: stockos_local
+          STOCKOS_SEED_DEMO_CATALOG_ENABLED: "false"
+        run: |
+          DB_PASSWORD="$STOCKOS_DB_PASSWORD" nohup java -jar target/sistema-gerenciamento-*.jar \
+            --stockos.celular.porta=8443 --stockos.celular.pasta=target/celular \
+            --stockos.cozinha.pasta-teste=target/cozinha > app.log 2>&1 &
+          for tentativa in $(seq 1 90); do
+            if curl -sf http://localhost:8080/api/auth/config > /dev/null; then
+              echo "Sistema no ar depois de ${tentativa}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "O sistema nao subiu."
+          tail -n 80 app.log
+          exit 1
+
+      - name: Install browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1 @zxing/library@0.21.3 pngjs@7.0.0
+          npx playwright install --with-deps chromium webkit
+
+      - name: Check printed barcodes with a real reader
+        run: node scripts/test-codigo-barras.mjs
+
+      - name: Run end-to-end test
+        env:
+          E2E_CELULAR: https://localhost:8443
+          E2E_CELULAR_CA: target/celular/stockos-loja.crt
+          E2E_COZINHA: target/cozinha
+        run: node scripts/test-e2e-real.mjs
+
+      - name: Show application log
+        if: failure()
+        run: tail -n 120 app.log
+
+      - name: Keep screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-telas
+          path: |
+            e2e-artifacts/
+            app.log
+          retention-days: 7
+          if-no-files-found: ignore

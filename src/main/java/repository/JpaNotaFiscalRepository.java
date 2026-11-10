@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface JpaNotaFiscalRepository extends JpaRepository<NotaFiscal, Long> {
 
+    Optional<NotaFiscal> findByChaveAcesso(String chaveAcesso);
+
     @Override
     @EntityGraph(attributePaths = {"fornecedor", "usuarioResponsavel", "itens", "itens.produto"})
     Optional<NotaFiscal> findById(Long id);

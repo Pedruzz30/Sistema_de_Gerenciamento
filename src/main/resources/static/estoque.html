@@ -48,8 +48,12 @@
         <p class="page-sub header-sub" id="header-sub">Gerencie produtos, categorias, entradas e saídas.</p>
       </div>
       <div class="topbar-right header-right">
-      <button class="btn btn-accent" onclick="abrirModalCadastro()" id="btn-novo-produto">
+      <button class="btn btn-secondary" onclick="abrirModalCadastro()" id="btn-novo-produto">
         + Novo Produto
+      </button>
+      <a class="btn btn-secondary" href="/folha-codigos.html" id="btn-folha-codigos">Folha de códigos</a>
+      <button class="btn btn-accent" onclick="abrirModalRevenda()" id="btn-revenda">
+        + Bebida rápida
       </button>
       </div>
     </header>
@@ -150,6 +154,79 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
       <button class="btn btn-primary" onclick="cadastrarProduto()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Bebida rápida (cadastro com leitor de código de barras) ──
+     Não fecha ao clicar fora: é usado em sequência, com a mão no leitor. -->
+<div class="modal-overlay" id="modal-revenda">
+  <div class="modal" onkeydown="teclaRevenda(event)">
+    <div class="modal-header">
+      <h3 class="modal-title">Bebida rápida</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-revenda')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-revenda" role="status" aria-live="polite"></div>
+      <div class="field form-group">
+        <label for="r-ean">Bipe aqui o código de barras da unidade</label>
+        <input class="input revenda-bipe" type="text" id="r-ean" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Passe o leitor na lata ou garrafa">
+        <p class="inline-note" id="r-ean-status">Sem código? Deixe vazio ou digite um código curto, como 101.</p>
+      </div>
+      <div class="field form-group">
+        <label for="r-nome">Nome do produto</label>
+        <input class="input" type="text" id="r-nome" placeholder="Ex.: Skol lata 350ml">
+      </div>
+      <div class="field form-group">
+        <label for="r-categoria">Categoria</label>
+        <select class="select" id="r-categoria"></select>
+      </div>
+      <div class="form-row-2">
+        <div class="field form-group">
+          <label for="r-preco-gelado">Preço gelada (R$)</label>
+          <input class="input" type="number" id="r-preco-gelado" step="0.01" min="0.01" inputmode="decimal" placeholder="Vazio = não vende gelada">
+        </div>
+        <div class="field form-group">
+          <label for="r-preco">Preço natural / unidade (R$)</label>
+          <input class="input" type="number" id="r-preco" step="0.01" min="0.01" inputmode="decimal" placeholder="0,00">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="field form-group">
+          <label for="r-custo">Custo da unidade (R$)</label>
+          <input class="input" type="number" id="r-custo" step="0.01" min="0.01" inputmode="decimal" placeholder="Quanto você paga">
+        </div>
+        <div class="field form-group">
+          <label for="r-qtd">Estoque agora (unidades)</label>
+          <input class="input" type="number" id="r-qtd" step="1" min="0" inputmode="numeric" placeholder="0">
+        </div>
+      </div>
+      <div class="field form-group">
+        <label for="r-min">Avisar quando chegar a (unidades)</label>
+        <input class="input" type="number" id="r-min" step="1" min="0" inputmode="numeric" placeholder="0">
+      </div>
+      <fieldset class="revenda-fardo">
+        <legend>Fardo ou caixa fechada (opcional)</legend>
+        <div class="form-row-2">
+          <div class="field form-group">
+            <label for="r-fardo-qtd">Unidades no fardo</label>
+            <input class="input" type="number" id="r-fardo-qtd" step="1" min="2" inputmode="numeric" placeholder="Ex.: 12">
+          </div>
+          <div class="field form-group">
+            <label for="r-fardo-preco">Preço do fardo (R$)</label>
+            <input class="input" type="number" id="r-fardo-preco" step="0.01" min="0.01" inputmode="decimal" placeholder="0,00">
+          </div>
+        </div>
+        <div class="field form-group">
+          <label for="r-fardo-ean">Bipe aqui o código do fardo</label>
+          <input class="input revenda-bipe" type="text" id="r-fardo-ean" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Passe o leitor no plástico do fardo">
+          <p class="inline-note" id="r-fardo-ean-status"></p>
+        </div>
+      </fieldset>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharModal('modal-revenda')">Fechar</button>
+      <button class="btn btn-primary" type="button" id="btn-salvar-revenda" onclick="salvarRevenda()">Salvar e cadastrar outra (Ctrl+Enter)</button>
     </div>
   </div>
 </div>

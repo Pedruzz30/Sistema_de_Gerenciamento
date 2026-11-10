@@ -1,6 +1,13 @@
 # Maven
 target/
 
+# Teste de ponta a ponta
+e2e-artifacts/
+
+# Pacote de instalação da loja
+instalador/saida/
+instalador/cache/
+
 # Compiled files
 *.class
 

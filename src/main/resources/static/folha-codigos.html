@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockOS — Folha de códigos</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="folha-codigos-page">
+
+<header class="folha-cabecalho">
+  <div>
+    <h1>Folha de códigos</h1>
+    <p>Para o que não tem código de barras na embalagem: gelo, copo, petiscos, caldos. Imprima, deixe no balcão e bipe direto da folha.</p>
+  </div>
+  <div class="folha-acoes">
+    <label class="folha-filtro"><input type="checkbox" id="folha-todos" onchange="renderFolhaCodigos()"> Mostrar também os códigos de fábrica</label>
+    <button class="btn btn-primary" type="button" id="btn-imprimir-folha" onclick="window.print()">Imprimir</button>
+    <a class="btn btn-secondary" href="/estoque.html">Voltar ao Estoque</a>
+  </div>
+</header>
+
+<div class="alert-modal" id="alert-folha" role="status" aria-live="polite"></div>
+
+<section class="folha-faltando" id="folha-faltando" hidden>
+  <p id="folha-faltando-texto"></p>
+  <button class="btn btn-accent" type="button" id="btn-gerar-codigos" onclick="gerarCodigosFaltando()">Criar os códigos que faltam</button>
+</section>
+
+<main class="folha-etiquetas" id="folha-etiquetas" aria-live="polite"></main>
+
+<section class="folha-comandas-controle">
+  <h2>Cartões de comanda</h2>
+  <p>Um cartão por comanda, com o número e o código de barras. No caixa, é só bipar.</p>
+  <label>Do número <input class="input" type="text" inputmode="numeric" id="comanda-de" value="1" size="4"></label>
+  <label>até <input class="input" type="text" inputmode="numeric" id="comanda-ate" value="20" size="4"></label>
+  <button class="btn btn-secondary" type="button" id="btn-cartoes-comanda" onclick="mostrarCartoesComanda()">Mostrar cartões</button>
+</section>
+<div class="folha-etiquetas" id="folha-comandas"></div>
+
+<script src="/js/stockos-auth.js"></script>
+<script src="/js/shared.js"></script>
+<script src="/js/codigo-barras.js"></script>
+<script src="/js/folha-codigos.js"></script>
+</body>
+</html>

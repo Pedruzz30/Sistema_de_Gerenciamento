@@ -78,9 +78,42 @@ public class CancelamentoVendaService {
         this.logRepository = logRepository;
     }
 
+    /** Saldo único: espelha o saldo decimal na coluna legada (nulo em testes antigos). */
+    private SincronizadorEstoque sincronizadorEstoque;
+
+    public void setSincronizadorEstoque(SincronizadorEstoque sincronizadorEstoque) {
+        this.sincronizadorEstoque = sincronizadorEstoque;
+    }
+
+    private void espelharNoLegado(EstoqueProduto estoque) {
+        if (sincronizadorEstoque != null) {
+            sincronizadorEstoque.espelharNoLegado(estoque);
+        }
+    }
+
     @Transactional
     public Venda cancelarVenda(Usuario usuario, long vendaId, String motivo, String idempotencyKey) {
-        validarPermissaoCancelamento(usuario);
+        return cancelarVenda(usuario, vendaId, motivo, idempotencyKey, null);
+    }
+
+    /**
+     * @param formaEstorno forma em que o valor volta ao cliente; nula = a
+     *                     mesma em que a venda foi paga
+     */
+    @Transactional
+    public Venda cancelarVenda(Usuario usuario, long vendaId, String motivo, String idempotencyKey,
+                               model.FormaPagamento formaEstorno) {
+        return cancelarVenda(usuario, null, vendaId, motivo, idempotencyKey, formaEstorno);
+    }
+
+    /**
+     * Cancelamento no balcão: quem opera o caixa pode cancelar com a senha do gerente na hora.
+     * O estorno fica no caixa em nome de quem opera; a venda e o estoque, em nome de quem autorizou.
+     */
+    @Transactional
+    public Venda cancelarVenda(Usuario operador, Usuario autorizador, long vendaId, String motivo,
+                               String idempotencyKey, model.FormaPagamento formaEstorno) {
+        Usuario usuario = responsavelPeloCancelamento(operador, autorizador);
         validarMotivo(motivo);
         String chave = normalizarIdempotencyKey(idempotencyKey, "cancelar venda");
         Venda venda = vendaRepository.buscarPorIdComLock(vendaId)
@@ -108,15 +141,19 @@ public class CancelamentoVendaService {
         ResultadoCancelamento resultado = cancelarItensAtivos(venda, itensAtivos, usuario, motivo, chave);
         venda.cancelar(usuario == null ? null : usuario.getRu(), motivo);
         venda = vendaRepository.salvar(venda);
+        boolean autorizado = usuario != operador;
         integracaoCaixaLegadoService.registrarCancelamentoConsolidado(
-                usuario,
+                operador,
                 venda.getNumeroCaixaLegado(),
                 venda.getId(),
-                resultado.valorCancelado()
+                resultado.valorCancelado(),
+                formaEstorno,
+                autorizado ? motivo.trim() + " (autorizado por " + nome(usuario) + ")" : motivo
         );
         registro.concluir(venda.getId());
         idempotenciaRepository.salvar(registro);
-        auditar(usuario, "VENDA_CANCELADA", "Venda " + venda.getId() + " cancelada.");
+        auditar(usuario, "VENDA_CANCELADA", "Venda " + venda.getId() + " cancelada"
+                + (autorizado ? " no caixa de " + nome(operador) + ", com autorização." : "."));
         return vendaRepository.buscarPorId(venda.getId()).orElseThrow();
     }
 
@@ -126,6 +163,16 @@ public class CancelamentoVendaService {
                               long itemId,
                               String motivo,
                               String idempotencyKey) {
+        return cancelarItem(usuario, vendaId, itemId, motivo, idempotencyKey, null);
+    }
+
+    @Transactional
+    public Venda cancelarItem(Usuario usuario,
+                              long vendaId,
+                              long itemId,
+                              String motivo,
+                              String idempotencyKey,
+                              model.FormaPagamento formaEstorno) {
         validarPermissaoCancelamento(usuario);
         validarMotivo(motivo);
         String chave = normalizarIdempotencyKey(idempotencyKey, "cancelar item de venda");
@@ -171,7 +218,9 @@ public class CancelamentoVendaService {
                 usuario,
                 venda.getNumeroCaixaLegado(),
                 venda.getId(),
-                resultado.valorCancelado()
+                resultado.valorCancelado(),
+                formaEstorno,
+                motivo
         );
         registro.concluir(venda.getId());
         idempotenciaRepository.salvar(registro);
@@ -373,6 +422,7 @@ public class CancelamentoVendaService {
         BigDecimal custoMedioPosterior = estoque.getCustoMedio();
         BigDecimal valorPosterior = estoque.valorEstoque();
         estoqueRepository.salvar(estoque);
+        espelharNoLegado(estoque);
         return movimentoRepository.salvar(new MovimentoEstoque(
                 0,
                 venda.getFilialId(),
@@ -432,12 +482,31 @@ public class CancelamentoVendaService {
                 .orElseThrow(() -> new IllegalStateException("Venda idempotente nao encontrada."));
     }
 
-    private void validarPermissaoCancelamento(Usuario usuario) {
-        boolean permitido = usuario != null
+    private Usuario responsavelPeloCancelamento(Usuario operador, Usuario autorizador) {
+        if (podeCancelar(operador)) {
+            return operador;
+        }
+        if (autorizador != null && autorizador.isAtivo() && podeCancelar(autorizador)) {
+            return autorizador;
+        }
+        throw new SecurityException(autorizador == null
+                ? "Para cancelar, o gerente precisa autorizar com a senha dele."
+                : "Quem autorizou nao tem permissao para cancelar venda.");
+    }
+
+    private static boolean podeCancelar(Usuario usuario) {
+        return usuario != null
                 && usuario.getClasse() != null
                 && (usuario.getClasse().possuiPermissao(Permissao.VER_FINANCAS)
                 || usuario.getClasse().possuiPermissao(Permissao.EDITAR_ESTOQUE));
-        if (!permitido) {
+    }
+
+    private static String nome(Usuario usuario) {
+        return usuario == null ? "?" : usuario.getNomeCompleto();
+    }
+
+    private void validarPermissaoCancelamento(Usuario usuario) {
+        if (!podeCancelar(usuario)) {
             throw new SecurityException("Voce nao tem permissao para cancelar venda.");
         }
     }

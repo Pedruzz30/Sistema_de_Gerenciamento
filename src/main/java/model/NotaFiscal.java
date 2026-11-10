@@ -144,6 +144,13 @@ public class NotaFiscal {
     @Column(name = "data_cancelamento")
     private LocalDateTime dataCancelamento;
 
+    /** Chave de acesso da NF-e importada; impede dar entrada duas vezes. */
+    @Column(name = "chave_acesso", length = 44)
+    private String chaveAcesso;
+
+    @Column(name = "numero_nfe", length = 20)
+    private String numeroNfe;
+
     // ── Construtor ────────────────────────────────────────────────────────────
 
     protected NotaFiscal() {
@@ -197,7 +204,7 @@ public class NotaFiscal {
 
     public NotaFiscal comId(long novoId) {
         validar(novoId > 0, "Novo ID da nota deve ser maior que zero.");
-        return new NotaFiscal(
+        NotaFiscal copia = new NotaFiscal(
                 novoId,
                 fornecedor,
                 usuarioResponsavel,
@@ -208,6 +215,19 @@ public class NotaFiscal {
                 dataPagamento,
                 dataCancelamento
         );
+        copia.chaveAcesso = chaveAcesso;
+        copia.numeroNfe = numeroNfe;
+        return copia;
+    }
+
+    /** Marca a nota como vinda de um XML de NF-e, com os dados do documento. */
+    public void registrarOrigemNfe(String chave, String numero, LocalDateTime emissao) {
+        validar(chave != null && chave.matches("\\d{44}"), "Chave de acesso invalida.");
+        this.chaveAcesso = chave;
+        this.numeroNfe = numero;
+        if (emissao != null) {
+            this.dataEmissao = emissao;
+        }
     }
 
     // ── Gerenciamento de itens ────────────────────────────────────────────────
@@ -363,6 +383,8 @@ public class NotaFiscal {
     public Usuario          getUsuarioResponsavel()   { return usuarioResponsavel;  }
     public Status           getStatus()              { return status;              }
     public LocalDateTime    getDataEmissao()         { return dataEmissao;         }
+    public String           getChaveAcesso()         { return chaveAcesso;         }
+    public String           getNumeroNfe()           { return numeroNfe;           }
     public LocalDateTime    getDataConfirmacao()     { return dataConfirmacao;     }
     public LocalDateTime    getDataPagamento()       { return dataPagamento;       }
     public LocalDateTime    getDataCancelamento()    { return dataCancelamento;    }

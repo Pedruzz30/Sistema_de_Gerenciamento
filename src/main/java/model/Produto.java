@@ -85,6 +85,13 @@ public class Produto {
     @Column(name = "quantidade_atual", nullable = false)
     private int quantidadeAtual;
 
+    /** Classificação fiscal, que a NFC-e vai exigir. Vem do XML do fornecedor. */
+    @Column(length = 8)
+    private String ncm;
+
+    @Column(length = 7)
+    private String cest;
+
     // ── Construtores ──────────────────────────────────────────────────────────
 
     protected Produto() {
@@ -184,7 +191,7 @@ public class Produto {
      */
     public Produto comId(int novoId) {
         validar(novoId > 0, "Novo ID deve ser maior que zero.");
-        return new Produto(
+        Produto copia = new Produto(
                 novoId,
                 nome,
                 quantidadeAtual,
@@ -196,7 +203,23 @@ public class Produto {
                 politicaFalta,
                 ativo
         );
+        copia.ncm = ncm;
+        copia.cest = cest;
+        return copia;
     }
+
+    /** Preenche NCM e CEST vindos da nota, sem apagar o que já foi conferido. */
+    public void preencherDadosFiscais(String novoNcm, String novoCest) {
+        if (ncm == null && novoNcm != null && novoNcm.matches("\\d{8}")) {
+            ncm = novoNcm;
+        }
+        if (cest == null && novoCest != null && novoCest.matches("\\d{7}")) {
+            cest = novoCest;
+        }
+    }
+
+    public String getNcm() { return ncm; }
+    public String getCest() { return cest; }
 
     // ── Operações de estoque ──────────────────────────────────────────────────
 

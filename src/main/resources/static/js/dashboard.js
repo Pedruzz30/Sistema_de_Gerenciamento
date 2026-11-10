@@ -22,7 +22,119 @@ function dataLocalHojeIso() {
   return [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
 }
 
+// ── Backup da loja: só aparece na instalação local, para quem cuida do financeiro.
+function descreverDataBackup(iso) {
+  const data = new Date(iso);
+  const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const hoje = new Date();
+  if (data.toDateString() === hoje.toDateString()) return 'hoje às ' + hora;
+  return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + hora;
+}
+
+function renderSituacaoBackup(situacao) {
+  const painel = document.getElementById('backup-painel');
+  if (!painel) return;
+  if (!situacao || !situacao.monitorado) { painel.hidden = true; return; }
+
+  const ultimo = situacao.ultimoBackup ? 'Último backup: ' + descreverDataBackup(situacao.ultimoBackup) + '.' : 'Ainda não há backup.';
+  let nivel = 'ok';
+  let titulo = 'Backup em dia.';
+  let detalhe = situacao.ultimaCopiaExterna
+    ? 'Cópia fora do notebook: ' + descreverDataBackup(situacao.ultimaCopiaExterna) + ' em ' + situacao.destinoExterno + '.'
+    : '';
+  if (situacao.atrasado) {
+    nivel = 'erro';
+    titulo = 'O backup está com problema.';
+    detalhe = situacao.ultimoErro || 'O último backup já passou de 12 horas.';
+  } else if (situacao.erroCopia) {
+    nivel = 'atencao';
+    titulo = 'A cópia do backup não foi gravada.';
+    detalhe = situacao.erroCopia;
+  } else if (situacao.semCopiaExterna) {
+    nivel = 'atencao';
+    titulo = 'Os backups estão só neste notebook.';
+    detalhe = 'Se ele quebrar ou for roubado, perde tudo. Crie uma pasta chamada StockOS-Backups em um pen drive ou no OneDrive e deixe conectado: a cópia é automática.';
+  }
+
+  painel.className = 'backup-painel backup-painel--' + nivel;
+  painel.innerHTML = '<div class="backup-painel__texto"><strong>' + escapeHtml(titulo) + '</strong> '
+    + escapeHtml(ultimo) + (detalhe ? '<br>' + escapeHtml(detalhe) : '') + '</div>'
+    + '<button class="btn btn-secondary btn-sm" type="button" id="btn-backup-agora">Fazer backup agora</button>';
+  painel.hidden = false;
+  document.getElementById('btn-backup-agora').addEventListener('click', fazerBackupAgora);
+}
+
+async function carregarSituacaoBackup() {
+  if (!PODE_VER_RENTABILIDADE_DASH) return;
+  const relatorio = document.getElementById('btn-relatorio-dia');
+  if (relatorio) relatorio.hidden = false;
+  try {
+    const resp = await fetch('/api/sistema/backup');
+    if (resp.ok) renderSituacaoBackup(await resp.json());
+  } catch {
+    // Sem servidor de backup (demonstração): o painel continua escondido.
+  }
+}
+
+// Celular do atendente: o endereço da porta segura, com QR para abrir no celular.
+async function carregarCelular() {
+  if (!PODE_VER_RENTABILIDADE_DASH) return;
+  const painel = document.getElementById('celular-painel');
+  if (!painel) return;
+  let situacao = null;
+  try {
+    const resp = await fetch('/api/sistema/celular');
+    if (resp.ok) situacao = await resp.json();
+  } catch {
+    situacao = null;
+  }
+  if (!situacao || !situacao.ativo || !(situacao.enderecos || []).length) { painel.hidden = true; return; }
+  const principal = situacao.enderecos[0];
+  const outros = situacao.enderecos.slice(1);
+  painel.innerHTML = '<div class="celular-painel__qr" id="celular-qr" aria-hidden="true"></div>'
+    + '<div class="celular-painel__texto"><strong>Celular do atendente</strong>'
+    + '<br>No Wi-Fi da loja, aponte a câmera do celular para o código ou abra '
+    + '<span class="celular-painel__url" id="celular-url">' + escapeHtml(principal.url) + '</span>'
+    + (outros.length ? '<br><small>Outras redes deste notebook: ' + outros.map(e => escapeHtml(e.url) + ' (' + escapeHtml(e.rede) + ')').join(', ') + '</small>' : '')
+    + '<br><small>Primeira vez no celular: toque em "Primeira vez neste celular?" na tela que abrir. Se o celular não abrir, rode uma vez "Liberar celular" na pasta do StockOS.</small></div>';
+  painel.hidden = false;
+  try {
+    if (!window.ZXing) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = '/vendor/zxing-0.21.3.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    const svg = new ZXing.BrowserQRCodeSvgWriter().write(principal.url, 132, 132);
+    document.getElementById('celular-qr').appendChild(svg);
+  } catch {
+    // Sem o QR, o endereço escrito continua valendo.
+  }
+}
+
+async function fazerBackupAgora() {
+  const botao = document.getElementById('btn-backup-agora');
+  botao.disabled = true;
+  botao.textContent = 'Fazendo backup...';
+  try {
+    const resp = await fetch('/api/sistema/backup', { method: 'POST' });
+    if (resp.status === 409) showToast('Já há um backup em andamento.', 'info');
+    const situacao = await resp.json();
+    renderSituacaoBackup(situacao);
+    if (resp.ok && !situacao.ultimoErro) showToast('Backup concluído.', 'success');
+  } catch {
+    showToast('Não foi possível fazer o backup.', 'error');
+    botao.disabled = false;
+    botao.textContent = 'Fazer backup agora';
+  }
+}
+
 async function carregarDados() {
+  carregarSituacaoBackup();
+  carregarCelular();
   const pedir = async (url, fallback) => {
     const inicio = performance.now();
     try {
@@ -161,7 +273,7 @@ function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosD
     },
     {
       label: 'Vendas do Dia',
-      value: Number.isFinite(vendasDia) ? 'R$' + vendasDia.toFixed(2) : '—',
+      value: Number.isFinite(vendasDia) ? formatarMoedaBR(vendasDia) : '—',
       icon: 'wallet',
       tone: 'green',
       trend: 'up',
@@ -365,9 +477,9 @@ function renderFinanceiro(caixas, metricasHoje) {
   var caixasAbertos = metricasHoje ? metricasHoje.caixasAbertos : caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
   var ticketMedio = metricasHoje ? Number(metricasHoje.ticketMedio) : null;
 
-  document.getElementById('fin-total-vendas').textContent = Number.isFinite(totalVendas) ? 'R$' + totalVendas.toFixed(2) : '—';
+  document.getElementById('fin-total-vendas').textContent = Number.isFinite(totalVendas) ? formatarMoedaBR(totalVendas) : '—';
   document.getElementById('fin-caixas-abertos').textContent = caixasAbertos;
-  document.getElementById('fin-ticket-medio').textContent = Number.isFinite(ticketMedio) ? 'R$' + ticketMedio.toFixed(2) : '—';
+  document.getElementById('fin-ticket-medio').textContent = Number.isFinite(ticketMedio) ? formatarMoedaBR(ticketMedio) : '—';
 
   var caixaList = document.getElementById('caixa-list');
   if (caixas.length === 0) {
@@ -383,7 +495,7 @@ function renderFinanceiro(caixas, metricasHoje) {
     return '<div class="caixa-item">' +
            '<span class="caixa-name">Caixa ' + c.numeroCaixa + (c.nomeOperador ? ' — ' + c.nomeOperador : '') + '</span>' +
            '<span class="caixa-status ' + c.status.toLowerCase() + '">' + c.status + '</span>' +
-           '<span class="caixa-valor">' + (c.status === 'ABERTO' ? 'R$' + (c.totalVendas || 0).toFixed(2) : '—') + '</span>' +
+           '<span class="caixa-valor">' + (c.status === 'ABERTO' ? formatarMoedaBR(c.totalVendas || 0) : '—') + '</span>' +
            '</div>';
   }).join('');
 }
@@ -1243,7 +1355,7 @@ function renderGraficoCaixas(caixas) {
         },
         tooltip: {
           ...TOOLTIP_BASE,
-          callbacks: { label: ctx => ` ${ctx.dataset.label}: R$${ctx.raw.toFixed(2)}` },
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatarMoedaBR(ctx.raw)}` },
         },
       },
       scales: {

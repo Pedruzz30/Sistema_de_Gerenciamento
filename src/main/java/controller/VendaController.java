@@ -46,6 +46,32 @@ public class VendaController {
     private final CancelamentoVendaService cancelamentoService;
     private final UsuarioRepository usuarioRepository;
 
+    private service.AutenticacaoService autenticacaoService;
+    private service.DescontoVendaService descontoService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAutenticacaoService(service.AutenticacaoService autenticacaoService) {
+        this.autenticacaoService = autenticacaoService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDescontoService(service.DescontoVendaService descontoService) {
+        this.descontoService = descontoService;
+    }
+
+    private service.ComandaService comandaService;
+    private service.CozinhaService cozinhaService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCozinhaService(service.CozinhaService cozinhaService) {
+        this.cozinhaService = cozinhaService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComandaService(service.ComandaService comandaService) {
+        this.comandaService = comandaService;
+    }
+
     public VendaController(VendaService vendaService,
                            FinalizacaoVendaService finalizacaoService,
                            CancelamentoVendaService cancelamentoService,
@@ -130,6 +156,11 @@ public class VendaController {
             @RequestBody ItemVendaRequest request,
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Usuario usuario = validarVenda(ruHeader);
+        if (request.quantidade() != null) {
+            boolean diminui = vendaService.listarItens(id).stream()
+                    .anyMatch(i -> i.getId() == itemId && request.quantidade().compareTo(i.getQuantidade()) < 0);
+            if (diminui) protegerItemDeComanda(usuario, id);
+        }
         VendaItem item = vendaService.editarItemRascunho(
                 usuario,
                 id,
@@ -153,6 +184,7 @@ public class VendaController {
             @PathVariable long itemId,
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Usuario usuario = validarVenda(ruHeader);
+        protegerItemDeComanda(usuario, id);
         vendaService.removerItemRascunho(usuario, id, itemId);
         return ResponseEntity.noContent().build();
     }
@@ -171,10 +203,43 @@ public class VendaController {
                 usuario,
                 id,
                 chave,
-                request == null ? null : request.numeroCaixaLegado()
+                request == null ? null : request.numeroCaixaLegado(),
+                request == null ? null : request.pagamentosInput()
         );
+        // Venda de comanda paga: o cartão fica livre para o próximo cliente.
+        if (comandaService != null) comandaService.fecharPorVenda(usuario, venda.getId());
+        // O que é da cozinha e ainda não tinha ido (venda de balcão com porção, por exemplo).
+        if (cozinhaService != null) {
+            try {
+                cozinhaService.enviar(usuario, venda.getId());
+            } catch (RuntimeException e) {
+                org.slf4j.LoggerFactory.getLogger(VendaController.class).warn("Venda {} paga, mas o pedido da cozinha falhou", venda.getId(), e);
+            }
+        }
         return ResponseEntity.ok(response(venda, usuario));
     }
+
+    /** Desconto no total, dado no pagamento. Zero retira. Operadora sem financeiro precisa do gerente. */
+    @PostMapping("/{id}/desconto")
+    public ResponseEntity<VendaResponse> aplicarDesconto(
+            @PathVariable long id,
+            @RequestBody DescontoRequest request,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario usuario = validarVenda(ruHeader);
+        if (descontoService == null) {
+            throw new IllegalStateException("Desconto indisponivel.");
+        }
+        Venda venda = descontoService.aplicar(
+                usuario,
+                resolverAutorizador(request == null ? null : request.autorizacao()),
+                id,
+                request == null ? null : request.valor(),
+                request == null ? null : request.percentual());
+        return ResponseEntity.ok(response(venda, usuario));
+    }
+
+    public record DescontoRequest(BigDecimal valor, BigDecimal percentual,
+                                  CaixaController.AutorizacaoRequest autorizacao) {}
 
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<VendaResponse> cancelar(
@@ -188,9 +253,11 @@ public class VendaController {
                 : request == null ? null : request.idempotencyKey();
         Venda venda = cancelamentoService.cancelarVenda(
                 usuario,
+                resolverAutorizador(request == null ? null : request.autorizacao()),
                 id,
                 request == null ? null : request.motivo(),
-                chave
+                chave,
+                request == null ? null : request.formaEstornoParseada()
         );
         return ResponseEntity.ok(response(venda, usuario));
     }
@@ -211,7 +278,8 @@ public class VendaController {
                 id,
                 itemId,
                 request == null ? null : request.motivo(),
-                chave
+                chave,
+                request == null ? null : request.formaEstornoParseada()
         );
         return ResponseEntity.ok(response(venda, usuario));
     }
@@ -239,6 +307,14 @@ public class VendaController {
         );
     }
 
+    /** Item de comanda pode já ter sido servido: só sai pela comanda, com gerente e motivo. */
+    private void protegerItemDeComanda(Usuario usuario, long vendaId) {
+        if (comandaService != null && !service.ComandaService.podeTirarItem(usuario)
+                && comandaService.vendaDeComandaAberta(vendaId)) {
+            throw new SecurityException("Item de comanda só sai com o gerente: use o x do item no caixa.");
+        }
+    }
+
     private Usuario validarVisualizacao(String ruHeader) {
         return ControllerUtils.resolveUserAndRequireAnyPermission(
                 ruHeader,
@@ -249,14 +325,31 @@ public class VendaController {
         );
     }
 
+    /** Quem opera o caixa entra aqui; sem permissão própria, o serviço exige o gerente. */
     private Usuario validarCancelamento(String ruHeader) {
         return ControllerUtils.resolveUserAndRequireAnyPermission(
                 ruHeader,
                 usuarioRepository,
                 "Voce nao tem permissao para cancelar vendas.",
+                Permissao.VER_VENDAS,
                 Permissao.VER_FINANCAS,
                 Permissao.EDITAR_ESTOQUE
         );
+    }
+
+    private Usuario resolverAutorizador(CaixaController.AutorizacaoRequest autorizacao) {
+        if (autorizacao == null || autorizacao.nome() == null || autorizacao.nome().isBlank()
+                || autorizacao.senha() == null || autorizacao.senha().isBlank()) {
+            return null;
+        }
+        if (autenticacaoService == null) {
+            throw new SecurityException("Autorizacao de gerente indisponivel.");
+        }
+        return autenticacaoService.conferirCredenciais(
+                        autorizacao.nome().trim(),
+                        autorizacao.sobrenome() == null ? "" : autorizacao.sobrenome().trim(),
+                        autorizacao.senha())
+                .orElseThrow(() -> new SecurityException("Login do gerente invalido."));
     }
 
     private boolean podeVerCustos(Usuario usuario) {
@@ -315,9 +408,54 @@ public class VendaController {
             List<SelecaoModificadorRequest> selecoes
     ) {}
 
-    public record FinalizarVendaRequest(String idempotencyKey, Integer numeroCaixaLegado) {}
+    /**
+     * @param pagamentos formas de pagamento; a soma de {@code valor} deve ser
+     *                   igual ao total. Opcional: sem ela, tudo é dinheiro.
+     */
+    public record FinalizarVendaRequest(String idempotencyKey,
+                                        Integer numeroCaixaLegado,
+                                        List<PagamentoRequest> pagamentos) {
+        public FinalizarVendaRequest(String idempotencyKey, Integer numeroCaixaLegado) {
+            this(idempotencyKey, numeroCaixaLegado, null);
+        }
 
-    public record CancelarVendaRequest(String motivo, String idempotencyKey) {}
+        List<service.IntegracaoCaixaLegadoService.PagamentoInput> pagamentosInput() {
+            if (pagamentos == null) {
+                return null;
+            }
+            return pagamentos.stream()
+                    .map(p -> p == null ? null : new service.IntegracaoCaixaLegadoService.PagamentoInput(
+                            model.FormaPagamento.parse(p.forma()), p.valor(), p.valorRecebido(), p.nsu()))
+                    .toList();
+        }
+    }
+
+    /**
+     * @param forma         DINHEIRO, PIX, DEBITO, CREDITO ou VOUCHER
+     * @param valor         quanto este pagamento abate do total
+     * @param valorRecebido só no dinheiro: quanto o cliente entregou (gera troco)
+     * @param nsu           comprovante da maquininha (opcional)
+     */
+    public record PagamentoRequest(String forma, BigDecimal valor, BigDecimal valorRecebido, String nsu) {}
+
+    /**
+     * @param formaEstorno opcional: forma em que o valor volta ao cliente.
+     *                     Sem ela, volta nas formas em que a venda foi paga.
+     */
+    public record CancelarVendaRequest(String motivo, String idempotencyKey, String formaEstorno,
+                                       CaixaController.AutorizacaoRequest autorizacao) {
+        public CancelarVendaRequest(String motivo, String idempotencyKey) {
+            this(motivo, idempotencyKey, null, null);
+        }
+
+        public CancelarVendaRequest(String motivo, String idempotencyKey, String formaEstorno) {
+            this(motivo, idempotencyKey, formaEstorno, null);
+        }
+
+        model.FormaPagamento formaEstornoParseada() {
+            return model.FormaPagamento.parse(formaEstorno);
+        }
+    }
 
     public record VendaResumoResponse(
             long id,

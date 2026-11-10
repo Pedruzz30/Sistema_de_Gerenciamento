@@ -6,6 +6,7 @@ import service.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.time.Clock;
 import java.time.ZoneId;
@@ -23,6 +24,7 @@ import java.time.ZoneId;
  * the same instances throughout the application lifetime.
  */
 @Configuration
+@EnableScheduling
 public class AppConfig {
 
     private static final String CPF_ADMIN_SUPERIOR = "52998224725";
@@ -53,15 +55,94 @@ public class AppConfig {
     }
 
     @Bean
+    public RelatorioVendasService relatorioVendasService(CaixaRepository caixaRepository,
+                                                         VendaRepository vendaRepository,
+                                                         VendaItemRepository vendaItemRepository,
+                                                         ComandaRepository comandaRepository,
+                                                         VendaItemConsumoRepository vendaItemConsumoRepository) {
+        return new RelatorioVendasService(caixaRepository, vendaRepository, vendaItemRepository, comandaRepository,
+                vendaItemConsumoRepository);
+    }
+
+    @Bean
+    public ComandaService comandaService(ComandaRepository comandaRepository,
+                                         VendaService vendaService,
+                                         VendaRepository vendaRepository,
+                                         VendaItemRepository vendaItemRepository,
+                                         LogRepository logRepository,
+                                         Clock appClock,
+                                         VendaItemService vendaItemService,
+                                         VendaItemModificadorRepository vendaItemModificadorRepository,
+                                         CozinhaService cozinhaService) {
+        ComandaService servico = new ComandaService(comandaRepository, vendaService, vendaRepository, vendaItemRepository, logRepository, appClock);
+        servico.setTransferencia(vendaItemService, vendaItemModificadorRepository);
+        servico.setCozinha(cozinhaService);
+        return servico;
+    }
+
+    @Bean
+    public CozinhaService cozinhaService(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+                                         LogRepository logRepository,
+                                         Clock appClock,
+                                         @Value("${stockos.cozinha.pasta-teste:}") String pastaTeste) {
+        return new CozinhaService(jdbcTemplate, logRepository, appClock, new ImpressoraCozinha(),
+                pastaTeste == null || pastaTeste.isBlank() ? null : java.nio.file.Path.of(pastaTeste).toAbsolutePath());
+    }
+
+    @Bean
+    public TeclasRapidasService teclasRapidasService(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+                                                     LogRepository logRepository) {
+        return new TeclasRapidasService(jdbcTemplate, logRepository);
+    }
+
+    @Bean
+    public DescontoVendaService descontoVendaService(VendaRepository vendaRepository,
+                                                     VendaItemRepository vendaItemRepository,
+                                                     LogRepository logRepository) {
+        return new DescontoVendaService(vendaRepository, vendaItemRepository, logRepository);
+    }
+
+    /** Desligado sem stockos.backup.pasta: só a instalação da loja preenche essa opção. */
+    @Bean
+    public BackupService backupService(
+            @Value("${stockos.backup.pasta:}") String pasta,
+            @Value("${stockos.backup.pg-bin:}") String pgBin,
+            @Value("${stockos.backup.intervalo-horas:3}") long intervaloHoras,
+            @Value("${spring.datasource.url}") String url,
+            @Value("${spring.datasource.username}") String usuario,
+            @Value("${spring.datasource.password:}") String senha,
+            Clock appClock) {
+        return new BackupService(
+                pasta.isBlank() ? null : java.nio.file.Path.of(pasta),
+                pgBin.isBlank() ? null : java.nio.file.Path.of(pgBin),
+                url,
+                usuario,
+                senha,
+                java.time.Duration.ofHours(intervaloHoras),
+                BackupService::destinosPadrao,
+                BackupService::executarProcesso,
+                appClock);
+    }
+
+    @Bean
+    public SincronizadorEstoque sincronizadorEstoque(ProdutoRepository produtoRepository,
+                                                     EstoqueProdutoRepository estoqueProdutoRepository,
+                                                     MovimentoEstoqueRepository movimentoEstoqueRepository) {
+        return new SincronizadorEstoque(produtoRepository, estoqueProdutoRepository, movimentoEstoqueRepository);
+    }
+
+    @Bean
     public EstoqueService estoqueService(ProdutoRepository produtoRepository,
-                                         PedidoRepository pedidoRepository) {
-        return new EstoqueService(produtoRepository, pedidoRepository);
+                                         PedidoRepository pedidoRepository,
+                                         SincronizadorEstoque sincronizadorEstoque) {
+        return new EstoqueService(produtoRepository, pedidoRepository, sincronizadorEstoque);
     }
 
     @Bean
     public AutenticacaoService autenticacaoService(UsuarioRepository usuarioRepository,
-                                                   LogRepository logRepository) {
-        return new AutenticacaoService(usuarioRepository, logRepository);
+                                                   LogRepository logRepository,
+                                                   SenhaService senhaService) {
+        return new AutenticacaoService(usuarioRepository, logRepository, senhaService, new LimiteTentativas());
     }
 
     @Bean
@@ -342,8 +423,9 @@ public class AppConfig {
                                                      EstoqueProdutoRepository estoqueProdutoRepository,
                                                      MovimentoEstoqueRepository movimentoEstoqueRepository,
                                                      RegistroIdempotenciaRepository registroIdempotenciaRepository,
-                                                     UnidadeMedidaService unidadeMedidaService) {
-        return new CompraEstoqueService(
+                                                     UnidadeMedidaService unidadeMedidaService,
+            SincronizadorEstoque sincronizadorEstoque) {
+        CompraEstoqueService compraEstoqueService = new CompraEstoqueService(
                 compraEstoqueRepository,
                 produtoRepository,
                 fornecedorRepository,
@@ -353,12 +435,17 @@ public class AppConfig {
                 registroIdempotenciaRepository,
                 unidadeMedidaService
         );
+        compraEstoqueService.setSincronizadorEstoque(sincronizadorEstoque);
+        return compraEstoqueService;
     }
 
     @Bean
     public MovimentoEstoqueService movimentoEstoqueService(MovimentoEstoqueRepository movimentoEstoqueRepository,
-                                                           EstoqueProdutoRepository estoqueProdutoRepository) {
-        return new MovimentoEstoqueService(movimentoEstoqueRepository, estoqueProdutoRepository);
+                                                           EstoqueProdutoRepository estoqueProdutoRepository,
+            SincronizadorEstoque sincronizadorEstoque) {
+        MovimentoEstoqueService movimentoEstoqueService = new MovimentoEstoqueService(movimentoEstoqueRepository, estoqueProdutoRepository);
+        movimentoEstoqueService.setSincronizadorEstoque(sincronizadorEstoque);
+        return movimentoEstoqueService;
     }
 
     @Bean
@@ -462,8 +549,57 @@ public class AppConfig {
     }
 
     @Bean
-    public IntegracaoCaixaLegadoService integracaoCaixaLegadoService(CaixaService caixaService) {
-        return new IntegracaoCaixaLegadoService(caixaService);
+    public CodigoVendaService codigoVendaService(CodigoVendaRepository codigoVendaRepository,
+                                                 VariacaoItemCardapioRepository variacaoItemCardapioRepository) {
+        return new CodigoVendaService(codigoVendaRepository, variacaoItemCardapioRepository);
+    }
+
+    @Bean
+    public ProdutoRevendaService produtoRevendaService(EstoqueService estoqueService,
+                                                       ProdutoEstoqueService produtoEstoqueService,
+                                                       CardapioService cardapioService,
+                                                       VariacaoItemCardapioService variacaoItemCardapioService,
+                                                       CodigoVendaService codigoVendaService,
+                                                       CodigoVendaRepository codigoVendaRepository,
+                                                       ProdutoRepository produtoRepository,
+                                                       UnidadeMedidaService unidadeMedidaService) {
+        return new ProdutoRevendaService(
+                estoqueService,
+                produtoEstoqueService,
+                cardapioService,
+                variacaoItemCardapioService,
+                codigoVendaService,
+                codigoVendaRepository,
+                produtoRepository,
+                unidadeMedidaService
+        );
+    }
+
+    @Bean
+    public ImportacaoNfeService importacaoNfeService(FornecedorRepository fornecedorRepository,
+                                                     NotaFiscalRepository notaFiscalRepository,
+                                                     NotaFiscalService notaFiscalService,
+                                                     ProdutoRepository produtoRepository,
+                                                     CodigoVendaRepository codigoVendaRepository,
+                                                     VinculoProdutoFornecedorRepository vinculoProdutoFornecedorRepository,
+                                                     ProdutoRevendaService produtoRevendaService,
+                                                     LogRepository logRepository) {
+        return new ImportacaoNfeService(
+                fornecedorRepository,
+                notaFiscalRepository,
+                notaFiscalService,
+                produtoRepository,
+                codigoVendaRepository,
+                vinculoProdutoFornecedorRepository,
+                produtoRevendaService,
+                logRepository
+        );
+    }
+
+    @Bean
+    public IntegracaoCaixaLegadoService integracaoCaixaLegadoService(CaixaService caixaService,
+                                                                     VendaPagamentoRepository vendaPagamentoRepository) {
+        return new IntegracaoCaixaLegadoService(caixaService, vendaPagamentoRepository);
     }
 
     @Bean
@@ -479,8 +615,9 @@ public class AppConfig {
             MontagemComposicaoVendaService montagemComposicaoVendaService,
             CalculadoraCustoVendaService calculadoraCustoVendaService,
             IntegracaoCaixaLegadoService integracaoCaixaLegadoService,
-            LogRepository logRepository) {
-        return new FinalizacaoVendaService(
+            LogRepository logRepository,
+            SincronizadorEstoque sincronizadorEstoque) {
+        FinalizacaoVendaService finalizacaoVendaService = new FinalizacaoVendaService(
                 vendaRepository,
                 vendaItemRepository,
                 vendaItemConsumoRepository,
@@ -494,6 +631,8 @@ public class AppConfig {
                 integracaoCaixaLegadoService,
                 logRepository
         );
+        finalizacaoVendaService.setSincronizadorEstoque(sincronizadorEstoque);
+        return finalizacaoVendaService;
     }
 
     @Bean
@@ -507,8 +646,9 @@ public class AppConfig {
             MovimentoEstoqueRepository movimentoEstoqueRepository,
             RegistroIdempotenciaRepository registroIdempotenciaRepository,
             IntegracaoCaixaLegadoService integracaoCaixaLegadoService,
-            LogRepository logRepository) {
-        return new CancelamentoVendaService(
+            LogRepository logRepository,
+            SincronizadorEstoque sincronizadorEstoque) {
+        CancelamentoVendaService cancelamentoVendaService = new CancelamentoVendaService(
                 vendaRepository,
                 vendaItemRepository,
                 vendaItemConsumoRepository,
@@ -520,12 +660,57 @@ public class AppConfig {
                 integracaoCaixaLegadoService,
                 logRepository
         );
+        cancelamentoVendaService.setSincronizadorEstoque(sincronizadorEstoque);
+        return cancelamentoVendaService;
     }
 
     @Bean
     public CadastroFuncionarioService cadastroFuncionarioService(UsuarioRepository usuarioRepository,
-                                                                 LogRepository logRepository) {
-        return new CadastroFuncionarioService(usuarioRepository, logRepository);
+                                                                 LogRepository logRepository,
+                                                                 SenhaService senhaService) {
+        CadastroFuncionarioService cadastroFuncionarioService = new CadastroFuncionarioService(usuarioRepository, logRepository);
+        cadastroFuncionarioService.setSenhaService(senhaService);
+        return cadastroFuncionarioService;
+    }
+
+    @Bean
+    public SenhaService senhaService() {
+        return new SenhaService();
+    }
+
+    @Bean
+    public SessaoService sessaoService(SessaoUsuarioRepository sessaoUsuarioRepository,
+                                       UsuarioRepository usuarioRepository,
+                                       AutenticacaoService autenticacaoService,
+                                       LogRepository logRepository,
+                                       @Value("${stockos.auth.sessao-horas:14}") long sessaoHoras) {
+        return new SessaoService(sessaoUsuarioRepository, usuarioRepository, autenticacaoService, logRepository,
+                java.time.Duration.ofHours(sessaoHoras), java.time.Clock.systemDefaultZone());
+    }
+
+    /** Toda chamada a /api/* passa por aqui: a identidade vem da sessão, não do cabeçalho. */
+    @Bean
+    public org.springframework.boot.web.servlet.FilterRegistrationBean<controller.SessaoFilter> filtroSessao(
+            SessaoService sessaoService,
+            @Value("${stockos.auth.aceitar-header-legado:false}") boolean aceitarHeaderLegado) {
+        var registro = new org.springframework.boot.web.servlet.FilterRegistrationBean<>(
+                new controller.SessaoFilter(sessaoService, aceitarHeaderLegado));
+        registro.addUrlPatterns("/api/*");
+        registro.setOrder(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 100);
+        return registro;
+    }
+
+    /** Converte as senhas em texto puro de bancos antigos e dos usuários padrão. */
+    @Bean
+    public org.springframework.boot.ApplicationRunner migracaoDeSenhas(AutenticacaoService autenticacaoService,
+                                                                       Usuario adminSuperior) {
+        return argumentos -> {
+            int convertidas = autenticacaoService.migrarSenhasAntigas();
+            if (convertidas > 0) {
+                org.slf4j.LoggerFactory.getLogger(AppConfig.class)
+                        .info("{} senha(s) convertida(s) para hash; a troca sera exigida no proximo login.", convertidas);
+            }
+        };
     }
 
     // ── Shared privileged user ────────────────────────────────────────────────

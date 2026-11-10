@@ -272,6 +272,23 @@ public class VendaItem {
         );
     }
 
+    /**
+     * Passa o item inteiro para outra venda em rascunho (outra comanda), com os adicionais
+     * e as partes, que pertencem ao item. O desconto fica para trás: ele é dado no pagamento.
+     */
+    public void transferirPara(Venda destino) {
+        validar(status == StatusVendaItem.ATIVO, "Item cancelado nao pode ser transferido.");
+        validar(destino != null, "Venda de destino e obrigatoria.");
+        this.venda = destino;
+        aplicarSnapshotComercialComPrecoBase(variacaoItemCardapio, precoUnitarioBase, BigDecimal.ZERO, acrescimoUnitario);
+    }
+
+    /** Desconto por unidade dado no pagamento, sobre o preço já com acréscimos. */
+    public void aplicarDescontoUnitario(BigDecimal descontoUnitario) {
+        validar(status == StatusVendaItem.ATIVO, "Item cancelado nao recebe desconto.");
+        aplicarSnapshotComercialComPrecoBase(variacaoItemCardapio, precoUnitarioBase, descontoUnitario, acrescimoUnitario);
+    }
+
     public void atualizarRascunho(VariacaoItemCardapio variacao,
                                   BigDecimal quantidade,
                                   String observacao) {

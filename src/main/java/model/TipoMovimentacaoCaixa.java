@@ -45,7 +45,14 @@ public enum TipoMovimentacaoCaixa {
     SANGRIA    ("Sangria",    "🏦"),
 
     /** Pequenas saídas autorizadas (ex: compra de material de escritório). */
-    DESPESA    ("Despesa",    "📤");
+    DESPESA    ("Despesa",    "📤"),
+
+    /**
+     * Devolução ao cliente de uma venda cancelada (total ou parcial).
+     * Antes era lançada como SANGRIA, o que distorcia o relatório de sangrias
+     * e falhava quando a venda tinha sido paga no Pix ou cartão.
+     */
+    ESTORNO_VENDA ("Estorno de venda", "↩");
 
     // ── Campos ────────────────────────────────────────────────────────────────
 
@@ -77,7 +84,7 @@ public enum TipoMovimentacaoCaixa {
     public boolean isEntrada() {
         return switch (this) {
             case VENDA, SUPRIMENTO, ENTRADA -> true;
-            case SANGRIA, DESPESA           -> false;
+            case SANGRIA, DESPESA, ESTORNO_VENDA -> false;
         };
     }
 

@@ -12,6 +12,15 @@ let tipoMovAtual         = null;
 let numeroCaixaAtual     = null;
 let numeroCaixaEncerrar  = null;
 
+const FORMATO_MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** R$ 1.234,56 (pt-BR). */
+function moeda(valor) {
+  return FORMATO_MOEDA.format(Number(valor || 0));
+}
+
+const ROTULOS_FORMA = { DINHEIRO: 'Dinheiro', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito', VOUCHER: 'Voucher' };
+
 function buttonIcon(name) {
   return '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup(name) + '</span>';
 }
@@ -40,9 +49,34 @@ function aplicarPermissoesUI() {
 }
 
 function podeExecutarMovimentacao(tipo) {
-  if (tipo === 'venda')                              return PODE_OPERAR_CAIXA;
-  if (tipo === 'sangria' || tipo === 'suprimento')   return PODE_GERIR_FINANCAS_CAIXA;
+  // Sangria e suprimento: o operador de caixa também pode, com a senha do
+  // gerente na hora (o backend confere).
+  if (['venda', 'sangria', 'suprimento'].includes(tipo)) return PODE_OPERAR_CAIXA;
   return false;
+}
+
+/** Operador sem permissão financeira precisa da autorização do gerente. */
+function precisaAutorizacaoGerente() {
+  return !temPermissao(PERMISSOES.VER_FINANCAS);
+}
+
+function prepararAutorizacao(prefixo) {
+  const bloco = document.getElementById(prefixo + '-autorizacao');
+  if (!bloco) return;
+  bloco.hidden = !precisaAutorizacaoGerente();
+  ['nome', 'sobrenome', 'senha'].forEach(campo => {
+    const el = document.getElementById(prefixo + '-gerente-' + campo);
+    if (el) el.value = '';
+  });
+}
+
+function lerAutorizacao(prefixo) {
+  if (!precisaAutorizacaoGerente()) return null;
+  const valor = campo => (document.getElementById(prefixo + '-gerente-' + campo)?.value || '').trim();
+  const nome = valor('nome');
+  const senha = document.getElementById(prefixo + '-gerente-senha')?.value || '';
+  if (!nome || !senha) return undefined; // faltou preencher
+  return { nome, sobrenome: valor('sobrenome'), senha };
 }
 
 function mensagemSemPermissao(tipo) {
@@ -77,19 +111,22 @@ async function abrirCaixa(numero, saldoInicial) {
   });
 }
 
-async function registrarMovimentacao(tipo, numero, valor, descricao) {
+async function registrarMovimentacao(tipo, numero, valor, descricao, autorizacao) {
   return fetch(`/api/caixas/${tipo}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ numeroCaixa: numero, valor, descricao: descricao || '' })
+    body: JSON.stringify({ numeroCaixa: numero, valor, descricao: descricao || '', autorizacao: autorizacao || null })
   });
 }
 
-async function encerrarCaixa(numero, valorContado, observacao) {
+async function encerrarCaixa(numero, valorContado, observacao, autorizacao, deixarComandasAbertas) {
   return fetch('/api/caixas/encerrar', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ numeroCaixa: numero, valorContado, observacao: observacao || '' })
+    body: JSON.stringify({
+      numeroCaixa: numero, valorContado, observacao: observacao || '', autorizacao: autorizacao || null,
+      deixarComandasAbertas: !!deixarComandasAbertas
+    })
   });
 }
 
@@ -130,23 +167,32 @@ function renderCaixas() {
     const statusLabel = { ABERTO: 'Aberto', FECHADO: 'Fechado', ENCERRADO: 'Encerrado' }[c.status] || c.status;
     const badgeClass  = c.status === 'ABERTO' ? 'badge-green' : c.status === 'ENCERRADO' ? 'badge-gray' : 'badge-amber';
     const operador    = escapeHtml(c.nomeOperador || '—');
+    // Data + hora: um caixa esquecido aberto de ontem não pode parecer de hoje.
     const abertura    = c.dataAbertura
-      ? new Date(c.dataAbertura).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      ? new Date(c.dataAbertura).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
       : '—';
+    const porForma    = c.vendasPorForma || {};
+    const eletronico  = ['PIX', 'DEBITO', 'CREDITO', 'VOUCHER']
+      .reduce((soma, forma) => soma + Number(porForma[forma] || 0), 0);
+    const detalheFormas = ['DINHEIRO', 'PIX', 'DEBITO', 'CREDITO', 'VOUCHER']
+      .filter(forma => Number(porForma[forma] || 0) !== 0)
+      .map(forma => `${ROTULOS_FORMA[forma]} ${moeda(porForma[forma])}`)
+      .join(' · ');
+    const qtdVendas   = Number(c.quantidadeVendas || 0);
 
     const botoesAbertos = [
       // PDV substitui o modal simples de venda
       PODE_OPERAR_CAIXA
         ? `<button class="btn-sm success" onclick="abrirPDV(${c.numeroCaixa})">${buttonIcon('cart')}PDV</button>`
         : '',
-      PODE_GERIR_FINANCAS_CAIXA
+      PODE_OPERAR_CAIXA
         ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('minus')}Sangria</button>`
         : '',
-      PODE_GERIR_FINANCAS_CAIXA
+      PODE_OPERAR_CAIXA
         ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('plus')}Suprimento</button>`
         : '',
       `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}Ver movs</button>`,
-      PODE_GERIR_FINANCAS_CAIXA
+      PODE_OPERAR_CAIXA
         ? `<button class="btn-sm danger" onclick="abrirModalEncerrar(${c.numeroCaixa})">${buttonIcon('lock')}Encerrar</button>`
         : '',
     ].filter(Boolean).join('');
@@ -164,17 +210,25 @@ function renderCaixas() {
           </div>
           <div class="caixa-detail-row">
             <span class="caixa-detail-label">Saldo Inicial</span>
-            <span class="caixa-detail-value">R$${(c.saldoInicial||0).toFixed(2)}</span>
+            <span class="caixa-detail-value">${moeda(c.saldoInicial)}</span>
           </div>
           <div class="caixa-detail-row">
-            <span class="caixa-detail-label">Saldo Atual</span>
+            <span class="caixa-detail-label" title="Só dinheiro em espécie: fundo + vendas em dinheiro + suprimentos − sangrias − devoluções">Dinheiro na gaveta</span>
             <span class="caixa-detail-value text-success">
-              R$${(c.saldoAtual||0).toFixed(2)}
+              ${moeda(c.dinheiroNaGaveta ?? c.saldoAtual)}
             </span>
           </div>
           <div class="caixa-detail-row">
+            <span class="caixa-detail-label">Pix e cartões</span>
+            <span class="caixa-detail-value">${moeda(eletronico)}</span>
+          </div>
+          <div class="caixa-detail-row">
             <span class="caixa-detail-label">Total Vendas</span>
-            <span class="caixa-detail-value">R$${(c.totalVendas||0).toFixed(2)}</span>
+            <span class="caixa-detail-value" title="${escapeHtml(detalheFormas || 'Sem vendas')}">${moeda(c.totalVendas)}</span>
+          </div>
+          <div class="caixa-detail-row">
+            <span class="caixa-detail-label">Vendas · ticket médio</span>
+            <span class="caixa-detail-value">${qtdVendas} · ${moeda(c.ticketMedio)}</span>
           </div>
           <div class="caixa-detail-row">
             <span class="caixa-detail-label">Abertura</span>
@@ -200,9 +254,9 @@ function renderResumo() {
   const saldoTotal    = caixas.filter(c => c.status === 'ABERTO')
                               .reduce((s, c) => s + (c.saldoAtual || 0), 0);
 
-  document.getElementById('total-vendas-dia').textContent     = `R$${totalVendas.toFixed(2)}`;
+  document.getElementById('total-vendas-dia').textContent     = `${moeda(totalVendas)}`;
   document.getElementById('total-caixas-abertos').textContent  = caixasAbertos;
-  document.getElementById('saldo-total').textContent           = `R$${saldoTotal.toFixed(2)}`;
+  document.getElementById('saldo-total').textContent           = `${moeda(saldoTotal)}`;
   document.getElementById('resumo-dia').hidden                 = false;
 }
 
@@ -247,7 +301,8 @@ function abrirModalMov(tipo, numero, saldoAtual) {
   const titulos = { venda: 'Registrar Venda', sangria: 'Sangria', suprimento: 'Suprimento' };
   document.getElementById('modal-mov-titulo').textContent = titulos[tipo] || 'Movimentação';
   document.getElementById('mov-caixa-info').textContent   = `Caixa ${numero}`;
-  document.getElementById('mov-saldo-atual').textContent  = `R$${(saldoAtual||0).toFixed(2)}`;
+  prepararAutorizacao('mov');
+  document.getElementById('mov-saldo-atual').textContent  = `${moeda(saldoAtual)}`;
   abrirModal('modal-mov');
 }
 
@@ -260,7 +315,11 @@ async function confirmarMovimentacao() {
   if (!valor || valor <= 0) {
     mostrarAlert('alert-mov', 'Informe um valor maior que zero.', 'error'); return;
   }
-  const resp = await registrarMovimentacao(tipoMovAtual, numeroCaixaAtual, valor, descricao);
+  const autorizacao = lerAutorizacao('mov');
+  if (autorizacao === undefined) {
+    mostrarAlert('alert-mov', 'Peça ao gerente para digitar nome e senha para autorizar.', 'error'); return;
+  }
+  const resp = await registrarMovimentacao(tipoMovAtual, numeroCaixaAtual, valor, descricao, autorizacao);
   if (!resp.ok) {
     mostrarAlert('alert-mov', await safeReadErrorMessage(resp, 'Erro ao registrar movimentação.'), 'error');
     return;
@@ -272,29 +331,85 @@ async function confirmarMovimentacao() {
 // ── Modal: Encerrar Caixa ─────────────────────────────────────────────────
 
 function abrirModalEncerrar(numero) {
-  if (!PODE_GERIR_FINANCAS_CAIXA) { showToast(mensagemSemPermissao('encerrar'), 'error'); return; }
-  const caixa = caixas.find(c => c.numeroCaixa === numero && c.status === 'ABERTO');
-  const valorSistema = Number(caixa?.saldoAtual || 0);
+  if (!PODE_OPERAR_CAIXA) { showToast(mensagemSemPermissao('encerrar'), 'error'); return; }
   numeroCaixaEncerrar = numero;
   limparAlert('alert-encerrar');
   document.getElementById('encerrar-caixa-num').textContent = `Caixa ${numero}`;
-  document.getElementById('encerrar-valor-sistema').textContent = `R$${valorSistema.toFixed(2)}`;
-  document.getElementById('encerrar-valor-contado').value = valorSistema.toFixed(2);
+  // Fechamento cego: o valor esperado NÃO aparece e o campo começa vazio.
+  // A diferença só é mostrada depois de encerrar.
+  document.getElementById('encerrar-valor-contado').value = '';
   document.getElementById('encerrar-observacao').value = '';
+  prepararAutorizacao('encerrar');
+  prepararAvisoComandas();
   abrirModal('modal-encerrar');
+  setTimeout(() => document.getElementById('encerrar-valor-contado')?.focus(), 50);
+}
+
+// Comanda aberta é cliente que ainda não pagou: o fechamento avisa e pede confirmação.
+async function prepararAvisoComandas(lista) {
+  const aviso = document.getElementById('encerrar-comandas');
+  document.getElementById('encerrar-deixar-comandas').checked = false;
+  let abertas = lista;
+  if (!abertas) {
+    aviso.hidden = true;
+    try {
+      const resp = await fetch('/api/comandas');
+      abertas = resp.ok ? (await resp.json()).filter(c => Number(c.itens) > 0) : [];
+    } catch (e) {
+      abertas = [];
+    }
+  }
+  aviso.hidden = abertas.length === 0;
+  if (!abertas.length) return;
+  const total = abertas.reduce((soma, c) => soma + Number(c.total || 0), 0)
+    .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const numeros = abertas.map(c => c.numero).join(', ');
+  document.getElementById('encerrar-comandas-texto').textContent = abertas.length === 1
+    ? `A comanda ${numeros} ainda não foi paga (${total}).`
+    : `${abertas.length} comandas ainda não foram pagas: ${numeros} (${total}).`;
 }
 
 async function confirmarEncerrar() {
-  if (!PODE_GERIR_FINANCAS_CAIXA) {
+  if (!PODE_OPERAR_CAIXA) {
     mostrarFechamento(null, mensagemSemPermissao('encerrar')); return;
   }
-  const valorContado = parseFloat(document.getElementById('encerrar-valor-contado').value);
+  const campoContado = document.getElementById('encerrar-valor-contado').value.trim();
+  if (campoContado === '') {
+    mostrarAlert('alert-encerrar', 'Conte o dinheiro da gaveta e digite o valor.', 'error');
+    return;
+  }
+  const valorContado = parseFloat(campoContado.replace(',', '.'));
   const observacao = document.getElementById('encerrar-observacao').value.trim();
   if (Number.isNaN(valorContado) || valorContado < 0) {
     mostrarAlert('alert-encerrar', 'Informe um valor contado valido.', 'error');
     return;
   }
-  const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao);
+  const autorizacao = lerAutorizacao('encerrar');
+  if (autorizacao === undefined) {
+    mostrarAlert('alert-encerrar', 'Peça ao gerente para digitar nome e senha para autorizar.', 'error');
+    return;
+  }
+  const avisoComandas = document.getElementById('encerrar-comandas');
+  const deixarComandas = document.getElementById('encerrar-deixar-comandas').checked;
+  if (!avisoComandas.hidden && !deixarComandas) {
+    mostrarAlert('alert-encerrar', 'Há comandas sem pagar. Receba antes, ou marque que elas ficam abertas.', 'error');
+    avisoComandas.scrollIntoView({ block: 'nearest' });
+    return;
+  }
+  const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao, autorizacao, deixarComandas);
+  if (resp.status === 409) {
+    // Abriram uma comanda depois que esta janela abriu.
+    const corpo = await resp.json().catch(() => ({}));
+    await prepararAvisoComandas(corpo.comandasAbertas || []);
+    mostrarAlert('alert-encerrar', corpo.erro || 'Há comandas abertas.', 'error');
+    document.getElementById('encerrar-comandas').scrollIntoView({ block: 'nearest' });
+    return;
+  }
+  if (resp.status === 403) {
+    // Senha do gerente errada: mantém o modal aberto para tentar de novo.
+    mostrarAlert('alert-encerrar', await safeReadErrorMessage(resp, 'Autorização recusada.'), 'error');
+    return;
+  }
   fecharModal('modal-encerrar');
   if (!resp.ok) {
     mostrarFechamento(null, await safeReadErrorMessage(resp, 'Erro ao encerrar caixa.'));
@@ -311,6 +426,7 @@ async function abrirModalMovsLista(caixaId, numeroCaixa) {
     `Movimentações — Caixa ${numeroCaixa} (Sessao ${caixaId})`;
   document.getElementById('movs-lista').innerHTML = '<div class="loading">Carregando</div>';
   abrirModal('modal-movs-lista');
+  preencherResumoOperadores('movs-operadores', caixaId);
   try {
     const resp = await fetch(`/api/caixas/sessoes/${caixaId}/movimentacoes`);
     if (!resp.ok) throw new Error();
@@ -323,12 +439,14 @@ async function abrirModalMovsLista(caixaId, numeroCaixa) {
     container.innerHTML = movs.map(m => {
       const hora      = new Date(m.dataHora).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
       const isEntrada = ['VENDA','SUPRIMENTO','ENTRADA'].includes(m.tipo);
+      const forma     = m.formaPagamento ? ` · ${escapeHtml(ROTULOS_FORMA[m.formaPagamento] || m.formaPagamento)}` : '';
+      const quem      = m.operador ? ` · ${escapeHtml(m.operador)}` : '';
       return `
         <div class="mov-caixa-item">
-          <span class="mov-caixa-badge ${m.tipo.toLowerCase()}">${escapeHtml(m.tipo)}</span>
-          <span class="mov-caixa-desc">${escapeHtml(m.descricao || '—')}</span>
+          <span class="mov-caixa-badge ${m.tipo.toLowerCase()}">${escapeHtml(m.tipo === 'ESTORNO_VENDA' ? 'ESTORNO' : m.tipo)}</span>
+          <span class="mov-caixa-desc">${escapeHtml(m.descricao || '—')}<small class="mov-caixa-meta">${forma}${quem}</small></span>
           <span class="mov-caixa-val ${isEntrada ? 'text-success' : 'text-danger'}">
-            ${isEntrada ? '+' : '−'}R$${(m.valor||0).toFixed(2)}
+            ${isEntrada ? '+' : '−'}${moeda(m.valor)}
           </span>
           <span class="mov-caixa-time">${hora}</span>
         </div>`;
@@ -337,6 +455,59 @@ async function abrirModalMovsLista(caixaId, numeroCaixa) {
     document.getElementById('movs-lista').innerHTML =
       '<div class="empty">Erro ao carregar movimentações.</div>';
   }
+}
+
+// ── Resumo por operador (fechamento e movimentações) ─────────────────────
+
+async function carregarResumoOperadores(caixaId) {
+  const resp = await fetch(`/api/caixas/sessoes/${caixaId}/resumo-operadores`);
+  if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível montar o resumo por operador.'));
+  return resp.json();
+}
+
+function tabelaResumoOperadores(linhas) {
+  if (!linhas || linhas.length === 0) return '<p class="inline-note">Nenhuma movimentação nesta sessão.</p>';
+  const valor = v => Number(v || 0) > 0 ? moeda(v) : '—';
+  const corpo = linhas.map(l => `
+      <tr>
+        <td>${escapeHtml(l.operador)}</td>
+        <td class="num">${l.vendas}</td>
+        <td class="num">${moeda(l.vendido)}</td>
+        <td class="num">${valor(l.dinheiro)}</td>
+        <td class="num">${valor(l.pixECartoes)}</td>
+        <td class="num">${l.cancelamentos > 0 ? `${l.cancelamentos} · ${moeda(l.cancelado)}` : '—'}</td>
+        <td class="num">${valor(l.descontos)}</td>
+        <td class="num">${valor(l.sangrias)}</td>
+      </tr>`).join('');
+  return `
+    <div class="resumo-operadores-rolagem">
+      <table class="resumo-operadores">
+        <thead><tr>
+          <th>Operador</th><th class="num">Vendas</th><th class="num">Vendido</th><th class="num">Dinheiro</th>
+          <th class="num">Pix e cartões</th><th class="num">Cancelou</th><th class="num">Descontos</th><th class="num">Sangrias</th>
+        </tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+    </div>
+    <p class="inline-note">Venda conta para quem finalizou; cancelamento e sangria, para quem fez. "Vendido" é antes dos cancelamentos.</p>`;
+}
+
+async function preencherResumoOperadores(destinoId, caixaId) {
+  const destino = document.getElementById(destinoId);
+  if (!destino) return;
+  destino.innerHTML = '<div class="loading">Carregando</div>';
+  try {
+    destino.innerHTML = tabelaResumoOperadores(await carregarResumoOperadores(caixaId));
+  } catch (error) {
+    destino.innerHTML = `<p class="inline-note">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+/** Imprime só o fechamento, em qualquer impressora instalada no Windows. */
+function imprimirFechamento() {
+  document.body.classList.add('imprimindo-fechamento');
+  window.addEventListener('afterprint', () => document.body.classList.remove('imprimindo-fechamento'), { once: true });
+  window.print();
 }
 
 // ── Card de fechamento ────────────────────────────────────────────────────
@@ -374,25 +545,29 @@ function mostrarFechamento(data, erroMsg) {
           <div class="fechamento-row"><span class="label">Data/Hora</span>
             <span class="value">${timestamp}</span></div>
           <div class="fechamento-row"><span class="label">Saldo Inicial</span>
-            <span class="value">R$${(data.saldoInicial||0).toFixed(2)}</span></div>
+            <span class="value">${moeda(data.saldoInicial)}</span></div>
           <div class="fechamento-row"><span class="label">Total Vendas</span>
-            <span class="value">R$${(data.totalVendas||0).toFixed(2)}</span></div>
+            <span class="value">${moeda(data.totalVendas)}</span></div>
           <div class="fechamento-row"><span class="label">Total Entradas</span>
-            <span class="value">R$${(data.totalEntradas||0).toFixed(2)}</span></div>
+            <span class="value">${moeda(data.totalEntradas)}</span></div>
           <div class="fechamento-row"><span class="label">Total Saídas</span>
-            <span class="value text-danger">R$${(data.totalSaidas||0).toFixed(2)}</span></div>
+            <span class="value text-danger">${moeda(data.totalSaidas)}</span></div>
           <div class="fechamento-row"><span class="label">Movimentações</span>
             <span class="value">${data.quantidadeMovimentacoes??'—'}</span></div>
-          <div class="fechamento-row"><span class="label">Valor Sistema</span>
-            <span class="value">R$${valorSistema.toFixed(2)}</span></div>
-          <div class="fechamento-row"><span class="label">Valor Contado</span>
-            <span class="value">R$${valorContado.toFixed(2)}</span></div>
+          <div class="fechamento-row"><span class="label">Dinheiro esperado</span>
+            <span class="value">${moeda(valorSistema)}</span></div>
+          <div class="fechamento-row"><span class="label">Dinheiro contado</span>
+            <span class="value">${moeda(valorContado)}</span></div>
           <div class="fechamento-row"><span class="label">Divergência</span>
-            <span class="value ${divergenciaClass}">R$${divergencia.toFixed(2)}</span></div>
+            <span class="value ${divergenciaClass}">${moeda(divergencia)}</span></div>
           <div class="fechamento-row total"><span class="label">Observação</span>
             <span class="value">${observacao}</span></div>
         </div>
+        <h4 class="fechamento-subtitulo">Por operador</h4>
+        <div id="fechamento-operadores"></div>
+        <button class="btn btn-secondary btn-sm fechamento-imprimir" type="button" onclick="imprimirFechamento()">Imprimir fechamento</button>
       </div>`;
+    if (data.caixaId) preencherResumoOperadores('fechamento-operadores', data.caixaId);
   }
   container.hidden = false;
   container.scrollIntoView({ behavior: 'smooth' });
@@ -443,6 +618,7 @@ window.StockOSPages.caixas = {
   activate() {
     Object.assign(window, {
     buttonIcon,
+    moeda,
     aplicarPermissoesUI,
     podeExecutarMovimentacao,
     mensagemSemPermissao,
@@ -460,6 +636,7 @@ window.StockOSPages.caixas = {
     abrirModalEncerrar,
     confirmarEncerrar,
     abrirModalMovsLista,
+    imprimirFechamento,
     mostrarFechamento,
     abrirModal,
     fecharModal,

@@ -234,6 +234,13 @@ public class Caixa {
         // Converte na fronteira: double → BigDecimal (seguro via valueOf)
         BigDecimal valor = movimentacao.getValor();
 
+        if (!movimentacao.afetaGaveta()) {
+            // Pix, débito, crédito e voucher não passam pela gaveta: entram nos
+            // totais por forma de pagamento, mas não no saldo em dinheiro.
+            movimentacoes.add(movimentacao);
+            return;
+        }
+
         if (movimentacao.getTipo().isEntrada()) {
             this.saldoAtual = this.saldoAtual.add(valor);
         } else {
@@ -296,11 +303,45 @@ public class Caixa {
      * Subconjunto de {@link #calcularTotalEntradas()}.
      */
     public BigDecimal calcularTotalVendas() {
-        return movimentacoes.stream()
+        BigDecimal vendas = movimentacoes.stream()
                 .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
                 .map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal estornos = movimentacoes.stream()
+                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA)
+                .map(MovimentacaoCaixa::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Total líquido: vendas de todas as formas menos estornos.
+        return vendas.subtract(estornos).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Vendas líquidas (vendas − estornos) por forma de pagamento, na ordem do
+     * enum. Formas sem movimento aparecem com zero.
+     */
+    public java.util.Map<FormaPagamento, BigDecimal> calcularVendasPorForma() {
+        java.util.Map<FormaPagamento, BigDecimal> totais = new java.util.EnumMap<>(FormaPagamento.class);
+        for (FormaPagamento forma : FormaPagamento.values()) {
+            totais.put(forma, BigDecimal.ZERO.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP));
+        }
+        for (MovimentacaoCaixa m : movimentacoes) {
+            if (m.getFormaPagamento() == null) continue;
+            BigDecimal sinal = m.getTipo() == TipoMovimentacaoCaixa.VENDA ? m.getValor()
+                    : m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA ? m.getValor().negate()
+                    : BigDecimal.ZERO;
+            totais.merge(m.getFormaPagamento(), sinal,
+                    (a, b) -> a.add(b).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP));
+        }
+        return totais;
+    }
+
+    /** Quantidade de vendas registradas (cada forma de uma venda conta uma vez por venda). */
+    public long contarVendas() {
+        return movimentacoes.stream()
+                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+                .map(m -> m.getVendaId() != null ? (Object) ("V" + m.getVendaId()) : (Object) ("M" + m.getId() + "@" + System.identityHashCode(m)))
+                .distinct()
+                .count();
     }
 
     // ── Consultas de estado ───────────────────────────────────────────────────

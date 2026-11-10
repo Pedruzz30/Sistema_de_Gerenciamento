@@ -28,9 +28,31 @@ public class EstoqueService {
     private final PedidoRepository pedidoRepository;
     private final Map<Integer, List<NivelEstoque>> historicoNiveis = new HashMap<>();
 
+    public static final String ORIGEM_MOVIMENTACAO_MANUAL = "MOVIMENTACAO_MANUAL";
+    public static final String ORIGEM_NOTA_FISCAL = "NOTA_FISCAL";
+    public static final String ORIGEM_VENDA_CAIXA = "VENDA_CAIXA";
+
+    /**
+     * Saldo único: quando presente, todo movimento passa primeiro pelo saldo
+     * decimal ({@code estoques_produto}) e a coluna legada vira espelho.
+     * Nulo só no modo console legado e em testes antigos.
+     */
+    private final SincronizadorEstoque sincronizador;
+
     public EstoqueService(ProdutoRepository produtoRepository, PedidoRepository pedidoRepository) {
+        this(produtoRepository, pedidoRepository, null);
+    }
+
+    public EstoqueService(ProdutoRepository produtoRepository,
+                          PedidoRepository pedidoRepository,
+                          SincronizadorEstoque sincronizador) {
         this.produtoRepository = produtoRepository;
         this.pedidoRepository = pedidoRepository;
+        this.sincronizador = sincronizador;
+    }
+
+    public boolean usaSaldoUnico() {
+        return sincronizador != null;
     }
 
     public Produto cadastrarProduto(Usuario usuario, String nome, int quantidadeInicial, int quantidadeMinima, double preco) {
@@ -89,7 +111,7 @@ public class EstoqueService {
                 new Produto(
                         0,
                         nome,
-                        quantidadeInicial,
+                        sincronizador == null ? quantidadeInicial : 0,
                         quantidadeMinima,
                         preco,
                         categoriaEstoque,
@@ -99,6 +121,18 @@ public class EstoqueService {
                         ativo
                 )
         );
+        if (sincronizador != null && quantidadeInicial > 0) {
+            produto = sincronizador.aplicarMovimento(
+                    produto,
+                    model.TipoMovimentoEstoque.AJUSTE_POSITIVO,
+                    BigDecimal.valueOf(quantidadeInicial),
+                    null,
+                    "CADASTRO_PRODUTO",
+                    produto.getId(),
+                    usuario.getRu(),
+                    "Estoque inicial no cadastro do produto"
+            ).produtoEspelhado();
+        }
         registrarNivelEstoque(produto);
         return produto;
     }
@@ -154,21 +188,21 @@ public class EstoqueService {
         PoliticaFalta politicaFinal = politicaFalta != null ? politicaFalta : produtoAtual.getPoliticaFalta();
         Boolean ativoFinal = ativo != null ? ativo : produtoAtual.isAtivo();
 
-        Produto produtoAtualizado = produtoRepository.salvar(
-                new Produto(
-                        produtoAtual.getId(),
-                        nome,
-                        produtoAtual.getQuantidadeAtual(),
-                        quantidadeMinima,
-                        preco,
-                        categoriaEstoque,
-                        produtoAtual.isControladoPorEstoque(),
-                        unidadeFinal,
-                        politicaFinal,
-                        ativoFinal
-                )
+        Produto alterado = new Produto(
+                produtoAtual.getId(),
+                nome,
+                produtoAtual.getQuantidadeAtual(),
+                quantidadeMinima,
+                preco,
+                categoriaEstoque,
+                produtoAtual.isControladoPorEstoque(),
+                unidadeFinal,
+                politicaFinal,
+                ativoFinal
         );
-        return produtoAtualizado;
+        // Editar o produto não pode apagar NCM e CEST.
+        alterado.preencherDadosFiscais(produtoAtual.getNcm(), produtoAtual.getCest());
+        return produtoRepository.salvar(alterado);
     }
 
     public Optional<Produto> buscarProdutoPorId(int id) {
@@ -196,7 +230,42 @@ public class EstoqueService {
                                         String descricao) {
         validarPermissaoEdicaoEstoque(usuario);
         Produto produto = buscarProdutoExistente(idProduto);
-        return registrarMovimentacaoInterna(produto, quantidade, tipo, usuario, descricao);
+        return registrarMovimentacaoInterna(produto, quantidade, tipo, usuario, descricao,
+                null, ORIGEM_MOVIMENTACAO_MANUAL, null);
+    }
+
+    /**
+     * Entrada com custo e origem conhecidos (ex.: confirmação de nota fiscal).
+     * O custo alimenta o custo médio do saldo oficial, que o PDV exige para vender.
+     */
+    @Transactional
+    public Pedido registrarEntradaComCusto(int idProduto,
+                                           int quantidade,
+                                           BigDecimal custoUnitario,
+                                           Usuario usuario,
+                                           String descricao,
+                                           String origemTipo,
+                                           long origemId) {
+        validarPermissaoEdicaoEstoque(usuario);
+        Produto produto = buscarProdutoExistente(idProduto);
+        return registrarMovimentacaoInterna(produto, quantidade, TipoMovimentacao.ENTRADA, usuario, descricao,
+                custoUnitario, origemTipo, origemId);
+    }
+
+    /** Custo do produto sem saldo inicial (sem efeito no modo console legado). */
+    @Transactional
+    public void definirCustoInicial(Produto produto, BigDecimal custoUnitario) {
+        if (sincronizador != null) {
+            sincronizador.definirCustoInicial(produto, custoUnitario);
+        }
+    }
+
+    /** Saldo oficial disponível do produto (decimal quando o saldo único está ativo). */
+    public BigDecimal saldoDisponivel(Produto produto) {
+        if (sincronizador == null) {
+            return BigDecimal.valueOf(produto.getQuantidadeAtual());
+        }
+        return sincronizador.saldoDisponivel(produto);
     }
 
     @Transactional
@@ -220,7 +289,10 @@ public class EstoqueService {
                     item.quantidade(),
                     TipoMovimentacao.SAIDA,
                     usuario,
-                    descricaoOrigem
+                    descricaoOrigem,
+                    null,
+                    ORIGEM_VENDA_CAIXA,
+                    null
             );
             total = total.add(
                     produto.getPrecoUnitario().multiply(BigDecimal.valueOf(item.quantidade()))
@@ -273,28 +345,59 @@ public class EstoqueService {
                                                 int quantidade,
                                                 TipoMovimentacao tipo,
                                                 Usuario usuario,
-                                                String descricao) {
+                                                String descricao,
+                                                BigDecimal custoUnitarioEntrada,
+                                                String origemTipo,
+                                                Long origemId) {
         if (produto == null) {
             throw new IllegalArgumentException("Produto nao encontrado.");
         }
         if (quantidade <= 0) {
             throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
         }
-        if (tipo == TipoMovimentacao.SAIDA && produto.getQuantidadeAtual() < quantidade) {
+        if (tipo == TipoMovimentacao.SAIDA
+                && saldoDisponivel(produto).compareTo(BigDecimal.valueOf(quantidade)) < 0) {
             throw new IllegalArgumentException("Quantidade insuficiente em estoque para saida.");
         }
 
         int saldoAnterior = produto.getQuantidadeAtual();
-        int saldoPosterior = tipo.aplicarAoEstoque(saldoAnterior, quantidade);
+        int saldoPosterior;
 
-        produto.atualizarQuantidade(saldoPosterior);
-        produto = produtoRepository.salvar(produto);
+        if (sincronizador != null) {
+            // Saldo oficial (decimal) primeiro; a coluna legada recebe o espelho.
+            produto = sincronizador.aplicarMovimento(
+                    produto,
+                    tipoDecimal(tipo, origemTipo),
+                    BigDecimal.valueOf(quantidade),
+                    custoUnitarioEntrada,
+                    origemTipo,
+                    origemId != null && origemId > 0 ? origemId : produto.getId(),
+                    usuario == null ? null : usuario.getRu(),
+                    descricao
+            ).produtoEspelhado();
+            saldoPosterior = produto.getQuantidadeAtual();
+        } else {
+            saldoPosterior = tipo.aplicarAoEstoque(saldoAnterior, quantidade);
+            produto.atualizarQuantidade(saldoPosterior);
+            produto = produtoRepository.salvar(produto);
+        }
 
         Pedido pedido = pedidoRepository.salvar(
                 new Pedido(0, produto, quantidade, tipo, usuario, descricao, saldoAnterior, saldoPosterior)
         );
         registrarNivelEstoque(produto);
         return pedido;
+    }
+
+    private static model.TipoMovimentoEstoque tipoDecimal(TipoMovimentacao tipo, String origemTipo) {
+        if (tipo == TipoMovimentacao.ENTRADA) {
+            return ORIGEM_NOTA_FISCAL.equals(origemTipo)
+                    ? model.TipoMovimentoEstoque.ENTRADA_COMPRA
+                    : model.TipoMovimentoEstoque.AJUSTE_POSITIVO;
+        }
+        return ORIGEM_VENDA_CAIXA.equals(origemTipo)
+                ? model.TipoMovimentoEstoque.SAIDA_VENDA
+                : model.TipoMovimentoEstoque.AJUSTE_NEGATIVO;
     }
 
     private Produto buscarProdutoExistente(int idProduto) {

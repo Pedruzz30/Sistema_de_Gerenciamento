@@ -170,17 +170,24 @@
     if(historicalTotal!==300000||ticketIndex!==7500+todayCount)
       throw new Error('Cenário de demonstração inconsistente');
     const dailyBoxTotal=[0,0,0];
-    for(const sale of todaySales)dailyBoxTotal[sale.numeroCaixa-1]+=sale.valor;
+    const dailyBoxCash=[0,0,0];
+    const formaCaixa=pagamento=>pagamento==='CARTAO'?'DEBITO':pagamento;
+    for(const sale of todaySales){
+      dailyBoxTotal[sale.numeroCaixa-1]+=sale.valor;
+      if(sale.formaPagamento==='DINHEIRO')dailyBoxCash[sale.numeroCaixa-1]+=sale.valor;
+    }
+    // Gaveta = fundo + só o que foi pago em dinheiro (Pix e cartão não passam por ela).
     db.caixas=dailyBoxTotal.map((value,i)=>({
       id:i+1, caixaId:i+1, numeroCaixa:i+1, status:'ABERTO',
       totalVendas:value, totalEntradas:value, totalSaidas:0,
-      saldoInicial:300, saldoAtual:value+300, nomeOperador:people[i],
+      saldoInicial:300, saldoAtual:dailyBoxCash[i]+300, nomeOperador:people[i],
       dataAbertura:stamp(now,9,0)
     }));
     db.movimentacoesCaixa=todaySales.map((sale,i)=>({
       id:i+1,caixaId:sale.numeroCaixa,numeroCaixa:sale.numeroCaixa,
       tipo:'VENDA',valor:sale.valor,descricao:'Pedido demo #'+sale.id,
-      dataHora:sale.criadaEm,operador:people[sale.numeroCaixa-1]
+      dataHora:sale.criadaEm,operador:people[sale.numeroCaixa-1],
+      formaPagamento:formaCaixa(sale.formaPagamento),vendaId:sale.id
     })).sort((a,b)=>b.dataHora.localeCompare(a.dataHora));
     db.notas=Array.from({length:120},(_,i)=>{
       const issued=days[i%days.length];

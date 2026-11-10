@@ -14,6 +14,7 @@
     "test:performance": "node scripts/test-preview-performance.mjs",
     "test:spa": "node scripts/test-spa-preview.mjs",
     "test:atomic-pdv": "node scripts/test-atomic-pdv-preview.mjs",
+    "test:e2e": "node scripts/test-e2e-real.mjs",
     "test:comandas-demo": "node scripts/test-comandas-demo.mjs",
     "test:quick-actions": "node scripts/test-quick-actions.mjs",
     "test:mobile-shell": "node scripts/test-mobile-shell.mjs",

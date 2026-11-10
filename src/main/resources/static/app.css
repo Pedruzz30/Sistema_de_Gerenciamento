@@ -3596,3 +3596,266 @@ body.bridge-page .bridge-actions a {
     width: 100%;
   }
 }
+
+/* ───────── Relatório do dia e do mês ───────── */
+.relatorio-titulo { margin: 8px 0 12px; font-size: 18px; }
+.relatorio-abc-filtros { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.relatorio-abc { padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; }
+.abc-classe { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 4px; font-weight: 800; text-align: center; color: #fff; }
+.abc-classe--A { background: #15803d; }
+.abc-classe--B { background: #b45309; }
+.abc-classe--C { background: #6b7280; }
+.abc-pouco { color: #b91c1c; font-weight: 700; }
+.relatorio-page .folha-acoes .input { width: auto; min-width: 0; }
+.relatorio-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.relatorio-card { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; }
+.relatorio-card span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #6b6760); }
+.relatorio-card strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.relatorio-card small { font-size: 11px; color: var(--text-muted, #6b6760); }
+.relatorio-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.relatorio-bloco { padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; break-inside: avoid; }
+.relatorio-bloco h3 { margin: 0 0 8px; font-size: 14px; }
+.relatorio-bloco--largo { grid-column: 1 / -1; }
+.relatorio-hora { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 4px; }
+.relatorio-barra { height: 10px; border-radius: 5px; background: #f1f0ec; overflow: hidden; }
+.relatorio-barra i { display: block; height: 100%; background: var(--accent, #c2410c); }
+@media print {
+  .relatorio-page .relatorio-modos, .relatorio-page #btn-imprimir-relatorio { display: none !important; }
+  .relatorio-page .relatorio-grade { grid-template-columns: 1fr 1fr; }
+}
+
+/* ───────── Folha de códigos ───────── */
+.folha-codigos-page { padding: 24px; background: var(--paper, #faf8f4); }
+.folha-cabecalho { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.folha-cabecalho h1 { margin: 0 0 4px; font-size: 24px; }
+.folha-cabecalho p { margin: 0; max-width: 60ch; font-size: 13px; color: var(--text-muted, #6b6760); }
+.folha-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.folha-filtro { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.folha-faltando { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid #fde68a; border-radius: 10px; background: #fffbeb; font-size: 13px; }
+.folha-faltando p { margin: 0; }
+.folha-etiquetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(62mm, 1fr)); gap: 6mm; }
+.etiqueta { padding: 4mm; border: 1px dashed #bbb; border-radius: 3mm; background: #fff; break-inside: avoid; page-break-inside: avoid; text-align: center; }
+.etiqueta-nome { font-weight: 700; font-size: 13px; }
+.etiqueta-detalhe { margin-bottom: 2mm; font-size: 12px; color: #444; }
+.etiqueta .codigo-barras { display: block; width: 46mm; height: auto; margin: 0 auto; }
+.etiqueta-digitar { padding: 4mm 0; font-size: 14px; }
+.folha-comandas-controle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 24px 0 12px; font-size: 13px; }
+.folha-comandas-controle h2 { flex-basis: 100%; margin: 0; font-size: 18px; }
+.folha-comandas-controle p { flex-basis: 100%; margin: 0; color: var(--text-muted, #6b6760); }
+.folha-comandas-controle label { display: flex; align-items: center; gap: 6px; }
+@media print {
+  @page { size: A4; margin: 10mm; }
+  .folha-codigos-page { padding: 0; background: #fff; }
+  .folha-cabecalho p, .folha-acoes, .folha-faltando, #alert-folha, .folha-comandas-controle { display: none !important; }
+  #folha-comandas:not(:empty) { margin-top: 6mm; break-before: page; }
+  .folha-cabecalho { margin-bottom: 4mm; }
+  .folha-etiquetas { grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+}
+
+/* ───────── Resumo por operador e impressão do fechamento ───────── */
+.resumo-operadores-rolagem { overflow-x: auto; }
+.resumo-operadores { width: 100%; border-collapse: collapse; font-size: 13px; }
+.resumo-operadores th, .resumo-operadores td { padding: 6px 8px; border-bottom: 1px solid var(--rule, #e5e2dc); text-align: left; white-space: nowrap; }
+.resumo-operadores th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #6b6760); }
+.resumo-operadores .num { text-align: right; font-variant-numeric: tabular-nums; }
+.fechamento-subtitulo { margin: 16px 0 6px; font-size: 14px; }
+.fechamento-imprimir { margin-top: 10px; }
+.movs-operadores { margin-bottom: 12px; }
+@media print {
+  body.imprimindo-fechamento * { visibility: hidden !important; }
+  body.imprimindo-fechamento #fechamento-container,
+  body.imprimindo-fechamento #fechamento-container * { visibility: visible !important; }
+  body.imprimindo-fechamento #fechamento-container { position: absolute; inset: 0 auto auto 0; width: 100%; opacity: 1 !important; transform: none !important; animation: none !important; }
+  body.imprimindo-fechamento .fechamento-imprimir { display: none !important; }
+  body.imprimindo-fechamento .resumo-operadores { font-size: 11px; }
+}
+
+/* ───────── Cupom de 80 mm ───────── */
+.pdv-cupom-auto { display: flex; align-items: center; gap: 4px; margin-left: auto; margin-right: 8px; font-size: 11px; color: var(--text-muted, #6b6760); cursor: pointer; }
+.cupom { display: none; }
+@page cupom { size: 80mm auto; margin: 2mm; }
+@media print {
+  body.imprimindo-cupom * { visibility: hidden !important; }
+  body.imprimindo-cupom .cupom, body.imprimindo-cupom .cupom * { visibility: visible !important; }
+  body.imprimindo-cupom .cupom { display: block; position: absolute; top: 0; left: 0; page: cupom; }
+}
+.cupom { width: 72mm; padding: 0; color: #000; background: #fff; font: 11px/1.35 ui-monospace, "Courier New", monospace; }
+.cupom h2 { margin: 0; font-size: 13px; text-align: center; }
+.cupom p { margin: 0; }
+.cupom .cupom-centro { text-align: center; }
+.cupom .cupom-linha { display: flex; justify-content: space-between; gap: 6px; }
+.cupom .cupom-linha span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.cupom .cupom-linha span:last-child { white-space: nowrap; }
+.cupom .cupom-total { font-size: 14px; font-weight: 700; }
+.cupom hr { margin: 4px 0; border: 0; border-top: 1px dashed #000; }
+
+/* ───────── Dividir a conta ───────── */
+.pdv-divisao-info { padding: 6px 8px; border-radius: 6px; background: #eff6ff; color: #075985; font-size: 12px; font-weight: 700; }
+.pdv-dividir-lista { display: grid; gap: 6px; }
+.pdv-dividir-linha { display: grid; grid-template-columns: 1fr auto 70px; gap: 8px; align-items: center; font-size: 13px; }
+.pdv-dividir-linha small { color: var(--text-muted, #6b6760); }
+.pdv-dividir-linha input { text-align: center; }
+.pdv-dividir-soma { margin: 4px 0 0; font-size: 14px; }
+
+/* ───────── Comandas ───────── */
+.pdv-comanda-selo { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #0369a1; color: #fff; font-size: 12px; font-weight: 700; }
+.pdv-comanda-abrir { display: grid; gap: 4px; margin-bottom: 10px; font-size: 13px; }
+.pdv-comanda-abrir__linha { display: flex; gap: 8px; }
+#btn-pdv-guardar-comanda { margin-bottom: 10px; }
+.etiqueta--comanda .etiqueta-numero { font-size: 34px; font-weight: 800; line-height: 1.1; }
+
+/* ───────── Código desconhecido no PDV ───────── */
+.pdv-alerta-acao { margin-left: 8px; }
+.pdv-novo-abas { display: flex; gap: 6px; margin-bottom: 10px; }
+.pdv-novo-aba { padding: 6px 10px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; background: none; font: inherit; font-size: 13px; cursor: pointer; }
+.pdv-novo-aba--ativa { border-color: var(--accent, #c2410c); color: var(--accent, #c2410c); font-weight: 700; }
+.pdv-novo-campos { display: grid; gap: 8px; font-size: 13px; }
+.pdv-novo-campos label { display: grid; gap: 4px; }
+.pdv-novo-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pdv-novo-resultados { display: grid; gap: 6px; max-height: 32vh; overflow-y: auto; }
+.pdv-novo-produto { padding: 8px 10px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; }
+.pdv-novo-produto strong { display: block; margin-bottom: 6px; }
+.pdv-novo-variacoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.pdv-novo-variacao { padding: 5px 9px; border: 1px solid var(--rule, #e5e2dc); border-radius: 6px; background: var(--paper-raised, #fff); font: inherit; font-size: 12px; cursor: pointer; }
+.pdv-novo-variacao--escolhida { border-color: var(--accent, #c2410c); background: rgba(194, 65, 12, .08); font-weight: 700; }
+
+/* ───────── Vendas do caixa e cancelamento (F9 no PDV) ───────── */
+.pdv-vendas-lista { display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.pdv-venda-linha { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; width: 100%; padding: 10px 12px; border: 1px solid var(--rule, #e5e2dc); border-radius: 8px; background: var(--paper-raised, #fff); text-align: left; font: inherit; font-size: 13px; cursor: pointer; }
+.pdv-venda-linha:focus-visible, .pdv-venda-linha--ativa { outline: 2px solid var(--accent, #c2410c); outline-offset: 1px; }
+.pdv-venda-linha__hora { font-family: var(--font-mono, ui-monospace, monospace); color: var(--text-muted, #6b6760); }
+.pdv-venda-linha__formas { grid-column: 2 / 4; color: var(--text-muted, #6b6760); font-size: 12px; }
+.pdv-venda-linha--cancelada { opacity: .65; }
+.pdv-venda-linha--cancelada strong { text-decoration: line-through; }
+.pdv-venda-selo { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: #fef2f2; color: #b91c1c; font-size: 11px; font-weight: 700; }
+.pdv-venda-detalhe { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule, #e5e2dc); }
+.pdv-venda-itens { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.pdv-venda-itens li { display: flex; justify-content: space-between; gap: 12px; }
+.pdv-venda-devolver { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fffbeb; font-size: 13px; }
+
+/* ───────── Senha temporária e ajuda no login ───────── */
+.senha-temporaria { margin: 12px 0; padding: 14px; border: 2px dashed var(--accent, #c2410c); border-radius: 10px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 30px; font-weight: 700; letter-spacing: .18em; text-align: center; user-select: all; }
+.login-ajuda { margin: 14px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-muted, #6b6760); }
+.login-ajuda code { font-size: 11px; }
+
+/* ───────── Painel de backup no Dashboard ───────── */
+.backup-painel { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.backup-painel__texto { min-width: 0; overflow-wrap: anywhere; }
+.backup-painel .btn { flex-shrink: 0; }
+.backup-painel--ok { background: #f0fdf4; border-color: #bbf7d0; }
+.backup-painel--atencao { background: #fffbeb; border-color: #fde68a; }
+.backup-painel--erro { background: #fef2f2; border-color: #fecaca; }
+
+/* O atributo hidden sempre esconde, mesmo em elemento cuja classe define display. */
+[hidden] { display: none !important; }
+
+/* ───────── PDV varejo de balcão (código de barras, pagamento, troco) ───────── */
+.pdv-scan { display: grid; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--border, #e5e2dc); }
+.pdv-scan__label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted, #6b6760); }
+.pdv-scan__input { width: 100%; font-size: 22px; font-family: var(--font-mono, ui-monospace, monospace); padding: 12px 14px; border: 2px solid var(--accent, #c2410c); border-radius: 10px; background: #fff; }
+.pdv-scan__input:focus { outline: 3px solid rgba(194, 65, 12, .25); }
+.pdv-scan__hint { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--text-muted, #6b6760); flex-wrap: wrap; }
+.pdv-indicador--ativo { color: #0369a1; font-weight: 700; }
+.pdv-pagamento { display: grid; gap: 8px; margin-top: 4px; }
+/* Pagando, a lista de itens dá lugar ao pagamento: em notebook não cabem os dois. Esc volta aos itens. */
+.pdv-cart-panel { min-height: 0; }
+.pdv-cart-footer { min-height: 0; flex-shrink: 1; overflow-y: auto; }
+.pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-cart-items { display: none; }
+.pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-cart-footer { flex: 1 1 auto; padding: 10px 16px; }
+.pdv-cart-panel:has(.pdv-pagamento:not([hidden])) .pdv-summary-row:not(.pdv-summary-row--total, .pdv-troco, .pdv-desconto-linha, .pdv-pagamento .pdv-summary-row) { display: none; }
+.pdv-desconto-linha .pdv-summary-value { color: #b45309; font-weight: 700; }
+.pdv-desconto-form { display: grid; gap: 6px; padding: 8px; border: 1px dashed var(--border, #d6d3cc); border-radius: 8px; font-size: 12px; }
+.pdv-desconto-form code { font-size: 11px; }
+.pdv-pag-links { display: flex; justify-content: space-between; gap: 8px; }
+.pdv-pag-link { background: none; border: none; color: #0369a1; font-size: 12px; cursor: pointer; padding: 0; }
+.pdv-pagamento .pdv-summary-row { margin-bottom: 0; }
+.pdv-pagamento #btn-pdv-confirmar-pagamento { position: sticky; bottom: 0; z-index: 1; min-height: 42px; }
+#alert-pdv { margin-bottom: 8px; }
+.pdv-formas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.pdv-forma { padding: 7px 10px; border: 1px solid var(--border, #d6d3cc); border-radius: 8px; background: #fff; font-weight: 600; cursor: pointer; text-align: left; }
+.pdv-forma kbd { display: inline-block; min-width: 18px; padding: 0 4px; margin-right: 4px; border: 1px solid #c9c5bd; border-radius: 4px; font-size: 11px; text-align: center; }
+.pdv-forma--ativa { border-color: var(--accent, #c2410c); background: rgba(194, 65, 12, .08); color: var(--accent, #c2410c); }
+.pdv-pag-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+.pdv-pag-campos label { display: grid; gap: 4px; }
+.pdv-pag-campos input { font-size: 16px; padding-block: 6px; min-height: 0; }
+.pdv-pag-dividir { background: none; border: none; color: #0369a1; font-size: 12px; text-align: left; cursor: pointer; padding: 0; }
+.pdv-pag-lista { display: grid; gap: 4px; }
+.pdv-pag-linha { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; font-size: 13px; }
+.pdv-troco .pdv-summary-value { font-size: 24px; font-weight: 800; color: #15803d; }
+.autorizacao-gerente { display: grid; gap: 6px; border: 1px dashed var(--border, #d6d3cc); border-radius: 8px; padding: 10px; }
+.autorizacao-gerente legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
+.mov-caixa-meta { display: block; font-size: 11px; color: var(--text-muted, #6b6760); }
+.mov-caixa-badge.estorno_venda { background: #fef3c7; color: #92400e; }
+
+/* ───────── Bebida rápida (cadastro com leitor) ───────── */
+.revenda-bipe { font-size: 20px; font-family: var(--font-mono, ui-monospace, monospace); border: 2px solid var(--accent, #c2410c); }
+.revenda-fardo { display: grid; gap: 8px; border: 1px dashed var(--border, #d6d3cc); border-radius: 8px; padding: 10px; margin: 0 0 12px; }
+.revenda-fardo legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
+.revenda-status--erro { color: #b91c1c; font-weight: 600; }
+#alert-revenda { position: sticky; top: 0; z-index: 2; margin-bottom: 10px; }
+
+/* ───────── Importar XML da NF-e ───────── */
+.modal--xml { max-width: 920px; width: min(920px, calc(100vw - 32px)); }
+.xml-arquivo { display: grid; gap: 8px; }
+.xml-resumo { display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: rgba(127, 127, 127, .1); margin-bottom: 10px; }
+.xml-avisos { margin: 0 0 10px; padding-left: 18px; color: #b45309; font-weight: 600; }
+.xml-avisos:empty { display: none; }
+.xml-itens { display: grid; gap: 10px; }
+.xml-item { border: 1px solid var(--border, #d6d3cc); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.xml-item header { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.xml-item--ignorado { opacity: .55; }
+.xml-conta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-weight: 600; }
+.xml-conta input { width: 76px; }
+.xml-conta--conferir input { border: 2px solid #d97706; }
+.xml-conta__erro { color: #b91c1c; }
+.xml-conferir { margin: 0; color: #b45309; font-size: 12px; font-weight: 600; }
+.xml-decisao { display: grid; gap: 8px; font-size: 12px; }
+.xml-decisao label { display: grid; gap: 4px; }
+.xml-novo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.xml-novo[hidden], .xml-vincular[hidden] { display: none; }
+.xml-novo__nome { grid-column: 1 / -1; }
+
+/* ───────── Troca de operador e criação de senha ───────── */
+.pdv-trocar-operador { background: none; border: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.senha-form { display: grid; gap: 12px; }
+.senha-form[hidden] { display: none; }
+.senha-form__titulo { margin: 0; font-size: 18px; }
+.senha-form__texto { margin: 0; font-size: 13px; }
+.senha-form__aviso { margin: 0; min-height: 18px; color: #b91c1c; font-size: 13px; font-weight: 600; }
+
+/* Teclas rápidas do caixa (gelo, copo, caldo, porção) */
+.pdv-teclas { display: flex; flex-wrap: wrap; gap: 6px; }
+.pdv-tecla { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--border, #e5e2dc); border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; }
+.pdv-tecla:hover, .pdv-tecla:focus-visible { border-color: var(--accent, #c2410c); }
+.pdv-tecla kbd, .pdv-tecla-config kbd { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; background: #f3f1ec; border-radius: 4px; padding: 1px 5px; }
+.pdv-tecla small { color: var(--text-muted, #6b6760); }
+.pdv-tecla--editar { border-style: dashed; color: #0369a1; }
+.pdv-teclas-config { display: grid; gap: 6px; }
+.pdv-tecla-config { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: center; font-size: 13px; }
+/* Fechamento com comandas sem pagar */
+.encerrar-comandas p { margin: 0 0 6px; }
+.encerrar-comandas__confirmar { display: flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
+
+/* Painel do celular do atendente, no Dashboard */
+.celular-painel { display: flex; align-items: center; gap: 16px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; font-size: 13px; line-height: 1.5; background: #f8fafc; }
+.celular-painel__qr { flex-shrink: 0; width: 132px; height: 132px; background: #fff; }
+.celular-painel__qr svg { display: block; width: 132px; height: 132px; }
+.celular-painel__texto { min-width: 0; overflow-wrap: anywhere; }
+.celular-painel__url { font-family: var(--font-mono, ui-monospace, monospace); font-weight: 600; }
+
+/* Cozinha: pedidos impressos e configuração */
+.cozinha-alerta { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 10px; background: #b91c1c; color: #fff; font-size: 11px; font-weight: 700; }
+/* O corpo da janela é flex em coluna: sem flex-shrink 0 a lista encolhia até sumir. */
+.cozinha-pedidos { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; margin: 8px 0 12px; flex-shrink: 0; }
+.cozinha-config { flex-shrink: 0; }
+.cozinha-pedido { border: 1px solid var(--rule, #e5e2dc); border-left-width: 4px; border-radius: 8px; padding: 8px 10px; }
+.cozinha-pedido--ok { border-left-color: #15803d; }
+.cozinha-pedido--erro { border-left-color: #b91c1c; background: #fef2f2; }
+.cozinha-pedido--espera { border-left-color: #ca8a04; }
+.cozinha-pedido__topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.cozinha-pedido__topo span { color: var(--text-muted, #6b6760); flex: 1; }
+.cozinha-pedido__texto { margin: 6px 0 0; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; white-space: pre-wrap; }
+.cozinha-config summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.cozinha-categorias { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cozinha-categoria { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.cozinha-config__botoes { display: flex; gap: 8px; }

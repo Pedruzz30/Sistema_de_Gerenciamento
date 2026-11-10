@@ -59,7 +59,9 @@ function lerUsuarioPersistido() {
 const usuario = lerUsuarioPersistido();
 if (!usuario) window.location.href = '/login.html';
 
-// ── X-User-RU header injection ──────────────────────────────────────────────
+// ── Chamadas à API ──────────────────────────────────────────────────────────
+// A identidade vem do cookie de sessão (HttpOnly). O servidor descarta o
+// X-User-RU enviado daqui; ele só serve aos testes automatizados.
 (function () {
   const originalFetch = window.fetch.bind(window);
 
@@ -99,7 +101,20 @@ if (!usuario) window.location.href = '/login.html';
       init = Object.assign({}, init || {}, { headers });
     }
 
-    return originalFetch(input, init);
+    const resposta = await originalFetch(input, init);
+    if (isApiCall && !requestUrl.includes('/api/auth/login')) {
+      if (resposta.status === 401) {
+        limparUsuarioPersistido();
+        window.location.href = '/login.html';
+      } else if (resposta.status === 403) {
+        const corpo = await resposta.clone().json().catch(function () { return null; });
+        if (corpo && corpo.codigo === 'SENHA_PROVISORIA') {
+          limparUsuarioPersistido();
+          window.location.href = '/login.html';
+        }
+      }
+    }
+    return resposta;
   };
 })();
 
@@ -178,6 +193,8 @@ window.getCanalVendaAtual = getCanalVendaAtual;
 async function logout() {
   if (window.StockosAuth && window.StockosAuth.isSupabase()) {
     await window.StockosAuth.signOut();
+  } else {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(function () {});
   }
   limparUsuarioPersistido();
   window.location.href = '/login.html';
@@ -359,6 +376,7 @@ async function safeReadErrorMessage(response, fallbackMessage) {
 // ── Page detection ───────────────────────────────────────────────────────────
 function paginaAtual() {
   const path = window.location.pathname;
+  if (path.includes('relatorios')) return 'relatorios';
   if (path.includes('cardapio')) return 'cardapio';
   if (path.includes('estoque')) return 'estoque';
   if (path.includes('fornecedores')) return 'fornecedores';
@@ -389,7 +407,10 @@ function renderSidebar() {
   const atual = paginaAtual();
 
   nav.innerHTML = NAV_ITENS
-    .filter(function (item) { return !item.permsAny || temAlgumaPermissao(item.permsAny); })
+    .filter(function (item) {
+      if (usuario.viaPin) return item.id === 'caixas';
+      return !item.permsAny || temAlgumaPermissao(item.permsAny);
+    })
     .map(function (item) {
       return '<a href="' + item.href + '" class="nav-item ' + (item.id === atual ? 'active' : '') + '">' +
         '<span class="nav-icon" aria-hidden="true">' + iconMarkup(item.icon) + '</span>' +
@@ -405,12 +426,17 @@ const PERMISSOES_POR_PAGINA = {
   notas: [PERMISSOES.VER_COMPRAS],
   caixas: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS],
   cotacoes: [PERMISSOES.VER_FINANCAS],
+  relatorios: [PERMISSOES.VER_FINANCAS],
   funcionarios: [PERMISSOES.GERENCIAR_FUNCIONARIOS],
   logs: [PERMISSOES.VER_LOGS],
 };
 
 function garantirPermissaoDaPagina() {
   const pagina = paginaAtual();
+  if (usuario.viaPin && pagina !== 'caixas') {
+    window.location.replace('/caixas.html');
+    return false;
+  }
   const permissoesNecessarias = PERMISSOES_POR_PAGINA[pagina];
   if (!permissoesNecessarias || temAlgumaPermissao(permissoesNecessarias)) {
     return true;
