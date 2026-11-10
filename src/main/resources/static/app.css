@@ -3662,6 +3662,14 @@ body.bridge-page .bridge-actions a {
 .cupom .cupom-total { font-size: 14px; font-weight: 700; }
 .cupom hr { margin: 4px 0; border: 0; border-top: 1px dashed #000; }
 
+/* ───────── Dividir a conta ───────── */
+.pdv-divisao-info { padding: 6px 8px; border-radius: 6px; background: #eff6ff; color: #075985; font-size: 12px; font-weight: 700; }
+.pdv-dividir-lista { display: grid; gap: 6px; }
+.pdv-dividir-linha { display: grid; grid-template-columns: 1fr auto 70px; gap: 8px; align-items: center; font-size: 13px; }
+.pdv-dividir-linha small { color: var(--text-muted, #6b6760); }
+.pdv-dividir-linha input { text-align: center; }
+.pdv-dividir-soma { margin: 4px 0 0; font-size: 14px; }
+
 /* ───────── Comandas ───────── */
 .pdv-comanda-selo { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #0369a1; color: #fff; font-size: 12px; font-weight: 700; }
 .pdv-comanda-abrir { display: grid; gap: 4px; margin-bottom: 10px; font-size: 13px; }

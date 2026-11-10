@@ -333,9 +333,11 @@
               </label>
             </div>
             <div class="pdv-pag-links">
-              <button type="button" class="pdv-pag-dividir" onclick="adicionarPagamentoPDV()" title="Lança este valor e deixa o resto para outra forma">+ Dividir em outra forma</button>
+              <button type="button" class="pdv-pag-dividir" onclick="adicionarPagamentoPDV()" title="Lança este valor e deixa o resto para outra forma">+ Outra forma</button>
+              <button type="button" class="pdv-pag-link" id="btn-pdv-dividir-conta" onclick="abrirDivisaoPDV()">Dividir (F9)</button>
               <button type="button" class="pdv-pag-link" onclick="abrirDescontoPDV()">Desconto (F3)</button>
             </div>
+            <div id="pdv-divisao-info" class="pdv-divisao-info" hidden></div>
             <div id="pdv-pag-lista" class="pdv-pag-lista"></div>
             <div class="pdv-summary-row"><span class="pdv-summary-label">Falta pagar</span><span class="pdv-summary-value" id="pdv-pag-restante">R$ 0,00</span></div>
             <div class="pdv-summary-row pdv-troco"><span class="pdv-summary-label">TROCO</span><span class="pdv-summary-value" id="pdv-pag-troco">R$ 0,00</span></div>
@@ -385,6 +387,36 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" type="button" onclick="fecharTrocaOperadorPDV()">Cancelar (Esc)</button>
       <button class="btn btn-primary" type="button" id="btn-pdv-operador" onclick="confirmarTrocaOperadorPDV()">Trocar (Enter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: dividir a conta entre pessoas (F9 no pagamento) ── -->
+<div class="modal-overlay" id="modal-pdv-dividir">
+  <div class="modal" role="dialog" aria-labelledby="pdv-dividir-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="pdv-dividir-titulo">Dividir a conta</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharDivisaoPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-dividir" role="status" aria-live="polite"></div>
+      <div class="pdv-novo-abas" role="tablist">
+        <button type="button" class="pdv-novo-aba pdv-novo-aba--ativa" id="pdv-dividir-aba-iguais" onclick="escolherAbaDivisaoPDV('iguais')">Partes iguais</button>
+        <button type="button" class="pdv-novo-aba" id="pdv-dividir-aba-itens" onclick="escolherAbaDivisaoPDV('itens')">Pelos itens de cada pessoa</button>
+      </div>
+      <div id="pdv-dividir-iguais" class="pdv-novo-campos">
+        <label>Em quantas pessoas? <input class="input" type="text" inputmode="numeric" id="pdv-dividir-pessoas" autocomplete="off" oninput="previaDivisaoIgualPDV()"></label>
+        <p class="inline-note" id="pdv-dividir-previa"></p>
+      </div>
+      <div id="pdv-dividir-itens" class="pdv-novo-campos" hidden>
+        <p class="inline-note">Quanto desta pessoa em cada item. O que já foi pago por outra pessoa não aparece.</p>
+        <div id="pdv-dividir-lista" class="pdv-dividir-lista"></div>
+        <p class="pdv-dividir-soma">Esta pessoa: <strong id="pdv-dividir-soma">R$ 0,00</strong></p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="pararDivisaoPDV()" id="btn-pdv-parar-divisao">Parar de dividir</button>
+      <button class="btn btn-primary" type="button" id="btn-pdv-confirmar-divisao" onclick="confirmarDivisaoPDV()">Dividir (Enter)</button>
     </div>
   </div>
 </div>

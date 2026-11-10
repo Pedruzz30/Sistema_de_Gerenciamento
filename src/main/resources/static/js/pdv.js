@@ -966,6 +966,7 @@ async function enviarDescontoPDV(corpo) {
   if (resp.ok) {
     pdvVendaAtual = await resp.json();
     pdvPagamentos = [];
+    pdvDivisao = null;
     renderCarrinho();
   }
   return resp;
@@ -1361,6 +1362,7 @@ function abrirPagamentoPDV() {
   // Aviso antigo (ex.: código não cadastrado) ocuparia o espaço do troco.
   limparAlert('alert-pdv');
   pdvPagamentos = [];
+  pdvDivisao = null;
   selecionarFormaPDV('DINHEIRO');
   document.getElementById('pdv-pagamento').hidden = false;
   document.getElementById('btn-pdv-finalizar').hidden = true;
@@ -1370,6 +1372,7 @@ function abrirPagamentoPDV() {
 
 function cancelarPagamentoPDV() {
   pdvPagamentos = [];
+  pdvDivisao = null;
   const formDesconto = document.getElementById('pdv-desconto-form');
   if (formDesconto) formDesconto.hidden = true;
   retirarDescontoPDV();
@@ -1386,7 +1389,8 @@ function selecionarFormaPDV(codigo) {
   const recebidoWrap = document.getElementById('pdv-pag-recebido-wrap');
   if (recebidoWrap) recebidoWrap.hidden = codigo !== 'DINHEIRO';
   const valor = document.getElementById('pdv-pag-valor');
-  if (valor) valor.value = restantePDV() > 0 ? restantePDV().toFixed(2) : '';
+  const sugerido = valorSugeridoPDV();
+  if (valor) valor.value = sugerido > 0 ? sugerido.toFixed(2) : '';
   const recebido = document.getElementById('pdv-pag-recebido');
   if (recebido) recebido.value = '';
   renderPagamentoPDV();
@@ -1417,9 +1421,27 @@ function adicionarPagamentoPDV() {
       if (recebido < valor) { mostrarAlert('alert-pdv', 'O valor recebido é menor que o valor a pagar.', 'error'); return false; }
     }
   }
-  pdvPagamentos.push({ forma: pdvFormaSelecionada, valor, valorRecebido: recebido });
+  const pagamento = { forma: pdvFormaSelecionada, valor, valorRecebido: recebido };
+  if (pdvDivisao) {
+    pagamento.pessoa = `Pessoa ${pdvPagamentos.length + 1}`;
+    if (pdvDivisao.modo === 'itens') {
+      pagamento.itens = pdvDivisao.pendente || {};
+      pdvDivisao.pendente = null;
+      pdvDivisao.valorPendente = null;
+    }
+  }
+  pdvPagamentos.push(pagamento);
   selecionarFormaPDV(pdvFormaSelecionada);
   renderPagamentoPDV();
+  if (pdvDivisao && restantePDV() > 0) {
+    const troco = pagamento.valorRecebido != null ? arred2(pagamento.valorRecebido - pagamento.valor) : 0;
+    const proximo = pdvDivisao.modo === 'iguais'
+      ? `Pessoa ${pdvPagamentos.length + 1} de ${pdvDivisao.pessoas}: escolha a forma.`
+      : `Escolha os itens da pessoa ${pdvPagamentos.length + 1} em "Dividir a conta" (F9).`;
+    mostrarAlert('alert-pdv', `${pagamento.pessoa} pagou ${formatarMoedaPDV(pagamento.valor)}`
+      + (troco > 0 ? ` · TROCO ${formatarMoedaPDV(troco)}` : '')
+      + `. Falta ${formatarMoedaPDV(restantePDV())}. ${proximo}`, 'success');
+  }
   return true;
 }
 
@@ -1439,19 +1461,30 @@ function renderPagamentoPDV() {
   const rotulo = codigo => (PDV_FORMAS.find(f => f.codigo === codigo) || { rotulo: codigo }).rotulo;
   lista.innerHTML = pdvPagamentos.map((p, i) => `
     <div class="pdv-pag-linha">
-      <span>${escapeHtml(rotulo(p.forma))}</span>
+      <span>${p.pessoa ? escapeHtml(p.pessoa) + ' · ' : ''}${escapeHtml(rotulo(p.forma))}</span>
       <span>${formatarMoedaPDV(p.valor)}${p.valorRecebido != null && p.valorRecebido > p.valor ? ` <small>(recebido ${formatarMoedaPDV(p.valorRecebido)})</small>` : ''}</span>
       <button type="button" class="pdv-item-btn pdv-item-btn--remove" onclick="removerPagamentoPDV(${i})" aria-label="Remover pagamento">x</button>
     </div>`).join('');
   document.getElementById('pdv-pag-restante').textContent = formatarMoedaPDV(Math.max(restantePDV(), 0));
 
   // Troco previsto enquanto a operadora digita o valor recebido.
-  let trocoPrevisto = trocoPDV();
+  // Dividindo, o troco mostrado é o de quem está pagando agora.
+  let trocoPrevisto = pdvDivisao ? 0 : trocoPDV();
   const recebidoDigitado = lerNumeroCampo('pdv-pag-recebido');
   const valorDigitado = lerNumeroCampo('pdv-pag-valor');
   if (pdvFormaSelecionada === 'DINHEIRO' && recebidoDigitado != null) {
     const base = valorDigitado == null ? restantePDV() : valorDigitado;
     trocoPrevisto = arred2(trocoPrevisto + Math.max(recebidoDigitado - base, 0));
+  }
+  const info = document.getElementById('pdv-divisao-info');
+  if (info) {
+    info.hidden = !pdvDivisao || restantePDV() <= 0;
+    if (pdvDivisao) {
+      const pessoa = pdvPagamentos.length + 1;
+      info.textContent = pdvDivisao.modo === 'iguais'
+        ? `Dividindo em ${pdvDivisao.pessoas}: pessoa ${pessoa} de ${pdvDivisao.pessoas}`
+        : `Dividindo pelos itens: pessoa ${pessoa}${pdvDivisao.valorPendente != null ? ' · ' + formatarMoedaPDV(pdvDivisao.valorPendente) : ' · escolha os itens (F9)'}`;
+    }
   }
   document.getElementById('pdv-pag-troco').textContent = formatarMoedaPDV(trocoPrevisto);
   document.getElementById('btn-pdv-confirmar-pagamento').textContent =
@@ -1464,7 +1497,8 @@ async function confirmarPagamentoPDV() {
     if (!ok) return;
   }
   if (restantePDV() > 0) {
-    mostrarAlert('alert-pdv', `Ainda falta ${formatarMoedaPDV(restantePDV())}. Escolha outra forma para o restante.`, 'error');
+    // Dividindo, o aviso de quem pagou e de quem vem depois já está na tela.
+    if (!pdvDivisao) mostrarAlert('alert-pdv', `Ainda falta ${formatarMoedaPDV(restantePDV())}. Escolha outra forma para o restante.`, 'error');
     return;
   }
   await finalizarVendaPDV();
@@ -1486,6 +1520,167 @@ function fecharPDV() {
 // ── Troca de operador por PIN ─────────────────────────────────────────────
 
 let pdvOperadorTrocado = false;
+
+// ── Dividir a conta entre pessoas ────────────────────────────────────────
+// Continua sendo uma venda só: cada pessoa vira um pagamento, com a forma e o troco dela.
+
+let pdvDivisao = null;
+let pdvAbaDivisao = 'iguais';
+
+function valorSugeridoPDV() {
+  const restante = restantePDV();
+  if (!pdvDivisao || restante <= 0) return restante;
+  if (pdvDivisao.modo === 'iguais') {
+    const faltam = pdvDivisao.pessoas - pdvPagamentos.length;
+    if (faltam <= 1) return restante;
+    // Arredonda para baixo; a última pessoa fica com a sobra dos centavos.
+    return Math.min(restante, Math.floor(calcularTotalCarrinho() / pdvDivisao.pessoas * 100) / 100);
+  }
+  return pdvDivisao.valorPendente != null ? Math.min(restante, pdvDivisao.valorPendente) : restante;
+}
+
+/** Quanto de cada item já foi pago por alguém, nesta divisão. */
+function itensJaPagosPDV() {
+  const pagos = {};
+  pdvPagamentos.forEach(p => Object.entries(p.itens || {}).forEach(([id, qtd]) => {
+    pagos[id] = (pagos[id] || 0) + Number(qtd);
+  }));
+  return pagos;
+}
+
+function abrirDivisaoPDV() {
+  if (document.getElementById('pdv-pagamento').hidden) return;
+  limparAlert('alert-pdv-dividir');
+  document.getElementById('pdv-dividir-pessoas').value = pdvDivisao && pdvDivisao.modo === 'iguais' ? String(pdvDivisao.pessoas) : '';
+  previaDivisaoIgualPDV();
+  renderItensDivisaoPDV();
+  document.getElementById('btn-pdv-parar-divisao').hidden = !pdvDivisao;
+  abrirModal('modal-pdv-dividir');
+  escolherAbaDivisaoPDV(pdvDivisao ? pdvDivisao.modo : pdvAbaDivisao);
+}
+
+function escolherAbaDivisaoPDV(aba) {
+  pdvAbaDivisao = aba;
+  document.getElementById('pdv-dividir-iguais').hidden = aba !== 'iguais';
+  document.getElementById('pdv-dividir-itens').hidden = aba !== 'itens';
+  document.getElementById('pdv-dividir-aba-iguais').classList.toggle('pdv-novo-aba--ativa', aba === 'iguais');
+  document.getElementById('pdv-dividir-aba-itens').classList.toggle('pdv-novo-aba--ativa', aba === 'itens');
+  document.getElementById('btn-pdv-confirmar-divisao').textContent = aba === 'iguais' ? 'Dividir (Enter)' : 'Cobrar desta pessoa (Enter)';
+  const foco = aba === 'iguais' ? document.getElementById('pdv-dividir-pessoas') : document.querySelector('[data-dividir-item]');
+  foco?.focus();
+}
+
+function previaDivisaoIgualPDV() {
+  const pessoas = Number(document.getElementById('pdv-dividir-pessoas').value);
+  const previa = document.getElementById('pdv-dividir-previa');
+  const total = calcularTotalCarrinho();
+  if (!Number.isInteger(pessoas) || pessoas < 2) { previa.textContent = `Total: ${formatarMoedaPDV(total)}.`; return; }
+  const parte = Math.floor(total / pessoas * 100) / 100;
+  const ultima = arred2(total - parte * (pessoas - 1));
+  previa.textContent = ultima === parte
+    ? `${pessoas} × ${formatarMoedaPDV(parte)}`
+    : `${pessoas - 1} × ${formatarMoedaPDV(parte)} e a última ${formatarMoedaPDV(ultima)}`;
+}
+
+function renderItensDivisaoPDV() {
+  const pagos = itensJaPagosPDV();
+  const linhas = pdvCarrinho.map(item => {
+    const restante = arred2(Number(item.quantidade || 0) - (pagos[item.id] || 0));
+    if (restante <= 0) return '';
+    return `<label class="pdv-dividir-linha">
+        <span>${escapeHtml(item.item)}${item.variacao ? ' ' + escapeHtml(item.variacao) : ''}<br><small>${formatarMoedaPDV(Number(item.subtotal) / Number(item.quantidade))} cada</small></span>
+        <small>falta ${String(restante).replace('.', ',')}</small>
+        <input class="input" type="text" inputmode="decimal" data-dividir-item="${item.id}" data-maximo="${restante}" value="" placeholder="0" oninput="somarItensDivisaoPDV()">
+      </label>`;
+  }).join('');
+  document.getElementById('pdv-dividir-lista').innerHTML = linhas || '<p class="inline-note">Todos os itens já foram pagos.</p>';
+  somarItensDivisaoPDV();
+}
+
+function lerItensDivisaoPDV() {
+  const escolhidos = {};
+  let erro = null;
+  document.querySelectorAll('[data-dividir-item]').forEach(campo => {
+    const texto = campo.value.trim().replace(',', '.');
+    if (!texto) return;
+    const qtd = Number(texto);
+    if (!Number.isFinite(qtd) || qtd < 0 || qtd > Number(campo.dataset.maximo)) {
+      erro = `Quantidade inválida: no máximo ${String(campo.dataset.maximo).replace('.', ',')}.`;
+    } else if (qtd > 0) {
+      escolhidos[campo.dataset.dividirItem] = qtd;
+    }
+  });
+  return { escolhidos, erro };
+}
+
+function valorItensDivisaoPDV(escolhidos) {
+  const pagos = itensJaPagosPDV();
+  let valor = 0;
+  let cobreTudo = true;
+  pdvCarrinho.forEach(item => {
+    const restante = arred2(Number(item.quantidade || 0) - (pagos[item.id] || 0));
+    const qtd = Number(escolhidos[item.id] || 0);
+    valor += qtd * Number(item.subtotal) / Number(item.quantidade);
+    if (restante > 0 && qtd < restante) cobreTudo = false;
+  });
+  // Quem fica com tudo o que faltava paga o restante exato, sem sobra de centavo.
+  return cobreTudo ? restantePDV() : Math.min(arred2(valor), restantePDV());
+}
+
+function somarItensDivisaoPDV() {
+  const { escolhidos, erro } = lerItensDivisaoPDV();
+  document.getElementById('pdv-dividir-soma').textContent = erro ? '—' : formatarMoedaPDV(valorItensDivisaoPDV(escolhidos));
+}
+
+function confirmarDivisaoPDV() {
+  limparAlert('alert-pdv-dividir');
+  if (pdvAbaDivisao === 'iguais') {
+    const pessoas = Number(document.getElementById('pdv-dividir-pessoas').value);
+    if (!Number.isInteger(pessoas) || pessoas < 2 || pessoas > 50) {
+      mostrarAlert('alert-pdv-dividir', 'Digite de 2 a 50 pessoas.', 'error');
+      return;
+    }
+    if (pdvPagamentos.length > 0) {
+      mostrarAlert('alert-pdv-dividir', 'Já há pagamento lançado. Tire os pagamentos (x) antes de dividir em partes iguais.', 'error');
+      return;
+    }
+    pdvDivisao = { modo: 'iguais', pessoas };
+  } else {
+    const { escolhidos, erro } = lerItensDivisaoPDV();
+    if (erro) { mostrarAlert('alert-pdv-dividir', erro, 'error'); return; }
+    if (Object.keys(escolhidos).length === 0) {
+      mostrarAlert('alert-pdv-dividir', 'Marque quanto desta pessoa em pelo menos um item.', 'error');
+      return;
+    }
+    const valor = valorItensDivisaoPDV(escolhidos);
+    pdvDivisao = { modo: 'itens', pendente: escolhidos, valorPendente: valor };
+  }
+  fecharModal('modal-pdv-dividir');
+  selecionarFormaPDV(pdvFormaSelecionada);
+  limparAlert('alert-pdv');
+  document.getElementById('pdv-pag-valor').focus();
+}
+
+function pararDivisaoPDV() {
+  pdvDivisao = null;
+  fecharModal('modal-pdv-dividir');
+  selecionarFormaPDV(pdvFormaSelecionada);
+  document.getElementById('pdv-pag-valor').focus();
+}
+
+function fecharDivisaoPDV() {
+  fecharModal('modal-pdv-dividir');
+  document.getElementById('pdv-pag-valor')?.focus();
+}
+
+function atalhosDivisaoPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharDivisaoPDV(); return; }
+  if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
+  if (event.key === 'Enter' && event.target && event.target.tagName === 'INPUT') {
+    event.preventDefault();
+    confirmarDivisaoPDV();
+  }
+}
 
 // ── Cupom de 80 mm ───────────────────────────────────────────────────────
 // Impresso pelo navegador, na impressora padrão do Windows. Não é documento fiscal.
@@ -1560,8 +1755,11 @@ function htmlCupomPDV(c) {
   if (c.pagamentos.length) {
     html += '<hr>';
     c.pagamentos.forEach(p => {
-      html += linha(rotulo(p.forma), formatarMoedaPDV(p.valor));
-      if (p.valorRecebido != null && p.valorRecebido > p.valor) html += linha('  Recebido', formatarMoedaPDV(p.valorRecebido));
+      html += linha((p.pessoa ? p.pessoa + ' · ' : '') + rotulo(p.forma), formatarMoedaPDV(p.valor));
+      if (p.valorRecebido != null && p.valorRecebido > p.valor) {
+        html += linha('  Recebido', formatarMoedaPDV(p.valorRecebido));
+        if (p.pessoa) html += linha('  Troco', formatarMoedaPDV(p.valorRecebido - p.valor));
+      }
     });
     if (c.troco > 0) html += linha('TROCO', formatarMoedaPDV(c.troco), 'cupom-total');
   }
@@ -2243,10 +2441,14 @@ function atalhosPDV(event) {
     atalhosComandasPDV(event);
     return;
   }
+  if (document.getElementById('modal-pdv-dividir')?.classList.contains('open')) {
+    atalhosDivisaoPDV(event);
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
-  if (event.key === 'F9') { event.preventDefault(); if (!pagamentoAberto) abrirVendasPDV(); return; }
+  if (event.key === 'F9') { event.preventDefault(); if (pagamentoAberto) abrirDivisaoPDV(); else abrirVendasPDV(); return; }
   if (event.key === 'F7' && !pagamentoAberto) { event.preventDefault(); abrirComandasPDV(); return; }
   if (event.key === 'F8' && !pagamentoAberto) { event.preventDefault(); imprimirConferenciaOuUltimoCupomPDV(); return; }
 
@@ -2359,6 +2561,13 @@ window.StockOSPDV = {
       focarLeituraPDV,
       abrirTrocaOperadorPDV,
       abrirVendasPDV,
+      abrirDivisaoPDV,
+      escolherAbaDivisaoPDV,
+      previaDivisaoIgualPDV,
+      somarItensDivisaoPDV,
+      confirmarDivisaoPDV,
+      pararDivisaoPDV,
+      fecharDivisaoPDV,
       alternarCupomAutomaticoPDV,
       abrirComandasPDV,
       abrirComandaDigitadaPDV,

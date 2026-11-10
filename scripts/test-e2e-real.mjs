@@ -962,15 +962,77 @@ try {
     await dono.focus('#pdv-leitura');
     await dono.keyboard.press('F10');
     await dono.waitForSelector('#pdv-pagamento:not([hidden])');
+
+    // Cada um paga o que consumiu: a pessoa 1 tomou 2 latas, no Pix.
+    await dono.keyboard.press('F9');
+    await dono.waitForSelector('#modal-pdv-dividir.open');
+    await dono.click('#pdv-dividir-aba-itens');
+    await dono.locator('.pdv-dividir-linha', { hasText: 'Skol' }).locator('input').fill('2');
+    await esperarTexto(dono, '#pdv-dividir-soma', 'R$ 9,00');
+    await dono.keyboard.press('Enter');
+    await dono.waitForSelector('#modal-pdv-dividir:not(.open)', { state: 'attached' });
+    assert.equal(await dono.inputValue('#pdv-pag-valor'), '9.00');
+    await esperarTexto(dono, '#pdv-divisao-info', 'pessoa 1');
     await dono.keyboard.press('F6');
     await dono.waitForSelector('[data-forma-pdv="PIX"].pdv-forma--ativa');
     await dono.keyboard.press('Enter');
+    await esperarTexto(dono, '#alert-pdv', 'Pessoa 1 pagou R$ 9,00');
+    await esperarTexto(dono, '#alert-pdv', 'Falta R$ 4,50');
+
+    // A pessoa 2 fica com a lata que falta, em dinheiro, com troco.
+    await dono.keyboard.press('F9');
+    await dono.waitForSelector('#modal-pdv-dividir.open');
+    await esperarTexto(dono, '#pdv-dividir-lista', 'falta 1');
+    await dono.locator('.pdv-dividir-linha', { hasText: 'Skol' }).locator('input').fill('1');
+    await esperarTexto(dono, '#pdv-dividir-soma', 'R$ 4,50');
+    await dono.keyboard.press('Enter');
+    await dono.waitForSelector('#modal-pdv-dividir:not(.open)', { state: 'attached' });
+    await dono.keyboard.press('F5');
+    await dono.fill('#pdv-pag-recebido', '5');
+    await esperarTexto(dono, '#pdv-pag-troco', 'R$ 0,50');
+    await dono.keyboard.press('Enter');
     await esperarTexto(dono, '#alert-pdv', 'Comanda 7 paga');
+    await esperarTexto(dono, '#alert-pdv', 'TROCO R$ 0,50');
+    await dono.focus('#pdv-leitura');
+    await dono.keyboard.press('F8');
+    const cupom = limpar((await dono.evaluate(() => window.__impressoes)).at(-1) || '');
+    for (const valor of ['Pessoa 1 · Pix', 'R$ 9,00', 'Pessoa 2 · Dinheiro', 'R$ 4,50', 'Troco']) {
+      assert.ok(cupom.includes(valor), `${valor} no cupom dividido: ${cupom}`);
+    }
     assert.equal(await dono.locator('#pdv-comanda-label').isVisible(), false);
     const produtos = await api(dono, '/api/produtos');
     assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 87, 'Pagou: baixa as 3 latas');
     const comandas = await api(dono, '/api/comandas');
     assert.equal(comandas.corpo.some(c => c.numero === 7), false, 'Comanda paga sai da lista');
+  });
+
+  await passo(dono, 'Comanda dividida em partes iguais fecha no centavo', async () => {
+    await dono.focus('#pdv-leitura');
+    await bipar(dono, 'c8');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 8');
+    await bipar(dono, `3*${EAN_LATA}`);
+    await esperarTexto(dono, '#pdv-total', 'R$ 13,50');
+    await dono.keyboard.press('F10');
+    await dono.waitForSelector('#pdv-pagamento:not([hidden])');
+    await dono.keyboard.press('F9');
+    await dono.waitForSelector('#modal-pdv-dividir.open');
+    await dono.waitForFunction(() => document.activeElement.id === 'pdv-dividir-pessoas');
+    await dono.keyboard.type('4');
+    await esperarTexto(dono, '#pdv-dividir-previa', '3 × R$ 3,37 e a última R$ 3,39');
+    await dono.keyboard.press('Enter');
+    await dono.waitForSelector('#modal-pdv-dividir:not(.open)', { state: 'attached' });
+    for (const pessoa of [1, 2, 3]) {
+      await esperarTexto(dono, '#pdv-divisao-info', `pessoa ${pessoa} de 4`);
+      assert.equal(await dono.inputValue('#pdv-pag-valor'), '3.37');
+      await dono.keyboard.press('F6');
+      await dono.keyboard.press('Enter');
+      await esperarTexto(dono, '#alert-pdv', `Pessoa ${pessoa} pagou R$ 3,37`);
+    }
+    assert.equal(await dono.inputValue('#pdv-pag-valor'), '3.39', 'A última fica com a sobra');
+    await dono.keyboard.press('Enter');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 8 paga');
+    const produtos = await api(dono, '/api/produtos');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 84);
   });
 
   await passo(dono, 'Sair encerra a sessao', async () => {
