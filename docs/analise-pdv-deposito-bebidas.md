@@ -427,7 +427,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 11. ✅ (seção 17) Instalação local no notebook, sem Docker, + backup automático. **Falta:** conferir no notebook real.
 
 **Fase 2 – Substituir o caderno**
-12. Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário.
+12. 🔶 Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário. Feitos: relatório do dia e do mês, com mais vendidos, margem, operador e hora (seção 27). **Falta:** curva ABC e comparativos.
 13. Estoque mínimo e sugestão de compra por fornecedor.
 14. Inventário pelo celular (câmera no Chrome Android) ou leitor sem fio, bipando a prateleira para contar.
 15. Alerta de faturamento acumulado no ano (limite do MEI, se for o caso).
@@ -1033,6 +1033,41 @@ O cupom tem data, caixa, número da venda, operador, comanda (se houver), itens 
 - **Todos pagam na mesma hora.** Quem sai antes não paga a parte dele e deixa o resto aberto. Para isso, o costume de bar é uma comanda por pessoa, e o sistema já permite: cada um com seu cartão.
 - **Partes iguais exige começar antes de lançar pagamentos.**
 - **Desconto aplicado no meio** recomeça a divisão, porque o total muda.
+
+---
+
+## 27. Relatório do dia e do mês (10/11/2026)
+
+**Onde fica:** no Dashboard, botão **Relatório do dia**, para quem cuida do financeiro. Quem só opera o caixa não vê.
+
+**No dia:**
+
+| Bloco | O que mostra |
+|---|---|
+| Cartões | Faturamento (já sem os cancelamentos), vendas e quantas foram canceladas, ticket médio, margem estimada, descontos e comandas pagas |
+| Formas de pagamento | Quanto entrou em dinheiro, Pix, débito e crédito, já sem o que foi devolvido |
+| Movimento do caixa | Vendido, cancelado, sangrias e suprimentos |
+| Vendas por hora | Quantas vendas e quanto em cada hora, com barras |
+| Por operador | Quem vendeu quanto, em que forma, quem cancelou e quem fez sangria, somando todos os caixas do dia |
+| Produtos mais vendidos | Quantidade, valor e margem estimada de cada produto e versão (gelada, natural, fardo) |
+
+**No mês:** os mesmos totais, o dia a dia e os produtos do mês. As setas andam um dia ou um mês. O botão **Imprimir** sai sem os controles.
+
+**De onde vêm os números:**
+- **Dinheiro:** das movimentações do caixa, o que entrou e saiu de fato. Por isso ele bate com o fechamento.
+- **Produtos e margem:** das vendas pagas no período, inclusive as comandas, pela hora do pagamento.
+- **Margem estimada:** usa o custo médio de cada produto no momento da venda. Depende do custo informado no cadastro e nas notas.
+
+**Testado:**
+- **Unidade:** o mesmo dia do caminho completo da loja, com R$ 91,39 líquidos, 6 vendas (1 cancelada), ticket de R$ 18,28, dinheiro R$ 64,90 e Pix R$ 26,49.
+- **Banco:** a venda com desconto aparece no relatório; o caixa é recusado; data inválida é recusada.
+- **Navegador real:** a página confere com o caixa do dia, e o mês mostra o dia. A versão impressa sai sem botões.
+
+**Limites conhecidos:**
+- **Sem gráfico do mês e sem comparação com o mês anterior.**
+- **Sem exportar para planilha.** Dá para imprimir ou salvar em PDF pela impressão do Windows.
+- **Gelada × natural aparecem como produtos separados**, não como um comparativo pronto.
+- **O mês lê todas as vendas do mês de uma vez.** Com muitos anos de uso, pode ficar mais lento; dá para otimizar depois.
 
 ---
 

@@ -75,7 +75,7 @@ function renderRelatorio(dados) {
     ['Faturamento', moedaRel(r.liquido), r.cancelado > 0 ? `já sem ${moedaRel(r.cancelado)} cancelados` : 'vendas menos cancelamentos'],
     ['Vendas', String(validas), r.cancelamentos > 0 ? `${r.cancelamentos} cancelada${r.cancelamentos === 1 ? '' : 's'}` : 'nenhuma cancelada'],
     ['Ticket médio', moedaRel(r.ticketMedio), 'por venda'],
-    ['Margem estimada', moedaRel(r.margemEstimada), `${percentualMargem}% sobre o custo médio`],
+    ['Margem estimada', moedaRel(r.margemEstimada), `${percentualMargem}% do vendido, pelo custo médio`],
     ['Descontos', moedaRel(r.descontos), 'dados no caixa'],
     ['Comandas pagas', String(r.comandasPagas), 'consumo na loja']
   ];
