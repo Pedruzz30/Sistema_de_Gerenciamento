@@ -1459,6 +1459,8 @@ try {
         await esperarTexto(dono, '#cozinha-pedidos', 'Cancelamento · Comanda 13');
         await esperarTexto(dono, '#cozinha-pedidos', 'Pedido · Comanda 13');
         await esperarTexto(dono, '#cozinha-pedidos', 'Impresso');
+        // A lista precisa aparecer de verdade, não só existir na página.
+        await naTela(dono, '#cozinha-pedidos .cozinha-pedido');
         const antes = (await papeis()).length;
         await dono.locator('.cozinha-pedido', { hasText: 'Pedido · Comanda 13' }).first().locator('[data-reimprimir]').click();
         await esperarTexto(dono, '#alert-cozinha', 'Mandado de novo');

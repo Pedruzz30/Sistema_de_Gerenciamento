@@ -438,7 +438,7 @@ Situação conferida no código em 10/11/2026. ✅ feito; 🔶 em parte; sem mar
 18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
 19. Delivery pelo WhatsApp (se existir).
 
-**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta, transferência e controles (seções 24, 26, 29 e 30). ✅ atendente lançando a comanda pelo celular (seção 31).
+**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta, transferência e controles (seções 24, 26, 29 e 30). ✅ atendente lançando a comanda pelo celular (seções 31 e 32, com iPhone); ✅ pedido impresso para a cozinha (seção 33).
 
 **Fora do escopo (confirmado):** fiado e casco retornável. Comandas entraram em 10/11/2026 (seção 24).
 
@@ -1226,9 +1226,69 @@ Uma faixa abaixo do campo de leitura, com até 8 botões para o que não tem có
 
 **Limites conhecidos:**
 - **Itens com adicionais obrigatórios** (ex.: porção que exige escolher o molho) ainda não se montam no celular: o lançamento é recusado com a mensagem do sistema. Lance esses no caixa.
-- **iPhone:** instalar o certificado tem mais passos (perfil + confiança). O guia na tela explica. Sem ele, funciona com o aviso, e a câmera pode não abrir.
+- **iPhone:** instalar o certificado tem mais passos (perfil + confiança). Melhorado depois, na seção 32.
 - **Antivírus que inspeciona conexões** no notebook (visto com o Norton no computador de desenvolvimento) não afeta o celular, que conecta direto no notebook.
-- **Pedido para a cozinha** (impressão na hora do lançamento) ainda não existe.
+- **Pedido para a cozinha:** feito depois, na seção 33.
+
+---
+
+## 32. iPhone no celular do atendente (10/11/2026)
+
+**O que mudou:** o iPhone tem regras próprias para confiar num certificado e só instala perfil pelo Safari. Agora:
+- **Perfil próprio do iPhone** (`/certificado.mobileconfig`): o mesmo certificado da loja, com o nome "StockOS - celular do atendente". Baixar de novo não duplica.
+- **Guia de acordo com o aparelho:** a tela mostra só o passo a passo do iPhone ou só o do Android. No Chrome ou Firefox do iPhone, ela pede para abrir no Safari e esconde o botão do perfil.
+- **Regras da Apple conferidas no teste:** assinatura SHA-256 ou maior, chave RSA de 2048, validade de no máximo 825 dias (o nosso é de 397) e uso marcado como servidor.
+
+**Testado:**
+- **Unidade:** as regras da Apple no certificado, e um perfil que é um XML válido e sempre o mesmo.
+- **Navegador:** a tela roda no motor do Safari (WebKit) como iPhone 13. Mostra o guia do iPhone e baixa o perfil; a Ana entra pelo PIN e lança 1 Skol na comanda 12, e o caixa vê R$ 4,50. No "Chrome do iPhone", a tela pede o Safari.
+
+**Limites:**
+- **O teste não instala o perfil num iPhone de verdade.** Isso só se confere na loja.
+- **Atalho na tela inicial do iPhone:** ele guarda a entrada separada do Safari, então pede o PIN uma vez a mais.
+
+---
+
+## 33. Pedido impresso para a cozinha (10/11/2026)
+
+**Para que serve:** o atendente lança a porção pelo celular e a cozinha recebe o papel na hora, sem alguém levar o pedido.
+
+**Quando sai o papel:**
+
+| Momento | O que sai |
+|---|---|
+| Atendente lança pelo celular | O que é da cozinha nesse pedido |
+| Caixa guarda a comanda (Esc) ou troca de comanda | O que é da cozinha e ainda não tinha ido |
+| Venda paga (balcão ou comanda) | O que ainda não tinha ido |
+| Item já impresso sai da comanda (com o gerente) | Papel **CANCELAR** com o item |
+| Parte de um item muda de comanda | Nada: o que já foi impresso vai junto |
+
+O papel tem em letra grande "COZINHA" e o número da comanda (ou "BALCÃO - VENDA n"), a hora, quem pediu, os itens com quantidade, os adicionais e a observação.
+
+**O que vai para a cozinha:** as categorias marcadas na configuração. Sem nada marcado, os itens cadastrados como "preparado sob demanda". Bebida não vai.
+
+**Configuração** (botão **Cozinha** no caixa, para quem cuida do estoque ou do financeiro): impressora do Windows, papel de 80 ou 58 mm, categorias e "Imprimir teste". Quem entrou por PIN vê os pedidos e reimprime, mas não configura.
+
+**Como foi feito:**
+- A impressão é feita pelo servidor, direto na térmica pelo Windows (comandos ESC/POS), sem navegador nem janela de impressão. Funciona com a cozinha longe do caixa.
+- O texto sai sem acento, porque cada marca de térmica usa uma tabela de letras diferente. A comanda sai em letra dupla e o papel é cortado no fim.
+- Cada pedido fica gravado (tabelas `pedidos_cozinha` e `pedidos_cozinha_itens`, migração `V20261110_03`), com quanto de cada item já foi. Por isso nada sai em dobro e o cancelamento sabe o que avisar.
+- Uma tarefa imprime a cada 2 segundos o que está esperando. Com a impressora desligada ou sem papel, tenta de novo: depois de 5 s, 10 s, até 1 minuto entre tentativas.
+- O botão **Cozinha** mostra em vermelho quantos pedidos não saíram, também dentro do PDV.
+
+**Testado:**
+- **Unidade:** o que vai para a cozinha. O texto do papel, com comanda, quem pediu, adicionais, observação, quantidade fracionada e cancelamento. Os comandos da térmica: início, letra dupla, só ASCII e corte. E quem pode ver, reimprimir e configurar.
+- **Navegador**, com o papel gravado em arquivo no lugar da térmica:
+  - O dono marca "Porções" e salva.
+  - A Ana lança 2 porções e 1 Skol na comanda 13 pelo celular; o papel sai só com as porções.
+  - Tirar 1 porção imprime "CANCELAR".
+  - A janela mostra os pedidos como impressos, e o "Reimprimir" gera outro papel.
+
+**Limites conhecidos:**
+- **Só impressora térmica (ESC/POS).** Impressora comum, de folha, não está prevista.
+- **Não foi testado numa térmica de verdade.** No Windows do GitHub não há impressora; o papel é conferido em arquivo. Na loja: "Imprimir teste" na configuração.
+- **Sem acento no papel**, de propósito (ver acima).
+- **Uma impressora de cozinha só.** Cozinha e bar separados (dois papéis) ainda não.
 
 ---
 

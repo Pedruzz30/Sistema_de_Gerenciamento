@@ -90,8 +90,9 @@ O atendente lança os pedidos da comanda pelo próprio celular, no Wi-Fi da loja
 1. Conecte o celular no Wi-Fi da loja (o mesmo do notebook).
 2. No Dashboard do notebook, aponte a câmera do celular para o código do quadro **Celular do atendente**, ou digite o endereço que aparece ali (algo como `https://192.168.0.10:8443`).
 3. Na primeira vez, o navegador avisa que a conexão não é particular: toque em **Avançado** e **Continuar**.
-4. Na tela que abrir, toque em **Primeira vez neste celular?** e siga o passo a passo para instalar o certificado da loja. Depois disso o aviso some e a câmera passa a ler o cartão da comanda.
-5. Salve o endereço na tela inicial do celular (menu do navegador, **Adicionar à tela inicial**).
+4. Na tela que abrir, toque em **Primeira vez neste celular?** e siga o passo a passo para instalar o certificado da loja. A tela mostra o passo a passo do aparelho (Android ou iPhone). Depois disso o aviso some e a câmera passa a ler o cartão da comanda.
+   - **iPhone:** abra o endereço no **Safari** (pelo Chrome do iPhone o perfil não instala; a tela avisa). Toque em "Baixar o perfil da loja", depois instale em Ajustes → Geral → VPN e Gerenciamento de Dispositivo, e ligue a confiança em Ajustes → Geral → Sobre → Ajustes de Confiança de Certificado.
+5. Salve o endereço na tela inicial do celular (Android: menu do navegador, **Adicionar à tela inicial**; iPhone: Safari, Compartilhar, **Adicionar à Tela de Início**). No iPhone, o atalho da tela inicial pede o PIN uma vez a mais, porque guarda a entrada separada do Safari.
 
 **No dia a dia:** toque no seu nome e digite o seu PIN. Abra a comanda pelo número ou pela câmera, toque nos produtos, confira o pedido e toque em **Lançar**. Tirar item já lançado e receber o pagamento continuam no caixa.
 
@@ -102,7 +103,21 @@ O atendente lança os pedidos da comanda pelo próprio celular, no Wi-Fi da loja
 | A câmera não abre | Instale o certificado da loja (passo 4) e permita a câmera no navegador. Enquanto isso, digite o número |
 | "PIN incorreto" várias vezes | Depois de 5 erros, aquela pessoa espera 5 minutos |
 
-## 10. Se algo der errado
+## 10. Pedido impresso para a cozinha
+
+Se a loja prepara porções, caldos ou petiscos, o pedido sai impresso na cozinha assim que é lançado. Bebida não vai.
+
+**Uma vez:**
+1. Instale a impressora térmica da cozinha no Windows do notebook (com o programa do fabricante). Pode ser a mesma do caixa, se a cozinha for perto.
+2. No caixa, botão **Cozinha** → **Configurar a impressora da cozinha**.
+3. Escolha a impressora, o papel (80 mm ou 58 mm) e marque o que vai para a cozinha (por exemplo, Porções e Caldos). Sem nada marcado, vão os itens cadastrados como preparo na hora.
+4. **Salvar** e **Imprimir teste**.
+
+**Quando sai o papel:** quando o atendente lança pelo celular, quando o caixa guarda a comanda (Esc) ou troca de comanda, e quando a venda de balcão é paga. O mesmo item não sai duas vezes. Se um item já impresso sai da comanda, sai um papel **CANCELAR**.
+
+**Se a impressora estiver desligada ou sem papel:** o pedido fica guardado e sai sozinho quando ela voltar. O botão **Cozinha** mostra em vermelho quantos não saíram, e cada pedido pode ser reimpresso na janela.
+
+## 11. Se algo der errado
 
 | Problema | O que tentar |
 |---|---|

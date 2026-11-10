@@ -30,6 +30,10 @@ Celular do atendente
 - Uma vez: abra "Liberar celular.cmd" na pasta C:\StockOS e aceite o pedido do Windows.
 - No Dashboard aparece o código para o celular abrir pelo Wi-Fi da loja.
 - Na primeira vez em cada celular, toque em "Primeira vez neste celular?" e instale o certificado da loja.
+  No iPhone, abra pelo Safari.
+
+Cozinha
+- No caixa, botão "Cozinha": escolha a impressora térmica da cozinha e o que vai para lá.
 
 Esqueceu a senha
 - Funcionário: o gerente redefine em Funcionários, botão "Redefinir senha".
