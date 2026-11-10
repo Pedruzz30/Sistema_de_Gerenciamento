@@ -13,4 +13,8 @@ public interface JpaComandaRepository extends JpaRepository<Comanda, Long> {
     Optional<Comanda> findFirstByVendaId(long vendaId);
 
     List<Comanda> findByStatusOrderByNumeroAsc(Comanda.Status status);
+
+    long countByStatusAndFechadaEmGreaterThanEqualAndFechadaEmLessThan(Comanda.Status status,
+                                                                       java.time.LocalDateTime inicio,
+                                                                       java.time.LocalDateTime fim);
 }

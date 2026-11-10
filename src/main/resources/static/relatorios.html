@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockOS — Relatório</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="folha-codigos-page relatorio-page">
+
+<header class="folha-cabecalho">
+  <div>
+    <h1>Relatório</h1>
+    <p>O que entrou no caixa, em que forma, quem vendeu e o que mais saiu.</p>
+  </div>
+  <div class="folha-acoes">
+    <div class="pdv-novo-abas relatorio-modos">
+      <button type="button" class="pdv-novo-aba pdv-novo-aba--ativa" id="rel-modo-dia" onclick="escolherModoRelatorio('dia')">Dia</button>
+      <button type="button" class="pdv-novo-aba" id="rel-modo-mes" onclick="escolherModoRelatorio('mes')">Mês</button>
+    </div>
+    <button class="btn btn-secondary btn-sm" type="button" onclick="andarRelatorio(-1)" aria-label="Anterior">◀</button>
+    <input class="input" type="date" id="rel-data" onchange="carregarRelatorio()">
+    <input class="input" type="month" id="rel-mes" onchange="carregarRelatorio()" hidden>
+    <button class="btn btn-secondary btn-sm" type="button" onclick="andarRelatorio(1)" aria-label="Próximo">▶</button>
+    <button class="btn btn-primary" type="button" id="btn-imprimir-relatorio" onclick="window.print()">Imprimir</button>
+    <a class="btn btn-secondary" href="/dashboard.html">Voltar</a>
+  </div>
+</header>
+
+<div class="alert-modal" id="alert-relatorio" role="status" aria-live="polite"></div>
+<h2 class="relatorio-titulo" id="rel-titulo"></h2>
+
+<section class="relatorio-cards" id="rel-cards"></section>
+
+<section class="relatorio-grade">
+  <div class="relatorio-bloco"><h3>Formas de pagamento</h3><div id="rel-formas"></div></div>
+  <div class="relatorio-bloco"><h3>Movimento do caixa</h3><div id="rel-extras"></div></div>
+  <div class="relatorio-bloco" id="rel-bloco-horas"><h3>Vendas por hora</h3><div id="rel-horas"></div></div>
+  <div class="relatorio-bloco" id="rel-bloco-dias" hidden><h3>Dia a dia</h3><div id="rel-dias"></div></div>
+  <div class="relatorio-bloco relatorio-bloco--largo" id="rel-bloco-operadores"><h3>Por operador</h3><div id="rel-operadores"></div></div>
+  <div class="relatorio-bloco relatorio-bloco--largo"><h3>Produtos mais vendidos</h3><div id="rel-produtos"></div></div>
+</section>
+
+<script src="/js/stockos-auth.js"></script>
+<script src="/js/shared.js"></script>
+<script src="/js/relatorios.js"></script>
+</body>
+</html>

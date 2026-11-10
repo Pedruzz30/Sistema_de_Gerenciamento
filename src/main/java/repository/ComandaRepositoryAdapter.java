@@ -35,4 +35,9 @@ public class ComandaRepositoryAdapter implements ComandaRepository {
     public List<Comanda> listarAbertas() {
         return delegate.findByStatusOrderByNumeroAsc(Comanda.Status.ABERTA);
     }
+
+    @Override
+    public long contarFechadasEntre(java.time.LocalDateTime inicio, java.time.LocalDateTime fim) {
+        return delegate.countByStatusAndFechadaEmGreaterThanEqualAndFechadaEmLessThan(Comanda.Status.FECHADA, inicio, fim);
+    }
 }

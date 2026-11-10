@@ -18,6 +18,11 @@ public class CaixaRepositoryAdapter implements CaixaRepository {
     }
 
     @Override
+    public List<Caixa> listarAtivosNoPeriodo(java.time.LocalDateTime inicio, java.time.LocalDateTime fim) {
+        return delegate.listarAtivosNoPeriodo(inicio, fim);
+    }
+
+    @Override
     public long proximoId() {
         return delegate.findTopByOrderByIdDesc()
                 .map(caixa -> caixa.getId() + 1)

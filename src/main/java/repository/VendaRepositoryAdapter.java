@@ -33,6 +33,11 @@ public class VendaRepositoryAdapter implements VendaRepository {
     }
 
     @Override
+    public List<Venda> listarFinalizadasEntre(java.time.LocalDateTime inicio, java.time.LocalDateTime fim) {
+        return delegate.listarFinalizadasEntre(inicio, fim);
+    }
+
+    @Override
     public List<Venda> listar(Long filialId,
                               StatusVenda status,
                               Long usuarioId,

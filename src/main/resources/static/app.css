@@ -3597,6 +3597,25 @@ body.bridge-page .bridge-actions a {
   }
 }
 
+/* ───────── Relatório do dia e do mês ───────── */
+.relatorio-titulo { margin: 8px 0 12px; font-size: 18px; }
+.relatorio-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.relatorio-card { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; }
+.relatorio-card span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #6b6760); }
+.relatorio-card strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.relatorio-card small { font-size: 11px; color: var(--text-muted, #6b6760); }
+.relatorio-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.relatorio-bloco { padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; break-inside: avoid; }
+.relatorio-bloco h3 { margin: 0 0 8px; font-size: 14px; }
+.relatorio-bloco--largo { grid-column: 1 / -1; }
+.relatorio-hora { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 4px; }
+.relatorio-barra { height: 10px; border-radius: 5px; background: #f1f0ec; overflow: hidden; }
+.relatorio-barra i { display: block; height: 100%; background: var(--accent, #c2410c); }
+@media print {
+  .relatorio-page .relatorio-modos, .relatorio-page #btn-imprimir-relatorio { display: none !important; }
+  .relatorio-page .relatorio-grade { grid-template-columns: 1fr 1fr; }
+}
+
 /* ───────── Folha de códigos ───────── */
 .folha-codigos-page { padding: 24px; background: var(--paper, #faf8f4); }
 .folha-cabecalho { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }

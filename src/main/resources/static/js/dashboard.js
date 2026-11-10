@@ -66,6 +66,8 @@ function renderSituacaoBackup(situacao) {
 
 async function carregarSituacaoBackup() {
   if (!PODE_VER_RENTABILIDADE_DASH) return;
+  const relatorio = document.getElementById('btn-relatorio-dia');
+  if (relatorio) relatorio.hidden = false;
   try {
     const resp = await fetch('/api/sistema/backup');
     if (resp.ok) renderSituacaoBackup(await resp.json());

@@ -18,6 +18,10 @@ public interface JpaVendaRepository extends JpaRepository<Venda, Long> {
     @Query("select v from Venda v where v.id = :id")
     Optional<Venda> findByIdForUpdate(@Param("id") long id);
 
+    @Query("select v from Venda v where v.finalizadaEm >= :inicio and v.finalizadaEm < :fim order by v.finalizadaEm")
+    List<Venda> listarFinalizadasEntre(@Param("inicio") java.time.LocalDateTime inicio,
+                                       @Param("fim") java.time.LocalDateTime fim);
+
     @Query("""
             select v from Venda v
             where (:filialId is null or v.filialId = :filialId)

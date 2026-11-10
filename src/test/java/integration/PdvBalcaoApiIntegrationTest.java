@@ -356,6 +356,14 @@ class PdvBalcaoApiIntegrationTest {
         assertBig("50", caixaAberto(numeroCaixa).path("dinheiroNaGaveta").decimalValue());
         assertEquals(24 - 3 - 12, quantidadeNaTelaDeEstoque(produtoId));
 
+        // O relatório do dia já conta a venda e o desconto; o caixa não vê o relatório.
+        JsonNode relatorio = json(assertOk(get("/api/relatorios/dia", gerente)));
+        assertTrue(relatorio.path("resumo").path("liquido").decimalValue().compareTo(new BigDecimal("50")) >= 0);
+        assertTrue(relatorio.path("resumo").path("descontos").decimalValue().compareTo(new BigDecimal("5")) >= 0);
+        assertEquals(HttpStatus.FORBIDDEN, get("/api/relatorios/dia", caixa).getStatusCode());
+        assertTrue(get("/api/relatorios/dia?data=ontem", gerente).getStatusCode().is4xxClientError());
+        assertOk(get("/api/relatorios/mes", gerente));
+
         // O resumo por operador mostra a venda e o desconto no nome de quem operou.
         JsonNode resumo = json(assertOk(get("/api/caixas/sessoes/" + caixaAberto(numeroCaixa).path("caixaId").asLong()
                 + "/resumo-operadores", caixa)));

@@ -1035,6 +1035,36 @@ try {
     assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 84);
   });
 
+  await passo(dono, 'Relatorio do dia confere com o caixa', async () => {
+    await dono.goto(`${BASE}/dashboard.html`);
+    await dono.click('#btn-relatorio-dia');
+    await dono.waitForURL('**/relatorios.html');
+    await botoesLigados(dono);
+    await dono.waitForSelector('.relatorio-card');
+    const cards = limpar(await dono.textContent('#rel-cards'));
+    for (const valor of ['FaturamentoR$ 91,39', 'já sem R$ 4,50 cancelados', 'Vendas5', '1 cancelada', 'Ticket médioR$ 18,28', 'DescontosR$ 1,00', 'Comandas pagas2']) {
+      assert.ok(cards.includes(valor), `${valor} nos cartões: ${cards}`);
+    }
+    const formas = limpar(await dono.textContent('#rel-formas'));
+    assert.ok(formas.includes('DinheiroR$ 64,90') && formas.includes('PixR$ 26,49'), formas);
+    const primeiro = limpar(await dono.locator('#rel-produtos tbody tr').first().textContent());
+    assert.ok(primeiro.startsWith('Skol lata 350ml Gelada') && primeiro.includes('11') && primeiro.includes('R$ 48,50'), primeiro);
+    const operadores = limpar(await dono.locator('#rel-operadores tbody tr').first().textContent());
+    assert.ok(operadores.startsWith('Admin Superior'), operadores);
+    await naTela(dono, '#rel-cards');
+  });
+
+  await passo(dono, 'Relatorio do mes mostra o dia e imprime sem botoes', async () => {
+    await dono.click('#rel-modo-mes');
+    await dono.waitForSelector('#rel-dias tbody tr');
+    assert.ok(limpar(await dono.textContent('#rel-dias')).includes('R$ 91,39'));
+    await dono.emulateMedia({ media: 'print' });
+    assert.equal(await dono.locator('#btn-imprimir-relatorio').isVisible(), false);
+    assert.equal(await dono.locator('#rel-cards').isVisible(), true);
+    await print(dono, 'relatorio-no-papel');
+    await dono.emulateMedia({ media: 'screen' });
+  });
+
   await passo(dono, 'Sair encerra a sessao', async () => {
     await dono.goto(`${BASE}/estoque.html`);
     // Sair troca de página: chamar depois de responder evita disputar com a navegação.

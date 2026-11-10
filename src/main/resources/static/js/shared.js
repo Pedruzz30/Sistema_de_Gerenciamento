@@ -376,6 +376,7 @@ async function safeReadErrorMessage(response, fallbackMessage) {
 // ── Page detection ───────────────────────────────────────────────────────────
 function paginaAtual() {
   const path = window.location.pathname;
+  if (path.includes('relatorios')) return 'relatorios';
   if (path.includes('cardapio')) return 'cardapio';
   if (path.includes('estoque')) return 'estoque';
   if (path.includes('fornecedores')) return 'fornecedores';
@@ -425,6 +426,7 @@ const PERMISSOES_POR_PAGINA = {
   notas: [PERMISSOES.VER_COMPRAS],
   caixas: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS],
   cotacoes: [PERMISSOES.VER_FINANCAS],
+  relatorios: [PERMISSOES.VER_FINANCAS],
   funcionarios: [PERMISSOES.GERENCIAR_FUNCIONARIOS],
   logs: [PERMISSOES.VER_LOGS],
 };

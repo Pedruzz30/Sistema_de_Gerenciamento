@@ -55,6 +55,14 @@ public class AppConfig {
     }
 
     @Bean
+    public RelatorioVendasService relatorioVendasService(CaixaRepository caixaRepository,
+                                                         VendaRepository vendaRepository,
+                                                         VendaItemRepository vendaItemRepository,
+                                                         ComandaRepository comandaRepository) {
+        return new RelatorioVendasService(caixaRepository, vendaRepository, vendaItemRepository, comandaRepository);
+    }
+
+    @Bean
     public ComandaService comandaService(ComandaRepository comandaRepository,
                                          VendaService vendaService,
                                          VendaRepository vendaRepository,

@@ -30,5 +30,9 @@ public interface JpaCaixaRepository extends JpaRepository<Caixa, Long> {
     @EntityGraph(attributePaths = {"operadorAtual", "movimentacoes", "movimentacoes.operador"})
     List<Caixa> findAllByOrderByIdAsc();
 
+    @org.springframework.data.jpa.repository.Query("select c from Caixa c where c.dataAbertura < :fim and (c.dataEncerramento is null or c.dataEncerramento >= :inicio) order by c.id")
+    List<Caixa> listarAtivosNoPeriodo(@org.springframework.data.repository.query.Param("inicio") java.time.LocalDateTime inicio,
+                                      @org.springframework.data.repository.query.Param("fim") java.time.LocalDateTime fim);
+
     Optional<Caixa> findTopByOrderByIdDesc();
 }

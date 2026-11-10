@@ -10,4 +10,5 @@ public interface ComandaRepository {
     Optional<Comanda> buscarAbertaPorNumero(int numero);
     Optional<Comanda> buscarPorVendaId(long vendaId);
     List<Comanda> listarAbertas();
+    long contarFechadasEntre(java.time.LocalDateTime inicio, java.time.LocalDateTime fim);
 }
