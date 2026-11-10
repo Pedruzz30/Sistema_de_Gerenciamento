@@ -973,7 +973,7 @@ Os produtos com código de fábrica ficam fora da folha, mas uma opção mostra 
 **Limites conhecidos:**
 - **Um aparelho só:** os pedidos são lançados no PDV. Celular de atendente ou segundo computador exigem rede local e HTTPS.
 - **Divisão da conta:** feita depois, na seção 26.
-- **Sem transferir itens entre comandas** nem juntar duas comandas.
+- **Transferir e juntar comandas:** feito depois, na seção 29.
 - **Se o estoque acabar** enquanto a comanda está aberta, o pagamento é recusado, como no balcão. Corrija o estoque e pague de novo.
 - **A demonstração não tem comandas.**
 
@@ -1096,6 +1096,40 @@ O produto que cruza a faixa fica na classe de cima, como é o costume. Gelada, n
 - **A cobertura usa a média do período inteiro.** Num período com poucos dias de venda, ela parece maior do que é. Para comprar, olhe um período de movimento normal.
 - **O estoque é o de agora**, não o do fim do período escolhido.
 - **Sem sugestão de quanto comprar.** Pode vir depois, juntando a cobertura com o estoque mínimo.
+
+---
+
+## 29. Transferir itens e juntar comandas (10/11/2026)
+
+**Para que serve:** lançou na comanda errada, o cliente mudou de mesa, um grupo virou um só, ou a venda foi bipada no balcão e o cliente vai consumir na loja.
+
+**Como funciona:** com a conta aberta no PDV (comanda ou balcão), aperte **F6** ou o botão **Transferir**, no topo do pedido.
+1. Digite o número da comanda de destino. Se ela não estiver aberta, abre.
+2. Para cada item, diga quanto vai. O padrão é tudo; os botões "Tudo" e "Nada" ajudam.
+3. Enter.
+
+| Situação | Resultado |
+|---|---|
+| Parte de um item (1 de 3 latas) | A linha de origem fica com 2, e a de destino ganha 1 |
+| Item com adicionais (ex.: porção com molho) | Vai inteiro, com os adicionais; parte dele é recusada |
+| Tudo da comanda | A comanda de origem é juntada na outra e fecha |
+| Do balcão | Os itens vão para a comanda, e o caixa volta ao balcão quando não sobra nada |
+
+**Regras:**
+- Não muda o estoque: ele só baixa quando a comanda é paga.
+- O desconto do item transferido fica para trás, porque o desconto é dado no pagamento.
+- Não transfere para a mesma comanda, nem mais do que tem.
+- A transferência fica no log, com quem fez.
+
+**Como foi feito:** numa única operação no servidor (`POST /api/comandas/{destino}/transferir`), que trava as duas contas sempre na mesma ordem, para dois caixas não se travarem. O item inteiro só troca de conta, levando junto os adicionais e as partes. Na parte de um item, a linha de origem é reduzida e uma nova é criada no destino.
+
+**Testado:**
+- **Banco:** 1 de 3 latas para outra comanda (R$ 10 + R$ 5), recusa de quantidade maior que a que existe e de transferir para a mesma comanda, e junção que fecha a comanda de origem.
+- **Navegador real:** 2 latas bipadas no balcão vão para a comanda 9, uma de cada vez. A comanda 10 é juntada na 9 e fecha. A comanda 9 fica com as 3 latas, e o estoque não muda.
+
+**Limites conhecidos:**
+- **Parte de item com adicionais não se transfere.** Vai o item inteiro.
+- **Não transfere entre comandas pagas.** Venda paga se corrige pelo cancelamento (F9).
 
 ---
 
