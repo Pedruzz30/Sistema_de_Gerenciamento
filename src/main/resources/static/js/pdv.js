@@ -37,8 +37,25 @@ async function abrirPDV(numeroCaixa) {
   limparAlert('alert-pdv');
 
   abrirModal('modal-pdv');
+  mostrarPainelPDVMobile('produtos');
   renderCarrinho();
   await carregarCardapioPDV();
+}
+
+function mostrarPainelPDVMobile(painel) {
+  if (painel !== 'produtos' && painel !== 'pedido') return;
+  const shell = document.getElementById('pdv-shell');
+  if (!shell) return;
+  shell.dataset.mobilePanel = painel;
+  for (const [id, active] of [
+    ['pdv-mobile-produtos', painel === 'produtos'],
+    ['pdv-mobile-pedido', painel === 'pedido']
+  ]) {
+    const button = document.getElementById(id);
+    if (!button) continue;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
 }
 
 async function carregarCardapioPDV() {
@@ -849,6 +866,8 @@ function renderCarrinho() {
   const qtdItens = pdvCarrinho.reduce((soma, entry) => soma + Number(entry.quantidade || 0), 0);
 
   if (elQtd) elQtd.textContent = qtdItens > 0 ? `${qtdItens} ite${qtdItens === 1 ? 'm' : 'ns'}` : '';
+  const mobileBadge = document.getElementById('pdv-mobile-cart-badge');
+  if (mobileBadge) mobileBadge.textContent = `${qtdItens} ite${qtdItens === 1 ? 'm' : 'ns'}`;
 
   if (pdvCarrinho.length === 0) {
     empty.hidden = false;
@@ -1016,6 +1035,7 @@ window.StockOSPDV = {
   activate() {
     Object.assign(window, {
       abrirPDV,
+      mostrarPainelPDVMobile,
       carregarCardapioPDV,
       carregarVariacoesItemPDV,
       getCategoriaConfig,
