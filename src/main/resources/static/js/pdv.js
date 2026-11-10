@@ -1607,6 +1607,7 @@ async function confirmarTransferenciaPDV() {
       pdvCarrinho = itensAtivosVendaPDV();
       renderCarrinho();
     }
+    renderCardapio();
     const quantos = `${resultado.itensMovidos} ${resultado.itensMovidos === 1 ? 'item transferido' : 'itens transferidos'} para a comanda ${destino}`;
     mostrarAlert('alert-pdv', resultado.comandaOrigemFechada
       ? `Comanda ${resultado.comandaOrigemFechada} juntada na ${destino}: ${quantos}. A ${resultado.comandaOrigemFechada} foi fechada.`
@@ -1955,6 +1956,7 @@ async function abrirComandaPDV(numero) {
   pdvComandaAtual = { numero };
   atualizarComandaPDV();
   renderCarrinho();
+  renderCardapio();
   bipPDV(true);
   const quantidade = pdvCarrinho.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
   mostrarAlert('alert-pdv', quantidade > 0
@@ -1973,6 +1975,7 @@ function guardarComandaPDV() {
   pdvDraftPayloadPorItemVenda = {};
   atualizarComandaPDV();
   renderCarrinho();
+  renderCardapio();
   mostrarAlert('alert-pdv', `Comanda ${numero} guardada com ${formatarMoedaPDV(total)}. O caixa voltou ao balcão.`, 'info');
   focarLeituraPDV();
 }

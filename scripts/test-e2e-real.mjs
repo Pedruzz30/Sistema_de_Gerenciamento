@@ -1074,6 +1074,7 @@ try {
     const { corpo } = await api(dono, '/api/comandas');
     assert.equal(corpo.find(c => c.numero === 9).total, 13.5, 'A comanda 9 ficou com as 3 latas');
     assert.equal(corpo.some(c => c.numero === 10), false, 'A comanda juntada fecha');
+    assert.equal(await dono.evaluate(() => document.querySelectorAll('.pdv-card__badge').length), 0, 'O catálogo não mostra item no pedido vazio');
     const produtos = await api(dono, '/api/produtos');
     assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 84, 'Transferir não mexe no estoque');
   });
