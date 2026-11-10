@@ -95,6 +95,10 @@ public class SessaoFilter extends OncePerRequestFilter {
         if (dentroDe(caminho, "/api/pdv/codigos")) {
             return leitura;
         }
+        // Teclas rápidas: mudar pede o login do gerente no pedido.
+        if (dentroDe(caminho, "/api/pdv/teclas")) {
+            return leitura || "PUT".equalsIgnoreCase(metodo);
+        }
         // Cadastro feito do caixa: quem não pode cadastrar precisa do login do gerente no pedido.
         if (dentroDe(caminho, "/api/pdv/cadastro")) {
             return "POST".equalsIgnoreCase(metodo);

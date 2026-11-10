@@ -195,7 +195,7 @@ class PdvBalcaoApiIntegrationTest {
 
         // Encerramento: compara só o dinheiro contado.
         JsonNode fechamento = json(assertOk(post("/api/caixas/encerrar", Map.of(
-                "numeroCaixa", numeroCaixa, "valorContado", "55.00", "observacao", "",
+                "numeroCaixa", numeroCaixa, "valorContado", "55.00", "observacao", "", "deixarComandasAbertas", true,
                 "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")
         ), caixa)));
         assertBig("-5", fechamento.path("divergencia").decimalValue());
@@ -235,6 +235,97 @@ class PdvBalcaoApiIntegrationTest {
         assertEquals(origem, juntar.path("comandaOrigemFechada").asInt());
         assertBig("15", totalComanda(destino));
         assertEquals(null, totalComanda(origem), "A comanda juntada sai da lista");
+    }
+
+    @Test
+    void tirarItemDaComandaPedeGerenteEMotivo() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "2");
+        int numero = 9000 + SEQUENCIA.incrementAndGet() % 900;
+        json(assertOk(post("/api/produtos/revenda", revenda("Retirar " + sufixo, eanLata, ""), gerente)));
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+        long venda = json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa))).path("vendaId").asLong();
+        long item = json(assertOk(post("/api/vendas/" + venda + "/itens", Map.of("variacaoId", gelada, "quantidade", "3"), caixa))).path("id").asLong();
+
+        // Pela rota comum da venda, a operadora não tira nem diminui item de comanda.
+        assertEquals(HttpStatus.FORBIDDEN, delete("/api/vendas/" + venda + "/itens/" + item, caixa).getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, put("/api/vendas/" + venda + "/itens/" + item,
+                Map.of("variacaoId", gelada, "quantidade", "1"), caixa).getStatusCode());
+
+        Map<String, Object> gerenteOk = Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234");
+        List<Map<String, Object>> umaLata = List.of(Map.of("itemId", item, "quantidade", "1"));
+        assertEquals(HttpStatus.FORBIDDEN, post("/api/comandas/" + numero + "/retirar",
+                Map.of("itens", umaLata, "motivo", "Lançado errado"), caixa).getStatusCode(), "Sem o gerente");
+        assertEquals(HttpStatus.FORBIDDEN, post("/api/comandas/" + numero + "/retirar", Map.of("itens", umaLata, "motivo", "Lançado errado",
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "errada")), caixa).getStatusCode(), "Senha errada");
+        assertTrue(post("/api/comandas/" + numero + "/retirar", Map.of("itens", umaLata, "motivo", " ", "autorizacao", gerenteOk), caixa)
+                .getStatusCode().is4xxClientError(), "Sem motivo");
+        assertTrue(post("/api/comandas/" + numero + "/retirar", Map.of("itens", List.of(Map.of("itemId", item, "quantidade", "4")),
+                "motivo", "Lançado errado", "autorizacao", gerenteOk), caixa).getStatusCode().is4xxClientError(), "Mais do que tem");
+
+        // Com o gerente: 1 das 3 latas sai.
+        JsonNode retirada = json(assertOk(post("/api/comandas/" + numero + "/retirar",
+                Map.of("itens", umaLata, "motivo", "Lançado errado", "autorizacao", gerenteOk), caixa)));
+        assertBig("5", retirada.path("valor").decimalValue());
+        assertFalse(retirada.path("comandaFechada").asBoolean());
+        assertBig("10", totalComanda(numero));
+
+        // O gerente no caixa tira o resto sem pedir senha; vazia, a comanda fecha.
+        JsonNode resto = json(assertOk(post("/api/comandas/" + numero + "/retirar", Map.of(
+                "itens", List.of(Map.of("itemId", item, "quantidade", "2")), "motivo", "Cliente desistiu"), gerente)));
+        assertTrue(resto.path("comandaFechada").asBoolean());
+        assertEquals(null, totalComanda(numero), "A comanda vazia sai da lista");
+    }
+
+    @Test
+    void encerrarCaixaComComandaAbertaPedeConfirmacao() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "3");
+        int numeroCaixa = numeroCaixaUnico();
+        int numero = 9000 + SEQUENCIA.incrementAndGet() % 900;
+        json(assertOk(post("/api/produtos/revenda", revenda("Aberta " + sufixo, eanLata, ""), gerente)));
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+        assertOk(post("/api/caixas/abrir", Map.of("numeroCaixa", numeroCaixa, "saldoInicial", 0), gerente));
+        long venda = json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), gerente))).path("vendaId").asLong();
+        assertOk(post("/api/vendas/" + venda + "/itens", Map.of("variacaoId", gelada, "quantidade", "1"), gerente));
+
+        ResponseEntity<String> aviso = post("/api/caixas/encerrar",
+                Map.of("numeroCaixa", numeroCaixa, "valorContado", "0", "observacao", ""), gerente);
+        assertEquals(HttpStatus.CONFLICT, aviso.getStatusCode());
+        boolean listada = false;
+        for (JsonNode c : json(aviso).path("comandasAbertas")) listada |= c.path("numero").asInt() == numero;
+        assertTrue(listada, "O aviso lista a comanda aberta");
+        assertTrue(json(aviso).path("erro").asText().contains(String.valueOf(numero)));
+
+        assertOk(post("/api/caixas/encerrar", Map.of("numeroCaixa", numeroCaixa, "valorContado", "0", "observacao", "",
+                "deixarComandasAbertas", true), gerente));
+        assertBig("5", totalComanda(numero));
+    }
+
+    @Test
+    void teclasRapidasGuardamOProdutoEPedemGerenteParaMudar() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanGelo = ean13(sufixo + "4");
+        json(assertOk(post("/api/produtos/revenda", revenda("Gelo " + sufixo, eanGelo, ""), gerente)));
+        long gelo = json(assertOk(get("/api/pdv/codigos/" + eanGelo, caixa))).path("variacao").path("variacaoId").asLong();
+        Map<String, Object> teclas = Map.of("teclas", List.of(Map.of("posicao", 1, "variacaoId", gelo)));
+
+        assertEquals(HttpStatus.FORBIDDEN, put("/api/pdv/teclas", teclas, caixa).getStatusCode(), "Operadora sozinha não muda");
+        JsonNode salvas = json(assertOk(put("/api/pdv/teclas", Map.of("teclas", teclas.get("teclas"),
+                "autorizacao", Map.of("nome", "Admin", "sobrenome", "Superior", "senha", "1234")), caixa)));
+        assertEquals(1, salvas.size());
+        assertEquals(gelo, salvas.get(0).path("variacaoId").asLong());
+
+        JsonNode lidas = json(assertOk(get("/api/pdv/teclas", caixa)));
+        assertEquals(1, lidas.get(0).path("posicao").asInt());
+        assertEquals(gelo, lidas.get(0).path("variacaoId").asLong());
+        assertTrue(lidas.get(0).path("precoVenda").decimalValue().signum() > 0);
+        assertTrue(json(assertOk(get("/api/pdv/teclas/opcoes", caixa))).size() > 0);
+
+        assertTrue(put("/api/pdv/teclas", Map.of("teclas", List.of(Map.of("posicao", 9, "variacaoId", gelo))), gerente)
+                .getStatusCode().is4xxClientError(), "Só há 8 teclas");
+        assertOk(put("/api/pdv/teclas", Map.of("teclas", List.of()), gerente));
+        assertEquals(0, json(assertOk(get("/api/pdv/teclas", caixa))).size());
     }
 
     private BigDecimal totalComanda(int numero) throws Exception {
@@ -686,6 +777,10 @@ class PdvBalcaoApiIntegrationTest {
 
     private ResponseEntity<String> post(String path, Object body, Usuario usuario) {
         return restTemplate.exchange(url(path), HttpMethod.POST, new HttpEntity<>(body, headers(usuario)), String.class);
+    }
+
+    private ResponseEntity<String> put(String path, Object body, Usuario usuario) {
+        return restTemplate.exchange(url(path), HttpMethod.PUT, new HttpEntity<>(body, headers(usuario)), String.class);
     }
 
     private ResponseEntity<String> delete(String path, Usuario usuario) {

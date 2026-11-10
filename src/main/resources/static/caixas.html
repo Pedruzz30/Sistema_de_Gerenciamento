@@ -199,6 +199,11 @@
         <label>Observação (opcional)</label>
         <input class="input" type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
       </div>
+      <div class="alert-modal error alert-modal--static encerrar-comandas" id="encerrar-comandas" hidden>
+        <p id="encerrar-comandas-texto"></p>
+        <p>Receba as comandas antes de encerrar. Se elas ficam para o próximo caixa, marque abaixo.</p>
+        <label class="encerrar-comandas__confirmar"><input type="checkbox" id="encerrar-deixar-comandas"> Deixar abertas e encerrar mesmo assim</label>
+      </div>
       <fieldset class="field form-group autorizacao-gerente" id="encerrar-autorizacao" hidden>
         <legend>Autorização do gerente</legend>
         <p class="inline-note">Esta operação precisa do gerente. Ele digita o login aqui; você continua logado.</p>
@@ -245,6 +250,7 @@
             <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
             <span>F2 buscar · F3 desconto · F6 transferir · F7 comandas · F8 cupom · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
           </div>
+          <div id="pdv-teclas" class="pdv-teclas" aria-label="Teclas rápidas"></div>
         </div>
         <div class="pdv-catalog-toolbar">
           <label class="visually-hidden" for="pdv-busca">Buscar item do cardapio</label>
@@ -414,6 +420,66 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" type="button" onclick="fecharTransferenciaPDV()">Voltar (Esc)</button>
       <button class="btn btn-primary" type="button" id="btn-pdv-confirmar-transferencia" onclick="confirmarTransferenciaPDV()">Transferir (Enter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: teclas rápidas do caixa (gelo, copo, caldo, porção) ── -->
+<div class="modal-overlay" id="modal-pdv-teclas">
+  <div class="modal" role="dialog" aria-labelledby="pdv-teclas-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="pdv-teclas-titulo">Teclas rápidas</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharTeclasPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-teclas" role="status" aria-live="polite"></div>
+      <p class="inline-note">Para o que não tem código de barras: gelo, copo, caldo, porções. No caixa, toque no botão ou aperte Alt e o número. Para lançar mais de um, digite a quantidade antes (ex.: 3).</p>
+      <div id="pdv-teclas-lista" class="pdv-teclas-config"></div>
+      <fieldset class="field form-group autorizacao-gerente" id="pdv-teclas-autorizacao" hidden>
+        <legend>Autorização do gerente</legend>
+        <p class="inline-note">Mudar as teclas precisa do gerente. Ele digita o login aqui; você continua no caixa.</p>
+        <input class="input" type="text" id="pdv-teclas-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+        <input class="input" type="text" id="pdv-teclas-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+        <input class="input" type="password" id="pdv-teclas-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+      </fieldset>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharTeclasPDV()">Voltar (Esc)</button>
+      <button class="btn btn-primary" type="button" id="btn-pdv-salvar-teclas" onclick="salvarTeclasPDV()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: tirar item já lançado numa comanda (precisa do gerente) ── -->
+<div class="modal-overlay" id="modal-pdv-retirar">
+  <div class="modal" role="dialog" aria-labelledby="pdv-retirar-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="pdv-retirar-titulo">Tirar da comanda</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharRetiradaPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-retirar" role="status" aria-live="polite"></div>
+      <div class="pdv-novo-campos">
+        <p class="inline-note">O item pode já ter sido servido. Tirar fica registrado, com o motivo e quem autorizou.</p>
+        <div id="pdv-retirar-lista" class="pdv-dividir-lista"></div>
+        <label>Motivo <input class="input" type="text" id="pdv-retirar-motivo" list="pdv-retirar-motivos" autocomplete="off" placeholder="Ex.: lançado errado"></label>
+        <datalist id="pdv-retirar-motivos">
+          <option value="Lançado errado"></option>
+          <option value="Cliente desistiu"></option>
+          <option value="Produto com defeito"></option>
+        </datalist>
+        <fieldset class="field form-group autorizacao-gerente" id="pdv-retirar-autorizacao" hidden>
+          <legend>Autorização do gerente</legend>
+          <p class="inline-note">Tirar item de comanda precisa do gerente. Ele digita o login aqui; você continua no caixa.</p>
+          <input class="input" type="text" id="pdv-retirar-gerente-nome" placeholder="Nome do gerente" autocomplete="off">
+          <input class="input" type="text" id="pdv-retirar-gerente-sobrenome" placeholder="Sobrenome" autocomplete="off">
+          <input class="input" type="password" id="pdv-retirar-gerente-senha" placeholder="Senha do gerente" autocomplete="new-password">
+        </fieldset>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharRetiradaPDV()">Voltar (Esc)</button>
+      <button class="btn btn-primary btn-primary--danger" type="button" id="btn-pdv-confirmar-retirada" onclick="confirmarRetiradaPDV()">Tirar (Enter)</button>
     </div>
   </div>
 </div>

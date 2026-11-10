@@ -3822,3 +3822,16 @@ body.bridge-page .bridge-actions a {
 .senha-form__titulo { margin: 0; font-size: 18px; }
 .senha-form__texto { margin: 0; font-size: 13px; }
 .senha-form__aviso { margin: 0; min-height: 18px; color: #b91c1c; font-size: 13px; font-weight: 600; }
+
+/* Teclas rápidas do caixa (gelo, copo, caldo, porção) */
+.pdv-teclas { display: flex; flex-wrap: wrap; gap: 6px; }
+.pdv-tecla { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--border, #e5e2dc); border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; }
+.pdv-tecla:hover, .pdv-tecla:focus-visible { border-color: var(--accent, #c2410c); }
+.pdv-tecla kbd, .pdv-tecla-config kbd { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; background: #f3f1ec; border-radius: 4px; padding: 1px 5px; }
+.pdv-tecla small { color: var(--text-muted, #6b6760); }
+.pdv-tecla--editar { border-style: dashed; color: #0369a1; }
+.pdv-teclas-config { display: grid; gap: 6px; }
+.pdv-tecla-config { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: center; font-size: 13px; }
+/* Fechamento com comandas sem pagar */
+.encerrar-comandas p { margin: 0 0 6px; }
+.encerrar-comandas__confirmar { display: flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }

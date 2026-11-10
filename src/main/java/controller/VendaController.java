@@ -150,6 +150,11 @@ public class VendaController {
             @RequestBody ItemVendaRequest request,
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Usuario usuario = validarVenda(ruHeader);
+        if (request.quantidade() != null) {
+            boolean diminui = vendaService.listarItens(id).stream()
+                    .anyMatch(i -> i.getId() == itemId && request.quantidade().compareTo(i.getQuantidade()) < 0);
+            if (diminui) protegerItemDeComanda(usuario, id);
+        }
         VendaItem item = vendaService.editarItemRascunho(
                 usuario,
                 id,
@@ -173,6 +178,7 @@ public class VendaController {
             @PathVariable long itemId,
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         Usuario usuario = validarVenda(ruHeader);
+        protegerItemDeComanda(usuario, id);
         vendaService.removerItemRascunho(usuario, id, itemId);
         return ResponseEntity.noContent().build();
     }
@@ -285,6 +291,14 @@ public class VendaController {
                 Permissao.VER_VENDAS,
                 "Voce nao tem permissao para registrar vendas."
         );
+    }
+
+    /** Item de comanda pode já ter sido servido: só sai pela comanda, com gerente e motivo. */
+    private void protegerItemDeComanda(Usuario usuario, long vendaId) {
+        if (comandaService != null && !service.ComandaService.podeTirarItem(usuario)
+                && comandaService.vendaDeComandaAberta(vendaId)) {
+            throw new SecurityException("Item de comanda só sai com o gerente: use o x do item no caixa.");
+        }
     }
 
     private Usuario validarVisualizacao(String ruHeader) {

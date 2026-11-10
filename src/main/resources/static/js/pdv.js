@@ -48,7 +48,7 @@ async function abrirPDV(numeroCaixa) {
   atualizarIndicadorAlternativoPDV();
   renderCarrinho();
   focarLeituraPDV();
-  await Promise.all([carregarCardapioPDV(), carregarCodigosPDV()]);
+  await Promise.all([carregarCardapioPDV(), carregarCodigosPDV(), carregarTeclasPDV()]);
   focarLeituraPDV();
 }
 
@@ -762,6 +762,8 @@ async function editarItemCarrinhoPDV(itemVendaId) {
 
 async function removerItemCompleto(itemVendaId) {
   if (!pdvVendaAtual) return;
+  // Item de comanda pode já ter sido servido: sai com o gerente e com motivo.
+  if (pdvComandaAtual) { abrirRetiradaPDV([Number(itemVendaId)]); return; }
   const resp = await fetch(`/api/vendas/${pdvVendaAtual.id}/itens/${itemVendaId}`, { method: 'DELETE' });
   if (!resp.ok) {
     mostrarAlert('alert-pdv', await safeReadErrorMessage(resp, 'Erro ao remover item.'), 'error');
@@ -774,6 +776,7 @@ async function removerItemCompleto(itemVendaId) {
 function limparCarrinho() {
   const ids = itensAtivosVendaPDV().map(item => item.id);
   if (!ids.length) return;
+  if (pdvComandaAtual) { abrirRetiradaPDV(ids.map(Number)); return; }
   Promise.all(ids.map(id => fetch(`/api/vendas/${pdvVendaAtual.id}/itens/${id}`, { method: 'DELETE' }).catch(() => null)))
     .then(() => {
       pdvVendaAtual = null;
@@ -1624,6 +1627,252 @@ function atalhosTransferenciaPDV(event) {
   if (event.key === 'Enter' && event.target && event.target.tagName === 'INPUT') {
     event.preventDefault();
     confirmarTransferenciaPDV();
+  }
+}
+
+// ── Teclas rápidas: o que não tem código (gelo, copo, caldo, porção) ────
+// Um toque ou Alt+1 a Alt+8. Lança como se o código tivesse sido bipado.
+
+let pdvTeclas = [];
+
+async function carregarTeclasPDV() {
+  try {
+    const resp = await fetch('/api/pdv/teclas');
+    pdvTeclas = resp.ok ? await resp.json() : [];
+  } catch (error) {
+    pdvTeclas = [];
+  }
+  renderTeclasPDV();
+}
+
+function renderTeclasPDV() {
+  const barra = document.getElementById('pdv-teclas');
+  if (!barra) return;
+  barra.innerHTML = pdvTeclas.map(tecla => `
+    <button type="button" class="pdv-tecla" data-tecla="${tecla.posicao}" onclick="lancarTeclaPDV(${tecla.posicao})" title="${escapeHtml(tecla.itemNome + ' ' + tecla.variacaoNome)}">
+      <kbd>Alt+${tecla.posicao}</kbd><span>${escapeHtml(tecla.itemNome)}</span><small>${formatarMoedaPDV(tecla.precoVenda)}</small>
+    </button>`).join('')
+    + `<button type="button" class="pdv-tecla pdv-tecla--editar" onclick="abrirTeclasPDV()">${pdvTeclas.length ? 'Editar teclas' : 'Criar teclas rápidas (gelo, copo, porção)'}</button>`;
+}
+
+async function lancarTeclaPDV(posicao) {
+  const tecla = pdvTeclas.find(t => Number(t.posicao) === Number(posicao));
+  if (!tecla) return;
+  if (!document.getElementById('pdv-pagamento').hidden) {
+    mostrarAlert('alert-pdv', 'Volte do pagamento (Esc) antes de lançar itens.', 'error');
+    return;
+  }
+  // Quantidade digitada antes (ex.: 3 ou 3*) vale para a tecla.
+  const campo = document.getElementById('pdv-leitura');
+  const digitado = campo.value.trim().replace(/\*$/, '').replace(',', '.');
+  let quantidade = 1;
+  if (/^\d{1,3}(\.\d+)?$/.test(digitado) && Number(digitado) > 0) {
+    quantidade = Number(digitado);
+    campo.value = '';
+  }
+  limparAlert('alert-pdv');
+  try {
+    await adicionarVariacaoPorCodigoPDV(tecla, quantidade);
+    bipPDV(true);
+  } catch (error) {
+    bipPDV(false);
+    mostrarAlert('alert-pdv', error.message || 'Não foi possível adicionar o item.', 'error');
+  } finally {
+    focarLeituraPDV();
+  }
+}
+
+async function abrirTeclasPDV() {
+  limparAlert('alert-pdv-teclas');
+  const lista = document.getElementById('pdv-teclas-lista');
+  lista.innerHTML = '<div class="loading">Carregando</div>';
+  document.getElementById('pdv-teclas-autorizacao').hidden = temPermissao(PERMISSOES.EDITAR_ESTOQUE);
+  ['nome', 'sobrenome', 'senha'].forEach(campo => { document.getElementById('pdv-teclas-gerente-' + campo).value = ''; });
+  abrirModal('modal-pdv-teclas');
+  let opcoes = [];
+  try {
+    const resp = await fetch('/api/pdv/teclas/opcoes');
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível carregar os produtos.'));
+    opcoes = await resp.json();
+  } catch (error) {
+    lista.innerHTML = '';
+    mostrarAlert('alert-pdv-teclas', error.message, 'error');
+    return;
+  }
+  const opcoesHtml = opcoes.map(o => `<option value="${o.variacaoId}">${escapeHtml(o.itemNome)} · ${escapeHtml(o.variacaoNome)} · ${formatarMoedaPDV(o.precoVenda)}</option>`).join('');
+  lista.innerHTML = Array.from({ length: 8 }, (_, i) => i + 1).map(posicao => `
+    <label class="pdv-tecla-config"><kbd>Alt+${posicao}</kbd>
+      <select class="input" data-tecla-posicao="${posicao}" aria-label="Tecla Alt+${posicao}"><option value="">(vazia)</option>${opcoesHtml}</select>
+    </label>`).join('');
+  pdvTeclas.forEach(tecla => {
+    const seletor = lista.querySelector(`[data-tecla-posicao="${tecla.posicao}"]`);
+    if (seletor) seletor.value = String(tecla.variacaoId);
+  });
+  lista.querySelector('select')?.focus();
+}
+
+function fecharTeclasPDV() {
+  fecharModal('modal-pdv-teclas');
+  focarLeituraPDV();
+}
+
+async function salvarTeclasPDV() {
+  limparAlert('alert-pdv-teclas');
+  const teclas = [];
+  document.querySelectorAll('[data-tecla-posicao]').forEach(seletor => {
+    if (seletor.value) teclas.push({ posicao: Number(seletor.dataset.teclaPosicao), variacaoId: Number(seletor.value) });
+  });
+  const corpo = { teclas };
+  if (!document.getElementById('pdv-teclas-autorizacao').hidden) {
+    const nome = document.getElementById('pdv-teclas-gerente-nome').value.trim();
+    const sobrenome = document.getElementById('pdv-teclas-gerente-sobrenome').value.trim();
+    const senha = document.getElementById('pdv-teclas-gerente-senha').value;
+    if (!nome || !senha) {
+      mostrarAlert('alert-pdv-teclas', 'O gerente precisa digitar nome e senha.', 'error');
+      document.getElementById(nome ? 'pdv-teclas-gerente-senha' : 'pdv-teclas-gerente-nome').focus();
+      return;
+    }
+    corpo.autorizacao = { nome, sobrenome, senha };
+  }
+  const botao = document.getElementById('btn-pdv-salvar-teclas');
+  setLoading(botao, true);
+  try {
+    const resp = await fetch('/api/pdv/teclas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    if (!resp.ok) {
+      mostrarAlert('alert-pdv-teclas', await safeReadErrorMessage(resp, 'Não foi possível salvar as teclas.'), 'error');
+      if (resp.status === 403 && corpo.autorizacao) document.getElementById('pdv-teclas-gerente-senha').value = '';
+      return;
+    }
+    pdvTeclas = await resp.json();
+    renderTeclasPDV();
+    fecharModal('modal-pdv-teclas');
+    mostrarAlert('alert-pdv', 'Teclas rápidas salvas.', 'success');
+    focarLeituraPDV();
+  } finally {
+    setLoading(botao, false);
+  }
+}
+
+function atalhosTeclasPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharTeclasPDV(); return; }
+  if (/^F\d+$/.test(event.key)) event.preventDefault();
+}
+
+// ── Tirar item já lançado numa comanda ──────────────────────────────────
+// Na comanda o item pode já ter sido servido: só sai com o gerente e com motivo.
+
+function abrirRetiradaPDV(ids) {
+  if (!pdvComandaAtual || !pdvVendaAtual) return;
+  const itens = pdvCarrinho.filter(item => ids.includes(Number(item.id)));
+  if (!itens.length) return;
+  if (!document.getElementById('pdv-pagamento').hidden) {
+    mostrarAlert('alert-pdv', 'Volte do pagamento (Esc) antes de tirar itens.', 'error');
+    return;
+  }
+  limparAlert('alert-pdv-retirar');
+  document.getElementById('pdv-retirar-titulo').textContent = itens.length === 1
+    ? `Tirar da comanda ${pdvComandaAtual.numero}` : `Limpar a comanda ${pdvComandaAtual.numero}`;
+  document.getElementById('pdv-retirar-lista').innerHTML = itens.map(item => `
+    <label class="pdv-dividir-linha">
+      <span>${escapeHtml(item.item)}${item.variacao ? ' ' + escapeHtml(item.variacao) : ''}<br><small>${formatarMoedaPDV(item.subtotal)}</small></span>
+      <small>de ${String(Number(item.quantidade)).replace('.', ',')}</small>
+      <input class="input" type="text" inputmode="decimal" data-retirar-item="${item.id}" data-maximo="${Number(item.quantidade)}" value="${String(Number(item.quantidade)).replace('.', ',')}">
+    </label>`).join('');
+  document.getElementById('pdv-retirar-motivo').value = '';
+  document.getElementById('pdv-retirar-autorizacao').hidden = temPermissao(PERMISSOES.VER_FINANCAS);
+  ['nome', 'sobrenome', 'senha'].forEach(campo => { document.getElementById('pdv-retirar-gerente-' + campo).value = ''; });
+  abrirModal('modal-pdv-retirar');
+  const quantidade = itens.length === 1 && Number(itens[0].quantidade) > 1 ? document.querySelector('[data-retirar-item]') : null;
+  if (quantidade) { quantidade.focus(); quantidade.select(); }
+  else document.getElementById('pdv-retirar-motivo').focus();
+}
+
+function fecharRetiradaPDV() {
+  fecharModal('modal-pdv-retirar');
+  focarLeituraPDV();
+}
+
+async function confirmarRetiradaPDV() {
+  limparAlert('alert-pdv-retirar');
+  if (!pdvComandaAtual) return;
+  const itens = [];
+  let erro = null;
+  document.querySelectorAll('[data-retirar-item]').forEach(campo => {
+    const qtd = Number(campo.value.trim().replace(',', '.') || '0');
+    if (!Number.isFinite(qtd) || qtd < 0 || qtd > Number(campo.dataset.maximo)) erro = 'Quantidade inválida em um dos itens.';
+    else if (qtd > 0) itens.push({ itemId: Number(campo.dataset.retirarItem), quantidade: qtd, inteiro: qtd === Number(campo.dataset.maximo) });
+  });
+  if (erro || itens.length === 0) {
+    mostrarAlert('alert-pdv-retirar', erro || 'Diga quanto tirar.', 'error');
+    return;
+  }
+  const motivo = document.getElementById('pdv-retirar-motivo').value.trim();
+  if (motivo.length < 3) {
+    mostrarAlert('alert-pdv-retirar', 'Diga o motivo de tirar o item.', 'error');
+    document.getElementById('pdv-retirar-motivo').focus();
+    return;
+  }
+  const corpo = { itens: itens.map(i => ({ itemId: i.itemId, quantidade: i.quantidade })), motivo };
+  if (!document.getElementById('pdv-retirar-autorizacao').hidden) {
+    const nome = document.getElementById('pdv-retirar-gerente-nome').value.trim();
+    const sobrenome = document.getElementById('pdv-retirar-gerente-sobrenome').value.trim();
+    const senha = document.getElementById('pdv-retirar-gerente-senha').value;
+    if (!nome || !senha) {
+      mostrarAlert('alert-pdv-retirar', 'O gerente precisa digitar nome e senha.', 'error');
+      document.getElementById(nome ? 'pdv-retirar-gerente-senha' : 'pdv-retirar-gerente-nome').focus();
+      return;
+    }
+    corpo.autorizacao = { nome, sobrenome, senha };
+  }
+  const botao = document.getElementById('btn-pdv-confirmar-retirada');
+  setLoading(botao, true);
+  const numero = pdvComandaAtual.numero;
+  try {
+    const resp = await fetch(`/api/comandas/${numero}/retirar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    if (!resp.ok) {
+      mostrarAlert('alert-pdv-retirar', await safeReadErrorMessage(resp, 'Não foi possível tirar o item.'), 'error');
+      if (resp.status === 403 && corpo.autorizacao) {
+        document.getElementById('pdv-retirar-gerente-senha').value = '';
+        document.getElementById('pdv-retirar-gerente-senha').focus();
+      }
+      return;
+    }
+    const resultado = await resp.json();
+    fecharModal('modal-pdv-retirar');
+    itens.filter(i => i.inteiro).forEach(i => { delete pdvDraftPayloadPorItemVenda[i.itemId]; });
+    if (resultado.comandaFechada) {
+      pdvComandaAtual = null;
+      pdvVendaAtual = null;
+      pdvCarrinho = [];
+      pdvDraftPayloadPorItemVenda = {};
+      atualizarComandaPDV();
+      renderCarrinho();
+    } else {
+      await recarregarVendaAtualPDV();
+    }
+    renderCardapio();
+    mostrarAlert('alert-pdv', `${formatarMoedaPDV(resultado.valor)} tirados da comanda ${numero}.`
+      + (resultado.comandaFechada ? ' A comanda ficou vazia e foi fechada.' : ''), 'success');
+  } finally {
+    setLoading(botao, false);
+    if (!document.getElementById('modal-pdv-retirar').classList.contains('open')) focarLeituraPDV();
+  }
+}
+
+function atalhosRetiradaPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharRetiradaPDV(); return; }
+  if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
+  if (event.key === 'Enter' && event.target && event.target.tagName === 'INPUT') {
+    event.preventDefault();
+    confirmarRetiradaPDV();
   }
 }
 
@@ -2558,9 +2807,22 @@ function atalhosPDV(event) {
     atalhosTransferenciaPDV(event);
     return;
   }
+  if (document.getElementById('modal-pdv-retirar')?.classList.contains('open')) {
+    atalhosRetiradaPDV(event);
+    return;
+  }
+  if (document.getElementById('modal-pdv-teclas')?.classList.contains('open')) {
+    atalhosTeclasPDV(event);
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
+  if (event.altKey && /^Digit[1-8]$/.test(event.code || '')) {
+    event.preventDefault();
+    lancarTeclaPDV(Number(event.code.slice(5)));
+    return;
+  }
   if (event.key === 'F9') { event.preventDefault(); if (pagamentoAberto) abrirDivisaoPDV(); else abrirVendasPDV(); return; }
   if (event.key === 'F7' && !pagamentoAberto) { event.preventDefault(); abrirComandasPDV(); return; }
   if (event.key === 'F6' && !pagamentoAberto) { event.preventDefault(); abrirTransferenciaPDV(); return; }
@@ -2679,6 +2941,13 @@ window.StockOSPDV = {
       marcarTransferenciaPDV,
       fecharTransferenciaPDV,
       confirmarTransferenciaPDV,
+      abrirRetiradaPDV,
+      lancarTeclaPDV,
+      abrirTeclasPDV,
+      fecharTeclasPDV,
+      salvarTeclasPDV,
+      fecharRetiradaPDV,
+      confirmarRetiradaPDV,
       abrirDivisaoPDV,
       escolherAbaDivisaoPDV,
       previaDivisaoIgualPDV,

@@ -79,6 +79,12 @@ public class AppConfig {
     }
 
     @Bean
+    public TeclasRapidasService teclasRapidasService(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+                                                     LogRepository logRepository) {
+        return new TeclasRapidasService(jdbcTemplate, logRepository);
+    }
+
+    @Bean
     public DescontoVendaService descontoVendaService(VendaRepository vendaRepository,
                                                      VendaItemRepository vendaItemRepository,
                                                      LogRepository logRepository) {

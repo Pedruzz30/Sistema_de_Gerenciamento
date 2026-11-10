@@ -43,6 +43,13 @@ public class CaixaController {
         this.backupService = backupService;
     }
 
+    private service.ComandaService comandaService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComandaService(service.ComandaService comandaService) {
+        this.comandaService = comandaService;
+    }
+
     public CaixaController(CaixaService caixaService,
                            CaixaRepository caixaRepository,
                            UsuarioRepository usuarioRepository,
@@ -365,6 +372,13 @@ public class CaixaController {
         }
         try {
             Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
+            // Comanda aberta é cliente que ainda não pagou: avisa antes de fechar o dia.
+            List<service.ComandaService.Resumo> abertas = comandaService == null ? List.of()
+                    : comandaService.listarAbertas().stream().filter(c -> c.itens().signum() > 0).toList();
+            if (!abertas.isEmpty() && !Boolean.TRUE.equals(request.deixarComandasAbertas())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ComandasAbertasResponse(service.ComandaService.avisoComandasAbertas(abertas), abertas));
+            }
             FechamentoCaixa fechamento = caixaService.encerrarCaixa(
                     ator,
                     request.numeroCaixa(),
@@ -372,6 +386,7 @@ public class CaixaController {
                     request.observacao(),
                     resolverAutorizador(request.autorizacao())
             );
+            if (!abertas.isEmpty()) comandaService.registrarEncerramentoComAbertas(ator, request.numeroCaixa(), abertas);
             if (backupService != null) backupService.executarEmSegundoPlano("fechamento de caixa");
             return ResponseEntity.ok(FechamentoResponse.from(fechamento));
         } catch (IllegalStateException | IllegalArgumentException e) {
@@ -447,12 +462,19 @@ public class CaixaController {
             int numeroCaixa,
             BigDecimal valorContado,
             String observacao,
-            AutorizacaoRequest autorizacao
+            AutorizacaoRequest autorizacao,
+            Boolean deixarComandasAbertas
     ) {
         public EncerrarCaixaRequest(int numeroCaixa, BigDecimal valorContado, String observacao) {
-            this(numeroCaixa, valorContado, observacao, null);
+            this(numeroCaixa, valorContado, observacao, null, null);
+        }
+
+        public EncerrarCaixaRequest(int numeroCaixa, BigDecimal valorContado, String observacao, AutorizacaoRequest autorizacao) {
+            this(numeroCaixa, valorContado, observacao, autorizacao, null);
         }
     }
+
+    public record ComandasAbertasResponse(String erro, List<service.ComandaService.Resumo> comandasAbertas) {}
 
     public record CaixaResponse(
             long caixaId,

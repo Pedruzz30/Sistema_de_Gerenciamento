@@ -111,6 +111,14 @@ $corpoAbrir = @{ numeroCaixa = 7; saldoInicial = 10 } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$Base/api/caixas/abrir" -WebSession $sessao -ContentType 'application/json' -Body $corpoAbrir | Out-Null
 Start-Sleep -Seconds 2
 $corpoFechar = @{ numeroCaixa = 7; valorContado = 10 } | ConvertTo-Json
+$avisou = $false
+try {
+    Invoke-RestMethod -Method Post -Uri "$Base/api/caixas/encerrar" -WebSession $sessao -ContentType 'application/json' -Body $corpoFechar | Out-Null
+} catch {
+    $avisou = ($_.Exception.Response.StatusCode.value__ -eq 409)
+}
+Assert $avisou 'fechamento avisa da comanda 9 sem pagar'
+$corpoFechar = @{ numeroCaixa = 7; valorContado = 10; deixarComandasAbertas = $true } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$Base/api/caixas/encerrar" -WebSession $sessao -ContentType 'application/json' -Body $corpoFechar | Out-Null
 $limite = (Get-Date).AddSeconds(60)
 while ((Get-Date) -lt $limite -and @(Get-ChildItem "$Raiz\backups" -Filter 'stockos-2*.dump').Count -le $antes) { Start-Sleep -Seconds 1 }

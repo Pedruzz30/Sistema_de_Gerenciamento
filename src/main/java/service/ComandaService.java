@@ -3,6 +3,7 @@ package service;
 import model.CanalVenda;
 import model.Comanda;
 import model.LogAcao;
+import model.Permissao;
 import model.Usuario;
 import model.Venda;
 import model.VendaItem;
@@ -187,13 +188,139 @@ public class ComandaService {
         return new Transferencia(numeroDestino, vendaDestino.getId(), movidos, origemVazia, fechada);
     }
 
+    public record ItemRetirado(long itemId, BigDecimal quantidade) {}
+
+    public record Retirada(int numero, int itensRetirados, BigDecimal valor, boolean comandaFechada) {}
+
+    /**
+     * Tira itens já lançados numa comanda: lançado errado, cliente desistiu, quebrou.
+     * O item pode já ter sido servido, então só quem cuida do financeiro tira (ou o gerente
+     * autoriza com a senha), e o motivo vai para o log. Sem itens, a comanda fecha.
+     */
+    @Transactional
+    public Retirada retirar(Usuario operador, Usuario autorizador, int numero, List<ItemRetirado> itens, String motivo) {
+        Usuario responsavel = responsavelRetirada(operador, autorizador);
+        String motivoLimpo = motivo == null ? "" : motivo.trim().replaceAll("\\s+", " ");
+        if (motivoLimpo.length() < 3) {
+            throw new ErroNegocioException("RETIRADA_SEM_MOTIVO", "Diga o motivo de tirar o item.");
+        }
+        if (motivoLimpo.length() > 200) {
+            motivoLimpo = motivoLimpo.substring(0, 200);
+        }
+        if (itens == null || itens.stream().noneMatch(i -> i.quantidade() != null && i.quantidade().signum() > 0)) {
+            throw new ErroNegocioException("RETIRADA_VAZIA", "Escolha o que tirar.");
+        }
+        Comanda comanda = comandaRepository.buscarAbertaPorNumero(numero)
+                .orElseThrow(() -> new ErroNegocioException("COMANDA_NAO_ENCONTRADA", "Nao ha comanda aberta com o numero " + numero + "."));
+        long vendaId = comanda.getVendaId();
+        travarRascunho(vendaId);
+        if (vendaItemService == null) {
+            throw new IllegalStateException("Retirada de itens indisponivel.");
+        }
+
+        BigDecimal valor = BigDecimal.ZERO;
+        int retirados = 0;
+        StringBuilder descricao = new StringBuilder();
+        for (ItemRetirado pedido : itens) {
+            if (pedido.quantidade() == null || pedido.quantidade().signum() <= 0) continue;
+            VendaItem item = itemRepository.buscarPorId(pedido.itemId())
+                    .filter(i -> i.getVenda().getId() == vendaId && i.getStatus() == model.StatusVendaItem.ATIVO)
+                    .orElseThrow(() -> new ErroNegocioException("ITEM_VENDA_NAO_ENCONTRADO", "Item não encontrado nesta comanda."));
+            int comparacao = pedido.quantidade().compareTo(item.getQuantidade());
+            if (comparacao > 0) {
+                throw new ErroNegocioException("RETIRADA_QUANTIDADE", "Só há " + item.getQuantidade().stripTrailingZeros().toPlainString()
+                        + " de " + item.getNomeItemSnapshot() + " na comanda.");
+            }
+            BigDecimal parte = item.getSubtotal().multiply(pedido.quantidade())
+                    .divide(item.getQuantidade(), 2, RoundingMode.HALF_UP);
+            String nome = item.getNomeItemSnapshot();
+            if (comparacao == 0) {
+                vendaItemService.removerItemRascunho(operador, vendaId, item.getId());
+            } else {
+                boolean temAdicionais = item.isComposicaoMultipla()
+                        || (modificadorRepository != null && !modificadorRepository.listarPorItem(item.getId()).isEmpty());
+                if (temAdicionais) {
+                    throw new ErroNegocioException("RETIRADA_ITEM_INTEIRO",
+                            nome + " tem adicionais: tire o item inteiro.");
+                }
+                vendaItemService.editarItemRascunho(operador, vendaId, item.getId(), item.getVariacaoItemCardapio().getId(),
+                        item.getQuantidade().subtract(pedido.quantidade()), item.getObservacao(), null, List.of(), null, List.of());
+            }
+            valor = valor.add(parte);
+            retirados++;
+            if (descricao.length() > 0) descricao.append(", ");
+            descricao.append(pedido.quantidade().stripTrailingZeros().toPlainString()).append(" x ").append(nome);
+        }
+
+        boolean vazia = itemRepository.listarAtivosPorVenda(vendaId).isEmpty();
+        if (vazia) {
+            comanda.cancelar(LocalDateTime.now(clock));
+            comandaRepository.salvar(comanda);
+        }
+        String quem = responsavel == operador
+                ? nomeDe(operador)
+                : nomeDe(operador) + ", autorizado por " + nomeDe(responsavel);
+        logRepository.salvar(new LogAcao(0, responsavel == null ? null : responsavel.getRu(), "COMANDA_ITEM_RETIRADO",
+                "Comanda " + numero + ": tirou " + descricao + " (R$ " + valor.setScale(2, RoundingMode.HALF_UP).toPlainString()
+                        + "). Motivo: " + motivoLimpo + ". Por " + quem + (vazia ? ". Comanda fechada vazia." : ".")));
+        return new Retirada(numero, retirados, valor.setScale(2, RoundingMode.HALF_UP), vazia);
+    }
+
+    /** Quem tira o item: a própria operadora, se cuida do financeiro, ou o gerente que autorizou. */
+    static Usuario responsavelRetirada(Usuario operador, Usuario autorizador) {
+        if (podeTirarItem(operador)) {
+            return operador;
+        }
+        if (autorizador != null && autorizador.isAtivo() && podeTirarItem(autorizador)) {
+            return autorizador;
+        }
+        throw new SecurityException(autorizador == null
+                ? "Tirar item da comanda precisa do login do gerente."
+                : "Quem autorizou não pode tirar itens da comanda.");
+    }
+
+    public static boolean podeTirarItem(Usuario usuario) {
+        return usuario != null && usuario.getClasse() != null
+                && usuario.getClasse().possuiPermissao(Permissao.VER_FINANCAS);
+    }
+
+    private static String nomeDe(Usuario usuario) {
+        return usuario == null ? "sistema" : usuario.getNomeCompleto();
+    }
+
+    /** A venda é de uma comanda que ainda não foi paga? */
+    @Transactional(readOnly = true)
+    public boolean vendaDeComandaAberta(long vendaId) {
+        return comandaRepository.buscarPorVendaId(vendaId).filter(Comanda::isAberta).isPresent();
+    }
+
+    /** Fica no log quem encerrou o caixa deixando comandas sem pagar. */
+    @Transactional
+    public void registrarEncerramentoComAbertas(Usuario usuario, int numeroCaixa, List<Resumo> abertas) {
+        if (abertas == null || abertas.isEmpty()) return;
+        BigDecimal total = abertas.stream().map(Resumo::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "CAIXA_ENCERRADO_COM_COMANDAS",
+                "Caixa " + numeroCaixa + " encerrado com " + abertas.size() + " comanda(s) aberta(s): "
+                        + abertas.stream().map(r -> String.valueOf(r.numero())).collect(java.util.stream.Collectors.joining(", "))
+                        + " (R$ " + total.setScale(2, RoundingMode.HALF_UP).toPlainString() + ")."));
+    }
+
+    /** Texto do aviso de comandas abertas, usado ao encerrar o caixa. */
+    public static String avisoComandasAbertas(List<Resumo> abertas) {
+        BigDecimal total = abertas.stream().map(Resumo::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        String numeros = abertas.stream().map(r -> String.valueOf(r.numero())).collect(java.util.stream.Collectors.joining(", "));
+        return (abertas.size() == 1 ? "A comanda " + numeros + " está aberta" : "As comandas " + numeros + " estão abertas")
+                + ", somando R$ " + total.setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', ',')
+                + ". Receba antes de encerrar, ou confirme que elas ficam abertas.";
+    }
+
     private Venda travarRascunho(long vendaId) {
         Venda venda = vendaRepository.buscarPorIdComLock(vendaId)
                 .orElseThrow(() -> new ErroNegocioException("VENDA_NAO_ENCONTRADA", "Venda nao encontrada."));
         try {
             venda.exigirRascunho();
         } catch (IllegalStateException e) {
-            throw new ErroNegocioException("VENDA_NAO_ESTA_EM_RASCUNHO", "Só dá para transferir de uma conta ainda não paga.");
+            throw new ErroNegocioException("VENDA_NAO_ESTA_EM_RASCUNHO", "Esta conta já foi paga ou cancelada.");
         }
         return venda;
     }

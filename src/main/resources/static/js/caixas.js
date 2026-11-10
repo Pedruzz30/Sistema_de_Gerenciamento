@@ -119,11 +119,14 @@ async function registrarMovimentacao(tipo, numero, valor, descricao, autorizacao
   });
 }
 
-async function encerrarCaixa(numero, valorContado, observacao, autorizacao) {
+async function encerrarCaixa(numero, valorContado, observacao, autorizacao, deixarComandasAbertas) {
   return fetch('/api/caixas/encerrar', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ numeroCaixa: numero, valorContado, observacao: observacao || '', autorizacao: autorizacao || null })
+    body: JSON.stringify({
+      numeroCaixa: numero, valorContado, observacao: observacao || '', autorizacao: autorizacao || null,
+      deixarComandasAbertas: !!deixarComandasAbertas
+    })
   });
 }
 
@@ -337,8 +340,33 @@ function abrirModalEncerrar(numero) {
   document.getElementById('encerrar-valor-contado').value = '';
   document.getElementById('encerrar-observacao').value = '';
   prepararAutorizacao('encerrar');
+  prepararAvisoComandas();
   abrirModal('modal-encerrar');
   setTimeout(() => document.getElementById('encerrar-valor-contado')?.focus(), 50);
+}
+
+// Comanda aberta é cliente que ainda não pagou: o fechamento avisa e pede confirmação.
+async function prepararAvisoComandas(lista) {
+  const aviso = document.getElementById('encerrar-comandas');
+  document.getElementById('encerrar-deixar-comandas').checked = false;
+  let abertas = lista;
+  if (!abertas) {
+    aviso.hidden = true;
+    try {
+      const resp = await fetch('/api/comandas');
+      abertas = resp.ok ? (await resp.json()).filter(c => Number(c.itens) > 0) : [];
+    } catch (e) {
+      abertas = [];
+    }
+  }
+  aviso.hidden = abertas.length === 0;
+  if (!abertas.length) return;
+  const total = abertas.reduce((soma, c) => soma + Number(c.total || 0), 0)
+    .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const numeros = abertas.map(c => c.numero).join(', ');
+  document.getElementById('encerrar-comandas-texto').textContent = abertas.length === 1
+    ? `A comanda ${numeros} ainda não foi paga (${total}).`
+    : `${abertas.length} comandas ainda não foram pagas: ${numeros} (${total}).`;
 }
 
 async function confirmarEncerrar() {
@@ -361,7 +389,20 @@ async function confirmarEncerrar() {
     mostrarAlert('alert-encerrar', 'Peça ao gerente para digitar nome e senha para autorizar.', 'error');
     return;
   }
-  const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao, autorizacao);
+  const avisoComandas = document.getElementById('encerrar-comandas');
+  const deixarComandas = document.getElementById('encerrar-deixar-comandas').checked;
+  if (!avisoComandas.hidden && !deixarComandas) {
+    mostrarAlert('alert-encerrar', 'Há comandas sem pagar. Receba antes, ou marque que elas ficam abertas.', 'error');
+    return;
+  }
+  const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao, autorizacao, deixarComandas);
+  if (resp.status === 409) {
+    // Abriram uma comanda depois que esta janela abriu.
+    const corpo = await resp.json().catch(() => ({}));
+    await prepararAvisoComandas(corpo.comandasAbertas || []);
+    mostrarAlert('alert-encerrar', corpo.erro || 'Há comandas abertas.', 'error');
+    return;
+  }
   if (resp.status === 403) {
     // Senha do gerente errada: mantém o modal aberto para tentar de novo.
     mostrarAlert('alert-encerrar', await safeReadErrorMessage(resp, 'Autorização recusada.'), 'error');

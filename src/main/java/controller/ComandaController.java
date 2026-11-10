@@ -60,6 +60,47 @@ public class ComandaController {
 
     public record ItemTransferirRequest(long itemId, java.math.BigDecimal quantidade) {}
 
+    private service.AutenticacaoService autenticacaoService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAutenticacaoService(service.AutenticacaoService autenticacaoService) {
+        this.autenticacaoService = autenticacaoService;
+    }
+
+    /** Tira itens já lançados. Quem não cuida do financeiro precisa do login do gerente no pedido. */
+    @PostMapping("/{numero}/retirar")
+    public ResponseEntity<ComandaService.Retirada> retirar(
+            @PathVariable int numero,
+            @org.springframework.web.bind.annotation.RequestBody RetirarRequest request,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario usuario = operador(ruHeader);
+        if (request == null) {
+            throw new IllegalArgumentException("Escolha o que tirar.");
+        }
+        List<ComandaService.ItemRetirado> itens = request.itens() == null ? List.of()
+                : request.itens().stream().map(i -> new ComandaService.ItemRetirado(i.itemId(), i.quantidade())).toList();
+        return ResponseEntity.ok(comandaService.retirar(usuario, resolverAutorizador(request.autorizacao()),
+                numero, itens, request.motivo()));
+    }
+
+    public record RetirarRequest(List<ItemTransferirRequest> itens, String motivo,
+                                 CaixaController.AutorizacaoRequest autorizacao) {}
+
+    private Usuario resolverAutorizador(CaixaController.AutorizacaoRequest autorizacao) {
+        if (autorizacao == null || autorizacao.nome() == null || autorizacao.nome().isBlank()
+                || autorizacao.senha() == null || autorizacao.senha().isBlank()) {
+            return null;
+        }
+        if (autenticacaoService == null) {
+            throw new SecurityException("Autorizacao de gerente indisponivel.");
+        }
+        return autenticacaoService.conferirCredenciais(
+                        autorizacao.nome().trim(),
+                        autorizacao.sobrenome() == null ? "" : autorizacao.sobrenome().trim(),
+                        autorizacao.senha())
+                .orElseThrow(() -> new SecurityException("Login do gerente invalido."));
+    }
+
     public record TransferirRequest(Long vendaOrigemId, List<ItemTransferirRequest> itens) {}
 
     @DeleteMapping("/{numero}")

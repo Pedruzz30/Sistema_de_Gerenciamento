@@ -1079,6 +1079,115 @@ try {
     assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 84, 'Transferir não mexe no estoque');
   });
 
+  let precoGelo = 0;
+  const reais = valor => 'R$ ' + valor.toFixed(2).replace('.', ',');
+  const logsDe = async (pagina, acao) => {
+    const { corpo } = await api(pagina, `/api/logs?acao=${acao}`);
+    return (Array.isArray(corpo) ? corpo : (corpo && (corpo.logs || corpo.content)) || []).map(l => l.descricao);
+  };
+
+  await passo(dono, 'Teclas rapidas lancam o que nao tem codigo', async () => {
+    await esperarTexto(dono, '#pdv-teclas', 'Criar teclas rápidas');
+    await dono.click('#pdv-teclas .pdv-tecla--editar');
+    await dono.waitForSelector('#modal-pdv-teclas.open');
+    await dono.waitForSelector('[data-tecla-posicao="1"] option:nth-child(2)', { state: 'attached' });
+    assert.equal(await dono.locator('#pdv-teclas-autorizacao').isVisible(), false, 'O dono muda sem pedir o gerente');
+    const gelo = await dono.locator('[data-tecla-posicao="1"] option', { hasText: 'Gelo 5kg' }).first().getAttribute('value');
+    await dono.selectOption('[data-tecla-posicao="1"]', gelo);
+    await naTela(dono, '#modal-pdv-teclas .modal');
+    await dono.click('#btn-pdv-salvar-teclas');
+    await esperarTexto(dono, '#alert-pdv', 'Teclas rápidas salvas');
+    await esperarTexto(dono, '#pdv-teclas', 'Alt+1');
+    await esperarTexto(dono, '#pdv-teclas', 'Gelo 5kg');
+    const { corpo: teclas } = await api(dono, '/api/pdv/teclas');
+    precoGelo = Number(teclas[0].precoVenda);
+    assert.ok(precoGelo > 0, 'A tecla traz o preço');
+
+    // Na comanda 9: digita 2 e aperta Alt+1, sem código de barras.
+    await dono.focus('#pdv-leitura');
+    await bipar(dono, 'c9');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 9');
+    await esperarTexto(dono, '#pdv-total', 'R$ 13,50');
+    await dono.keyboard.type('2');
+    await dono.keyboard.press('Alt+1');
+    await esperarTexto(dono, '#pdv-total', reais(13.5 + 2 * precoGelo));
+    assert.equal(await dono.inputValue('#pdv-leitura'), '', 'A quantidade digitada foi usada pela tecla');
+    await naTela(dono, '#pdv-teclas');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 9 guardada');
+  });
+
+  await passo(dono, 'Operadora so tira item da comanda com o gerente e o motivo', async () => {
+    const operadora = await novaPagina(navegador);
+    try {
+      await entrar(operadora, 'Ana', 'Caixa', 'OutraDaAna2');
+      await operadora.waitForURL(url => !url.pathname.endsWith('/login.html'));
+      await operadora.goto(`${BASE}/caixas.html`);
+      await cardDoCaixa(operadora, 2).locator('button:has-text("PDV")').click();
+      await operadora.waitForSelector('#modal-pdv.open');
+      await esperarTexto(operadora, '#pdv-teclas', 'Gelo 5kg');
+      await operadora.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
+      await bipar(operadora, 'c9');
+      await esperarTexto(operadora, '#pdv-comanda-label', 'Comanda 9');
+      await operadora.locator('.pdv-item-row', { hasText: 'Gelo 5kg' }).locator('.pdv-item-btn--remove').click();
+      await operadora.waitForSelector('#modal-pdv-retirar.open');
+      assert.equal(await operadora.locator('#pdv-retirar-autorizacao').isVisible(), true, 'A operadora precisa do gerente');
+      // Dos 2 gelos, sai 1: o campo da quantidade já vem selecionado.
+      await operadora.waitForFunction(() => document.activeElement && document.activeElement.matches('[data-retirar-item]'));
+      await operadora.keyboard.type('1');
+      await operadora.click('#btn-pdv-confirmar-retirada');
+      await esperarTexto(operadora, '#alert-pdv-retirar', 'motivo');
+      await operadora.fill('#pdv-retirar-motivo', 'Lançado errado');
+      await operadora.keyboard.press('Enter');
+      await esperarTexto(operadora, '#alert-pdv-retirar', 'gerente precisa digitar');
+      await operadora.fill('#pdv-retirar-gerente-nome', 'Admin');
+      await operadora.fill('#pdv-retirar-gerente-sobrenome', 'Superior');
+      await operadora.fill('#pdv-retirar-gerente-senha', 'errada');
+      await operadora.click('#btn-pdv-confirmar-retirada');
+      await esperarTexto(operadora, '#alert-pdv-retirar', 'invalido');
+      await naTela(operadora, '#modal-pdv-retirar .modal');
+      await operadora.fill('#pdv-retirar-gerente-senha', SENHA_ADMIN);
+      await operadora.click('#btn-pdv-confirmar-retirada');
+      await esperarTexto(operadora, '#alert-pdv', `${reais(precoGelo)} tirados da comanda 9`);
+      await esperarTexto(operadora, '#pdv-total', reais(13.5 + precoGelo));
+      // Limpar a comanda também passa pelo gerente.
+      await operadora.click('.pdv-clear-btn');
+      await operadora.waitForSelector('#modal-pdv-retirar.open');
+      await esperarTexto(operadora, '#pdv-retirar-titulo', 'Limpar a comanda 9');
+      assert.equal(await operadora.locator('[data-retirar-item]').count(), await operadora.locator('.pdv-item-row').count(), 'Limpar lista todos os itens');
+      await operadora.keyboard.press('Escape');
+      await operadora.waitForSelector('#modal-pdv-retirar:not(.open)', { state: 'attached' });
+      await operadora.keyboard.press('Escape');
+      await esperarTexto(operadora, '#alert-pdv', 'Comanda 9 guardada');
+    } finally {
+      await operadora.context().close();
+    }
+    const { corpo } = await api(dono, '/api/comandas');
+    assert.equal(corpo.find(c => c.numero === 9).total, Number((13.5 + precoGelo).toFixed(2)), 'A comanda 9 ficou com 3 latas e 1 gelo');
+    const logs = await logsDe(dono, 'COMANDA_ITEM_RETIRADO');
+    assert.ok(logs.some(l => l.includes('Comanda 9') && l.includes('Motivo: Lançado errado') && l.includes('autorizado por Admin Superior')), logs.join(' | '));
+  });
+
+  await passo(dono, 'Encerrar o caixa avisa da comanda sem pagar', async () => {
+    await dono.goto(`${BASE}/caixas.html`);
+    const { corpo: caixas } = await api(dono, '/api/caixas');
+    const gaveta = caixas.find(c => c.numeroCaixa === 2).dinheiroNaGaveta;
+    await cardDoCaixa(dono, 2).locator('button:has-text("Encerrar")').click();
+    await dono.waitForSelector('#modal-encerrar.open');
+    await esperarTexto(dono, '#encerrar-comandas-texto', 'A comanda 9 ainda não foi paga');
+    await dono.fill('#encerrar-valor-contado', String(gaveta));
+    await dono.click('#btn-confirmar-encerrar');
+    await esperarTexto(dono, '#alert-encerrar', 'marque que elas ficam abertas');
+    await naTela(dono, '#encerrar-comandas');
+    await dono.check('#encerrar-deixar-comandas');
+    await dono.click('#btn-confirmar-encerrar');
+    await dono.waitForSelector('#fechamento-operadores .resumo-operadores');
+    const logs = await logsDe(dono, 'CAIXA_ENCERRADO_COM_COMANDAS');
+    assert.ok(logs.some(l => l.includes('Caixa 2') && l.includes(': 9 ')), logs.join(' | '));
+    const { corpo } = await api(dono, '/api/comandas');
+    assert.ok(corpo.some(c => c.numero === 9), 'A comanda continua aberta para o próximo caixa');
+  });
+
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {
     await dono.goto(`${BASE}/dashboard.html`);
     await dono.click('#btn-relatorio-dia');
