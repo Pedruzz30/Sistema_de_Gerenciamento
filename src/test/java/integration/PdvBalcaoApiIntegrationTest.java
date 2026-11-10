@@ -202,6 +202,31 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void folhaDeCodigosCriaCodigoDaLojaParaQuemNaoTem() throws Exception {
+        String sufixo = sufixoUnico();
+        JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda("Copo " + sufixo, "", ""), gerente)));
+        String nome = "Copo " + sufixo;
+        boolean faltava = false;
+        for (JsonNode v : json(assertOk(get("/api/pdv/codigos/sem-codigo", caixa)))) {
+            faltava |= nome.equals(v.path("itemNome").asText());
+        }
+        assertTrue(faltava, "Produto sem código aparece na lista do que falta");
+
+        assertEquals(HttpStatus.FORBIDDEN, post("/api/pdv/codigos/gerar-internos", Map.of(), caixa).getStatusCode());
+        JsonNode criados = json(assertOk(post("/api/pdv/codigos/gerar-internos", Map.of(), gerente)));
+        String codigo = null;
+        for (JsonNode c : criados) {
+            if (nome.equals(c.path("variacao").path("itemNome").asText())) codigo = c.path("codigo").asText();
+        }
+        assertTrue(codigo != null && codigo.matches("20\\d{11}"), "Código da loja: " + codigo);
+        assertEquals(nome, json(assertOk(get("/api/pdv/codigos/" + codigo, caixa))).path("variacao").path("itemNome").asText());
+        for (JsonNode v : json(assertOk(get("/api/pdv/codigos/sem-codigo", caixa)))) {
+            assertFalse(nome.equals(v.path("itemNome").asText()), "Depois de criar, não falta mais");
+        }
+        assertTrue(cadastro.path("produtoId").asInt() > 0);
+    }
+
+    @Test
     void caixaCadastraCodigoDesconhecidoSoComOGerente() throws Exception {
         String sufixo = sufixoUnico();
         String ean = ean13(sufixo + "7");

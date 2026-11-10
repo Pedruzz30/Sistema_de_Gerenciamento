@@ -81,6 +81,23 @@ public class CodigoVendaController {
         return ResponseEntity.ok(CodigoResponse.from(codigo));
     }
 
+    /** Para a folha de códigos: o que ainda não tem como ser bipado. */
+    @GetMapping("/sem-codigo")
+    public ResponseEntity<List<VariacaoCodigoResponse>> semCodigo(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        exigirVenda(ruHeader);
+        return ResponseEntity.ok(codigoVendaService.listarSemCodigo().stream().map(VariacaoCodigoResponse::from).toList());
+    }
+
+    @PostMapping("/gerar-internos")
+    public ResponseEntity<List<CodigoResponse>> gerarInternos(
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        model.Usuario usuario = ControllerUtils.resolveUserAndRequirePermission(
+                ruHeader, usuarioRepository, Permissao.EDITAR_ESTOQUE,
+                "Voce nao tem permissao para criar codigos.");
+        return ResponseEntity.ok(codigoVendaService.gerarInternos(usuario).stream().map(CodigoResponse::from).toList());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> desativar(@PathVariable long id,
                                           @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {

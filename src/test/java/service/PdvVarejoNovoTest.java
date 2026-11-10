@@ -356,6 +356,16 @@ class PdvVarejoNovoTest {
         }
 
         @Test
+        void codigoInternoDaLojaEhEan13ValidoNaFaixa20() {
+            String codigo = CodigoVendaService.codigoInterno(57);
+            assertEquals("2000000000572", codigo);
+            assertEquals(CodigoVenda.Tipo.EAN13, CodigoVendaService.classificar(codigo));
+            assertEquals(CodigoVendaService.codigoInterno(57), codigo, "Sempre o mesmo para a mesma variação");
+            assertEquals(CodigoVenda.Tipo.EAN13, CodigoVendaService.classificar(CodigoVendaService.codigoInterno(9_876_543_210L)));
+            assertEquals(1, CodigoVendaService.digitoVerificador("400638133393"));
+        }
+
+        @Test
         void normalizaEspacosEEnterQueAlgunsLeitoresMandam() {
             assertEquals("4006381333931", CodigoVendaService.normalizar(" 4006381333931\r\n"));
         }

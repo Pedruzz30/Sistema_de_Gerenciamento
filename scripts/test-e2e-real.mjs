@@ -137,6 +137,27 @@ async function botoesLigados(pagina) {
   assert.deepEqual(faltando, [], `Botões de ${pagina.url()} chamam funções que não existem`);
 }
 
+/** Lê o código de barras de uma imagem como um leitor leria (ZXing), para conferir o que vai impresso. */
+async function lerCodigoDeBarras(png) {
+  const modPng = await import('pngjs');
+  const PNG = modPng.PNG || modPng.default.PNG;
+  const modZxing = await import('@zxing/library');
+  const zxing = modZxing.MultiFormatReader ? modZxing : modZxing.default;
+  const imagem = PNG.sync.read(png);
+  const cinza = new Uint8ClampedArray(imagem.width * imagem.height);
+  for (let i = 0; i < cinza.length; i++) {
+    const [r, g, b] = [imagem.data[i * 4], imagem.data[i * 4 + 1], imagem.data[i * 4 + 2]];
+    cinza[i] = (r * 299 + g * 587 + b * 114) / 1000;
+  }
+  const leitor = new zxing.MultiFormatReader();
+  leitor.setHints(new Map([
+    [zxing.DecodeHintType.POSSIBLE_FORMATS, [zxing.BarcodeFormat.EAN_13]],
+    [zxing.DecodeHintType.TRY_HARDER, true]
+  ]));
+  const fonte = new zxing.RGBLuminanceSource(cinza, imagem.width, imagem.height);
+  return leitor.decode(new zxing.BinaryBitmap(new zxing.HybridBinarizer(fonte))).getText();
+}
+
 async function entrar(pagina, nome, sobrenome, senha) {
   await pagina.goto(`${BASE}/login.html`);
   await pagina.waitForFunction(() => !document.getElementById('btnSubmit').disabled);
@@ -780,6 +801,48 @@ try {
     assert.equal(await dono.isDisabled('#btn-importar-xml'), true);
     dono.once('dialog', dialogo => dialogo.accept());
     await dono.click('#modal-xml .modal-footer .btn-secondary');
+  });
+
+  await passo(dono, 'Folha de codigos cria o codigo de quem nao tem e o leitor le', async () => {
+    await dono.goto(`${BASE}/estoque.html`);
+    await dono.click('#btn-revenda');
+    await dono.waitForSelector('#modal-revenda.open');
+    await dono.fill('#r-nome', 'Copo de gelo');
+    await dono.fill('#r-preco', '2');
+    await dono.fill('#r-custo', '0.5');
+    await dono.fill('#r-qtd', '100');
+    await dono.focus('#r-nome');
+    await dono.keyboard.press('Control+Enter');
+    await esperarTexto(dono, '#alert-revenda', 'Copo de gelo cadastrado');
+    await dono.goto(`${BASE}/estoque.html`);
+    await dono.click('#btn-folha-codigos');
+    await dono.waitForURL('**/folha-codigos.html');
+    await botoesLigados(dono);
+    await esperarTexto(dono, '#folha-faltando-texto', 'Copo de gelo');
+    await dono.click('#btn-gerar-codigos');
+    await esperarTexto(dono, '#alert-folha', 'criado');
+    const etiqueta = dono.locator('.etiqueta', { hasText: 'Copo de gelo' });
+    await etiqueta.waitFor();
+    const codigo = await etiqueta.getAttribute('data-codigo');
+    assert.match(codigo, /^20\d{11}$/, 'Código da loja na faixa 20');
+    assert.equal(await dono.locator('.etiqueta', { hasText: 'Skol' }).count(), 0, 'Quem tem código de fábrica não ocupa a folha');
+
+    // O desenho precisa ser lido por um leitor de verdade, não só parecer um código de barras.
+    const barras = etiqueta.locator('svg');
+    await barras.evaluate(el => { el.style.width = '452px'; });
+    assert.equal((await lerCodigoDeBarras(await barras.screenshot())).padStart(13, '0'), codigo);
+    await barras.evaluate(el => { el.style.width = ''; });
+
+    const leitura = await api(dono, `/api/pdv/codigos/${codigo}`);
+    assert.equal(leitura.corpo.variacao.itemNome, 'Copo de gelo', 'O código da folha vende no caixa');
+  });
+
+  await passo(dono, 'Folha de codigos sai no papel so com as etiquetas', async () => {
+    await dono.emulateMedia({ media: 'print' });
+    assert.equal(await dono.locator('#btn-imprimir-folha').isVisible(), false);
+    assert.equal(await dono.locator('.etiqueta', { hasText: 'Copo de gelo' }).isVisible(), true);
+    await print(dono, 'folha-de-codigos-no-papel');
+    await dono.emulateMedia({ media: 'screen' });
   });
 
   await passo(dono, 'Sair encerra a sessao', async () => {

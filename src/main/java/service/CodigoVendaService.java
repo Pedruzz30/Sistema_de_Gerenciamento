@@ -60,6 +60,43 @@ public class CodigoVendaService {
         return codigoVendaRepository.listarAtivos();
     }
 
+    /** Variações à venda sem nenhum código: gelo, copo, petiscos, caldos. */
+    public List<VariacaoItemCardapio> listarSemCodigo() {
+        java.util.Set<Long> comCodigo = codigoVendaRepository.listarAtivos().stream()
+                .map(c -> c.getVariacao().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        return variacaoRepository.listarTodos().stream()
+                .filter(VariacaoItemCardapio::isAtiva)
+                .filter(v -> v.getItemCardapio() == null || v.getItemCardapio().isAtivo())
+                .filter(v -> !comCodigo.contains(v.getId()))
+                .toList();
+    }
+
+    /**
+     * Código de barras da loja para uma variação: EAN-13 começando com 20, faixa que o
+     * padrão GS1 reserva para uso interno. Qualquer leitor bipa e ele nunca coincide com
+     * o código de fábrica de um produto. É sempre o mesmo para a mesma variação.
+     */
+    public static String codigoInterno(long variacaoId) {
+        String base = "20" + String.format("%010d", variacaoId);
+        return base + digitoVerificador(base);
+    }
+
+    /** Cria o código interno de cada variação que ainda não tem código. */
+    @Transactional
+    public List<CodigoVenda> gerarInternos(Usuario usuario) {
+        validarPermissaoEdicao(usuario);
+        java.util.List<CodigoVenda> criados = new java.util.ArrayList<>();
+        for (VariacaoItemCardapio variacao : listarSemCodigo()) {
+            String codigo = codigoInterno(variacao.getId());
+            if (!codigoVendaRepository.listarAtivosPorCodigo(codigo).isEmpty()) {
+                continue;
+            }
+            criados.add(codigoVendaRepository.salvar(new CodigoVenda(codigo, CodigoVenda.Tipo.EAN13, variacao, true)));
+        }
+        return criados;
+    }
+
     public List<CodigoVenda> listarPorVariacao(long variacaoId) {
         return codigoVendaRepository.listarAtivosPorVariacao(variacaoId);
     }
@@ -154,6 +191,17 @@ public class CodigoVendaService {
                     "Codigo interno invalido: use ate 32 letras, numeros, ponto, hifen ou sublinhado.");
         }
         return CodigoVenda.Tipo.INTERNO;
+    }
+
+    /** Dígito que completa o código (sem ele) pelo padrão GS1. */
+    public static int digitoVerificador(String semDigito) {
+        int soma = 0;
+        int peso = 3;
+        for (int i = semDigito.length() - 1; i >= 0; i--) {
+            soma += (semDigito.charAt(i) - '0') * peso;
+            peso = peso == 3 ? 1 : 3;
+        }
+        return (10 - (soma % 10)) % 10;
     }
 
     /** Dígito verificador GS1 (EAN-8, UPC-A, EAN-13, GTIN-14). */
