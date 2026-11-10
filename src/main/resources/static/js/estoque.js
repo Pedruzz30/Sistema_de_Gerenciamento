@@ -30,6 +30,17 @@ async function iniciarEstoqueSPA() {
 
   preencherSelectCategorias('c-categoria');
   preencherSelectCategorias('e-categoria');
+  // Link do Dashboard apenas filtra a listagem; não movimenta estoque.
+  const filtroUrl = new URLSearchParams(window.location.search).get('filtro');
+  if (filtroUrl === 'critico' || filtroUrl === 'baixo') {
+    filtroNivelAtivo = filtroUrl;
+    filtroCategoriaAtiva = 'todas';
+    paginaEstoque = 1;
+    document.querySelectorAll('[data-filter-group="nivel"] .filter-btn').forEach(btn => {
+      const tipo = btn.getAttribute('onclick') || '';
+      btn.classList.toggle('active', tipo.includes("'" + filtroUrl + "'"));
+    });
+  }
   await carregarProdutos();
 }
 
