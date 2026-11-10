@@ -100,7 +100,7 @@ if (onlyWatch) {
       return;
     }
     if (path === '/') {
-      res.writeHead(302, { Location:'/login.html' }); res.end(); return;
+      res.writeHead(302, { Location:'/dashboard.html' }); res.end(); return;
     }
     if (path.includes('\\') || path.includes('\0') || path.split('/').includes('..')) {
       res.writeHead(403); res.end('Caminho proibido'); return;
