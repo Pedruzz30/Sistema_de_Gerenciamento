@@ -415,7 +415,7 @@ Situação conferida no código em 10/11/2026. ✅ feito; 🔶 em parte; sem mar
 
 **Fase 1 – Abrir a loja (MVP do caixa)**
 1. 🔶 Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN. Vincular código a um produto que já existe, pelo PDV (seção 21), e folha de códigos para o que não tem código (seção 23).
-2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). Cadastrar na hora quando o código não é encontrado (seção 21). **Falta:** os atalhos de caldo, gelo e porções.
+2. ✅ Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, teclas rápidas para caldo, gelo e porções (seção 30). Cadastrar na hora quando o código não é encontrado (seção 21).
 3. ✅ **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
 5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). Desconto no total pelo F3, com o gerente (seção 20).
@@ -438,7 +438,7 @@ Situação conferida no código em 10/11/2026. ✅ feito; 🔶 em parte; sem mar
 18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
 19. Delivery pelo WhatsApp (se existir).
 
-**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta e transferência (seções 24, 26 e 29).
+**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta, transferência e controles (seções 24, 26, 29 e 30). Próximo: atendente lançando a comanda pelo celular.
 
 **Fora do escopo (confirmado):** fiado e casco retornável. Comandas entraram em 10/11/2026 (seção 24).
 
@@ -1130,6 +1130,56 @@ O produto que cruza a faixa fica na classe de cima, como é o costume. Gelada, n
 **Limites conhecidos:**
 - **Parte de item com adicionais não se transfere.** Vai o item inteiro.
 - **Não transfere entre comandas pagas.** Venda paga se corrige pelo cancelamento (F9).
+
+---
+
+## 30. Controles da comanda (10/11/2026)
+
+**Para que serve:** a comanda guarda o que o cliente já consumiu. Tirar um item dela, ou fechar o dia com ela aberta, é dinheiro que pode sumir. Os dois controles abaixo fecham essas portas, e as teclas rápidas aceleram o que não tem código.
+
+### Tirar item da comanda só com o gerente
+
+Na comanda, o **x** do item e o botão **Limpar** abrem a janela "Tirar da comanda".
+1. Diga quanto sai de cada item. O padrão é tudo; para tirar 1 de 2, digite 1.
+2. Escolha ou escreva o motivo: lançado errado, cliente desistiu, produto com defeito.
+3. O gerente digita nome e senha. Quem cuida do financeiro (o dono) não precisa.
+
+| Situação | Resultado |
+|---|---|
+| Operadora sem o gerente, ou senha errada | Recusado; a janela fica aberta para tentar de novo |
+| Sem motivo | Recusado |
+| Item com adicionais (ex.: porção com molho) | Sai inteiro; parte dele é recusada |
+| A comanda fica vazia | A comanda fecha e o caixa volta ao balcão |
+| Venda de balcão, ainda não paga | O x continua livre, como antes: o cliente ainda não consumiu |
+
+Tudo fica no log: o que saiu, o valor, o motivo, quem pediu e quem autorizou. A regra está no servidor: mesmo chamando a rota comum da venda, a operadora não tira nem diminui item de uma comanda aberta.
+
+### Aviso de comandas abertas ao encerrar o caixa
+
+Ao abrir "Encerrar", o caixa mostra as comandas ainda sem pagar e quanto somam. Para encerrar assim mesmo, é preciso marcar **"Deixar abertas e encerrar mesmo assim"**; a escolha vai para o log. Serve para a troca de turno, quando a comanda passa para o próximo caixa. A comanda vazia (cartão bipado sem nada lançado) não conta.
+
+### Teclas rápidas
+
+Uma faixa abaixo do campo de leitura, com até 8 botões para o que não tem código de barras: gelo, copo, caldo, porções.
+- **Lançar:** toque no botão ou aperte **Alt e o número** (Alt+1 a Alt+8). Para mais de um, digite a quantidade antes: **3** e Alt+1 lança 3.
+- **Configurar:** "Criar teclas rápidas" ou "Editar teclas" abre a lista de produtos do cardápio. Mudar pede o gerente (quem cuida do estoque não precisa).
+- As teclas valem para todos os caixas da loja e ficam no banco, junto com o backup.
+
+**Como foi feito:**
+- Tirar item é uma rota da comanda (`POST /api/comandas/{numero}/retirar`), que trava a conta, confere o gerente e o motivo e grava o log. A rota comum da venda passou a recusar tirar ou diminuir item de comanda aberta para quem não cuida do financeiro.
+- O encerramento devolve "conflito" (409) com a lista quando há comanda com itens, até vir a confirmação.
+- As teclas ficam numa tabela nova (`pdv_teclas_rapidas`, migração `V20261110_02`) e são lançadas pelo mesmo caminho do código bipado.
+
+**Testado:**
+- **Unidade:** quem pode tirar item e quem autoriza, o texto do aviso de comandas, quem muda as teclas e o que vale para quem entrou por PIN.
+- **Banco:** a rota comum recusa tirar e diminuir item de comanda; tirar sem gerente, com senha errada, sem motivo e mais do que tem é recusado; 1 de 3 latas sai com o gerente; o gerente tira o resto sem senha e a comanda fecha. Encerrar com comanda aberta dá o aviso e passa com a confirmação. Teclas: a operadora sozinha não muda, com o gerente salva, só há 8 teclas.
+- **Navegador real:** o dono cria a tecla Alt+1 com o Gelo e lança 2 gelos na comanda 9 digitando 2 e Alt+1. A Ana abre a comanda 9 em outra tela e tenta tirar 1 gelo: sem motivo, sem gerente e com senha errada é recusado; com o gerente sai 1 gelo e o log registra o motivo e quem autorizou. O Limpar também pede o gerente. O dono encerra o caixa 2 com a comanda 9 aberta: o aviso aparece, a confirmação é exigida e vai para o log.
+- **Windows:** o fechamento depois do roteiro avisa da comanda 9 e só encerra com a confirmação.
+
+**Limites conhecidos:**
+- **Diminuir a quantidade pela tela de edição do item**, numa comanda, também é recusado para a operadora, com o aviso de usar o x. É o mesmo controle, por outro caminho.
+- **Item quebrado ou derramado** sai da comanda, mas não vira perda no estoque sozinho: lance a perda no Estoque.
+- **As teclas usam Alt.** Se algum programa do notebook usar Alt+número, toque nos botões.
 
 ---
 

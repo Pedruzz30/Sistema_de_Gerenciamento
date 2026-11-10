@@ -1151,7 +1151,7 @@ try {
       await esperarTexto(operadora, '#alert-pdv', `${reais(precoGelo)} tirados da comanda 9`);
       await esperarTexto(operadora, '#pdv-total', reais(13.5 + precoGelo));
       // Limpar a comanda também passa pelo gerente.
-      await operadora.click('.pdv-clear-btn');
+      await operadora.click('.pdv-clear-btn:has-text("Limpar")');
       await operadora.waitForSelector('#modal-pdv-retirar.open');
       await esperarTexto(operadora, '#pdv-retirar-titulo', 'Limpar a comanda 9');
       assert.equal(await operadora.locator('[data-retirar-item]').count(), await operadora.locator('.pdv-item-row').count(), 'Limpar lista todos os itens');
