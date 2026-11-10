@@ -4,6 +4,19 @@
 > Java ainda **não hospedada**. Não publicar serviços financeiros nem
 > executar migrations no projeto `StockOS Staging` do Supabase.
 
+## Verificação dos conectores — 10/11/2026
+
+Esta observação é um **estado pontual** conferido pelos conectores, não um teste de homologação:
+
+- **Supabase `StockOS Staging`: INACTIVE.** A autenticação real não está disponível para testes com dois usuários neste momento. O projeto `Space Underground` é independente e **não deve ser utilizado como alternativa**.
+- **Render PostgreSQL `stockos-java-staging-temp`: available**, plano free; previsão de expiração **03/12/2026**. Ainda não há indicação de que as roles `stockos_app` e `stockos_migrator` estejam provisionadas — não assumir que estão.
+- **Render web services**: somente o serviço da Space Underground foi encontrado; **nenhum backend StockOS de staging foi implantado**. Não acessar nem reconfigurar o serviço Space.
+- A branch de segurança passou na CI com PostgreSQL descartável **sintético**, mas isso não constitui teste com JWT emitido pelo projeto Supabase.
+
+**Próximo passo seguro:** reativar o projeto de autenticação StockOS apenas após verificar impacto de cobrança; provisionar roles separadas no PostgreSQL **descartável** com credenciais armazenadas em secrets; aplicar Flyway como migrator; executar `03-verify-runtime-access.psql` como runtime. Só depois criar web service de homologação opt-in sem auto-deploy, usando as variáveis e checklists abaixo. **Sem essas verificações, manter PR #33 em draft e impedir deploy comercial.**
+
+Perfis `staging`, `prod` e `production` agora usam guard de autenticação antecipado; o fallback `legacy` não pode ser usado nesses perfis. Para um servidor remoto, o perfil ativo deve ser explicitamente configurado e conferido — nunca depender do perfil padrão local.
+
 ## Inventário e isolamento
 
 | Recurso | Identificador | Finalidade |
