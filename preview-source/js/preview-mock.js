@@ -4,15 +4,15 @@
   const MODE_KEY = 'stockos-preview-scenario-v1';
   const search = new URL(location.href).searchParams;
   const requested = search.get('scenario');
-  if ((requested === 'scale' || requested === 'basic') && typeof window.StockOSCreateScaleDemo === 'function') {
+  if ((requested === 'scale' || requested === 'basic' || requested === 'beverages') && typeof window.StockOSCreateScaleDemo === 'function') {
     try { localStorage.setItem(MODE_KEY, requested); } catch (_) {}
   }
   let mode = 'basic';
   if (typeof window.StockOSCreateScaleDemo === 'function') {
-    try { mode = localStorage.getItem(MODE_KEY) === 'basic' ? 'basic' : 'scale'; }
+    try { const saved=localStorage.getItem(MODE_KEY); mode=saved === 'basic' || saved === 'beverages' ? saved : 'scale'; }
     catch (_) { mode = 'scale'; }
   }
-  const KEY = mode === 'scale' ? 'stockos-preview-scale-v1' : 'stockos-preview-v1';
+  const KEY = mode === 'scale' ? 'stockos-preview-scale-v1' : mode === 'beverages' ? 'stockos-preview-beverages-v1' : 'stockos-preview-v1';
   const today = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); };
   const stamp = (h, m) => today() + 'T' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00';
   const names = [
@@ -66,16 +66,19 @@
   let db;
   try { db=JSON.parse(localStorage.getItem(KEY)||'null'); } catch(e) {}
   if (!db || !Array.isArray(db.produtos) || !Array.isArray(db.fornecedores) || !Array.isArray(db.movimentacoesCaixa) ||
-      (mode === 'scale' && (!db.demoEscala || db.demoEscala.fim !== (() => {
+      ((mode === 'scale' || mode === 'beverages') && (!db.demoEscala || db.demoEscala.fim !== (() => {
         const d = new Date(); d.setDate(d.getDate()-1);
         return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
       })()))) {
-    db = mode === 'scale' ? window.StockOSCreateScaleDemo(initial()) : initial();
+    db = mode === 'scale' ? window.StockOSCreateScaleDemo(initial()) :
+      mode === 'beverages' ? window.StockOSCreateBeverageDemo(initial()) : initial();
   }
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){console.warn('Preview: armazenamento indisponível',e);}};
   save();
   const respond=(value,status=200)=>Promise.resolve(new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}}));
   const user = {ru:1,nome:'Admin',sobrenome:'Demo',nomeClasse:'SUPERIOR',perfil:'ADMIN',ativo:true,permissoes:['VER_ESTOQUE','EDITAR_ESTOQUE','VER_COMPRAS','VER_VENDAS','VER_FINANCAS','GERENCIAR_FUNCIONARIOS','VER_LOGS']};
+  // Identidade falsa presente somente no pacote mock do Netlify.
+  window.StockosPreviewUser = user;
   async function handle(input, init={}) {
     const raw = input instanceof Request ? input.url : String(input);
     const url = new URL(raw, location.href);
@@ -378,17 +381,19 @@
   });
   const banner=document.createElement('div');
   banner.setAttribute('role','status');
-  banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:10px 12px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;display:flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:min(92vw,620px)';
+  banner.className = 'stockos-preview-banner';
+  banner.style.cssText='position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:60;max-width:calc(100vw - 138px);padding:10px 12px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;display:flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:min(92vw,620px)';
   if (typeof window.StockOSCreateScaleDemo === 'function') {
     const caption=document.createElement('span');
-    caption.textContent= mode==='scale'
-      ? 'DEMONSTRAÇÃO · Estação 30 · R$ 300 mil / 30 dias · 7.500 pedidos'
+    caption.textContent= mode==='beverages'
+      ? 'DEMONSTRAÇÃO · Central Bebidas · R$ 2 milhões / 30 dias · 12 mil pedidos'
+      : mode==='scale' ? 'DEMONSTRAÇÃO · Estação 30 · R$ 300 mil / 30 dias · 7.500 pedidos'
       : 'DEMONSTRAÇÃO · dados fictícios (simples)';
     banner.appendChild(caption);
     const selector=document.createElement('select');
     selector.setAttribute('aria-label','Cenário de dados da demonstração');
     selector.style.cssText='font:600 12px system-ui;border-radius:7px;border:1px solid #78ad8e;background:#102318;color:#fff;padding:6px;max-width:100%';
-    for(const optionData of [['scale','Empresa R$ 300 mil'],['basic','Demonstração simples']]){
+    for(const optionData of [['scale','Empresa R$ 300 mil'],['beverages','Depósito de bebidas R$ 2 milhões'],['basic','Demonstração simples']]){
       const option=document.createElement('option');option.value=optionData[0];option.textContent=optionData[1];
       selector.appendChild(option);
     }

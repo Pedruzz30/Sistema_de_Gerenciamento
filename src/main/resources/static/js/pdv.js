@@ -24,6 +24,9 @@ let pdvVariacoesPorItem = {};
 let pdvVariacoesPorId = {};
 let pdvDraftPayloadPorItemVenda = {};
 let pdvConfiguracaoAtual = null;
+let pdvFinalizando = false;
+let pdvLimpandoCarrinho = false;
+let pdvTentativaFinalizacao = null;
 
 async function abrirPDV(numeroCaixa) {
   pdvNumeroCaixa = numeroCaixa;
@@ -36,6 +39,9 @@ async function abrirPDV(numeroCaixa) {
   if (cupomAuto) cupomAuto.checked = cupomAutomaticoPDV();
   pdvDraftPayloadPorItemVenda = {};
   pdvCategoriaAtiva = 'todos';
+  pdvFinalizando = false;
+  pdvLimpandoCarrinho = false;
+  pdvTentativaFinalizacao = null;
 
   document.getElementById('pdv-caixa-label').textContent = `Caixa ${numeroCaixa}`;
   document.getElementById('pdv-busca').value = '';
@@ -46,10 +52,27 @@ async function abrirPDV(numeroCaixa) {
   cancelarPagamentoPDV();
   pdvProximoAlternativo = false;
   atualizarIndicadorAlternativoPDV();
+  mostrarPainelPDVMobile('produtos');
   renderCarrinho();
   focarLeituraPDV();
   await Promise.all([carregarCardapioPDV(), carregarCodigosPDV(), carregarTeclasPDV()]);
   focarLeituraPDV();
+}
+
+function mostrarPainelPDVMobile(painel) {
+  if (painel !== 'produtos' && painel !== 'pedido') return;
+  const shell = document.getElementById('pdv-shell');
+  if (!shell) return;
+  shell.dataset.mobilePanel = painel;
+  for (const [id, active] of [
+    ['pdv-mobile-produtos', painel === 'produtos'],
+    ['pdv-mobile-pedido', painel === 'pedido']
+  ]) {
+    const button = document.getElementById(id);
+    if (!button) continue;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
 }
 
 async function carregarCardapioPDV() {
@@ -272,6 +295,10 @@ function filtrarProdutosPDV() {
 }
 
 async function adicionarAoCarrinho(itemId) {
+  if (pdvFinalizando || pdvLimpandoCarrinho || pdvTentativaFinalizacao) {
+    mostrarAlert('alert-pdv', 'Resolva a tentativa de venda pendente antes de alterar os itens.', 'error');
+    return;
+  }
   const item = pdvItensMap[itemId];
   if (!item || !itemDisponivelParaSelecaoPDV(item)) return;
 
@@ -633,6 +660,10 @@ function atualizarResumoConfiguracaoPDV(validacaoBackend) {
 }
 
 async function confirmarConfiguracaoPDV() {
+  if (pdvFinalizando || pdvLimpandoCarrinho || pdvTentativaFinalizacao) {
+    mostrarAlert('alert-pdv-configuracao', 'Existe uma operação pendente. Verifique o pedido antes de alterar itens.', 'error');
+    return;
+  }
   const estado = pdvConfiguracaoAtual;
   if (!estado || !estado.configuracao) return;
   const local = validarConfiguracaoVisualPDV();
@@ -761,7 +792,7 @@ async function editarItemCarrinhoPDV(itemVendaId) {
 }
 
 async function removerItemCompleto(itemVendaId) {
-  if (!pdvVendaAtual) return;
+  if (!pdvVendaAtual || pdvLimpandoCarrinho || pdvFinalizando || pdvTentativaFinalizacao) return;
   // Item de comanda pode já ter sido servido: sai com o gerente e com motivo.
   if (pdvComandaAtual) { abrirRetiradaPDV([Number(itemVendaId)]); return; }
   const resp = await fetch(`/api/vendas/${pdvVendaAtual.id}/itens/${itemVendaId}`, { method: 'DELETE' });
@@ -773,18 +804,51 @@ async function removerItemCompleto(itemVendaId) {
   await recarregarVendaAtualPDV();
 }
 
-function limparCarrinho() {
+async function limparCarrinho() {
+  if (!pdvVendaAtual || pdvLimpandoCarrinho || pdvFinalizando || pdvTentativaFinalizacao) return;
+  const vendaId = pdvVendaAtual.id;
   const ids = itensAtivosVendaPDV().map(item => item.id);
   if (!ids.length) return;
   if (pdvComandaAtual) { abrirRetiradaPDV(ids.map(Number)); return; }
-  Promise.all(ids.map(id => fetch(`/api/vendas/${pdvVendaAtual.id}/itens/${id}`, { method: 'DELETE' }).catch(() => null)))
-    .then(() => {
-      pdvVendaAtual = null;
-      pdvCarrinho = [];
-      pdvDraftPayloadPorItemVenda = {};
-      renderCarrinho();
-      renderCardapio();
-    });
+
+  pdvLimpandoCarrinho = true;
+  const button = document.getElementById('btn-pdv-limpar');
+  if (button) button.disabled = true;
+  let falha = false;
+  try {
+    // Mutação sequencial: interromper na primeira falha sem apagar o carrinho local.
+    for (const id of ids) {
+      const resposta = await fetch(`/api/vendas/${vendaId}/itens/${id}`, { method: 'DELETE' });
+      if (!resposta.ok) {
+        falha = true;
+        break;
+      }
+      delete pdvDraftPayloadPorItemVenda[id];
+    }
+  } catch (error) {
+    falha = true;
+    console.warn('PDV: falha ao limpar carrinho', error);
+  }
+  try {
+    // Em todos os casos consultar o servidor; resposta GET não-OK não é confirmação.
+    const atualizada = await fetch(`/api/vendas/${vendaId}`);
+    if (!atualizada.ok) throw new Error('Não foi possível confirmar o estado do pedido.');
+    pdvVendaAtual = await atualizada.json();
+    pdvCarrinho = itensAtivosVendaPDV();
+    if (pdvCarrinho.length > 0) falha = true;
+    if (!pdvCarrinho.length) pdvDraftPayloadPorItemVenda = {};
+    renderCarrinho();
+    renderCardapio();
+  } catch (error) {
+    falha = true;
+    console.warn('PDV: carrinho não sincronizado', error);
+  } finally {
+    pdvLimpandoCarrinho = false;
+    if (button) button.disabled = false;
+  }
+  if (falha) {
+    mostrarAlert('alert-pdv', 'Não foi possível confirmar a limpeza completa. Confira os itens antes de prosseguir.', 'error');
+  }
 }
 
 function quantidadeItemNoCarrinhoPDV(itemId) {
@@ -863,6 +927,8 @@ function renderCarrinho() {
   const qtdItens = pdvCarrinho.reduce((soma, entry) => soma + Number(entry.quantidade || 0), 0);
 
   if (elQtd) elQtd.textContent = qtdItens > 0 ? `${qtdItens} ite${qtdItens === 1 ? 'm' : 'ns'}` : '';
+  const mobileBadge = document.getElementById('pdv-mobile-cart-badge');
+  if (mobileBadge) mobileBadge.textContent = `${qtdItens} ite${qtdItens === 1 ? 'm' : 'ns'}`;
 
   if (pdvCarrinho.length === 0 && typeof cancelarPagamentoPDV === 'function'
       && !document.getElementById('pdv-pagamento')?.hidden) {
@@ -1035,7 +1101,14 @@ async function retirarDescontoPDV() {
 }
 
 async function finalizarVendaPDV() {
-  if (!pdvVendaAtual || pdvCarrinho.length === 0) return;
+  if (!pdvVendaAtual || pdvCarrinho.length === 0 || pdvFinalizando || pdvLimpandoCarrinho) return;
+
+  const vendaId = pdvVendaAtual.id;
+  // Uma chave por tentativa de uma mesma venda. Reutilizar quando a
+  // resposta for incerta; a API verifica idempotência no PostgreSQL.
+  if (!pdvTentativaFinalizacao || pdvTentativaFinalizacao.vendaId !== vendaId) {
+    pdvTentativaFinalizacao = { vendaId, chave: gerarIdempotencyKeyPDV('finalizar') };
+  }
 
   const btn = document.getElementById('btn-pdv-confirmar-pagamento') || document.getElementById('btn-pdv-finalizar');
   const total = calcularTotalCarrinho();
@@ -1045,22 +1118,26 @@ async function finalizarVendaPDV() {
     valor: arred2(p.valor).toFixed(2),
     valorRecebido: p.valorRecebido == null ? null : arred2(p.valorRecebido).toFixed(2)
   }));
+  pdvFinalizando = true;
   setLoading(btn, true);
   limparAlert('alert-pdv');
 
   try {
-    const resp = await fetch(`/api/vendas/${pdvVendaAtual.id}/finalizar`, {
+    const resp = await fetch(`/api/vendas/${vendaId}/finalizar`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Idempotency-Key': gerarIdempotencyKeyPDV('finalizar')
+        'Idempotency-Key': pdvTentativaFinalizacao.chave
       },
       body: JSON.stringify({ numeroCaixaLegado: pdvNumeroCaixa, pagamentos })
     });
-
     if (!resp.ok) {
       const msg = await safeReadErrorMessage(resp, 'Erro ao finalizar venda.');
-      mostrarAlert('alert-pdv', msg, 'error');
+      // Recusa clara (4xx): a venda não foi feita, a próxima tentativa usa outra chave.
+      // Erro do servidor: o resultado é incerto, a próxima tentativa reusa a mesma chave.
+      if (resp.status >= 400 && resp.status < 500) pdvTentativaFinalizacao = null;
+      mostrarAlert('alert-pdv', resp.status >= 500
+        ? msg + ' Mantenha o pedido e verifique o resultado antes de alterá-lo.' : msg, 'error');
       bipPDV(false);
       await recarregarDisponibilidadePDV();
       renderCardapio();
@@ -1068,20 +1145,28 @@ async function finalizarVendaPDV() {
     }
 
     const vendaFinalizada = await resp.json();
-    pdvUltimoCupom = dadosCupomPDV({
-      titulo: 'CUPOM NÃO FISCAL',
-      venda: vendaFinalizada,
-      comanda: pdvComandaAtual,
-      pagamentos: pdvPagamentos.map(p => ({ ...p })),
-      troco
-    });
-    // Próximo cliente: o PDV continua aberto, com carrinho limpo e foco na leitura.
+    if (vendaFinalizada.status !== 'FINALIZADA') {
+      mostrarAlert('alert-pdv', 'O servidor não confirmou a finalização. Tente novamente sem alterar o pedido.', 'error');
+      return;
+    }
+    pdvTentativaFinalizacao = null;
+    // Venda confirmada: libera o pedido antes de tudo; o resto é tela e cupom.
     const comandaPaga = pdvComandaAtual;
+    const pagamentosCupom = pdvPagamentos.map(p => ({ ...p }));
     pdvComandaAtual = null;
-    atualizarComandaPDV();
     pdvCarrinho = [];
     pdvVendaAtual = null;
     pdvDraftPayloadPorItemVenda = {};
+    showToast(`${formatarMoedaPDV(total)} registrado no Caixa ${pdvNumeroCaixa}${troco > 0 ? ` · TROCO ${formatarMoedaPDV(troco)}` : ''}`, 'success');
+    pdvUltimoCupom = dadosCupomPDV({
+      titulo: 'CUPOM NÃO FISCAL',
+      venda: vendaFinalizada,
+      comanda: comandaPaga,
+      pagamentos: pagamentosCupom,
+      troco
+    });
+    // Próximo cliente: o PDV continua aberto, com carrinho limpo e foco na leitura.
+    atualizarComandaPDV();
     cancelarPagamentoPDV();
     renderCarrinho();
     const mensagemTroco = troco > 0 ? ` · TROCO ${formatarMoedaPDV(troco)}` : '';
@@ -1089,10 +1174,17 @@ async function finalizarVendaPDV() {
     mostrarAlert('alert-pdv', `${rotulo}${formatarMoedaPDV(total)} registrada${mensagemTroco}.`, 'success');
     if (cupomAutomaticoPDV()) imprimirCupomPDV(pdvUltimoCupom);
     else acrescentarBotaoAlertaPDV('Imprimir cupom (F8)', () => imprimirCupomPDV(pdvUltimoCupom));
-    showToast(`${formatarMoedaPDV(total)} registrado no Caixa ${pdvNumeroCaixa}${mensagemTroco}`, 'success');
-    carregarCaixas();
+    void carregarCaixas();
     focarLeituraPDV();
+  } catch (error) {
+    console.warn('PDV: resultado de finalização não confirmado', error);
+    if (pdvVendaAtual) {
+      mostrarAlert('alert-pdv',
+        'A resposta da venda não foi confirmada. Não inicie outra venda antes de conferir o resultado; tente novamente com o mesmo pedido.',
+        'error');
+    }
   } finally {
+    pdvFinalizando = false;
     setLoading(btn, false);
   }
 }
@@ -1297,7 +1389,17 @@ async function lerCodigoPDV(event) {
  * está no carrinho, soma a quantidade na mesma linha. Itens com adicionais
  * obrigatórios abrem a tela de configuração, como no cardápio.
  */
+// Venda pendente (finalização sem resposta clara ou limpeza em andamento): nada muda nos itens.
+function operacaoPendentePDV() {
+  if (!pdvFinalizando && !pdvLimpandoCarrinho && !pdvTentativaFinalizacao) return false;
+  mostrarAlert('alert-pdv', 'Resolva a tentativa de venda pendente antes de alterar os itens.', 'error');
+  return true;
+}
+
 async function adicionarVariacaoPorCodigoPDV(variacao, quantidade) {
+  if (pdvFinalizando || pdvLimpandoCarrinho || pdvTentativaFinalizacao) {
+    throw new Error('Resolva a tentativa de venda pendente antes de alterar os itens.');
+  }
   const contexto = contextoOperacionalPDV();
   const resp = await fetch(`/api/cardapio/variacoes/${variacao.variacaoId}/configuracao?filialId=${encodeURIComponent(contexto.filialId)}&canal=${encodeURIComponent(contexto.canal)}`);
   if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Item indisponível para venda agora.'));
@@ -1528,6 +1630,7 @@ let pdvOperadorTrocado = false;
 // Mesa errada, cliente que mudou de mesa ou duas comandas que viram uma.
 
 function abrirTransferenciaPDV() {
+  if (operacaoPendentePDV()) return;
   if (!pdvVendaAtual || pdvCarrinho.length === 0) {
     mostrarAlert('alert-pdv', 'Não há itens para transferir.', 'info');
     return;
@@ -1893,7 +1996,7 @@ async function testarCozinha() {
   setTimeout(carregarPedidosCozinha, 4000);
 }
 
-document.addEventListener('click', async event => {
+if (typeof document.addEventListener === 'function') document.addEventListener('click', async event => {
   const botao = event.target.closest && event.target.closest('[data-reimprimir]');
   if (!botao) return;
   botao.disabled = true;
@@ -1903,13 +2006,18 @@ document.addEventListener('click', async event => {
   setTimeout(carregarPedidosCozinha, 3000);
 });
 
-atualizarSituacaoCozinha();
-setInterval(atualizarSituacaoCozinha, 20000);
+// Só na tela do caixa de verdade: os testes rodam este arquivo sem página.
+if (typeof document.getElementById === 'function'
+    && (document.getElementById('btn-cozinha') || document.getElementById('pdv-cozinha'))) {
+  atualizarSituacaoCozinha();
+  setInterval(atualizarSituacaoCozinha, 20000);
+}
 
 // ── Tirar item já lançado numa comanda ──────────────────────────────────
 // Na comanda o item pode já ter sido servido: só sai com o gerente e com motivo.
 
 function abrirRetiradaPDV(ids) {
+  if (operacaoPendentePDV()) return;
   if (!pdvComandaAtual || !pdvVendaAtual) return;
   const itens = pdvCarrinho.filter(item => ids.includes(Number(item.id)));
   if (!itens.length) return;
@@ -2318,6 +2426,7 @@ function atualizarComandaPDV() {
 
 async function abrirComandaPDV(numero) {
   limparAlert('alert-pdv');
+  if (operacaoPendentePDV()) return false;
   if (pdvComandaAtual && pdvComandaAtual.numero === numero) {
     mostrarAlert('alert-pdv', `A comanda ${numero} já está aberta aqui.`, 'info');
     return true;
@@ -3028,6 +3137,7 @@ window.StockOSPDV = {
   activate() {
     Object.assign(window, {
       abrirPDV,
+      mostrarPainelPDVMobile,
       carregarCardapioPDV,
       carregarVariacoesItemPDV,
       getCategoriaConfig,

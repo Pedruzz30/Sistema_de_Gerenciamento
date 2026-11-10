@@ -241,6 +241,18 @@
       </button>
     </div>
 
+    <!-- Apenas apresentação: navegação por painel sem operação financeira. -->
+    <div class="pdv-mobile-navigation" role="group" aria-label="Painel do PDV">
+      <button type="button" class="pdv-mobile-navigation__button is-active"
+              id="pdv-mobile-produtos" aria-pressed="true"
+              onclick="mostrarPainelPDVMobile('produtos')">Produtos</button>
+      <button type="button" class="pdv-mobile-navigation__button"
+              id="pdv-mobile-pedido" aria-pressed="false"
+              onclick="mostrarPainelPDVMobile('pedido')">
+        Pedido <span id="pdv-mobile-cart-badge" aria-live="polite">0 itens</span>
+      </button>
+    </div>
+
     <div class="pdv-shell__body">
       <section class="pdv-catalog-panel">
         <div class="pdv-scan">
@@ -281,7 +293,7 @@
             <input type="checkbox" id="pdv-cupom-auto" onchange="alternarCupomAutomaticoPDV()"> Cupom automático
           </label>
           <button type="button" class="pdv-clear-btn" id="btn-pdv-transferir" onclick="abrirTransferenciaPDV()" title="Passa itens para uma comanda (F6)">Transferir</button>
-          <button type="button" class="pdv-clear-btn" onclick="limparCarrinho()">Limpar</button>
+          <button type="button" class="pdv-clear-btn" id="btn-pdv-limpar" onclick="limparCarrinho()">Limpar</button>
         </div>
 
         <div id="pdv-carrinho-itens" class="pdv-cart-items">

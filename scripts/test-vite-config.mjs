@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+
+execFileSync(process.execPath,['--check','vite.config.mjs'],{stdio:'inherit'});
+const config=await readFile('vite.config.mjs','utf8');
+const pkg=JSON.parse(await readFile('package.json','utf8'));
+assert.match(config,/root: frontendRoot/);
+assert.match(config,/appType: 'mpa'/);
+assert.match(config,/host: '127\.0\.0\.1'/);
+assert.match(config,/port: 5173/);
+assert.match(config,/strictPort: true/);
+assert.match(config,/target: 'http:\/\/127\.0\.0\.1:8080'/);
+assert.match(config,/\^\/api\(\?:\/\|\$\)/);
+assert.match(config,/type: 'full-reload'/);
+assert.match(pkg.scripts['dev:vite'],/vite --config vite\.config\.mjs/);
+assert.ok(pkg.devDependencies.vite);
+assert.match(pkg.scripts['build:preview'],/build-preview/);
+assert.match(pkg.scripts.dev,/dev-preview/);
+console.log('PASS: Vite localhost-only dev server, classic script reload and isolated Spring proxy');

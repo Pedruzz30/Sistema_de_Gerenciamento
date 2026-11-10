@@ -145,6 +145,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const control = document.createElement('button');
     control.type = 'button';
+    control.dataset.stockosDesignToggle = 'true';
     control.textContent = active ? 'Visual novo · Ver original' : 'Visual original · Ver novo';
     control.setAttribute('aria-label', control.textContent);
     control.style.cssText = [

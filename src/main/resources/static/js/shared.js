@@ -464,7 +464,8 @@ function renderUserCard() {
 let shellInicializado = false;
 
 function isShellMobile() {
-  return window.innerWidth <= 900;
+  // Breakpoint da sidebar oculta em CSS: evitar intervalo sem navegação.
+  return window.innerWidth <= 980;
 }
 
 function fecharModalAberto() {
@@ -523,7 +524,19 @@ function setupShell() {
     overlay.type = 'button';
     overlay.className = 'sidebar-overlay';
     overlay.setAttribute('aria-label', 'Fechar navegação');
-    document.body.appendChild(overlay);
+  }
+  // A sidebar e o backdrop devem compartilhar o mesmo stacking context.
+  // Caso contrário, o backdrop no body bloqueia os cliques no Android.
+  if (overlay.parentElement !== app) app.appendChild(overlay);
+
+  let closeSidebarButton = sidebar.querySelector('.sidebar-close');
+  if (!closeSidebarButton) {
+    closeSidebarButton = document.createElement('button');
+    closeSidebarButton.type = 'button';
+    closeSidebarButton.className = 'sidebar-close';
+    closeSidebarButton.setAttribute('aria-label', 'Fechar menu de navegação');
+    closeSidebarButton.textContent = 'Fechar menu ×';
+    sidebar.insertBefore(closeSidebarButton, sidebar.firstChild);
   }
 
   function syncSidebar(isOpen) {
@@ -551,6 +564,7 @@ function setupShell() {
   });
 
   overlay.addEventListener('click', fecharSidebar);
+  closeSidebarButton.addEventListener('click', fecharSidebar);
 
   sidebar.addEventListener('click', function (event) {
     const alvo = event.target.closest('a');
@@ -585,4 +599,21 @@ document.addEventListener('DOMContentLoaded', function () {
   renderUserCard();
   aplicarIconesEstaticos(document);
   setupShell();
+  // Atalhos somente para operação legada/demonstração; o console Supabase
+  // mantém sua navegação tenant-aware e não recebe novas rotas legadas.
+  if (!(window.StockosAuth && window.StockosAuth.isSupabase())) {
+    if (!document.getElementById('stockos-quick-style')) {
+      const style = document.createElement('link');
+      style.id = 'stockos-quick-style';
+      style.rel = 'stylesheet';
+      style.href = '/css/quick-actions.css';
+      document.head.appendChild(style);
+    }
+    if (!document.getElementById('stockos-quick-script')) {
+      const script = document.createElement('script');
+      script.id = 'stockos-quick-script';
+      script.src = '/js/quick-actions.js';
+      document.body.appendChild(script);
+    }
+  }
 });

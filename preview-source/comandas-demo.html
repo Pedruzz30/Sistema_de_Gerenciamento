@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>StockOS · Comandas (demonstração)</title>
+<link rel="stylesheet" href="/css/comandas-demo.css">
+<script defer src="/js/comandas-demo-model.js"></script>
+<script defer src="/js/comandas-demo.js"></script>
+</head>
+<body>
+<div class="demo-app">
+  <header class="demo-header">
+    <div class="identity"><a href="/dashboard.html" class="brand">Stock<span>OS</span></a><div><strong>Comandas</strong><small>Prévia operacional · dados fictícios</small></div></div>
+    <a href="/dashboard.html" class="back">Voltar ao Dashboard</a>
+  </header>
+  <main class="demo-main">
+    <div class="intro"><div><span class="eyebrow">Atendimento</span><h1>Controle de comandas</h1><p>Abra, registre consumos e prepare a conferência da conta.</p></div><span class="demo-label">SIMULAÇÃO · SEM PAGAMENTOS</span></div>
+    <div class="board">
+      <section class="panel listing" aria-labelledby="tabs-title">
+        <div class="panel-heading"><div><h2 id="tabs-title">Comandas</h2><p id="comandas-summary" aria-live="polite">Nenhuma comanda</p></div></div>
+        <form id="open-tab" class="new-tab">
+          <label for="tab-number">Número da nova comanda</label>
+          <div class="input-action"><input id="tab-number" type="number" inputmode="numeric" min="1" max="9999" required placeholder="Ex.: 27"><button type="submit" class="primary">Abrir</button></div>
+        </form>
+        <div class="list-scroller" id="tab-list" aria-label="Lista de comandas"></div>
+      </section>
+      <section class="panel detail" aria-labelledby="detail-title">
+        <div id="empty-detail" class="empty"><div class="empty-symbol">#</div><h2>Selecione uma comanda</h2><p>Abra uma nova comanda ou toque em uma da lista.</p></div>
+        <div id="tab-detail" hidden>
+          <div class="panel-heading detail-heading"><div><span class="eyebrow">Comanda selecionada</span><h2 id="detail-title">—</h2></div><span id="tab-status" class="status">Aberta</span></div>
+          <div class="total-summary"><div><small>Total do consumo</small><strong id="tab-total">R$ 0,00</strong></div><div><small>Quantidade</small><strong id="tab-items">0 itens</strong></div></div>
+          <div class="mobile-pane-tabs" role="group" aria-label="Área da comanda"><button id="show-products" type="button" aria-pressed="true">Produtos</button><button id="show-order" type="button" aria-pressed="false">Pedido <span id="order-badge">0</span></button></div>
+          <div class="workspace" id="workspace" data-panel="produtos">
+            <div class="workspace-section products">
+              <h3>Adicionar consumo</h3>
+              <label class="sr-only" for="product-search">Buscar produto</label>
+              <input id="product-search" type="search" placeholder="Buscar bebida, alimento..." autocomplete="off">
+              <p class="hint">Toque em um produto para adicionar uma unidade.</p>
+              <div id="product-list" class="product-list"></div>
+            </div>
+            <div class="workspace-section order">
+              <h3>Itens da comanda</h3>
+              <div id="order-list" class="order-list"></div>
+            </div>
+          </div>
+          <div class="detail-footer">
+            <p class="notice" id="closing-note">A conferência não registra pagamento nem altera o caixa.</p>
+            <button class="primary closing" type="button" id="request-close">Solicitar conferência</button>
+            <button class="secondary closing" type="button" id="resume-tab" hidden>Retomar atendimento</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+    <p class="disclaimer">Esta prévia é independente do banco e do sistema SaaS. Alterações são apenas locais no navegador; nenhum pagamento, faturamento, movimentação real de estoque ou fechamento de comanda é realizado.</p>
+  </main>
+</div>
+</body>
+</html>

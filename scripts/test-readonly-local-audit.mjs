@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const sql=(await readFile('scripts/dev/auditar-base-local.sql','utf8')).trim();
+const doc=await readFile('docs/stockos-local-data-audit.md','utf8');
+assert.match(sql,/BEGIN TRANSACTION READ ONLY;/i);
+assert.match(sql,/COMMIT;$/i);
+assert.doesNotMatch(sql,/^\s*(?:DELETE|TRUNCATE|DROP|ALTER|INSERT|UPDATE|CREATE|GRANT|REVOKE|CALL)\b/im);
+assert.match(sql,/FROM public\.produtos/i);
+assert.match(sql,/FROM public\.movimentacoes_caixa/i);
+assert.match(doc,/stockos_dev/);
+assert.match(doc,/5433/);
+assert.match(doc,/Supabase/);
+console.log('PASS: local audit is documented as read-only and contains no destructive statements');
