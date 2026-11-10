@@ -1556,7 +1556,8 @@ function abrirDivisaoPDV() {
   renderItensDivisaoPDV();
   document.getElementById('btn-pdv-parar-divisao').hidden = !pdvDivisao;
   abrirModal('modal-pdv-dividir');
-  escolherAbaDivisaoPDV(pdvDivisao ? pdvDivisao.modo : pdvAbaDivisao);
+  // Venda nova começa em partes iguais; no meio de uma divisão, continua no mesmo modo.
+  escolherAbaDivisaoPDV(pdvDivisao ? pdvDivisao.modo : 'iguais');
 }
 
 function escolherAbaDivisaoPDV(aba) {
