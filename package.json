@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs && npm run test:comandas-demo && npm run test:quick-actions && npm run test:mobile-shell && npm run test:operational-dashboard && npm run test:vite && npm run test:stock-mobile-ux && npm run test:mobile-pdv && npm run test:mobile-preview && npm run test:pdv-transaction-retries && npm run test:mobile-navigation",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs && npm run test:comandas-demo && npm run test:quick-actions && npm run test:mobile-shell && npm run test:operational-dashboard && npm run test:vite && npm run test:stock-mobile-ux && npm run test:mobile-pdv && npm run test:mobile-preview && npm run test:pdv-transaction-retries && npm run test:mobile-navigation && npm run test:readonly-local-audit",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
@@ -24,7 +24,8 @@
     "test:mobile-pdv": "node scripts/test-mobile-pdv-flow.mjs",
     "test:mobile-preview": "node scripts/test-mobile-preview.mjs",
     "test:pdv-transaction-retries": "node scripts/test-pdv-transaction-retries.mjs",
-    "test:mobile-navigation": "node scripts/test-mobile-navigation.mjs"
+    "test:mobile-navigation": "node scripts/test-mobile-navigation.mjs",
+    "test:readonly-local-audit": "node scripts/test-readonly-local-audit.mjs"
   },
   "devDependencies": {
     "vite": "8.3.5"
