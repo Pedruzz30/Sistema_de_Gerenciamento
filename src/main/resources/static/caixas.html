@@ -179,6 +179,12 @@
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-encerrar')">✕</button>
     </div>
     <div class="modal-body">
+      <!-- No topo: em notebook de tela baixa, no pé da janela o aviso ficava escondido. -->
+      <div class="alert-modal error alert-modal--static encerrar-comandas" id="encerrar-comandas" hidden>
+        <p id="encerrar-comandas-texto"></p>
+        <p>Receba as comandas antes de encerrar. Se elas ficam para o próximo caixa, marque abaixo.</p>
+        <label class="encerrar-comandas__confirmar"><input type="checkbox" id="encerrar-deixar-comandas"> Deixar abertas e encerrar mesmo assim</label>
+      </div>
       <div class="alert-modal error alert-modal--static" id="alert-encerrar-warn">
         <span class="btn-inline-icon" data-icon="alertTriangle"></span>
         Tem certeza? Após encerrar, o caixa não poderá receber mais movimentações.
@@ -198,11 +204,6 @@
       <div class="field form-group">
         <label>Observação (opcional)</label>
         <input class="input" type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
-      </div>
-      <div class="alert-modal error alert-modal--static encerrar-comandas" id="encerrar-comandas" hidden>
-        <p id="encerrar-comandas-texto"></p>
-        <p>Receba as comandas antes de encerrar. Se elas ficam para o próximo caixa, marque abaixo.</p>
-        <label class="encerrar-comandas__confirmar"><input type="checkbox" id="encerrar-deixar-comandas"> Deixar abertas e encerrar mesmo assim</label>
       </div>
       <fieldset class="field form-group autorizacao-gerente" id="encerrar-autorizacao" hidden>
         <legend>Autorização do gerente</legend>

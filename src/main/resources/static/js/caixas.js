@@ -393,6 +393,7 @@ async function confirmarEncerrar() {
   const deixarComandas = document.getElementById('encerrar-deixar-comandas').checked;
   if (!avisoComandas.hidden && !deixarComandas) {
     mostrarAlert('alert-encerrar', 'Há comandas sem pagar. Receba antes, ou marque que elas ficam abertas.', 'error');
+    avisoComandas.scrollIntoView({ block: 'nearest' });
     return;
   }
   const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao, autorizacao, deixarComandas);
@@ -401,6 +402,7 @@ async function confirmarEncerrar() {
     const corpo = await resp.json().catch(() => ({}));
     await prepararAvisoComandas(corpo.comandasAbertas || []);
     mostrarAlert('alert-encerrar', corpo.erro || 'Há comandas abertas.', 'error');
+    document.getElementById('encerrar-comandas').scrollIntoView({ block: 'nearest' });
     return;
   }
   if (resp.status === 403) {
