@@ -1513,7 +1513,7 @@ function acrescentarBotaoAlertaPDV(texto, acao) {
 }
 
 /** Retrato da venda para o papel: itens, totais e pagamentos. */
-function dadosCupomPDV({ titulo, venda, comanda, pagamentos, troco }) {
+function dadosCupomPDV({ titulo, venda, comanda, pagamentos, troco, conferencia = false }) {
   const itens = ((venda && venda.itens) || []).filter(i => i.status !== 'CANCELADO').map(i => ({
     nome: `${i.item}${i.variacao ? ' ' + i.variacao : ''}`,
     quantidade: Number(i.quantidade || 0),
@@ -1525,6 +1525,7 @@ function dadosCupomPDV({ titulo, venda, comanda, pagamentos, troco }) {
   const desconto = arred2(itens.reduce((s, i) => s + i.desconto, 0));
   return {
     titulo,
+    conferencia,
     vendaId: venda ? venda.id : null,
     comanda: comanda ? comanda.numero : null,
     quando: new Date(),
@@ -1547,7 +1548,7 @@ function htmlCupomPDV(c) {
   let html = `<h2>${escapeHtml(c.titulo)}</h2>`
     + `<p class="cupom-centro">${escapeHtml(data)} · Caixa ${escapeHtml(String(c.caixa ?? '—'))}</p>`
     + (c.comanda ? `<p class="cupom-centro"><strong>COMANDA ${c.comanda}</strong></p>` : '')
-    + (c.vendaId ? `<p class="cupom-centro">Venda #${c.vendaId} · ${escapeHtml(c.operador)}</p>` : `<p class="cupom-centro">${escapeHtml(c.operador)}</p>`)
+    + (c.vendaId && !c.conferencia ? `<p class="cupom-centro">Venda #${c.vendaId} · ${escapeHtml(c.operador)}</p>` : `<p class="cupom-centro">${escapeHtml(c.operador)}</p>`)
     + '<hr>';
   c.itens.forEach(i => {
     html += `<p>${escapeHtml(i.nome)}</p>`
@@ -1565,7 +1566,7 @@ function htmlCupomPDV(c) {
     if (c.troco > 0) html += linha('TROCO', formatarMoedaPDV(c.troco), 'cupom-total');
   }
   html += '<hr><p class="cupom-centro">Não é documento fiscal.</p>'
-    + (c.vendaId ? '<p class="cupom-centro">Obrigado e volte sempre!</p>' : '<p class="cupom-centro">Confira os itens antes de pagar.</p>');
+    + (c.conferencia ? '<p class="cupom-centro">Ainda não pago. Confira os itens antes de pagar.</p>' : '<p class="cupom-centro">Obrigado e volte sempre!</p>');
   return html;
 }
 
@@ -1584,7 +1585,7 @@ function imprimirCupomPDV(dados) {
 /** F8: com comanda aberta, a conferência para o cliente; senão, o último cupom de novo. */
 function imprimirConferenciaOuUltimoCupomPDV() {
   if (pdvComandaAtual && pdvVendaAtual) {
-    imprimirCupomPDV(dadosCupomPDV({ titulo: 'CONFERÊNCIA DA COMANDA', venda: pdvVendaAtual, comanda: pdvComandaAtual }));
+    imprimirCupomPDV(dadosCupomPDV({ titulo: 'CONFERÊNCIA DA COMANDA', venda: pdvVendaAtual, comanda: pdvComandaAtual, conferencia: true }));
     mostrarAlert('alert-pdv', `Conferência da comanda ${pdvComandaAtual.numero} enviada para a impressora.`, 'info');
     return;
   }

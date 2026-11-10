@@ -957,6 +957,7 @@ try {
     for (const valor of ['CONFERÊNCIA DA COMANDA', 'COMANDA 7', 'Skol lata 350ml', 'R$ 13,50', 'Confira os itens']) {
       assert.ok(conferencia.includes(valor), `${valor} na conferência: ${conferencia}`);
     }
+    assert.ok(!conferencia.includes('Obrigado') && conferencia.includes('Ainda não pago'), 'Conferência não é recibo de pagamento');
     await esperarTexto(dono, '#alert-pdv', 'Conferência da comanda 7');
     await dono.focus('#pdv-leitura');
     await dono.keyboard.press('F10');
