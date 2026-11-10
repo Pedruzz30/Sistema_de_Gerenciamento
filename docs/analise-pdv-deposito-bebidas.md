@@ -972,7 +972,7 @@ Os produtos com código de fábrica ficam fora da folha, mas uma opção mostra 
 
 **Limites conhecidos:**
 - **Um aparelho só:** os pedidos são lançados no PDV. Celular de atendente ou segundo computador exigem rede local e HTTPS.
-- **Sem divisão da conta entre pessoas da mesma comanda.** Dá para dividir o pagamento entre formas, mas não "cada um paga o seu".
+- **Divisão da conta:** feita depois, na seção 26.
 - **Sem transferir itens entre comandas** nem juntar duas comandas.
 - **Se o estoque acabar** enquanto a comanda está aberta, o pagamento é recusado, como no balcão. Corrija o estoque e pague de novo.
 - **A demonstração não tem comandas.**
@@ -1007,6 +1007,32 @@ O cupom tem data, caixa, número da venda, operador, comanda (se houver), itens 
 - **Sem nome e endereço da loja no cupom.** Pode entrar quando houver uma tela de dados da loja.
 - **Sem 2ª via de vendas antigas:** o F8 reimprime só a última venda deste caixa desde que o PDV foi aberto.
 - **Gaveta só pelo driver:** se a impressora não tiver essa opção, a gaveta abre na chave.
+
+---
+
+## 26. Dividir a conta (10/11/2026)
+
+**Como funciona:** no pagamento (F10), **F9** abre a divisão, em dois modos.
+
+| Modo | Como usa | Exemplo |
+|---|---|---|
+| Partes iguais | Digite quantas pessoas | R$ 13,50 por 4: três pagam R$ 3,37 e a última R$ 3,39 |
+| Pelos itens de cada pessoa | Marque quanto do que cada pessoa consumiu e aperte Enter; repita para a próxima | Pessoa 1: 2 latas (R$ 9,00) no Pix; pessoa 2: a lata que falta (R$ 4,50) em dinheiro |
+
+- Depois de cada pessoa, o aviso mostra quem pagou, o troco dela e quanto falta. Depois, chama a próxima pessoa.
+- Na divisão pelos itens, o que já foi pago some da lista. Quem fica com tudo o que falta paga o restante exato, sem sobra de centavo.
+- Cada pessoa pode pagar numa forma diferente. A tela e o cupom mostram "Pessoa 1 · Pix", "Pessoa 2 · Dinheiro", com recebido e troco de cada uma.
+- Tirar um pagamento (x) devolve os itens daquela pessoa para a lista. "Parar de dividir" volta ao pagamento normal.
+- Vale para comanda e para venda de balcão.
+
+**Como foi feito:** sem mudança no servidor. Continua sendo uma venda só, com um pagamento por pessoa, conferido no centavo como antes. Por isso o caixa, o fechamento e o resumo por operador já contam certo.
+
+**Testado no navegador real:** a comanda 7 dividida pelos itens (2 latas no Pix, 1 em dinheiro com troco de R$ 0,50) e o cupom com cada pessoa. A comanda 8 dividida em 4 partes iguais, com a sobra de centavos na última. O estoque baixa uma vez só.
+
+**Limites conhecidos:**
+- **Todos pagam na mesma hora.** Quem sai antes não paga a parte dele e deixa o resto aberto. Para isso, o costume de bar é uma comanda por pessoa, e o sistema já permite: cada um com seu cartão.
+- **Partes iguais exige começar antes de lançar pagamentos.**
+- **Desconto aplicado no meio** recomeça a divisão, porque o total muda.
 
 ---
 
