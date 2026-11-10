@@ -72,7 +72,7 @@ await ctx.window.limparCarrinho();
 assert.equal(requests.filter(([url,opt])=>opt?.method==='DELETE').length,2);
 assert.ok(ctx.window.__testPDV.getSale(),'Partially deleted sale should not be forgotten');
 assert.equal(ctx.window.__testPDV.getItems().length,1,'Remaining server-side item must stay visible');
-assert.ok(alerts.some(a=>String(a[1]).includes('Não foi possível limpar')),'Partial failure must alert operator');
+assert.ok(alerts.some(a=>String(a[1]).includes('Não foi possível confirmar a limpeza')),'Partial failure must alert operator');
 
 // A limpeza parcial deve preservar a venda e não relançar mutações concorrentes.
 requests.length=0;alerts.length=0;
