@@ -158,6 +158,24 @@ async function lerCodigoDeBarras(png) {
   return leitor.decode(new zxing.BinaryBitmap(new zxing.HybridBinarizer(fonte))).getText();
 }
 
+/** Copia o desenho para uma área livre, grande, e lê como um leitor: nada por cima atrapalha. */
+async function lerCodigoDaTela(pagina, svg) {
+  await svg.evaluate(el => {
+    const area = document.createElement('div');
+    area.id = 'leitura-teste';
+    area.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;background:#fff;padding:20px;width:452px';
+    const copia = el.cloneNode(true);
+    copia.style.cssText = 'display:block;width:452px;height:auto';
+    area.append(copia);
+    document.body.append(area);
+  });
+  try {
+    return (await lerCodigoDeBarras(await pagina.locator('#leitura-teste svg').screenshot())).padStart(13, '0');
+  } finally {
+    await pagina.evaluate(() => document.getElementById('leitura-teste')?.remove());
+  }
+}
+
 async function entrar(pagina, nome, sobrenome, senha) {
   await pagina.goto(`${BASE}/login.html`);
   await pagina.waitForFunction(() => !document.getElementById('btnSubmit').disabled);
@@ -828,10 +846,7 @@ try {
     assert.equal(await dono.locator('.etiqueta', { hasText: 'Skol' }).count(), 0, 'Quem tem código de fábrica não ocupa a folha');
 
     // O desenho precisa ser lido por um leitor de verdade, não só parecer um código de barras.
-    const barras = etiqueta.locator('svg');
-    await barras.evaluate(el => { el.style.width = '452px'; });
-    assert.equal((await lerCodigoDeBarras(await barras.screenshot())).padStart(13, '0'), codigo);
-    await barras.evaluate(el => { el.style.width = ''; });
+    assert.equal(await lerCodigoDaTela(dono, etiqueta.locator('svg')), codigo);
 
     const leitura = await api(dono, `/api/pdv/codigos/${codigo}`);
     assert.equal(leitura.corpo.variacao.itemNome, 'Copo de gelo', 'O código da folha vende no caixa');
@@ -855,10 +870,7 @@ try {
     await esperarTexto(dono, '.etiqueta--comanda[data-comanda="7"]', 'COMANDA 7');
     codigoComanda7 = await cartao.getAttribute('data-codigo');
     assert.match(codigoComanda7, /^29\d{11}$/, 'Cartão na faixa 29, separada dos produtos');
-    const barras = cartao.locator('svg');
-    await barras.evaluate(el => { el.style.width = '452px'; });
-    assert.equal((await lerCodigoDeBarras(await barras.screenshot())).padStart(13, '0'), codigoComanda7);
-    await barras.evaluate(el => { el.style.width = ''; });
+    assert.equal(await lerCodigoDaTela(dono, cartao.locator('svg')), codigoComanda7);
   });
 
   await passo(dono, 'Comanda abre pelo cartao e guarda o que o cliente pede', async () => {
