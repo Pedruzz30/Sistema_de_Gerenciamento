@@ -194,11 +194,14 @@
           throw new Error('Usuario ainda nao vinculado ou sem permissao');
         }
         const linkedUser = await me.json();
-        persistirUsuario(linkedUser);
+        // Supabase session is authoritative. Never persist the linked user
+        // in localStorage, which is shared across tabs and outlives logout.
+        try { window.localStorage.removeItem('usuario'); } catch (_) {}
+        try { window.sessionStorage.setItem('usuario', JSON.stringify(linkedUser)); } catch (_) {}
         alert.className = 'alert success';
         alertIcon.innerHTML = loginIconMarkup('checkCircle');
         alertMsg.textContent = 'Acesso autorizado. Redirecionando...';
-        window.location.href = '/dashboard.html';
+        window.location.href = '/estabelecimentos.html';
         return;
       }
       const res = await fetch('/api/auth/login', {

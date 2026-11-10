@@ -1,0 +1,40 @@
+\set ON_ERROR_STOP on
+-- Run AFTER Flyway with the stockos_migrator role on the disposable Render DB.
+-- Grants are schema-wide for the current app, NOT row-level authorization.
+-- Tenant boundaries remain enforced by the Java API and SQL guards.
+BEGIN;
+DO $check$
+BEGIN
+  IF current_database() <> 'stockos_java_staging_temp'
+     OR current_user <> 'stockos_migrator' THEN
+    RAISE EXCEPTION 'Refusing runtime grants: expected disposable StockOS DB and stockos_migrator';
+  END IF;
+  IF has_schema_privilege('PUBLIC', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'PUBLIC still has CREATE on schema public; administrator must revoke before proceeding';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='stockos_app' AND rolcanlogin) THEN
+    RAISE EXCEPTION 'stockos_app login role is missing';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='stockos_private'
+      AND c.relname IN ('empresas','filiais','membros','produtos')
+      AND c.relkind IN ('r','p')
+  ) THEN
+    RAISE EXCEPTION 'Legacy Supabase stockos_private schema detected: aborting grants';
+  END IF;
+END
+$check$;
+-- No schema-owner commands here: the migrator has only CREATE/USAGE.
+-- The preflight above refuses unsafe inherited PUBLIC schema CREATE.
+GRANT CONNECT ON DATABASE stockos_java_staging_temp TO stockos_app;
+GRANT USAGE ON SCHEMA public TO stockos_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO stockos_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO stockos_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE stockos_migrator IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO stockos_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE stockos_migrator IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO stockos_app;
+COMMIT;
+
+-- Execute 03-verify-runtime-access.psql separately as stockos_app.

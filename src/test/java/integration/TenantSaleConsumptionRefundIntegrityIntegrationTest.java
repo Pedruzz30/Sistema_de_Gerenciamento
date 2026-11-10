@@ -1,0 +1,451 @@
+package integration;
+
+import app.Main;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest(classes = Main.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@Transactional
+class TenantSaleConsumptionRefundIntegrityIntegrationTest {
+    private static final AtomicLong NEXT = new AtomicLong(900000L);
+    @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager transactionManager;
+
+    @Test
+    void permiteConsumoEEstornoExatoDaMesmaLoja() {
+        Fixture a = fixture();
+        long consumo = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long estornoMovimento = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long refundId = estorno(a.tenant, consumo, estornoMovimento);
+        assertEquals(a.tenant, jdbc.queryForObject(
+                "select estabelecimento_id from venda_item_consumo_estornos where id = ?",
+                UUID.class, refundId));
+    }
+
+    @Test
+    void rejeitaConsumoComProdutoDaOutraLoja() {
+        Fixture a = fixture();
+        Fixture b = fixture();
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(a.tenant, a.saleItem, b.product, a.unit, null));
+    }
+
+    @Test
+    void rejeitaMovimentoDeConsumoDeOutraLojaOuOutroProduto() {
+        Fixture a = fixture();
+        Fixture b = fixture();
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(a.tenant, a.saleItem, a.product, a.unit, b.originalMove));
+    }
+
+    @Test
+    void rejeitaOmissaoDoTenantNoConsumo() {
+        Fixture a = fixture();
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(null, a.saleItem, a.product, a.unit, a.originalMove));
+    }
+
+    @Test
+    void rejeitaEstornoQueReferenciaConsumoDaOutraLoja() {
+        Fixture a = fixture();
+        Fixture b = fixture();
+        long consumoA = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long estornoB = movimento(b.tenant, b.product, "ESTORNO_VENDA", b.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(b.tenant, consumoA, estornoB));
+    }
+
+    @Test
+    void rejeitaEstornoQueNaoReverteMovimentoOriginal() {
+        Fixture a = fixture();
+        long consumoA = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long other = movimento(a.tenant, a.product, "SAIDA_VENDA", null);
+        long wrongRefund = movimento(a.tenant, a.product, "ESTORNO_VENDA", other);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(a.tenant, consumoA, wrongRefund));
+    }
+
+    @Test
+    void rejeitaEstornoSemTenantMesmoQueConsumoTenhaDono() {
+        Fixture a = fixture();
+        long consumoA = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(null, consumoA, refundMove));
+    }
+
+    @Test
+    void aceitaEstornoParcialDentroDoConsumoEMovimento() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long first = estorno(a.tenant, consumption, refundMovement, "0.400000");
+        long second = estorno(a.tenant, consumption, refundMovement, "0.600000");
+        assertEquals(2, jdbc.queryForObject("""
+                select count(*) from venda_item_consumo_estornos
+                where estabelecimento_id = ? and id in (?, ?)
+                """, Integer.class, a.tenant, first, second));
+    }
+
+    @Test
+    void rejeitaSomaDeEstornosMaiorQueConsumo() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long firstMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long secondMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, firstMovement, "0.700000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(a.tenant, consumption, secondMovement, "0.400000"));
+    }
+
+    @Test
+    void rejeitaDistribuicaoMaiorQueQuantidadeDoMovimentoDeEstorno() {
+        Fixture a = fixture();
+        long largerExit = movimento(a.tenant, a.product, "SAIDA_VENDA", null, "2.000000");
+        long consumptionOne = consumo(a.tenant, a.saleItem, a.product, a.unit, largerExit);
+        long consumptionTwo = consumo(a.tenant, a.saleItem, a.product, a.unit, largerExit);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", largerExit);
+        estorno(a.tenant, consumptionOne, refundMovement, "0.700000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> estorno(a.tenant, consumptionTwo, refundMovement, "0.400000"));
+    }
+
+    @Test
+    void rejeitaReducaoDaQuantidadeConsumidaAposEstorno() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refundMovement, "0.500000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumos set quantidade_base_total = 0.3 where id = ?",
+                        consumption));
+    }
+
+    @Test
+    void rejeitaReducaoDoMovimentoJaVinculadoAEstorno() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMovement = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refundMovement, "0.700000");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update movimentos_estoque_decimal set quantidade_base = 0.4 where id = ?",
+                        refundMovement));
+    }
+
+    @Test
+    void bloqueiaConsumoSemMovimentoEmLojaTenant() {
+        Fixture a = fixture();
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(a.tenant, a.saleItem, a.product, a.unit, null));
+    }
+
+    @Test
+    void bloqueiaDuplaAlocacaoDaSaidaDeEstoque() {
+        Fixture a = fixture();
+        consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove));
+    }
+
+    @Test
+    void bloqueiaAumentoDeConsumoAcimaDaSaida() {
+        Fixture a = fixture();
+        long consumoId = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumos set quantidade_base_total = 1.2 where id = ?",
+                        consumoId));
+    }
+
+    @Test
+    void bloqueiaReescritaDeMovimentoJaConsumido() {
+        Fixture a = fixture();
+        consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update movimentos_estoque_decimal set tipo = 'AJUSTE_NEGATIVO' where id = ?",
+                        a.originalMove));
+    }
+
+    @Test
+    void bloqueiaReescritaDeEstornoJaVinculado() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refund = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refund);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update movimentos_estoque_decimal set movimento_estornado_id = null where id = ?",
+                        refund));
+    }
+
+    @Test
+    void bloqueiaTrocaDeMovimentoDeConsumoAposEstorno() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        estorno(a.tenant, consumption, refundMove);
+        long otherExit = movimento(a.tenant, a.product, "SAIDA_VENDA", null);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumos set movimento_estoque_id = ? where id = ?",
+                        otherExit, consumption));
+    }
+
+    @Test
+    void bloqueiaEdicaoEExclusaoDeEstornoPublicado() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long refundId = estorno(a.tenant, consumption, refundMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update(
+                        "update venda_item_consumo_estornos set quantidade_base_estornada = 0.5 where id = ?",
+                        refundId));
+    }
+
+    @Test
+    void bloqueiaExclusaoDeEstornoPublicado() {
+        Fixture a = fixture();
+        long consumption = consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+        long refundMove = movimento(a.tenant, a.product, "ESTORNO_VENDA", a.originalMove);
+        long refundId = estorno(a.tenant, consumption, refundMove);
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbc.update("delete from venda_item_consumo_estornos where id = ?", refundId));
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void doisOperadoresConcorrentesNaoConsomemMesmaSaidaDuasVezes() throws Exception {
+        // The fixture must be committed: independent connections cannot see
+        // uncommitted rows from the outer @Transactional test method.
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Fixture fixture = transaction.execute(status -> fixture());
+        assertNotNull(fixture);
+
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            java.util.concurrent.Callable<Boolean> attempt = () -> {
+                ready.countDown();
+                if (!start.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Concurrent test did not start");
+                }
+                try {
+                    transaction.execute(status -> {
+                        consumo(fixture.tenant, fixture.saleItem, fixture.product,
+                                fixture.unit, fixture.originalMove);
+                        return null;
+                    });
+                    return true;
+                } catch (DataIntegrityViolationException denied) {
+                    return false;
+                }
+            };
+            Future<Boolean> first = workers.submit(attempt);
+            Future<Boolean> second = workers.submit(attempt);
+            assertTrue(ready.await(10, TimeUnit.SECONDS));
+            start.countDown();
+
+            int success = (first.get(20, TimeUnit.SECONDS) ? 1 : 0)
+                    + (second.get(20, TimeUnit.SECONDS) ? 1 : 0);
+            assertEquals(1, success, "Only one transaction may allocate the stock exit");
+            Integer recorded = jdbc.queryForObject("""
+                    select count(*) from venda_item_consumos
+                     where estabelecimento_id = ? and movimento_estoque_id = ?
+                    """, Integer.class, fixture.tenant, fixture.originalMove);
+            assertEquals(1, recorded);
+        } finally {
+            start.countDown();
+            workers.shutdownNow();
+            assertTrue(workers.awaitTermination(10, TimeUnit.SECONDS));
+            limparFixture(fixture, transaction);
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void transacaoInvalidaReverteTodosOsConsumosDaLoja() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Fixture fixture = transaction.execute(status -> fixture());
+        assertNotNull(fixture);
+        try {
+            assertThrows(DataIntegrityViolationException.class, () -> transaction.execute(status -> {
+                consumo(fixture.tenant, fixture.saleItem, fixture.product,
+                        fixture.unit, fixture.originalMove);
+                // A second unit from a one-unit movement is prohibited.
+                consumo(fixture.tenant, fixture.saleItem, fixture.product,
+                        fixture.unit, fixture.originalMove);
+                return null;
+            }));
+            Integer count = jdbc.queryForObject("""
+                    select count(*) from venda_item_consumos
+                     where estabelecimento_id = ? and movimento_estoque_id = ?
+                    """, Integer.class, fixture.tenant, fixture.originalMove);
+            assertEquals(0, count, "The first insert must roll back with the second");
+        } finally {
+            limparFixture(fixture, transaction);
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void tentativaEntreDuasLojasReverteOperacaoInteira() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        Fixture a = transaction.execute(status -> fixture());
+        Fixture b = transaction.execute(status -> fixture());
+        assertNotNull(a);
+        assertNotNull(b);
+        try {
+            assertThrows(DataIntegrityViolationException.class, () -> transaction.execute(status -> {
+                consumo(a.tenant, a.saleItem, a.product, a.unit, a.originalMove);
+                // The forged second write tries to attach store B's stock
+                // product to a sale line belonging to store A.
+                consumo(a.tenant, a.saleItem, b.product, a.unit, null);
+                return null;
+            }));
+            Integer count = jdbc.queryForObject("""
+                    select count(*) from venda_item_consumos
+                     where estabelecimento_id in (?, ?)
+                    """, Integer.class, a.tenant, b.tenant);
+            assertEquals(0, count, "No partial consumption may survive a cross-store failure");
+        } finally {
+            limparFixture(a, transaction);
+            limparFixture(b, transaction);
+        }
+    }
+
+    private void limparFixture(Fixture fixture, TransactionTemplate transaction) {
+        transaction.execute(status -> {
+            jdbc.update("delete from venda_item_consumos where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from movimentos_estoque_decimal where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from venda_itens where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from vendas where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("""
+                    delete from variacoes_item_cardapio where item_cardapio_id in
+                    (select id from itens_cardapio where estabelecimento_id = ?)
+                    """, fixture.tenant);
+            jdbc.update("delete from itens_cardapio where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from categorias_cardapio where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from produtos where estabelecimento_id = ?", fixture.tenant);
+            jdbc.update("delete from unidades_medida where id = ?", fixture.unit);
+            jdbc.update("delete from estabelecimentos where id = ?", fixture.tenant);
+            return null;
+        });
+    }
+
+    private Fixture fixture() {
+        UUID tenant = jdbc.queryForObject(
+                "insert into estabelecimentos(nome) values ('Teste consumo') returning id", UUID.class);
+        long n = NEXT.incrementAndGet();
+        long unit = jdbc.queryForObject("""
+                insert into unidades_medida(codigo, nome, dimensao, fator_base, ativa)
+                values (?, 'Unidade teste', 'CONTAGEM', 1, true) returning id
+                """, Long.class, "TESTU_" + n);
+        int product = jdbc.queryForObject("""
+                insert into produtos(nome, quantidade_atual, quantidade_minima,
+                                     preco_unitario, estabelecimento_id, unidade_base_id)
+                values ('Produto consumo', 10, 1, 5, ?, ?) returning id
+                """, Integer.class, tenant, unit);
+        int category = jdbc.queryForObject("""
+                insert into categorias_cardapio(codigo, nome_exibicao, ordem_exibicao, ativo, estabelecimento_id)
+                values (?, 'Categoria consumo', 1, true, ?) returning id
+                """, Integer.class, "CONS_CAT_" + n, tenant);
+        int item = jdbc.queryForObject("""
+                insert into itens_cardapio(codigo, nome, preco_venda, categoria_cardapio_id, tipo_item,
+                    ativo, disponivel, ordem_exibicao, estabelecimento_id)
+                values (?, 'Item consumo', 10, ?, 'PREPARADO_SOB_DEMANDA', true, true, 1, ?)
+                returning id
+                """, Integer.class, "CONS_ITEM_" + n, category, tenant);
+        long variation = jdbc.queryForObject("""
+                insert into variacoes_item_cardapio(item_cardapio_id, nome, codigo,
+                    preco_venda, tipo_composicao, ativa, padrao, ordem_exibicao, criado_em, atualizado_em)
+                values (?, 'Variacao', ?, 10, 'PREPARADO', true, false, 1, now(), now())
+                returning id
+                """, Long.class, item, "CONS_VAR_" + n);
+        long sale = jdbc.queryForObject("""
+                insert into vendas(filial_id, numero, status, canal, subtotal, desconto_total,
+                    acrescimo_total, valor_total, custo_ingredientes_total,
+                    margem_bruta_estimada_total, criada_em, estabelecimento_id)
+                values (?, ?, 'RASCUNHO', 'SALAO', 0, 0, 0, 0, 0, 0, now(), ?) returning id
+                """, Long.class, n, "CONS_SALE_" + n, tenant);
+        long saleItem = jdbc.queryForObject("""
+                insert into venda_itens(venda_id, item_cardapio_id, variacao_item_cardapio_id,
+                    quantidade, nome_item_snapshot, nome_variacao_snapshot,
+                    codigo_variacao_snapshot, tipo_composicao_snapshot,
+                    preco_unitario_base, desconto_unitario, acrescimo_unitario,
+                    preco_unitario_final, subtotal, custo_unitario_estimado,
+                    custo_total_estimado, margem_bruta_unitaria_estimada,
+                    margem_bruta_total_estimada, status, criado_em, estabelecimento_id)
+                values (?, ?, ?, 1, 'Item consumo', 'Variacao', 'TESTE', 'PREPARADO',
+                    10, 0, 0, 10, 10, 2, 2, 8, 8, 'ATIVO', now(), ?) returning id
+                """, Long.class, sale, item, variation, tenant);
+        long originalMove = movimento(tenant, product, "SAIDA_VENDA", null);
+        return new Fixture(tenant, unit, product, saleItem, originalMove);
+    }
+
+    private long movimento(UUID tenant, int product, String tipo, Long reversed) {
+        return movimento(tenant, product, tipo, reversed, "1.000000");
+    }
+
+    private long movimento(UUID tenant, int product, String tipo, Long reversed, String quantity) {
+        long n = NEXT.incrementAndGet();
+        return jdbc.queryForObject("""
+                insert into movimentos_estoque_decimal(
+                    filial_id, produto_id, tipo, quantidade_base, saldo_anterior, saldo_posterior,
+                    custo_unitario, custo_total, origem_tipo, origem_id,
+                    motivo, criado_em, movimento_estornado_id, estabelecimento_id)
+                values (?, ?, ?, ?, 10, 9, 2, 2, 'TESTE', ?, 'Teste', now(), ?, ?)
+                returning id
+                """, Long.class, n, product, tipo, new java.math.BigDecimal(quantity), n, reversed, tenant);
+    }
+
+    private long consumo(UUID tenant, long saleItem, int product, long unit, Long movement) {
+        return jdbc.queryForObject("""
+                insert into venda_item_consumos(
+                    venda_item_id, produto_id, nome_produto_snapshot, unidade_base_id,
+                    unidade_base_codigo_snapshot, quantidade_base_por_unidade,
+                    quantidade_base_total, custo_medio_unitario_snapshot,
+                    custo_total_snapshot, origem_composicao, movimento_estoque_id,
+                    criado_em, estabelecimento_id)
+                values (?, ?, 'Produto consumo', ?, 'UN', 1, 1, 2, 2,
+                        'PRODUTO_DIRETO', ?, now(), ?) returning id
+                """, Long.class, saleItem, product, unit, movement, tenant);
+    }
+
+    private long estorno(UUID tenant, long consumption, long movement) {
+        return estorno(tenant, consumption, movement, "1.000000");
+    }
+
+    private long estorno(UUID tenant, long consumption, long movement, String quantity) {
+        return jdbc.queryForObject("""
+                insert into venda_item_consumo_estornos(
+                    venda_item_consumo_id, movimento_estoque_id,
+                    quantidade_base_estornada, custo_unitario_snapshot,
+                    valor_estornado, criado_em, estabelecimento_id)
+                values (?, ?, ?, 2, 2, now(), ?) returning id
+                """, Long.class, consumption, movement, new java.math.BigDecimal(quantity), tenant);
+    }
+
+    private record Fixture(UUID tenant, long unit, int product, long saleItem, long originalMove) {}
+}

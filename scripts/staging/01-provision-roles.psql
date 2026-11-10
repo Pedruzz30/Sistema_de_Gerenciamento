@@ -1,0 +1,69 @@
+\set ON_ERROR_STOP on
+\set ON_ERROR_ROLLBACK off
+-- Disposable StockOS Render STAGING ONLY. Run with interactive psql -X.
+-- A failed preflight or interrupted password prompt rolls back the whole
+-- transaction, including CREATE ROLE and all GRANT operations.
+BEGIN;
+DO $stockos_preflight$
+BEGIN
+  IF current_database() <> 'stockos_java_staging_temp' THEN
+    RAISE EXCEPTION 'Refusing provisioning outside stockos_java_staging_temp (current: %)',
+      current_database();
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname = current_user
+      AND (rolcreaterole OR rolsuper)
+  ) THEN
+    RAISE EXCEPTION 'Current database administrator cannot CREATE ROLE';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname IN ('stockos_app', 'stockos_migrator')
+  ) THEN
+    RAISE EXCEPTION 'One or both StockOS roles already exist; refusing overwrite';
+  END IF;
+END
+$stockos_preflight$;
+
+-- NOLOGIN until both passwords have been set and checked.
+CREATE ROLE stockos_migrator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+CREATE ROLE stockos_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+GRANT CONNECT ON DATABASE stockos_java_staging_temp TO stockos_migrator, stockos_app;
+-- Schema owner/admin must remove the PUBLIC inherited CREATE privilege here.
+-- The migrator does not own public and must not attempt this later.
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO stockos_migrator;
+GRANT USAGE ON SCHEMA public TO stockos_app;
+REVOKE CREATE ON SCHEMA public FROM stockos_app;
+
+SET LOCAL password_encryption = 'scram-sha-256';
+\echo Enter a unique strong migrator password (no shell history):
+\password stockos_migrator
+\echo Enter a DIFFERENT strong runtime password (no shell history):
+\password stockos_app
+
+-- pg_roles shows masked placeholders rather than actual hashes, or NULL.
+-- If either password prompt was cancelled, fail and rollback both roles.
+DO $stockos_password_check$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname IN ('stockos_migrator', 'stockos_app')
+      AND rolpassword IS NULL
+  ) THEN
+    RAISE EXCEPTION 'A role password is missing; rolling back provision';
+  END IF;
+END
+$stockos_password_check$;
+
+ALTER ROLE stockos_migrator LOGIN;
+ALTER ROLE stockos_app LOGIN;
+COMMIT;
+
+\echo StockOS disposable staging roles provisioned; inspect grants before Flyway.
+SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolbypassrls
+FROM pg_roles WHERE rolname IN ('stockos_app', 'stockos_migrator');
+SELECT rolname,
+       has_database_privilege(rolname, current_database(), 'CREATE') AS database_create,
+       has_schema_privilege(rolname, 'public', 'CREATE') AS schema_create
+FROM pg_roles WHERE rolname IN ('stockos_app', 'stockos_migrator');

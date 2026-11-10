@@ -1,0 +1,31 @@
+\set ON_ERROR_STOP on
+-- Connect AS stockos_app, never as administrator. Read-only privilege checks.
+DO $check$
+DECLARE unsafe boolean;
+BEGIN
+  IF current_database() <> 'stockos_java_staging_temp'
+     OR current_user <> 'stockos_app' THEN
+    RAISE EXCEPTION 'Expected stockos_app on disposable StockOS staging database';
+  END IF;
+  SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolbypassrls
+    INTO unsafe FROM pg_roles WHERE rolname=current_user;
+  IF unsafe IS DISTINCT FROM false
+     OR has_database_privilege(current_user,current_database(),'CREATE')
+     OR has_schema_privilege(current_user,'public','CREATE')
+     OR pg_has_role(current_user,'stockos_migrator','MEMBER') THEN
+    RAISE EXCEPTION 'Unsafe runtime DB privileges or membership';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relkind IN ('r','p')
+      AND pg_has_role(current_user,c.relowner,'USAGE')
+  ) THEN
+    RAISE EXCEPTION 'Runtime role inherits table ownership';
+  END IF;
+END
+$check$;
+
+SELECT current_database() AS database_name, current_user AS runtime_role,
+       has_schema_privilege(current_user,'public','CREATE') AS can_create_schema_objects,
+       has_database_privilege(current_user,current_database(),'CREATE') AS can_create_database_objects;
+\echo PASS: stockos_app has no administrative powers, schema CREATE or table ownership.
