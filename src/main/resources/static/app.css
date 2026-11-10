@@ -3835,3 +3835,10 @@ body.bridge-page .bridge-actions a {
 /* Fechamento com comandas sem pagar */
 .encerrar-comandas p { margin: 0 0 6px; }
 .encerrar-comandas__confirmar { display: flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
+
+/* Painel do celular do atendente, no Dashboard */
+.celular-painel { display: flex; align-items: center; gap: 16px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; font-size: 13px; line-height: 1.5; background: #f8fafc; }
+.celular-painel__qr { flex-shrink: 0; width: 132px; height: 132px; background: #fff; }
+.celular-painel__qr svg { display: block; width: 132px; height: 132px; }
+.celular-painel__texto { min-width: 0; overflow-wrap: anywhere; }
+.celular-painel__url { font-family: var(--font-mono, ui-monospace, monospace); font-weight: 600; }

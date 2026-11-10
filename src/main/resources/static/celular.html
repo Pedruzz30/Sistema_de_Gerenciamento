@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#c2410c">
+  <title>StockOS · Comandas</title>
+  <link rel="stylesheet" href="/css/celular.css">
+</head>
+<body>
+<header class="topo">
+  <div class="topo__marca">StockOS <span>Comandas</span></div>
+  <div class="topo__quem" id="quem-box" hidden><span id="quem"></span> <button type="button" class="link" id="btn-sair">Sair</button></div>
+</header>
+
+<div class="aviso" id="aviso" role="status" aria-live="polite" hidden></div>
+
+<!-- Entrar: nome e PIN -->
+<main class="tela" id="tela-entrar">
+  <h1>Quem vai atender?</h1>
+  <div class="operadores" id="operadores"><p class="nota">Carregando...</p></div>
+  <form class="pin" id="pin-form" hidden>
+    <label for="pin">PIN de <strong id="pin-nome"></strong></label>
+    <input id="pin" class="campo campo--pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" enterkeyhint="go">
+    <button type="submit" class="botao botao--principal" id="btn-entrar">Entrar</button>
+  </form>
+  <details class="ajuda" id="ajuda-certificado">
+    <summary>Primeira vez neste celular?</summary>
+    <p>Para o cadeado de conexão segura e a câmera, instale uma vez o certificado da loja:</p>
+    <p><a class="botao" href="/certificado" download>Baixar o certificado da loja</a></p>
+    <p><strong>Android:</strong> Configurações → Segurança → Mais configurações de segurança → Criptografia e credenciais → Instalar um certificado → Certificado de CA → escolha <em>stockos-loja.crt</em> em Downloads.</p>
+    <p><strong>iPhone:</strong> abra o arquivo baixado e instale o perfil em Ajustes → Geral → VPN e Gerenciamento de Dispositivo. Depois ligue a confiança em Ajustes → Geral → Sobre → Ajustes de Confiança de Certificado.</p>
+    <p>Pronto: feche e abra de novo o endereço da loja.</p>
+  </details>
+</main>
+
+<!-- Comandas abertas -->
+<main class="tela" id="tela-comandas" hidden>
+  <form class="abrir" id="abrir-form">
+    <input id="numero-comanda" class="campo" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Nº da comanda" autocomplete="off" enterkeyhint="go" aria-label="Número da comanda">
+    <button type="submit" class="botao botao--principal" id="btn-abrir-comanda">Abrir</button>
+  </form>
+  <button type="button" class="botao botao--largo" id="btn-ler-cartao">Ler o cartão com a câmera</button>
+  <h2>Comandas abertas</h2>
+  <div class="comandas" id="comandas-lista"></div>
+</main>
+
+<!-- Uma comanda: o que já foi lançado e o pedido novo -->
+<main class="tela" id="tela-comanda" hidden>
+  <div class="comanda-topo">
+    <button type="button" class="link" id="btn-voltar">← Comandas</button>
+    <div><strong id="comanda-titulo">Comanda</strong> <span class="total" id="comanda-total"></span></div>
+  </div>
+  <details class="lancados" id="lancados">
+    <summary id="lancados-resumo">Já lançado</summary>
+    <ul class="linhas" id="comanda-linhas"></ul>
+  </details>
+  <div class="teclas" id="teclas"></div>
+  <input id="busca" class="campo" type="search" placeholder="Buscar produto" autocomplete="off" enterkeyhint="search" aria-label="Buscar produto">
+  <div class="resultados" id="resultados"></div>
+  <h2>Pedido novo</h2>
+  <ul class="pedido" id="pedido"></ul>
+  <div class="rodape">
+    <button type="button" class="botao botao--principal botao--largo" id="btn-lancar" disabled>Lançar na comanda</button>
+  </div>
+</main>
+
+<!-- Câmera -->
+<div class="camera" id="camera" hidden>
+  <video id="camera-video" playsinline muted></video>
+  <p>Aponte para o código de barras do cartão.</p>
+  <button type="button" class="botao" id="btn-fechar-camera">Fechar</button>
+</div>
+
+<script src="/js/celular.js"></script>
+</body>
+</html>

@@ -86,6 +86,26 @@ $conectou = $false
 try { $conectou = $cliente.ConnectAsync($ipRede, 8080).Wait(2000) } catch { $conectou = $false }
 $cliente.Dispose()
 Assert (-not $conectou) "sistema não abre pela rede ($ipRede)"
+
+Step 'Celular do atendente pela rede'
+$cliente = New-Object Net.Sockets.TcpClient
+$conectou = $false
+try { $conectou = $cliente.ConnectAsync($ipRede, 8443).Wait(5000) } catch { $conectou = $false }
+$cliente.Dispose()
+Assert $conectou "porta do celular abre pela rede ($ipRede)"
+Assert (Test-Path "$Raiz\celular\stockos-loja.crt") 'certificado da loja criado'
+$tela = Invoke-WebRequest -UseBasicParsing -SkipCertificateCheck -Uri "https://$($ipRede):8443/celular.html"
+Assert ($tela.StatusCode -eq 200) 'tela do celular abre'
+$fechado = $false
+try { Invoke-WebRequest -UseBasicParsing -SkipCertificateCheck -Uri "https://$($ipRede):8443/api/produtos" | Out-Null } catch { $fechado = ($_.Exception.Response.StatusCode.value__ -eq 404) }
+Assert $fechado 'o resto do sistema não abre pela porta do celular'
+& "$Raiz\programa\scripts\liberar-celular.ps1" -SemPausa
+$regra = Get-NetFirewallRule -DisplayName 'StockOS celular do atendente' -ErrorAction SilentlyContinue
+Assert ($null -ne $regra) 'Liberar celular cria a regra do firewall'
+Assert ((($regra | Get-NetFirewallAddressFilter).RemoteAddress) -contains 'LocalSubnet') 'regra só para a rede local'
+Assert (Test-Path "$Raiz\Liberar celular.cmd") 'atalho Liberar celular na pasta'
+$env:E2E_CELULAR = "https://$($ipRede):8443"
+$env:E2E_CELULAR_CA = "$Raiz\celular\stockos-loja.crt"
 Assert ((Invoke-Psql "SELECT 'Água' < 'Zebra' AND 'água' < 'Bebida'") -eq 't') 'ordem alfabética em português'
 
 Step 'Caminho completo da loja no navegador, neste Windows'

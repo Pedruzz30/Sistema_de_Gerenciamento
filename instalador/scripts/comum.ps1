@@ -12,6 +12,7 @@ function Get-Caminhos([string]$Raiz) {
         Dados    = Join-Path $Raiz 'dados'
         Backups  = Join-Path $Raiz 'backups'
         Logs     = Join-Path $Raiz 'logs'
+        Celular  = Join-Path $Raiz 'celular'
         Config   = Join-Path $Raiz 'config\stockos.json'
         Pid      = Join-Path $Raiz 'config\sistema.pid'
     }
@@ -86,6 +87,7 @@ function Start-Sistema([hashtable]$C, $Config) {
     $env:DB_URL = "jdbc:postgresql://127.0.0.1:$($Config.portaBanco)/stockos"
     $env:DB_USERNAME = 'stockos'
     $env:DB_PASSWORD = $Config.senhaBanco
+    $portaCelular = Get-PortaCelular $Config
     $argumentos = @(
         '-Xms128m', '-Xmx512m', '-jar', "`"$($C.Jar)`"",
         '--server.address=127.0.0.1',
@@ -95,12 +97,20 @@ function Start-Sistema([hashtable]$C, $Config) {
         '--stockos.seed.demo-catalog.enabled=false',
         "--stockos.backup.pasta=`"$($C.Backups)`"",
         "--stockos.backup.pg-bin=`"$($C.PgBin)`"",
+        "--stockos.celular.porta=$portaCelular",
+        "--stockos.celular.pasta=`"$($C.Celular)`"",
         "--logging.file.name=`"$(Join-Path $C.Logs 'stockos.log')`"",
         '--logging.logback.rollingpolicy.max-history=14'
     ) -join ' '
     $processo = Start-Process -FilePath $C.Javaw -ArgumentList $argumentos -WorkingDirectory $C.Logs -PassThru
     Remove-Item Env:DB_PASSWORD
     Write-TextoSemBom $C.Pid "$($processo.Id)"
+}
+
+# Instalações antigas não guardaram a porta do celular: vale a padrão.
+function Get-PortaCelular($Config) {
+    if ($Config.PSObject.Properties['portaCelular'] -and $Config.portaCelular) { return [int]$Config.portaCelular }
+    return 8443
 }
 
 function Stop-Sistema([hashtable]$C) {

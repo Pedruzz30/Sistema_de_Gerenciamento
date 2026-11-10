@@ -188,6 +188,74 @@ public class ComandaService {
         return new Transferencia(numeroDestino, vendaDestino.getId(), movidos, origemVazia, fechada);
     }
 
+    public record ItemLancado(long variacaoId, BigDecimal quantidade) {}
+
+    public record LinhaDetalhe(String nome, String variacao, BigDecimal quantidade, BigDecimal subtotal) {}
+
+    public record Detalhe(int numero, long vendaId, LocalDateTime abertaEm, BigDecimal itens, BigDecimal total,
+                          List<LinhaDetalhe> linhas) {}
+
+    /** O que já está na comanda aberta, para o celular mostrar. */
+    @Transactional(readOnly = true)
+    public Detalhe detalhar(int numero) {
+        Comanda comanda = comandaRepository.buscarAbertaPorNumero(numero)
+                .orElseThrow(() -> new ErroNegocioException("COMANDA_NAO_ENCONTRADA", "Nao ha comanda aberta com o numero " + numero + "."));
+        return detalhar(comanda);
+    }
+
+    private Detalhe detalhar(Comanda comanda) {
+        List<VendaItem> itens = itemRepository.listarAtivosPorVenda(comanda.getVendaId());
+        List<LinhaDetalhe> linhas = itens.stream()
+                .map(i -> new LinhaDetalhe(i.getNomeItemSnapshot(), i.getVariacaoItemCardapio() == null ? "" : i.getVariacaoItemCardapio().getNome(),
+                        i.getQuantidade().stripTrailingZeros(), i.getSubtotal().setScale(2, RoundingMode.HALF_UP)))
+                .toList();
+        Resumo resumo = resumir(comanda);
+        return new Detalhe(comanda.getNumero(), comanda.getVendaId(), comanda.getAbertaEm(), resumo.itens(), resumo.total(), linhas);
+    }
+
+    /**
+     * Lança vários itens de uma vez na comanda (o pedido do celular), abrindo-a se preciso.
+     * Item sem adicionais que já está na comanda só ganha quantidade, para a conta não virar
+     * uma lista de "1 Skol" repetidos. Tudo ou nada.
+     */
+    @Transactional
+    public Detalhe lancar(Usuario usuario, int numero, List<ItemLancado> itens) {
+        List<ItemLancado> validos = itens == null ? List.of()
+                : itens.stream().filter(i -> i != null && i.quantidade() != null && i.quantidade().signum() > 0).toList();
+        if (validos.isEmpty()) {
+            throw new ErroNegocioException("LANCAMENTO_VAZIO", "Escolha o que lançar.");
+        }
+        if (validos.size() > 50 || validos.stream().anyMatch(i -> i.quantidade().compareTo(BigDecimal.valueOf(999)) > 0)) {
+            throw new ErroNegocioException("LANCAMENTO_GRANDE", "Pedido grande demais para um lançamento só.");
+        }
+        if (vendaItemService == null) {
+            throw new IllegalStateException("Lancamento indisponivel.");
+        }
+        Comanda comanda = abrirOuRetomar(usuario, numero);
+        long vendaId = comanda.getVendaId();
+        travarRascunho(vendaId);
+        StringBuilder descricao = new StringBuilder();
+        for (ItemLancado pedido : validos) {
+            Optional<VendaItem> mesmo = itemRepository.listarAtivosPorVenda(vendaId).stream()
+                    .filter(i -> i.getVariacaoItemCardapio() != null && i.getVariacaoItemCardapio().getId() == pedido.variacaoId())
+                    .filter(i -> !i.isComposicaoMultipla() && (i.getObservacao() == null || i.getObservacao().isBlank()))
+                    .filter(i -> modificadorRepository == null || modificadorRepository.listarPorItem(i.getId()).isEmpty())
+                    .findFirst();
+            VendaItem item;
+            if (mesmo.isPresent()) {
+                item = vendaItemService.editarItemRascunho(usuario, vendaId, mesmo.get().getId(), pedido.variacaoId(),
+                        mesmo.get().getQuantidade().add(pedido.quantidade()), null, null, List.of(), null, List.of());
+            } else {
+                item = vendaItemService.adicionarItem(usuario, vendaId, pedido.variacaoId(), pedido.quantidade(), null);
+            }
+            if (descricao.length() > 0) descricao.append(", ");
+            descricao.append(pedido.quantidade().stripTrailingZeros().toPlainString()).append(" x ").append(item.getNomeItemSnapshot());
+        }
+        logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_ITENS_LANCADOS",
+                "Comanda " + numero + ": " + descricao + " (por " + nomeDe(usuario) + ")."));
+        return detalhar(comanda);
+    }
+
     public record ItemRetirado(long itemId, BigDecimal quantidade) {}
 
     public record Retirada(int numero, int itensRetirados, BigDecimal valor, boolean comandaFechada) {}

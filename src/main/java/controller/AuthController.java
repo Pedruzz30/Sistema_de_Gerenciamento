@@ -97,6 +97,35 @@ public class AuthController {
         return ResponseEntity.ok(UsuarioResponse.from(sessao.getUsuario(), sessao.isViaPin()));
     }
 
+    /** Celular do atendente: os nomes de quem pode entrar por PIN (sem sessão ainda). */
+    @GetMapping("/celular/operadores")
+    public ResponseEntity<List<OperadorResponse>> operadoresDoCelular() {
+        return ResponseEntity.ok(sessaoService.listarOperadores().stream().map(OperadorResponse::from).toList());
+    }
+
+    @PostMapping("/celular/entrar")
+    public ResponseEntity<UsuarioResponse> entrarPeloCelular(@RequestBody TrocarOperadorRequest request, HttpServletRequest http) {
+        if (request == null || request.ru() == null) {
+            throw new IllegalArgumentException("Escolha quem vai atender.");
+        }
+        var entrada = sessaoService.entrarPorPin(request.ru(), request.pin());
+        ResponseCookie biscoito = ResponseCookie.from(SessaoFilter.COOKIE_SESSAO, entrada.getKey())
+                .httpOnly(true)
+                .secure(cookieSeguro || http.isSecure())
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(sessaoService.getDuracao())
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, biscoito.toString())
+                .body(UsuarioResponse.from(entrada.getValue().getUsuario(), true));
+    }
+
+    @GetMapping("/celular/sessao")
+    public ResponseEntity<OperadorResponse> sessaoDoCelular(HttpServletRequest http) {
+        return ResponseEntity.ok(OperadorResponse.from(sessaoAtual(http).getUsuario()));
+    }
+
     private SessaoUsuario sessaoAtual(HttpServletRequest http) {
         return sessaoService.resolver(SessaoFilter.tokenDoCookie(http))
                 .orElseThrow(() -> new SecurityException("Sessao encerrada. Entre de novo."));

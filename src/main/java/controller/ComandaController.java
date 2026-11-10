@@ -36,6 +36,31 @@ public class ComandaController {
         return ResponseEntity.ok(comandaService.listarAbertas());
     }
 
+    @GetMapping("/{numero}")
+    public ResponseEntity<ComandaService.Detalhe> detalhe(@PathVariable int numero,
+                                                         @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        operador(ruHeader);
+        return ResponseEntity.ok(comandaService.detalhar(numero));
+    }
+
+    /** O pedido do atendente, lançado de uma vez (usado pelo celular). */
+    @PostMapping("/{numero}/lancar")
+    public ResponseEntity<ComandaService.Detalhe> lancar(
+            @PathVariable int numero,
+            @org.springframework.web.bind.annotation.RequestBody LancarRequest request,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario usuario = operador(ruHeader);
+        List<ComandaService.ItemLancado> itens = request == null || request.itens() == null ? List.of()
+                : request.itens().stream()
+                .filter(i -> i != null && i.variacaoId() != null)
+                .map(i -> new ComandaService.ItemLancado(i.variacaoId(), i.quantidade())).toList();
+        return ResponseEntity.ok(comandaService.lancar(usuario, numero, itens));
+    }
+
+    public record ItemLancarRequest(Long variacaoId, java.math.BigDecimal quantidade) {}
+
+    public record LancarRequest(List<ItemLancarRequest> itens) {}
+
     @PostMapping("/{numero}/abrir")
     public ResponseEntity<ComandaResponse> abrir(@PathVariable int numero,
                                                  @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {

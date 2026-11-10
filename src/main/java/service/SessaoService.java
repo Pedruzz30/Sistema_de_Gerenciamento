@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -125,6 +126,35 @@ public class SessaoService {
         logRepository.salvar(new LogAcao(0, operador.getRu(), "OPERADOR_TROCADO",
                 "Caixa passou de " + anterior.getNomeCompleto() + " para " + operador.getNomeCompleto() + " por PIN"));
         return salva;
+    }
+
+    /**
+     * Entrada pelo celular do atendente: nome e PIN, sem senha. A sessão nasce restrita à
+     * área de caixa, como a troca de operador. O PIN respeita o limite de tentativas.
+     */
+    @Transactional
+    public Map.Entry<String, SessaoUsuario> entrarPorPin(long ru, String pin) {
+        Usuario operador = usuarioRepository.buscarPorRu(ru)
+                .filter(Usuario::isAtivo)
+                .filter(usuario -> usuario.getPinHash() != null)
+                .filter(SessaoService::operaCaixa)
+                .orElseThrow(() -> new IllegalArgumentException("Atendente nao encontrado."));
+        if (!autenticacaoService.conferirPin(operador, pin)) {
+            logRepository.salvar(new LogAcao(0, operador.getRu(), "LOGIN_CELULAR_FALHOU",
+                    "PIN errado no celular para " + operador.getNomeCompleto()));
+            throw new SecurityException("PIN incorreto.");
+        }
+        LocalDateTime agora = LocalDateTime.now(relogio);
+        sessaoRepository.removerExpiradas(agora);
+        byte[] bytes = new byte[32];
+        aleatorio.nextBytes(bytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        SessaoUsuario sessao = new SessaoUsuario(hash(token), operador, agora, agora.plus(duracao));
+        sessao.trocarOperador(operador);
+        SessaoUsuario salva = sessaoRepository.salvar(sessao);
+        logRepository.salvar(new LogAcao(0, operador.getRu(), "LOGIN_CELULAR",
+                operador.getNomeCompleto() + " entrou pelo celular"));
+        return Map.entry(token, salva);
     }
 
     private static boolean operaCaixa(Usuario usuario) {

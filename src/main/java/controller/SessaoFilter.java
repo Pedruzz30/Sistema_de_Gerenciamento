@@ -33,7 +33,8 @@ public class SessaoFilter extends OncePerRequestFilter {
 
     public static final String COOKIE_SESSAO = "STOCKOS_SESSAO";
     private static final String HEADER_USUARIO = "X-User-RU";
-    private static final Set<String> ROTAS_PUBLICAS = Set.of("/api/auth/login", "/api/auth/config");
+    private static final Set<String> ROTAS_PUBLICAS = Set.of("/api/auth/login", "/api/auth/config",
+            "/api/auth/celular/operadores", "/api/auth/celular/entrar");
 
     private final SessaoService sessaoService;
     private final boolean aceitarHeaderLegado;

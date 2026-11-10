@@ -303,6 +303,33 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void pedidoDoCelularAbreAComandaESomaNaMesmaLinha() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "5");
+        int numero = 9000 + SEQUENCIA.incrementAndGet() % 900;
+        json(assertOk(post("/api/produtos/revenda", revenda("Celular " + sufixo, eanLata, ""), gerente)));
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+
+        assertTrue(get("/api/comandas/" + numero, caixa).getStatusCode().is4xxClientError(), "Ainda não aberta");
+        JsonNode primeiro = json(assertOk(post("/api/comandas/" + numero + "/lancar",
+                Map.of("itens", List.of(Map.of("variacaoId", gelada, "quantidade", "2"))), caixa)));
+        assertEquals(numero, primeiro.path("numero").asInt());
+        assertBig("10", primeiro.path("total").decimalValue());
+        assertEquals(1, primeiro.path("linhas").size());
+
+        JsonNode segundo = json(assertOk(post("/api/comandas/" + numero + "/lancar",
+                Map.of("itens", List.of(Map.of("variacaoId", gelada, "quantidade", "1"))), caixa)));
+        assertBig("15", segundo.path("total").decimalValue());
+        assertEquals(1, segundo.path("linhas").size(), "A mesma lata soma na mesma linha");
+        assertBig("3", segundo.path("linhas").get(0).path("quantidade").decimalValue());
+
+        assertTrue(post("/api/comandas/" + numero + "/lancar", Map.of("itens", List.of()), caixa)
+                .getStatusCode().is4xxClientError(), "Pedido vazio");
+        assertBig("15", json(assertOk(get("/api/comandas/" + numero, caixa))).path("total").decimalValue());
+        assertBig("15", totalComanda(numero));
+    }
+
+    @Test
     void teclasRapidasGuardamOProdutoEPedemGerenteParaMudar() throws Exception {
         String sufixo = sufixoUnico();
         String eanGelo = ean13(sufixo + "4");

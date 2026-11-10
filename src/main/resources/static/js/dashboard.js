@@ -76,6 +76,45 @@ async function carregarSituacaoBackup() {
   }
 }
 
+// Celular do atendente: o endereço da porta segura, com QR para abrir no celular.
+async function carregarCelular() {
+  if (!PODE_VER_RENTABILIDADE_DASH) return;
+  const painel = document.getElementById('celular-painel');
+  if (!painel) return;
+  let situacao = null;
+  try {
+    const resp = await fetch('/api/sistema/celular');
+    if (resp.ok) situacao = await resp.json();
+  } catch {
+    situacao = null;
+  }
+  if (!situacao || !situacao.ativo || !(situacao.enderecos || []).length) { painel.hidden = true; return; }
+  const principal = situacao.enderecos[0];
+  const outros = situacao.enderecos.slice(1);
+  painel.innerHTML = '<div class="celular-painel__qr" id="celular-qr" aria-hidden="true"></div>'
+    + '<div class="celular-painel__texto"><strong>Celular do atendente</strong>'
+    + '<br>No Wi-Fi da loja, aponte a câmera do celular para o código ou abra '
+    + '<span class="celular-painel__url" id="celular-url">' + escapeHtml(principal.url) + '</span>'
+    + (outros.length ? '<br><small>Outras redes deste notebook: ' + outros.map(e => escapeHtml(e.url) + ' (' + escapeHtml(e.rede) + ')').join(', ') + '</small>' : '')
+    + '<br><small>Primeira vez no celular: toque em "Primeira vez neste celular?" na tela que abrir. Se o celular não abrir, rode uma vez "Liberar celular" na pasta do StockOS.</small></div>';
+  painel.hidden = false;
+  try {
+    if (!window.ZXing) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = '/vendor/zxing-0.21.3.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    const svg = new ZXing.BrowserQRCodeSvgWriter().write(principal.url, 132, 132);
+    document.getElementById('celular-qr').appendChild(svg);
+  } catch {
+    // Sem o QR, o endereço escrito continua valendo.
+  }
+}
+
 async function fazerBackupAgora() {
   const botao = document.getElementById('btn-backup-agora');
   botao.disabled = true;
@@ -95,6 +134,7 @@ async function fazerBackupAgora() {
 
 async function carregarDados() {
   carregarSituacaoBackup();
+  carregarCelular();
   const pedir = async (url, fallback) => {
     const inicio = performance.now();
     try {

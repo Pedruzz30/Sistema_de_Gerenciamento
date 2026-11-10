@@ -70,7 +70,7 @@ Get-ChildItem (Join-Path $PSScriptRoot 'scripts') -Filter '*.ps1' | ForEach-Obje
 }
 Copy-Texto (Join-Path $PSScriptRoot 'Instalar.cmd') (Join-Path $Trabalho 'Instalar.cmd') $false
 Copy-Texto (Join-Path $PSScriptRoot 'LEIA-ME.txt') (Join-Path $Trabalho 'LEIA-ME.txt') $true
-foreach ($atalho in 'Restaurar backup.cmd', 'Redefinir senha do dono.cmd') {
+foreach ($atalho in 'Restaurar backup.cmd', 'Redefinir senha do dono.cmd', 'Liberar celular.cmd') {
     Copy-Texto (Join-Path $PSScriptRoot $atalho) (Join-Path $Programa "atalhos\$atalho") $false
 }
 

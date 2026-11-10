@@ -76,6 +76,7 @@ function Install-Novo([hashtable]$C) {
     $config = [pscustomobject]@{
         portaSistema = Get-PortaLivre @(8080, 8090, 8095) 'o sistema'
         portaBanco   = Get-PortaLivre @(5544, 5545, 5546) 'o banco'
+        portaCelular = Get-PortaLivre @(8443, 8444, 9443) 'o celular do atendente'
         senhaBanco   = $senha
     }
     $arquivoSenha = Join-Path (Split-Path $C.Config) 'senha-inicial.tmp'

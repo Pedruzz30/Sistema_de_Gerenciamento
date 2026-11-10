@@ -5,11 +5,32 @@
 // porque cria a senha dos usuários padrão. Nunca aponte para o banco de uma loja.
 // Roda no GitHub pelo workflow stockos-e2e.yml. Grava um print de cada passo em e2e-artifacts/.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { isIP } from 'node:net';
 import { join } from 'node:path';
-import { chromium } from 'playwright';
+import tls from 'node:tls';
+import { chromium, devices } from 'playwright';
 
 const BASE = process.env.E2E_URL || 'http://localhost:8080';
+// Porta do celular do atendente (https). Sem ela, os passos do celular ficam de fora.
+const CELULAR = (process.env.E2E_CELULAR || '').replace(/\/$/, '');
+
+/** Conecta como o celular: confia só no certificado da loja (ou em nada) e confere o nome. */
+async function conferirCertificado(url, arquivoCa) {
+  const { hostname, port } = new URL(url);
+  let ca;
+  if (arquivoCa) {
+    const der = await readFile(arquivoCa);
+    ca = '-----BEGIN CERTIFICATE-----\n' + der.toString('base64').match(/.{1,64}/g).join('\n') + '\n-----END CERTIFICATE-----\n';
+  }
+  await new Promise((resolve, reject) => {
+    const conexao = tls.connect({ host: hostname, port: Number(port), ca: ca ? [ca] : [], servername: isIP(hostname) ? undefined : hostname }, () => {
+      conexao.end();
+      resolve();
+    });
+    conexao.on('error', reject);
+  });
+}
 const SAIDA = 'e2e-artifacts';
 const SENHA_ADMIN = 'SenhaDoDono1';
 const PIN_ADMIN = '7305';
@@ -1187,6 +1208,97 @@ try {
     const { corpo } = await api(dono, '/api/comandas');
     assert.ok(corpo.some(c => c.numero === 9), 'A comanda continua aberta para o próximo caixa');
   });
+
+  if (CELULAR) {
+    const contextoCelular = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR' });
+    const cel = await contextoCelular.newPage();
+    cel.setDefaultTimeout(15000);
+    cel.on('pageerror', erro => errosDePagina.push(`celular ${cel.url()}: ${erro.message}`));
+
+    await passo(dono, 'Celular: conexao segura confia so no certificado da loja', async () => {
+      await conferirCertificado(CELULAR, process.env.E2E_CELULAR_CA);
+      await assert.rejects(conferirCertificado(CELULAR, null), 'Sem o certificado da loja, o celular recusa');
+      await dono.goto(`${BASE}/dashboard.html`);
+      await dono.waitForSelector('#celular-painel:not([hidden]) #celular-qr svg');
+      await esperarTexto(dono, '#celular-url', `:${new URL(CELULAR).port}/`);
+      await naTela(dono, '#celular-painel');
+    });
+
+    await passo(cel, 'Celular: pela rede so abre a tela de comanda', async () => {
+      await cel.goto(`${CELULAR}/`);
+      await cel.waitForURL('**/celular.html');
+      assert.equal((await cel.request.get(`${CELULAR}/estoque.html`)).status(), 404);
+      assert.equal((await cel.request.get(`${CELULAR}/api/produtos`)).status(), 404);
+      assert.equal((await cel.request.post(`${CELULAR}/api/auth/login`, {
+        data: { nome: 'Admin', sobrenome: 'Superior', senha: SENHA_ADMIN } })).status(), 404, 'Senha não entra pela rede');
+      const certificado = await cel.request.get(`${CELULAR}/certificado`);
+      assert.equal(certificado.status(), 200);
+      assert.match(certificado.headers()['content-type'], /x509/);
+      await esperarTexto(cel, '#operadores', 'Ana Caixa');
+      await naTela(cel, '#operadores');
+    });
+
+    await passo(cel, 'Celular: atendente entra com o PIN', async () => {
+      await cel.locator('.operador', { hasText: 'Ana Caixa' }).click();
+      await cel.fill('#pin', '0000');
+      await cel.click('#btn-entrar');
+      await esperarTexto(cel, '#aviso', 'PIN incorreto');
+      await cel.fill('#pin', PIN_ANA);
+      await cel.click('#btn-entrar');
+      await cel.waitForSelector('#tela-comandas:not([hidden])');
+      await esperarTexto(cel, '#quem', 'Ana Caixa');
+      await esperarTexto(cel, '#comandas-lista', 'Comanda 9');
+      await naTela(cel, '#comandas-lista');
+      // A sessão do celular não abre o resto, nem pela rota da venda.
+      const tentativa = await cel.evaluate(async () => (await fetch('/api/vendas/1/itens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status);
+      assert.equal(tentativa, 404);
+    });
+
+    await passo(cel, 'Celular: pedido lancado de uma vez na comanda', async () => {
+      await cel.fill('#numero-comanda', '11');
+      await cel.click('#btn-abrir-comanda');
+      await esperarTexto(cel, '#comanda-titulo', 'Comanda 11');
+      await esperarTexto(cel, '#aviso', 'Comanda 11 nova');
+      await cel.fill('#busca', 'skol');
+      const gelada = cel.locator('#resultados .produto', { hasText: 'Gelada' }).first();
+      await gelada.click();
+      await gelada.click();
+      await cel.locator('#teclas .tecla', { hasText: 'Gelo 5kg' }).click();
+      await esperarTexto(cel, '#btn-lancar', 'Lançar 3 itens');
+      // Errou o gelo: tira do pedido antes de lançar, sem gerente.
+      await cel.locator('#pedido [data-menos]').last().click();
+      await esperarTexto(cel, '#btn-lancar', 'Lançar 2 itens · R$ 9,00');
+      await cel.locator('#teclas .tecla', { hasText: 'Gelo 5kg' }).click();
+      await naTela(cel, '#btn-lancar');
+      await cel.click('#btn-lancar');
+      await esperarTexto(cel, '#aviso', '3 itens lançados na comanda 11');
+      await esperarTexto(cel, '#comanda-total', reais(9 + precoGelo));
+      // Mais uma Skol depois: soma na mesma linha.
+      await cel.fill('#busca', 'skol');
+      await cel.locator('#resultados .produto', { hasText: 'Gelada' }).first().click();
+      await cel.click('#btn-lancar');
+      await esperarTexto(cel, '#aviso', '1 item lançado na comanda 11');
+      await esperarTexto(cel, '#comanda-total', reais(13.5 + precoGelo));
+      assert.equal(await cel.locator('#comanda-linhas li').count(), 2, 'A Skol somou na mesma linha');
+      await esperarTexto(cel, '#comanda-linhas', '3 × Skol lata 350ml');
+      await print(cel, 'celular-comanda');
+      await cel.click('#btn-voltar');
+      await esperarTexto(cel, '#comandas-lista', 'Comanda 11');
+      await cel.click('#btn-sair');
+      await cel.waitForSelector('#tela-entrar:not([hidden])');
+      assert.equal((await cel.evaluate(async () => (await fetch('/api/comandas')).status)), 401, 'Saiu de verdade');
+    });
+
+    await passo(dono, 'Celular: o caixa ve o que o atendente lancou', async () => {
+      const { corpo } = await api(dono, '/api/comandas');
+      assert.equal(corpo.find(c => c.numero === 11).total, Number((13.5 + precoGelo).toFixed(2)));
+      const logs = await logsDe(dono, 'COMANDA_ITENS_LANCADOS');
+      assert.ok(logs.some(l => l.includes('Comanda 11') && l.includes('Ana Caixa')), logs.join(' | '));
+      const entradas = await logsDe(dono, 'LOGIN_CELULAR_FALHOU');
+      assert.ok(entradas.some(l => l.includes('Ana Caixa')), 'PIN errado no celular fica registrado');
+    });
+    await contextoCelular.close();
+  }
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {
     await dono.goto(`${BASE}/dashboard.html`);
