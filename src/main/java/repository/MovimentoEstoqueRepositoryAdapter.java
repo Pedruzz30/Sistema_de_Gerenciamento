@@ -39,4 +39,9 @@ public class MovimentoEstoqueRepositoryAdapter implements MovimentoEstoqueReposi
     public List<MovimentoEstoque> listarTodos() {
         return delegate.findAllByOrderByCriadoEmDescIdDesc();
     }
+
+    @Override
+    public List<MovimentoEstoque> listarPorProduto(int produtoId) {
+        return delegate.findByProdutoId(produtoId);
+    }
 }
