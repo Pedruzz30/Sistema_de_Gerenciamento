@@ -24,6 +24,9 @@ let pdvVariacoesPorItem = {};
 let pdvVariacoesPorId = {};
 let pdvDraftPayloadPorItemVenda = {};
 let pdvConfiguracaoAtual = null;
+let pdvFinalizando = false;
+let pdvLimpandoCarrinho = false;
+let pdvTentativaFinalizacao = null;
 
 async function abrirPDV(numeroCaixa) {
   pdvNumeroCaixa = numeroCaixa;
@@ -31,6 +34,9 @@ async function abrirPDV(numeroCaixa) {
   pdvVendaAtual = null;
   pdvDraftPayloadPorItemVenda = {};
   pdvCategoriaAtiva = 'todos';
+  pdvFinalizando = false;
+  pdvLimpandoCarrinho = false;
+  pdvTentativaFinalizacao = null;
 
   document.getElementById('pdv-caixa-label').textContent = `Caixa ${numeroCaixa}`;
   document.getElementById('pdv-busca').value = '';
@@ -278,6 +284,10 @@ function filtrarProdutosPDV() {
 }
 
 async function adicionarAoCarrinho(itemId) {
+  if (pdvFinalizando || pdvLimpandoCarrinho || pdvTentativaFinalizacao) {
+    mostrarAlert('alert-pdv', 'Resolva a tentativa de venda pendente antes de alterar os itens.', 'error');
+    return;
+  }
   const item = pdvItensMap[itemId];
   if (!item || !itemDisponivelParaSelecaoPDV(item)) return;
 
@@ -639,6 +649,10 @@ function atualizarResumoConfiguracaoPDV(validacaoBackend) {
 }
 
 async function confirmarConfiguracaoPDV() {
+  if (pdvFinalizando || pdvLimpandoCarrinho || pdvTentativaFinalizacao) {
+    mostrarAlert('alert-pdv-configuracao', 'Existe uma operação pendente. Verifique o pedido antes de alterar itens.', 'error');
+    return;
+  }
   const estado = pdvConfiguracaoAtual;
   if (!estado || !estado.configuracao) return;
   const local = validarConfiguracaoVisualPDV();
@@ -767,7 +781,7 @@ async function editarItemCarrinhoPDV(itemVendaId) {
 }
 
 async function removerItemCompleto(itemVendaId) {
-  if (!pdvVendaAtual) return;
+  if (!pdvVendaAtual || pdvLimpandoCarrinho || pdvFinalizando || pdvTentativaFinalizacao) return;
   const resp = await fetch(`/api/vendas/${pdvVendaAtual.id}/itens/${itemVendaId}`, { method: 'DELETE' });
   if (!resp.ok) {
     mostrarAlert('alert-pdv', await safeReadErrorMessage(resp, 'Erro ao remover item.'), 'error');
@@ -777,17 +791,50 @@ async function removerItemCompleto(itemVendaId) {
   await recarregarVendaAtualPDV();
 }
 
-function limparCarrinho() {
+async function limparCarrinho() {
+  if (!pdvVendaAtual || pdvLimpandoCarrinho || pdvFinalizando || pdvTentativaFinalizacao) return;
+  const vendaId = pdvVendaAtual.id;
   const ids = itensAtivosVendaPDV().map(item => item.id);
   if (!ids.length) return;
-  Promise.all(ids.map(id => fetch(`/api/vendas/${pdvVendaAtual.id}/itens/${id}`, { method: 'DELETE' }).catch(() => null)))
-    .then(() => {
-      pdvVendaAtual = null;
-      pdvCarrinho = [];
-      pdvDraftPayloadPorItemVenda = {};
-      renderCarrinho();
-      renderCardapio();
-    });
+
+  pdvLimpandoCarrinho = true;
+  const button = document.querySelector('.pdv-clear-btn');
+  if (button) button.disabled = true;
+  let falha = false;
+  try {
+    // Mutação sequencial: interromper na primeira falha sem apagar o carrinho local.
+    for (const id of ids) {
+      const resposta = await fetch(`/api/vendas/${vendaId}/itens/${id}`, { method: 'DELETE' });
+      if (!resposta.ok) {
+        falha = true;
+        break;
+      }
+      delete pdvDraftPayloadPorItemVenda[id];
+    }
+  } catch (error) {
+    falha = true;
+    console.warn('PDV: falha ao limpar carrinho', error);
+  }
+  try {
+    // Em todos os casos consultar o servidor; resposta GET não-OK não é confirmação.
+    const atualizada = await fetch(`/api/vendas/${vendaId}`);
+    if (!atualizada.ok) throw new Error('Não foi possível confirmar o estado do pedido.');
+    pdvVendaAtual = await atualizada.json();
+    pdvCarrinho = itensAtivosVendaPDV();
+    if (pdvCarrinho.length > 0) falha = true;
+    if (!pdvCarrinho.length) pdvDraftPayloadPorItemVenda = {};
+    renderCarrinho();
+    renderCardapio();
+  } catch (error) {
+    falha = true;
+    console.warn('PDV: carrinho não sincronizado', error);
+  } finally {
+    pdvLimpandoCarrinho = false;
+    if (button) button.disabled = false;
+  }
+  if (falha) {
+    mostrarAlert('alert-pdv', 'Não foi possível confirmar a limpeza completa. Confira os itens antes de prosseguir.', 'error');
+  }
 }
 
 function quantidadeItemNoCarrinhoPDV(itemId) {
@@ -913,44 +960,58 @@ function renderCarrinho() {
 }
 
 async function finalizarVendaPDV() {
-  if (!pdvVendaAtual || pdvCarrinho.length === 0) return;
+  if (!pdvVendaAtual || pdvCarrinho.length === 0 || pdvFinalizando || pdvLimpandoCarrinho) return;
+
+  const vendaId = pdvVendaAtual.id;
+  // Uma chave por tentativa de uma mesma venda. Reutilizar quando a
+  // resposta for incerta; a API verifica idempotência no PostgreSQL.
+  if (!pdvTentativaFinalizacao || pdvTentativaFinalizacao.vendaId !== vendaId) {
+    pdvTentativaFinalizacao = { vendaId, chave: gerarIdempotencyKeyPDV('finalizar') };
+  }
 
   const btn = document.getElementById('btn-pdv-finalizar');
   const total = calcularTotalCarrinho();
+  pdvFinalizando = true;
   setLoading(btn, true);
   limparAlert('alert-pdv');
 
   try {
-    const resp = await fetch(`/api/vendas/${pdvVendaAtual.id}/finalizar`, {
+    const resp = await fetch(`/api/vendas/${vendaId}/finalizar`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Idempotency-Key': gerarIdempotencyKeyPDV('finalizar')
+        'Idempotency-Key': pdvTentativaFinalizacao.chave
       },
       body: JSON.stringify({ numeroCaixaLegado: pdvNumeroCaixa })
     });
-
     if (!resp.ok) {
-      const msg = await safeReadErrorMessage(resp, 'Erro ao finalizar venda.');
-      mostrarAlert('alert-pdv', msg, 'error');
-      await recarregarDisponibilidadePDV();
-      renderCardapio();
+      const mensagem = await safeReadErrorMessage(resp, 'Não foi possível confirmar a venda.');
+      mostrarAlert('alert-pdv', mensagem + ' Mantenha o pedido e verifique o resultado antes de alterá-lo.', 'error');
       return;
     }
-
-    pdvVendaAtual = await resp.json();
-    pdvCarrinho = itensAtivosVendaPDV();
+    const confirmada = await resp.json();
+    if (confirmada.status !== 'FINALIZADA') {
+      mostrarAlert('alert-pdv', 'O servidor não confirmou a finalização. Tente novamente sem alterar o pedido.', 'error');
+      return;
+    }
+    pdvVendaAtual = confirmada;
+    pdvTentativaFinalizacao = null;
     btn.textContent = 'Venda registrada!';
     btn.classList.add('pdv-submit--success');
-    setTimeout(() => {
-      fecharModal('modal-pdv');
-      pdvCarrinho = [];
-      pdvVendaAtual = null;
-      pdvDraftPayloadPorItemVenda = {};
-      showToast(`${formatarMoedaPDV(total)} registrado no Caixa ${pdvNumeroCaixa}!`, 'success');
-      carregarCaixas();
-    }, 700);
+    // O estado fica travado no servidor após confirmação.
+    fecharModal('modal-pdv');
+    pdvCarrinho = [];
+    pdvVendaAtual = null;
+    pdvDraftPayloadPorItemVenda = {};
+    showToast(`${formatarMoedaPDV(total)} registrado no Caixa ${pdvNumeroCaixa}!`, 'success');
+    void carregarCaixas();
+  } catch (error) {
+    console.warn('PDV: resultado de finalização não confirmado', error);
+    mostrarAlert('alert-pdv',
+      'A resposta da venda não foi confirmada. Não inicie outra venda antes de conferir o resultado; tente novamente com o mesmo pedido.',
+      'error');
   } finally {
+    pdvFinalizando = false;
     setLoading(btn, false);
   }
 }
