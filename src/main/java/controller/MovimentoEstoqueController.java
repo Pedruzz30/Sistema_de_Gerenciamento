@@ -1,9 +1,15 @@
+
 package controller;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 import model.MovimentoEstoque;
 import model.Permissao;
 import model.Usuario;
+
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,64 +18,241 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 import repository.UsuarioRepository;
-import service.ErroNegocioException;
 import service.MovimentoEstoqueService;
 
-import java.math.BigDecimal;
-import java.util.Map;
-import java.util.List;
-
+/**
+ * API de movimentacoes de estoque do StockOS.
+ *
+ * Responsabilidades:
+ * - Listar movimentacoes;
+ * - Filtrar movimentacoes por produto;
+ * - Solicitar estornos;
+ * - Validar entradas;
+ * - Verificar permissoes.
+ *
+ * O processamento financeiro e de estoque
+ * permanece no MovimentoEstoqueService.
+ *
+ * ATENCAO:
+ * X-User-RU e um mecanismo legado e nao
+ * representa autenticacao segura.
+ */
 @RestController
 @RequestMapping("/api/movimentos-estoque")
 public class MovimentoEstoqueController {
 
+    private static final String ERRO_VISUALIZACAO =
+            "Voce nao tem permissao para visualizar movimentos de estoque.";
+
+    private static final String ERRO_ESTORNO =
+            "Voce nao tem permissao para estornar movimentos de estoque.";
+
+    private static final int MAX_MOTIVO = 240;
+    private static final int MAX_OBSERVACAO = 500;
+
     private final MovimentoEstoqueService movimentoEstoqueService;
     private final UsuarioRepository usuarioRepository;
 
-    public MovimentoEstoqueController(MovimentoEstoqueService movimentoEstoqueService,
-                                      UsuarioRepository usuarioRepository) {
+    public MovimentoEstoqueController(
+            MovimentoEstoqueService movimentoEstoqueService,
+            UsuarioRepository usuarioRepository
+    ) {
         this.movimentoEstoqueService = movimentoEstoqueService;
         this.usuarioRepository = usuarioRepository;
     }
 
+    // =====================================================
+    // LISTAGEM DE MOVIMENTACOES
+    // =====================================================
+
+    /**
+     * GET /api/movimentos-estoque
+     *
+     * Filtro opcional:
+     * produtoId
+     *
+     * O filtro ocorre no repository quando
+     * um produto e informado.
+     *
+     * Mantem o retorno como List, garantindo
+     * compatibilidade com o frontend atual.
+     */
     @GetMapping
     public ResponseEntity<List<MovimentoResponse>> listar(
-            @RequestParam(value = "produtoId", required = false) Integer produtoId,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        ControllerUtils.resolveUserAndRequirePermission(
-                ruHeader,
-                usuarioRepository,
-                Permissao.VER_ESTOQUE,
-                "Voce nao tem permissao para visualizar movimentos de estoque."
-        );
-        return ResponseEntity.ok(movimentoEstoqueService.listarTodos().stream()
-                .filter(movimento -> produtoId == null || movimento.getProduto().getId() == produtoId)
-                .map(MovimentoResponse::from)
-                .toList());
+            @RequestParam(
+                    value = "produtoId",
+                    required = false
+            ) Integer produtoId,
+
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
+        validarVisualizacao(ruHeader);
+
+        if (produtoId != null && produtoId <= 0) {
+            throw new IllegalArgumentException(
+                    "ID do produto deve ser maior que zero."
+            );
+        }
+
+        List<MovimentoResponse> movimentos =
+                movimentoEstoqueService.listar(produtoId)
+                        .stream()
+                        .map(MovimentoResponse::from)
+                        .toList();
+
+        return ResponseEntity.ok(movimentos);
     }
 
+    // =====================================================
+    // ESTORNO DE MOVIMENTO
+    // =====================================================
+
+    /**
+     * POST /api/movimentos-estoque/{id}/estornar
+     *
+     * Requisitos:
+     * - Usuario autorizado;
+     * - ID valido;
+     * - Motivo obrigatorio;
+     * - Limites de texto respeitados.
+     *
+     * A consistencia do estoque e validada
+     * novamente na camada de servico.
+     */
     @PostMapping("/{id}/estornar")
-    public ResponseEntity<?> estornar(@PathVariable long id,
-                                      @RequestBody EstornoRequest request,
-                                      @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            MovimentoEstoque movimento = movimentoEstoqueService.estornar(
-                    ator,
-                    id,
-                    request.motivo(),
-                    request.observacao()
+    public ResponseEntity<MovimentoResponse> estornar(
+            @PathVariable long id,
+
+            @RequestBody(required = false)
+            EstornoRequest request,
+
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
+        Usuario ator = validarPermissaoEstorno(ruHeader);
+
+        validarIdMovimento(id);
+        validarEstornoRequest(request);
+
+        MovimentoEstoque movimento =
+                movimentoEstoqueService.estornar(
+                        ator,
+                        id,
+                        request.motivo().trim(),
+                        normalizarObservacao(request.observacao())
+                );
+
+        return ResponseEntity.ok(
+                MovimentoResponse.from(movimento)
+        );
+    }
+
+    // =====================================================
+    // AUTORIZACAO LEGADA
+    // =====================================================
+
+    private Usuario validarVisualizacao(
+            String ruHeader
+    ) {
+        return ControllerUtils
+                .resolveUserAndRequirePermission(
+                        ruHeader,
+                        usuarioRepository,
+                        Permissao.VER_ESTOQUE,
+                        ERRO_VISUALIZACAO
+                );
+    }
+
+    private Usuario validarPermissaoEstorno(
+            String ruHeader
+    ) {
+        // Permissao existente no projeto.
+        // Futuramente, separar estorno
+        // de edicao comum do estoque.
+
+        return ControllerUtils
+                .resolveUserAndRequirePermission(
+                        ruHeader,
+                        usuarioRepository,
+                        Permissao.EDITAR_ESTOQUE,
+                        ERRO_ESTORNO
+                );
+    }
+
+    // =====================================================
+    // VALIDACOES
+    // =====================================================
+
+    private static void validarIdMovimento(long id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(
+                    "ID do movimento deve ser maior que zero."
             );
-            return ResponseEntity.ok(MovimentoResponse.from(movimento));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
         }
     }
 
-    public record EstornoRequest(String motivo, String observacao) {}
+    private static void validarEstornoRequest(
+            EstornoRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Dados do estorno sao obrigatorios."
+            );
+        }
+
+        String motivo = request.motivo();
+
+        if (motivo == null || motivo.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Motivo do estorno e obrigatorio."
+            );
+        }
+
+        if (motivo.trim().length() > MAX_MOTIVO) {
+            throw new IllegalArgumentException(
+                    "Motivo excede 240 caracteres."
+            );
+        }
+
+        String observacao = request.observacao();
+
+        if (observacao != null
+                && observacao.trim().length() > MAX_OBSERVACAO) {
+            throw new IllegalArgumentException(
+                    "Observacao excede 500 caracteres."
+            );
+        }
+    }
+
+    private static String normalizarObservacao(
+            String observacao
+    ) {
+        if (observacao == null || observacao.isBlank()) {
+            return null;
+        }
+
+        return observacao.trim();
+    }
+
+    // =====================================================
+    // REQUEST DTO
+    // =====================================================
+
+    public record EstornoRequest(
+            String motivo,
+            String observacao
+    ) {}
+
+    // =====================================================
+    // RESPONSE DTO
+    // =====================================================
 
     public record MovimentoResponse(
             long id,
@@ -95,12 +278,20 @@ public class MovimentoEstoqueController {
             Long movimentoEstornadoId,
             String criadoEm
     ) {
-        public static MovimentoResponse from(MovimentoEstoque movimento) {
+
+        public static MovimentoResponse from(
+                MovimentoEstoque movimento
+        ) {
+            var produto = movimento.getProduto();
+
+            MovimentoEstoque original =
+                    movimento.getMovimentoEstornado();
+
             return new MovimentoResponse(
                     movimento.getId(),
                     movimento.getFilialId(),
-                    movimento.getProduto().getId(),
-                    movimento.getProduto().getNome(),
+                    produto.getId(),
+                    produto.getNome(),
                     movimento.getTipo().name(),
                     movimento.getQuantidadeBase(),
                     movimento.getSaldoAnterior(),
@@ -117,28 +308,12 @@ public class MovimentoEstoqueController {
                     movimento.getMotivo(),
                     movimento.getObservacao(),
                     movimento.getIdempotencyKey(),
-                    movimento.getMovimentoEstornado() != null ? movimento.getMovimentoEstornado().getId() : null,
+                    original == null ? null : original.getId(),
                     movimento.getCriadoEm().toString()
             );
         }
     }
-
-    public record ErroResponse(String erro, String codigo, Map<String, Object> detalhes) {
-        public static ErroResponse from(ErroNegocioException e) {
-            return new ErroResponse(e.getMessage(), e.getCodigo(), e.getDetalhes());
-        }
-    }
-
-    private static org.springframework.http.HttpStatus statusErroNegocio(ErroNegocioException e) {
-        return switch (e.getCodigo()) {
-            case "MOVIMENTO_JA_ESTORNADO", "MOVIMENTO_NAO_PODE_SER_ESTORNADO" -> org.springframework.http.HttpStatus.CONFLICT;
-            default -> org.springframework.http.HttpStatus.BAD_REQUEST;
-        };
-    }
-
-    private static String codigoPorMensagem(String mensagem) {
-        if (mensagem == null) return null;
-        if (mensagem.contains("ja foi estornado")) return "MOVIMENTO_JA_ESTORNADO";
-        return null;
-    }
 }
+
+
+

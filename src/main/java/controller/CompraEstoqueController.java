@@ -1,9 +1,17 @@
+
 package controller;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import model.CompraEstoque;
+import model.EmbalagemProduto;
+import model.Fornecedor;
 import model.ItemCompraEstoque;
 import model.Permissao;
+import model.Produto;
 import model.Usuario;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,110 +21,317 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 import repository.UsuarioRepository;
 import service.CompraEstoqueService;
-import service.ConflitoIdempotenciaException;
-import service.ErroNegocioException;
 
-import java.math.BigDecimal;
-import java.util.Map;
-import java.util.List;
-
+/**
+ * API de compras de estoque do StockOS.
+ *
+ * Responsabilidades:
+ * - Listar compras;
+ * - Criar uma compra em rascunho;
+ * - Adicionar itens a uma compra;
+ * - Confirmar compras com chave de idempotencia.
+ *
+ * As regras de estoque, autorizacao de edicao
+ * e transacoes ficam no CompraEstoqueService.
+ *
+ * ATENCAO:
+ * A autenticacao por X-User-RU e legada.
+ * O isolamento por estabelecimento ainda precisa
+ * ser implementado nos servicos e repositorios.
+ */
 @RestController
 @RequestMapping("/api/compras")
 public class CompraEstoqueController {
 
+    private static final String ERRO_VISUALIZACAO =
+            "Voce nao tem permissao para visualizar compras.";
+
     private final CompraEstoqueService compraEstoqueService;
     private final UsuarioRepository usuarioRepository;
 
-    public CompraEstoqueController(CompraEstoqueService compraEstoqueService,
-                                   UsuarioRepository usuarioRepository) {
+    public CompraEstoqueController(
+            CompraEstoqueService compraEstoqueService,
+            UsuarioRepository usuarioRepository
+    ) {
         this.compraEstoqueService = compraEstoqueService;
         this.usuarioRepository = usuarioRepository;
     }
 
+    // =====================================================
+    // LISTAR COMPRAS
+    // =====================================================
+
     @GetMapping
     public ResponseEntity<List<CompraResponse>> listar(
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         ControllerUtils.resolveUserAndRequirePermission(
                 ruHeader,
                 usuarioRepository,
                 Permissao.VER_COMPRAS,
-                "Voce nao tem permissao para visualizar compras."
+                ERRO_VISUALIZACAO
         );
-        return ResponseEntity.ok(compraEstoqueService.listarTodas().stream()
-                .map(CompraResponse::from)
-                .toList());
+
+        List<CompraResponse> compras =
+                compraEstoqueService.listarTodas()
+                        .stream()
+                        .map(CompraResponse::from)
+                        .toList();
+
+        return ResponseEntity.ok(compras);
     }
 
+    // =====================================================
+    // CRIAR COMPRA
+    // =====================================================
+
+    /**
+     * Cria uma compra em rascunho.
+     *
+     * O fornecedor continua opcional para manter
+     * compatibilidade com o fluxo existente.
+     */
     @PostMapping
-    public ResponseEntity<?> criar(@RequestBody(required = false) CriarCompraRequest request,
-                                   @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            CompraEstoque compra = compraEstoqueService.criarCompra(
-                    ator,
-                    request != null ? request.fornecedorId() : null
-            );
-            return ResponseEntity.status(HttpStatus.CREATED).body(CompraResponse.from(compra));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
+    public ResponseEntity<CompraResponse> criar(
+            @RequestBody(required = false)
+            CriarCompraRequest request,
+
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
+        Usuario ator = resolverUsuario(ruHeader);
+
+        Long fornecedorId = request == null
+                ? null
+                : request.fornecedorId();
+
+        if (fornecedorId != null) {
+            validarId(fornecedorId, "fornecedor");
         }
+
+        CompraEstoque compra = compraEstoqueService.criarCompra(
+                ator,
+                fornecedorId
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(CompraResponse.from(compra));
     }
 
+    // =====================================================
+    // ADICIONAR ITEM
+    // =====================================================
+
+    /**
+     * Adiciona um produto a uma compra em rascunho.
+     *
+     * O service continua responsavel pela conversao
+     * de unidades e pelas regras de custo.
+     */
     @PostMapping("/{id}/itens")
-    public ResponseEntity<?> adicionarItem(@PathVariable long id,
-                                           @RequestBody AdicionarItemCompraRequest request,
-                                           @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            CompraEstoque compra = compraEstoqueService.adicionarItem(
-                    ator,
-                    id,
-                    request.produtoId(),
-                    request.embalagemId(),
-                    request.unidadeCompraCodigo(),
-                    request.quantidadeComprada(),
-                    request.custoTotal(),
-                    request.motivoEntradaGratuita()
-            );
-            return ResponseEntity.ok(CompraResponse.from(compra));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
-        }
+    public ResponseEntity<CompraResponse> adicionarItem(
+            @PathVariable long id,
+
+            @RequestBody(required = false)
+            AdicionarItemCompraRequest request,
+
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
+        Usuario ator = resolverUsuario(ruHeader);
+
+        validarId(id, "compra");
+        validarAdicionarItemRequest(request);
+
+        CompraEstoque compra = compraEstoqueService.adicionarItem(
+                ator,
+                id,
+                request.produtoId(),
+                request.embalagemId(),
+                request.unidadeCompraCodigo(),
+                request.quantidadeComprada(),
+                request.custoTotal(),
+                request.motivoEntradaGratuita()
+        );
+
+        return ResponseEntity.ok(
+                CompraResponse.from(compra)
+        );
     }
 
+    // =====================================================
+    // CONFIRMAR COMPRA
+    // =====================================================
+
+    /**
+     * Confirma a compra e efetiva a entrada de estoque.
+     *
+     * A chave de idempotencia evita que o reenvio
+     * da mesma operacao gere entradas duplicadas.
+     *
+     * A prioridade da chave permanece:
+     * 1. Cabecalho Idempotency-Key nao vazio;
+     * 2. Campo idempotencyKey no corpo.
+     */
     @PostMapping("/{id}/confirmar")
-    public ResponseEntity<?> confirmar(@PathVariable long id,
-                                       @RequestBody(required = false) ConfirmarCompraRequest request,
-                                       @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyHeader,
-                                       @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            String chave = idempotencyHeader != null && !idempotencyHeader.isBlank()
-                    ? idempotencyHeader
-                    : request != null ? request.idempotencyKey() : null;
-            CompraEstoque compra = compraEstoqueService.confirmarCompra(
-                    ator,
-                    id,
-                    chave,
-                    request != null ? request.motivo() : null
+    public ResponseEntity<CompraResponse> confirmar(
+            @PathVariable long id,
+
+            @RequestBody(required = false)
+            ConfirmarCompraRequest request,
+
+            @RequestHeader(
+                    value = "Idempotency-Key",
+                    required = false
+            ) String idempotencyHeader,
+
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
+        Usuario ator = resolverUsuario(ruHeader);
+
+        validarId(id, "compra");
+
+        String chave = resolverChaveIdempotencia(
+                idempotencyHeader,
+                request
+        );
+
+        String motivo = request == null
+                ? null
+                : request.motivo();
+
+        CompraEstoque compra = compraEstoqueService.confirmarCompra(
+                ator,
+                id,
+                chave,
+                motivo
+        );
+
+        return ResponseEntity.ok(
+                CompraResponse.from(compra)
+        );
+    }
+
+    // =====================================================
+    // AUTORIZACAO LEGADA
+    // =====================================================
+
+    /**
+     * Resolve o usuario da requisicao.
+     *
+     * A permissao de edicao e verificada novamente
+     * pelo CompraEstoqueService.
+     *
+     * IMPORTANTE: este metodo nao autentica
+     * criptograficamente a identidade.
+     */
+    private Usuario resolverUsuario(String ruHeader) {
+        return ControllerUtils.resolveUser(
+                ruHeader,
+                usuarioRepository
+        );
+    }
+
+    // =====================================================
+    // VALIDACOES
+    // =====================================================
+
+    private static void validarId(
+            long id,
+            String recurso
+    ) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(
+                    "ID de " + recurso + " deve ser maior que zero."
             );
-            return ResponseEntity.ok(CompraResponse.from(compra));
-        } catch (ConflitoIdempotenciaException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(ErroResponse.from(e));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
         }
     }
 
-    public record CriarCompraRequest(Long fornecedorId) {}
+    private static void validarAdicionarItemRequest(
+            AdicionarItemCompraRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Dados do item de compra sao obrigatorios."
+            );
+        }
+
+        validarId(request.produtoId(), "produto");
+
+        if (request.embalagemId() != null) {
+            validarId(request.embalagemId(), "embalagem");
+        }
+
+        if (request.quantidadeComprada() == null
+                || request.quantidadeComprada()
+                        .compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(
+                    "Quantidade comprada deve ser maior que zero."
+            );
+        }
+
+        if (request.custoTotal() == null
+                || request.custoTotal()
+                        .compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(
+                    "Custo total nao pode ser negativo."
+            );
+        }
+
+        // O service verifica:
+        // - Se foi informada embalagem OU unidade;
+        // - Se a embalagem pertence ao produto;
+        // - Se as unidades sao compativeis;
+        // - Se custo zero possui motivo;
+        // - Se o produto pode receber estoque.
+    }
+
+    // =====================================================
+    // IDEMPOTENCIA
+    // =====================================================
+
+    /**
+     * Preserva a prioridade original:
+     * cabecalho primeiro, corpo como alternativa.
+     *
+     * O service realiza a validacao final
+     * e a normalizacao da chave.
+     */
+    private static String resolverChaveIdempotencia(
+            String idempotencyHeader,
+            ConfirmarCompraRequest request
+    ) {
+        if (idempotencyHeader != null
+                && !idempotencyHeader.isBlank()) {
+            return idempotencyHeader;
+        }
+
+        return request == null
+                ? null
+                : request.idempotencyKey();
+    }
+
+    // =====================================================
+    // REQUEST DTOs
+    // =====================================================
+
+    public record CriarCompraRequest(
+            Long fornecedorId
+    ) {
+    }
 
     public record AdicionarItemCompraRequest(
             int produtoId,
@@ -125,9 +340,18 @@ public class CompraEstoqueController {
             BigDecimal quantidadeComprada,
             BigDecimal custoTotal,
             String motivoEntradaGratuita
-    ) {}
+    ) {
+    }
 
-    public record ConfirmarCompraRequest(String idempotencyKey, String motivo) {}
+    public record ConfirmarCompraRequest(
+            String idempotencyKey,
+            String motivo
+    ) {
+    }
+
+    // =====================================================
+    // RESPONSE DTO - COMPRA
+    // =====================================================
 
     public record CompraResponse(
             long id,
@@ -142,22 +366,42 @@ public class CompraEstoqueController {
             Long usuarioConfirmacaoId,
             List<ItemCompraResponse> itens
     ) {
-        public static CompraResponse from(CompraEstoque compra) {
+
+        public static CompraResponse from(
+                CompraEstoque compra
+        ) {
+            Fornecedor fornecedor = compra.getFornecedor();
+
+            String dataConfirmacao =
+                    compra.getDataConfirmacao() == null
+                            ? null
+                            : compra.getDataConfirmacao().toString();
+
+            List<ItemCompraResponse> itens =
+                    compra.getItens()
+                            .stream()
+                            .map(ItemCompraResponse::from)
+                            .toList();
+
             return new CompraResponse(
                     compra.getId(),
                     compra.getFilialId(),
-                    compra.getFornecedor() != null ? compra.getFornecedor().getId() : null,
-                    compra.getFornecedor() != null ? compra.getFornecedor().getNome() : null,
+                    fornecedor != null ? fornecedor.getId() : null,
+                    fornecedor != null ? fornecedor.getNome() : null,
                     compra.getStatus().name(),
                     compra.calcularTotal(),
                     compra.getDataCriacao().toString(),
-                    compra.getDataConfirmacao() != null ? compra.getDataConfirmacao().toString() : null,
+                    dataConfirmacao,
                     compra.getUsuarioCriacaoId(),
                     compra.getUsuarioConfirmacaoId(),
-                    compra.getItens().stream().map(ItemCompraResponse::from).toList()
+                    itens
             );
         }
     }
+
+    // =====================================================
+    // RESPONSE DTO - ITEM
+    // =====================================================
 
     public record ItemCompraResponse(
             long id,
@@ -173,48 +417,38 @@ public class CompraEstoqueController {
             BigDecimal custoUnitarioCompra,
             BigDecimal custoUnitarioBase
     ) {
-        public static ItemCompraResponse from(ItemCompraEstoque item) {
+
+        public static ItemCompraResponse from(
+                ItemCompraEstoque item
+        ) {
+            Produto produto = item.getProduto();
+            EmbalagemProduto embalagem = item.getEmbalagem();
+
+            String unidadeCompraCodigo =
+                    item.getUnidadeCompra() == null
+                            ? null
+                            : item.getUnidadeCompra().getCodigo();
+
+            String unidadeBaseProdutoCodigo =
+                    produto.getUnidadeBase() == null
+                            ? null
+                            : produto.getUnidadeBase().getCodigo();
+
             return new ItemCompraResponse(
                     item.getId(),
-                    item.getProduto().getId(),
-                    item.getProduto().getNome(),
-                    item.getEmbalagem() != null ? item.getEmbalagem().getId() : null,
-                    item.getEmbalagem() != null ? item.getEmbalagem().getNome() : null,
-                    item.getUnidadeCompra() != null ? item.getUnidadeCompra().getCodigo() : null,
+                    produto.getId(),
+                    produto.getNome(),
+                    embalagem != null ? embalagem.getId() : null,
+                    embalagem != null ? embalagem.getNome() : null,
+                    unidadeCompraCodigo,
                     item.getQuantidadeComprada(),
                     item.getQuantidadeBase(),
-                    item.getProduto().getUnidadeBase() != null ? item.getProduto().getUnidadeBase().getCodigo() : null,
+                    unidadeBaseProdutoCodigo,
                     item.getCustoTotal(),
                     item.getCustoUnitarioCompra(),
                     item.getCustoUnitarioBase()
             );
         }
     }
-
-    public record ErroResponse(String erro, String codigo, Map<String, Object> detalhes) {
-        public static ErroResponse from(ErroNegocioException e) {
-            return new ErroResponse(e.getMessage(), e.getCodigo(), e.getDetalhes());
-        }
-    }
-
-    private static HttpStatus statusErroNegocio(ErroNegocioException e) {
-        return switch (e.getCodigo()) {
-            case "IDEMPOTENCY_KEY_REUSED",
-                 "CHAVE_IDEMPOTENCIA_REUTILIZADA_COM_PAYLOAD_DIFERENTE",
-                 "COMPRA_JA_CONFIRMADA",
-                 "CONCORRENCIA_ESTOQUE" -> HttpStatus.CONFLICT;
-            default -> HttpStatus.BAD_REQUEST;
-        };
-    }
-
-    private static String codigoPorMensagem(String mensagem) {
-        if (mensagem == null) return null;
-        if (mensagem.contains("Unidades incompativeis") || mensagem.contains("Unidades incompatíveis")) {
-            return "UNIDADE_INCOMPATIVEL";
-        }
-        if (mensagem.contains("ja confirmada")) {
-            return "COMPRA_JA_CONFIRMADA";
-        }
-        return null;
-    }
 }
+

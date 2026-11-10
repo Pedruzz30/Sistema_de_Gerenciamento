@@ -1,150 +1,374 @@
+
 package controller;
 
 import model.CategoriaCardapio;
 import model.ItemCardapio;
 import model.LogAcao;
 import model.Permissao;
+import model.Produto;
 import model.TipoItemCardapio;
 import model.Usuario;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
 import repository.LogRepository;
 import repository.UsuarioRepository;
+
 import service.CardapioService;
 import service.VariacaoItemCardapioService;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 
+/**
+ * API administrativa do cardapio StockOS.
+ *
+ * Gerencia categorias, itens, disponibilidade
+ * e organizacao do cardapio.
+ *
+ * IMPORTANTE:
+ * A autenticacao X-User-RU e legada.
+ * A autorizacao definitiva deve utilizar identidade
+ * verificada e contexto do estabelecimento.
+ */
 @RestController
 @RequestMapping("/api/cardapio/admin")
 public class CardapioAdminController {
 
+    private static final String MENSAGEM_ACESSO_NEGADO =
+            "Voce nao tem permissao para gerenciar o cardapio.";
+
     private final CardapioService cardapioService;
-    private final VariacaoItemCardapioService variacaoItemCardapioService;
+
+    private final VariacaoItemCardapioService
+            variacaoItemCardapioService;
+
     private final UsuarioRepository usuarioRepository;
     private final LogRepository logRepository;
 
-    public CardapioAdminController(CardapioService cardapioService,
-                                   VariacaoItemCardapioService variacaoItemCardapioService,
-                                   UsuarioRepository usuarioRepository,
-                                   LogRepository logRepository) {
+    public CardapioAdminController(
+            CardapioService cardapioService,
+            VariacaoItemCardapioService variacaoItemCardapioService,
+            UsuarioRepository usuarioRepository,
+            LogRepository logRepository
+    ) {
         this.cardapioService = cardapioService;
-        this.variacaoItemCardapioService = variacaoItemCardapioService;
+        this.variacaoItemCardapioService =
+                variacaoItemCardapioService;
         this.usuarioRepository = usuarioRepository;
         this.logRepository = logRepository;
     }
 
+    // =========================================================
+    // CATEGORIAS - CONSULTA
+    // =========================================================
+
     @GetMapping("/categorias")
-    public ResponseEntity<List<CategoriaAdminResponse>> listarCategorias(
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+    public ResponseEntity<List<CategoriaAdminResponse>>
+    listarCategorias(
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         validarPermissaoGestaoCardapio(ruHeader);
-        List<CategoriaAdminResponse> resposta = cardapioService.listarCategoriasAdministrativas().stream()
-                .map(CategoriaAdminResponse::from)
-                .toList();
-        return ResponseEntity.ok(resposta);
+
+        List<CategoriaAdminResponse> categorias =
+                cardapioService.listarCategoriasAdministrativas()
+                        .stream()
+                        .map(CategoriaAdminResponse::from)
+                        .toList();
+
+        return ResponseEntity.ok(categorias);
     }
+
+    // =========================================================
+    // CATEGORIAS - CADASTRO
+    // =========================================================
 
     @PostMapping("/categorias")
+    @Transactional
     public ResponseEntity<CategoriaAdminResponse> criarCategoria(
-            @RequestBody CategoriaRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) CategoriaRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        CategoriaCardapio categoria = cardapioService.criarCategoria(
-                request.codigo(),
-                request.nomeExibicao(),
-                request.ordemExibicao(),
-                Boolean.TRUE
+
+        validarCategoriaRequest(request);
+
+        CategoriaCardapio categoria =
+                cardapioService.criarCategoria(
+                        request.codigo(),
+                        request.nomeExibicao(),
+                        request.ordemExibicao(),
+                        true
+                );
+
+        registrarLog(
+                ator,
+                "CARDAPIO_CATEGORIA_CRIADA",
+                "Categoria de cardapio criada: "
+                        + categoria.getNomeExibicao()
+                        + " (" + categoria.getCodigo() + ")"
         );
-        registrarLog(ator, "CARDAPIO_CATEGORIA_CRIADA",
-                "Categoria de cardapio criada: " + categoria.getNomeExibicao() + " (" + categoria.getCodigo() + ")");
-        return ResponseEntity.status(HttpStatus.CREATED).body(CategoriaAdminResponse.from(categoria));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(CategoriaAdminResponse.from(categoria));
     }
+
+    // =========================================================
+    // CATEGORIAS - ATUALIZACAO
+    // =========================================================
 
     @PutMapping("/categorias/{id}")
+    @Transactional
     public ResponseEntity<CategoriaAdminResponse> atualizarCategoria(
             @PathVariable int id,
-            @RequestBody CategoriaRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) CategoriaRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        CategoriaCardapio categoria = cardapioService.atualizarCategoria(
-                id,
-                request.codigo(),
-                request.nomeExibicao(),
-                request.ordemExibicao()
+
+        validarId(id);
+        validarCategoriaRequest(request);
+
+        CategoriaCardapio categoria =
+                cardapioService.atualizarCategoria(
+                        id,
+                        request.codigo(),
+                        request.nomeExibicao(),
+                        request.ordemExibicao()
+                );
+
+        registrarLog(
+                ator,
+                "CARDAPIO_CATEGORIA_ATUALIZADA",
+                "Categoria de cardapio atualizada: "
+                        + categoria.getNomeExibicao()
+                        + " (" + categoria.getCodigo() + ")"
         );
-        registrarLog(ator, "CARDAPIO_CATEGORIA_ATUALIZADA",
-                "Categoria de cardapio atualizada: " + categoria.getNomeExibicao() + " (" + categoria.getCodigo() + ")");
-        return ResponseEntity.ok(CategoriaAdminResponse.from(categoria));
+
+        return ResponseEntity.ok(
+                CategoriaAdminResponse.from(categoria)
+        );
     }
 
-    @RequestMapping(value = "/categorias/{id}/ativo", method = {RequestMethod.PATCH, RequestMethod.PUT})
-    public ResponseEntity<CategoriaAdminResponse> atualizarStatusCategoria(
+    // =========================================================
+    // CATEGORIAS - STATUS
+    // =========================================================
+
+    @RequestMapping(
+            value = "/categorias/{id}/ativo",
+            method = {RequestMethod.PATCH, RequestMethod.PUT}
+    )
+    @Transactional
+    public ResponseEntity<CategoriaAdminResponse>
+    atualizarStatusCategoria(
             @PathVariable int id,
-            @RequestBody AtualizarAtivoRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) AtualizarAtivoRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        CategoriaCardapio categoria = cardapioService.atualizarStatusCategoria(id, request.ativo());
-        registrarLog(ator, "CARDAPIO_CATEGORIA_STATUS",
-                "Categoria de cardapio " + (categoria.isAtivo() ? "ativada: " : "desativada: ")
-                        + categoria.getNomeExibicao() + " (" + categoria.getCodigo() + ")");
-        return ResponseEntity.ok(CategoriaAdminResponse.from(categoria));
+
+        validarId(id);
+        validarAtualizarAtivoRequest(request);
+
+        CategoriaCardapio categoria =
+                cardapioService.atualizarStatusCategoria(
+                        id,
+                        request.ativo()
+                );
+
+        String acao = categoria.isAtivo()
+                ? "ativada: "
+                : "desativada: ";
+
+        registrarLog(
+                ator,
+                "CARDAPIO_CATEGORIA_STATUS",
+                "Categoria de cardapio "
+                        + acao
+                        + categoria.getNomeExibicao()
+                        + " (" + categoria.getCodigo() + ")"
+        );
+
+        return ResponseEntity.ok(
+                CategoriaAdminResponse.from(categoria)
+        );
     }
 
-    @RequestMapping(value = "/categorias/{id}/ordem", method = {RequestMethod.PATCH, RequestMethod.PUT})
-    public ResponseEntity<CategoriaAdminResponse> atualizarOrdemCategoria(
+    // =========================================================
+    // CATEGORIAS - ORDENACAO
+    // =========================================================
+
+    @RequestMapping(
+            value = "/categorias/{id}/ordem",
+            method = {RequestMethod.PATCH, RequestMethod.PUT}
+    )
+    @Transactional
+    public ResponseEntity<CategoriaAdminResponse>
+    atualizarOrdemCategoria(
             @PathVariable int id,
-            @RequestBody AtualizarOrdemRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) AtualizarOrdemRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        CategoriaCardapio categoria = cardapioService.atualizarOrdemCategoria(id, request.ordemExibicao());
-        registrarLog(ator, "CARDAPIO_CATEGORIA_ORDEM",
-                "Categoria de cardapio reordenada: " + categoria.getNomeExibicao() + " -> ordem " + categoria.getOrdemExibicao());
-        return ResponseEntity.ok(CategoriaAdminResponse.from(categoria));
+
+        validarId(id);
+        validarAtualizarOrdemRequest(request);
+
+        CategoriaCardapio categoria =
+                cardapioService.atualizarOrdemCategoria(
+                        id,
+                        request.ordemExibicao()
+                );
+
+        registrarLog(
+                ator,
+                "CARDAPIO_CATEGORIA_ORDEM",
+                "Categoria de cardapio reordenada: "
+                        + categoria.getNomeExibicao()
+                        + " -> ordem "
+                        + categoria.getOrdemExibicao()
+        );
+
+        return ResponseEntity.ok(
+                CategoriaAdminResponse.from(categoria)
+        );
     }
+
+    // =========================================================
+    // ITENS - CONSULTA
+    // =========================================================
 
     @GetMapping("/itens")
     public ResponseEntity<List<ItemAdminResponse>> listarItens(
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader,
-            @RequestParam(value = "categoriaId", required = false) Integer categoriaId,
-            @RequestParam(value = "busca", required = false) String busca) {
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader,
+
+            @RequestParam(
+                    value = "categoriaId",
+                    required = false
+            ) Integer categoriaId,
+
+            @RequestParam(
+                    value = "busca",
+                    required = false
+            ) String busca
+    ) {
         validarPermissaoGestaoCardapio(ruHeader);
-        List<ItemAdminResponse> resposta = cardapioService.listarItensAdministrativos(categoriaId, busca).stream()
-                .map(item -> ItemAdminResponse.from(item, cardapioService))
-                .toList();
-        return ResponseEntity.ok(resposta);
+
+        if (categoriaId != null && categoriaId <= 0) {
+            throw new IllegalArgumentException(
+                    "ID da categoria deve ser maior que zero."
+            );
+        }
+
+        List<ItemAdminResponse> itens =
+                cardapioService
+                        .listarItensAdministrativos(categoriaId, busca)
+                        .stream()
+                        .map(item -> ItemAdminResponse.from(
+                                item,
+                                cardapioService
+                        ))
+                        .toList();
+
+        return ResponseEntity.ok(itens);
     }
 
+    // =========================================================
+    // ITENS - CADASTRO
+    // =========================================================
+
     @PostMapping("/itens")
+    @Transactional
     public ResponseEntity<ItemAdminResponse> criarItem(
-            @RequestBody ItemRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) ItemRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
+
+        validarItemRequest(request);
+
+        TipoItemCardapio tipo =
+                parseTipoItem(request.tipoItem());
+
         ItemCardapio item = cardapioService.criarItem(
                 request.codigo(),
                 request.nome(),
                 request.descricaoCurta(),
                 request.precoVenda(),
                 request.categoriaId(),
-                parseTipoItem(request.tipoItem()),
-                Boolean.TRUE,
-                Boolean.TRUE,
+                tipo,
+                true,
+                true,
                 request.ordemExibicao(),
                 request.produtoVinculadoId()
         );
-        registrarLog(ator, "CARDAPIO_ITEM_CRIADO",
-                "Item de cardapio criado: " + item.getNome() + " (" + item.getCodigo() + ")");
-        variacaoItemCardapioService.garantirVariacaoPadraoSePossivel(item, ator);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ItemAdminResponse.from(item, cardapioService));
+
+        // Cria a variacao padrao quando aplicavel.
+        variacaoItemCardapioService
+                .garantirVariacaoPadraoSePossivel(item, ator);
+
+        registrarLog(
+                ator,
+                "CARDAPIO_ITEM_CRIADO",
+                "Item de cardapio criado: "
+                        + item.getNome()
+                        + " (" + item.getCodigo() + ")"
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ItemAdminResponse.from(
+                        item,
+                        cardapioService
+                ));
     }
 
+    // =========================================================
+    // ITENS - ATUALIZACAO
+    // =========================================================
+
     @PutMapping("/itens/{id}")
+    @Transactional
     public ResponseEntity<ItemAdminResponse> atualizarItem(
             @PathVariable int id,
-            @RequestBody ItemRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) ItemRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
+
+        validarId(id);
+        validarItemRequest(request);
+
+        TipoItemCardapio tipo =
+                parseTipoItem(request.tipoItem());
+
         ItemCardapio item = cardapioService.atualizarItem(
                 id,
                 request.codigo(),
@@ -152,80 +376,321 @@ public class CardapioAdminController {
                 request.descricaoCurta(),
                 request.precoVenda(),
                 request.categoriaId(),
-                parseTipoItem(request.tipoItem()),
+                tipo,
                 request.ordemExibicao(),
                 request.produtoVinculadoId()
         );
-        registrarLog(ator, "CARDAPIO_ITEM_ATUALIZADO",
-                "Item de cardapio atualizado: " + item.getNome() + " (" + item.getCodigo() + ")");
-        variacaoItemCardapioService.garantirVariacaoPadraoSePossivel(item, ator);
-        return ResponseEntity.ok(ItemAdminResponse.from(item, cardapioService));
+
+        variacaoItemCardapioService
+                .garantirVariacaoPadraoSePossivel(item, ator);
+
+        registrarLog(
+                ator,
+                "CARDAPIO_ITEM_ATUALIZADO",
+                "Item de cardapio atualizado: "
+                        + item.getNome()
+                        + " (" + item.getCodigo() + ")"
+        );
+
+        return ResponseEntity.ok(
+                ItemAdminResponse.from(item, cardapioService)
+        );
     }
 
-    @RequestMapping(value = "/itens/{id}/ativo", method = {RequestMethod.PATCH, RequestMethod.PUT})
+    // =========================================================
+    // ITENS - ATIVACAO
+    // =========================================================
+
+    @RequestMapping(
+            value = "/itens/{id}/ativo",
+            method = {RequestMethod.PATCH, RequestMethod.PUT}
+    )
+    @Transactional
     public ResponseEntity<ItemAdminResponse> atualizarStatusItem(
             @PathVariable int id,
-            @RequestBody AtualizarAtivoRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) AtualizarAtivoRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        ItemCardapio item = cardapioService.atualizarStatusItem(id, request.ativo());
-        registrarLog(ator, "CARDAPIO_ITEM_STATUS",
-                "Item de cardapio " + (item.isAtivo() ? "ativado: " : "desativado: ") + item.getNome());
-        return ResponseEntity.ok(ItemAdminResponse.from(item, cardapioService));
+
+        validarId(id);
+        validarAtualizarAtivoRequest(request);
+
+        ItemCardapio item = cardapioService.atualizarStatusItem(
+                id,
+                request.ativo()
+        );
+
+        registrarLog(
+                ator,
+                "CARDAPIO_ITEM_STATUS",
+                "Item de cardapio "
+                        + (item.isAtivo() ? "ativado: " : "desativado: ")
+                        + item.getNome()
+        );
+
+        return ResponseEntity.ok(
+                ItemAdminResponse.from(item, cardapioService)
+        );
     }
 
-    @RequestMapping(value = "/itens/{id}/disponibilidade", method = {RequestMethod.PATCH, RequestMethod.PUT})
-    public ResponseEntity<ItemAdminResponse> atualizarDisponibilidadeItem(
+    // =========================================================
+    // ITENS - DISPONIBILIDADE
+    // =========================================================
+
+    @RequestMapping(
+            value = "/itens/{id}/disponibilidade",
+            method = {RequestMethod.PATCH, RequestMethod.PUT}
+    )
+    @Transactional
+    public ResponseEntity<ItemAdminResponse>
+    atualizarDisponibilidadeItem(
             @PathVariable int id,
-            @RequestBody AtualizarDisponibilidadeRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false)
+            AtualizarDisponibilidadeRequest request,
+
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        ItemCardapio item = cardapioService.atualizarDisponibilidadeItem(id, request.disponivelParaVenda());
-        registrarLog(ator, "CARDAPIO_ITEM_DISPONIBILIDADE",
-                "Item de cardapio " + (item.isDisponivel() ? "disponibilizado: " : "indisponibilizado: ") + item.getNome());
-        return ResponseEntity.ok(ItemAdminResponse.from(item, cardapioService));
+
+        validarId(id);
+        validarDisponibilidadeRequest(request);
+
+        ItemCardapio item =
+                cardapioService.atualizarDisponibilidadeItem(
+                        id,
+                        request.disponivelParaVenda()
+                );
+
+        registrarLog(
+                ator,
+                "CARDAPIO_ITEM_DISPONIBILIDADE",
+                "Item de cardapio "
+                        + (item.isDisponivel()
+                                ? "disponibilizado: "
+                                : "indisponibilizado: ")
+                        + item.getNome()
+        );
+
+        return ResponseEntity.ok(
+                ItemAdminResponse.from(item, cardapioService)
+        );
     }
 
-    @RequestMapping(value = "/itens/{id}/ordem", method = {RequestMethod.PATCH, RequestMethod.PUT})
+    // =========================================================
+    // ITENS - ORDENACAO
+    // =========================================================
+
+    @RequestMapping(
+            value = "/itens/{id}/ordem",
+            method = {RequestMethod.PATCH, RequestMethod.PUT}
+    )
+    @Transactional
     public ResponseEntity<ItemAdminResponse> atualizarOrdemItem(
             @PathVariable int id,
-            @RequestBody AtualizarOrdemRequest request,
-            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+            @RequestBody(required = false) AtualizarOrdemRequest request,
+            @RequestHeader(
+                    value = "X-User-RU",
+                    required = false
+            ) String ruHeader
+    ) {
         Usuario ator = validarPermissaoGestaoCardapio(ruHeader);
-        ItemCardapio item = cardapioService.atualizarOrdemItem(id, request.ordemExibicao());
-        registrarLog(ator, "CARDAPIO_ITEM_ORDEM",
-                "Item de cardapio reordenado: " + item.getNome() + " -> ordem " + item.getOrdemExibicao());
-        return ResponseEntity.ok(ItemAdminResponse.from(item, cardapioService));
+
+        validarId(id);
+        validarAtualizarOrdemRequest(request);
+
+        ItemCardapio item = cardapioService.atualizarOrdemItem(
+                id,
+                request.ordemExibicao()
+        );
+
+        registrarLog(
+                ator,
+                "CARDAPIO_ITEM_ORDEM",
+                "Item de cardapio reordenado: "
+                        + item.getNome()
+                        + " -> ordem "
+                        + item.getOrdemExibicao()
+        );
+
+        return ResponseEntity.ok(
+                ItemAdminResponse.from(item, cardapioService)
+        );
     }
 
-    private Usuario validarPermissaoGestaoCardapio(String ruHeader) {
+    // =========================================================
+    // AUTORIZACAO LEGADA
+    // =========================================================
+
+    private Usuario validarPermissaoGestaoCardapio(
+            String ruHeader
+    ) {
         return ControllerUtils.resolveUserAndRequirePermission(
                 ruHeader,
                 usuarioRepository,
                 Permissao.EDITAR_ESTOQUE,
-                "Voce nao tem permissao para gerenciar o cardapio."
+                MENSAGEM_ACESSO_NEGADO
         );
     }
 
-    private void registrarLog(Usuario ator, String acao, String descricao) {
-        logRepository.salvar(new LogAcao(0, ator.getRu(), acao, descricao));
+    // =========================================================
+    // AUDITORIA
+    // =========================================================
+
+    private void registrarLog(
+            Usuario ator,
+            String acao,
+            String descricao
+    ) {
+        logRepository.salvar(
+                new LogAcao(
+                        0,
+                        ator.getRu(),
+                        acao,
+                        descricao
+                )
+        );
     }
 
-    private static TipoItemCardapio parseTipoItem(String valor) {
-        if (valor == null || valor.isBlank()) {
-            throw new IllegalArgumentException("Tipo do item de cardapio e obrigatorio.");
-        }
-        try {
-            return TipoItemCardapio.valueOf(valor.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Tipo do item de cardapio invalido.");
+    // =========================================================
+    // VALIDACOES
+    // =========================================================
+
+    private static void validarId(int id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(
+                    "ID deve ser maior que zero."
+            );
         }
     }
+
+    private static void validarCategoriaRequest(
+            CategoriaRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Dados da categoria sao obrigatorios."
+            );
+        }
+
+        if (request.nomeExibicao() == null
+                || request.nomeExibicao().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Nome da categoria e obrigatorio."
+            );
+        }
+
+        validarOrdem(request.ordemExibicao());
+    }
+
+    private static void validarItemRequest(
+            ItemRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Dados do item sao obrigatorios."
+            );
+        }
+
+        if (request.nome() == null || request.nome().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Nome do item e obrigatorio."
+            );
+        }
+
+        if (request.precoVenda() == null
+                || request.precoVenda().signum() < 0) {
+            throw new IllegalArgumentException(
+                    "Preco de venda deve ser nao negativo."
+            );
+        }
+
+        if (request.categoriaId() == null
+                || request.categoriaId() <= 0) {
+            throw new IllegalArgumentException(
+                    "Categoria valida e obrigatoria."
+            );
+        }
+
+        validarOrdem(request.ordemExibicao());
+    }
+
+    private static void validarAtualizarAtivoRequest(
+            AtualizarAtivoRequest request
+    ) {
+        if (request == null || request.ativo() == null) {
+            throw new IllegalArgumentException(
+                    "Status ativo e obrigatorio."
+            );
+        }
+    }
+
+    private static void validarDisponibilidadeRequest(
+            AtualizarDisponibilidadeRequest request
+    ) {
+        if (request == null
+                || request.disponivelParaVenda() == null) {
+            throw new IllegalArgumentException(
+                    "Disponibilidade e obrigatoria."
+            );
+        }
+    }
+
+    private static void validarAtualizarOrdemRequest(
+            AtualizarOrdemRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Ordem de exibicao e obrigatoria."
+            );
+        }
+
+        validarOrdem(request.ordemExibicao());
+    }
+
+    private static void validarOrdem(Integer ordem) {
+        if (ordem == null || ordem < 0) {
+            throw new IllegalArgumentException(
+                    "Ordem de exibicao deve ser nao negativa."
+            );
+        }
+    }
+
+    private static TipoItemCardapio parseTipoItem(
+            String valor
+    ) {
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Tipo do item de cardapio e obrigatorio."
+            );
+        }
+
+        try {
+            return TipoItemCardapio.valueOf(
+                    valor.trim().toUpperCase(Locale.ROOT)
+            );
+
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(
+                    "Tipo do item de cardapio invalido."
+            );
+        }
+    }
+
+    // =========================================================
+    // REQUEST DTOs
+    // =========================================================
 
     public record CategoriaRequest(
             String codigo,
             String nomeExibicao,
-            int ordemExibicao
+            Integer ordemExibicao
     ) {
     }
 
@@ -234,21 +699,31 @@ public class CardapioAdminController {
             String nome,
             String descricaoCurta,
             BigDecimal precoVenda,
-            int categoriaId,
+            Integer categoriaId,
             String tipoItem,
-            int ordemExibicao,
+            Integer ordemExibicao,
             Integer produtoVinculadoId
     ) {
     }
 
-    public record AtualizarAtivoRequest(boolean ativo) {
+    public record AtualizarAtivoRequest(
+            Boolean ativo
+    ) {
     }
 
-    public record AtualizarDisponibilidadeRequest(boolean disponivelParaVenda) {
+    public record AtualizarDisponibilidadeRequest(
+            Boolean disponivelParaVenda
+    ) {
     }
 
-    public record AtualizarOrdemRequest(int ordemExibicao) {
+    public record AtualizarOrdemRequest(
+            Integer ordemExibicao
+    ) {
     }
+
+    // =========================================================
+    // RESPONSE DTOs
+    // =========================================================
 
     public record CategoriaAdminResponse(
             int id,
@@ -257,7 +732,9 @@ public class CardapioAdminController {
             int ordemExibicao,
             boolean ativo
     ) {
-        public static CategoriaAdminResponse from(CategoriaCardapio categoria) {
+        public static CategoriaAdminResponse from(
+                CategoriaCardapio categoria
+        ) {
             return new CategoriaAdminResponse(
                     categoria.getId(),
                     categoria.getCodigo(),
@@ -289,7 +766,15 @@ public class CardapioAdminController {
             Integer quantidadeAtual,
             boolean disponivel
     ) {
-        public static ItemAdminResponse from(ItemCardapio item, CardapioService cardapioService) {
+        public static ItemAdminResponse from(
+                ItemCardapio item,
+                CardapioService cardapioService
+        ) {
+            CategoriaCardapio categoria =
+                    item.getCategoriaCardapio();
+
+            Produto produto = item.getProdutoVinculado();
+
             return new ItemAdminResponse(
                     item.getId(),
                     item.getCodigo(),
@@ -300,14 +785,15 @@ public class CardapioAdminController {
                     item.isAtivo(),
                     item.isDisponivel(),
                     item.getOrdemExibicao(),
-                    item.getCategoriaCardapio().getId(),
-                    item.getCategoriaCardapio().getCodigo(),
-                    item.getCategoriaCardapio().getNomeExibicao(),
-                    item.getCategoriaCardapio().isAtivo(),
-                    item.possuiProdutoVinculado() ? item.getProdutoVinculado().getId() : null,
-                    item.possuiProdutoVinculado() ? item.getProdutoVinculado().getNome() : null,
+                    categoria.getId(),
+                    categoria.getCodigo(),
+                    categoria.getNomeExibicao(),
+                    categoria.isAtivo(),
+                    produto != null ? produto.getId() : null,
+                    produto != null ? produto.getNome() : null,
                     cardapioService.nivelEstoque(item),
-                    item.possuiProdutoVinculado() && item.getProdutoVinculado().isControladoPorEstoque(),
+                    produto != null
+                            && produto.isControladoPorEstoque(),
                     cardapioService.quantidadeDisponivel(item),
                     cardapioService.itemDisponivelAtual(item)
             );

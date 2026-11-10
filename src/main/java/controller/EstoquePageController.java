@@ -1,112 +1,208 @@
+
 package controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * Redireciona rotas sem extensão para as páginas estáticas correspondentes.
+ * Gerencia os redirecionamentos das rotas de paginas
+ * do StockOS para seus respectivos arquivos HTML.
  *
- * <h2>Problema que este controller resolve</h2>
- * O Spring Boot serve arquivos em {@code src/main/resources/static/} diretamente
- * por URL com extensão (ex: {@code /estoque.html}). Mas URLs sem extensão
- * (ex: {@code /estoque}) retornam 404 por padrão — o que quebra links da
- * sidebar e bookmarks dos usuários.
+ * Exemplos:
  *
- * <p>Este controller mapeia cada rota limpa para seu template correspondente,
- * retornando o nome da view para o {@code ResourceHttpRequestHandler} do
- * Spring MVC resolver o arquivo estático.
+ * GET /           -> /dashboard.html
+ * GET /dashboard  -> /dashboard.html
+ * GET /estoque    -> /estoque.html
+ * GET /cardapio   -> /cardapio.html
+ * GET /login      -> /login.html
  *
- * <h2>Por que um controller, e não {@code WebMvcConfigurer}?</h2>
- * A alternativa seria um {@code WebMvcConfigurer} com {@code addViewControllers},
- * mas esse mecanismo não funciona bem com templates Thymeleaf em {@code /static/}
- * sem configuração extra. Controllers Thymeleaf são mais explícitos e fáceis
- * de depurar.
+ * As paginas estao localizadas em:
  *
- * <h2>Mapeamento completo</h2>
- * <pre>
- *   GET /                  → dashboard
- *   GET /dashboard         → dashboard
- *   GET /cardapio          → cardapio
- *   GET /estoque           → estoque
- *   GET /fornecedores      → fornecedores
- *   GET /notas             → notas
- *   GET /caixas            → caixas
- *   GET /cotacoes          → cotacoes
- *   GET /funcionarios      → funcionarios
- *   GET /logs              → logs
- *   GET /login             → login
- * </pre>
+ * src/main/resources/static/
  *
- * <p>Cada método retorna o nome do template sem extensão — o Thymeleaf
- * resolve para {@code src/main/resources/static/{nome}.html}.
+ * O Spring Boot disponibiliza esses arquivos
+ * utilizando seu mecanismo de recursos estaticos.
  *
- * <h2>Próximo passo</h2>
- * Quando este projeto migrar para autenticação real via Spring Security,
- * este controller é o ponto natural para adicionar {@code @PreAuthorize}
- * por rota — protegendo páginas no servidor, não só no JavaScript.
+ * IMPORTANTE:
+ *
+ * Este controller nao realiza autenticacao
+ * nem verifica permissoes.
+ *
+ * Proteger apenas estas rotas nao seria suficiente,
+ * porque os arquivos .html podem ser acessados
+ * diretamente.
+ *
+ * A seguranca precisa ser aplicada no backend
+ * por filtros e regras de autorizacao.
  */
 @Controller
 public class EstoquePageController {
 
-    // ── Raiz e dashboard ─────────────────────────────────────────────────────
+    // =====================================================
+    // DESTINOS
+    // =====================================================
 
-    /** Rota raiz redireciona para o dashboard. */
+    private static final String DASHBOARD =
+            "redirect:/dashboard.html";
+
+    private static final String CARDAPIO =
+            "redirect:/cardapio.html";
+
+    private static final String ESTOQUE =
+            "redirect:/estoque.html";
+
+    private static final String FORNECEDORES =
+            "redirect:/fornecedores.html";
+
+    private static final String NOTAS =
+            "redirect:/notas.html";
+
+    private static final String CAIXAS =
+            "redirect:/caixas.html";
+
+    private static final String COTACOES =
+            "redirect:/cotacoes.html";
+
+    private static final String FUNCIONARIOS =
+            "redirect:/funcionarios.html";
+
+    private static final String LOGS =
+            "redirect:/logs.html";
+
+    private static final String LOGIN =
+            "redirect:/login.html";
+
+    // =====================================================
+    // PAGINA INICIAL
+    // =====================================================
+
+    /**
+     * GET /
+     *
+     * Redireciona a raiz para o dashboard.
+     */
     @GetMapping("/")
     public String raiz() {
-        return "redirect:/dashboard.html";
+        return DASHBOARD;
     }
 
+    /**
+     * GET /dashboard
+     */
     @GetMapping("/dashboard")
     public String dashboard() {
-        return "redirect:/dashboard.html";
+        return DASHBOARD;
     }
 
-    // ── Módulos principais ────────────────────────────────────────────────────
+    // =====================================================
+    // CARDAPIO
+    // =====================================================
 
+    /**
+     * GET /cardapio
+     */
     @GetMapping("/cardapio")
     public String cardapio() {
-        return "redirect:/cardapio.html";
+        return CARDAPIO;
     }
 
+    // =====================================================
+    // ESTOQUE
+    // =====================================================
+
+    /**
+     * GET /estoque
+     */
     @GetMapping("/estoque")
     public String estoque() {
-        return "redirect:/estoque.html";
+        return ESTOQUE;
     }
 
+    // =====================================================
+    // FORNECEDORES
+    // =====================================================
+
+    /**
+     * GET /fornecedores
+     */
     @GetMapping("/fornecedores")
     public String fornecedores() {
-        return "redirect:/fornecedores.html";
+        return FORNECEDORES;
     }
 
+    // =====================================================
+    // NOTAS
+    // =====================================================
+
+    /**
+     * GET /notas
+     */
     @GetMapping("/notas")
     public String notas() {
-        return "redirect:/notas.html";
+        return NOTAS;
     }
 
+    // =====================================================
+    // CAIXAS
+    // =====================================================
+
+    /**
+     * GET /caixas
+     */
     @GetMapping("/caixas")
     public String caixas() {
-        return "redirect:/caixas.html";
+        return CAIXAS;
     }
 
+    // =====================================================
+    // COTACOES
+    // =====================================================
+
+    /**
+     * GET /cotacoes
+     */
     @GetMapping("/cotacoes")
     public String cotacoes() {
-        return "redirect:/cotacoes.html";
+        return COTACOES;
     }
 
+    // =====================================================
+    // FUNCIONARIOS
+    // =====================================================
+
+    /**
+     * GET /funcionarios
+     */
     @GetMapping("/funcionarios")
     public String funcionarios() {
-        return "redirect:/funcionarios.html";
+        return FUNCIONARIOS;
     }
 
+    // =====================================================
+    // LOGS
+    // =====================================================
+
+    /**
+     * GET /logs
+     */
     @GetMapping("/logs")
     public String logs() {
-        return "redirect:/logs.html";
+        return LOGS;
     }
 
-    // ── Autenticação ──────────────────────────────────────────────────────────
+    // =====================================================
+    // LOGIN
+    // =====================================================
 
+    /**
+     * GET /login
+     *
+     * A pagina de login deve permanecer
+     * acessivel sem autenticacao.
+     */
     @GetMapping("/login")
     public String login() {
-        return "redirect:/login.html";
+        return LOGIN;
     }
 }
+

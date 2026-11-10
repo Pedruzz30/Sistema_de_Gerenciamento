@@ -1,3 +1,4 @@
+
 package app;
 
 import model.CategoriaCardapio;
@@ -6,34 +7,67 @@ import model.ItemCardapio;
 import model.Produto;
 import model.TipoItemCardapio;
 import model.Usuario;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import repository.CategoriaCardapioRepository;
 import repository.ItemCardapioRepository;
 import repository.ProdutoRepository;
+
 import service.EstoqueService;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Opt-in sample catalogue for local development and demos.
+ * Popula um catálogo demonstrativo para desenvolvimento.
  *
- * No domain-specific product name is interpreted as "not inventory": whether
- * an item consumes stock is decided by its explicit TipoItemCardapio and linked
- * Produto, never by matching words such as "pizza".
+ * Executa somente quando:
+ * stockos.seed.demo-catalog.enabled=true
  *
- * This runner never edits an existing product or category. It is NOT a tenant
- * provisioning mechanism and must remain disabled for customer databases.
+ * Não deve ser utilizado para provisionar clientes reais.
+ *
+ * Preserva registros existentes e evita duplicações
+ * em execuções sequenciais.
  */
 @Component
-@ConditionalOnProperty(name = "stockos.seed.demo-catalog.enabled", havingValue = "true")
+@ConditionalOnProperty(
+        name = "stockos.seed.demo-catalog.enabled",
+        havingValue = "true"
+)
 public class DemoCatalogSeedRunner implements CommandLineRunner {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(DemoCatalogSeedRunner.class);
+
+    // Códigos estáveis
+    private static final String CATEGORIA_PREPARADOS = "preparados";
+    private static final String CATEGORIA_BEBIDAS = "bebidas";
+    private static final String CODIGO_PRATO = "demo_prato_da_casa";
+    private static final String PREFIXO_BEBIDA = "demo_bebida_produto_";
+
+    // Configurações de demonstração
+    private static final int ESTOQUE_INICIAL = 30;
+    private static final int ESTOQUE_MINIMO = 8;
+    private static final int INTERVALO_ORDEM = 10;
+
+    private static final BigDecimal PRECO_PRATO =
+            new BigDecimal("29.90");
+
     private static final List<BebidaDemo> BEBIDAS = List.of(
-            new BebidaDemo("Agua mineral 500ml", new BigDecimal("4.00")),
-            new BebidaDemo("Refrigerante lata 350ml", new BigDecimal("6.50"))
+            new BebidaDemo(
+                    "Agua mineral 500ml",
+                    new BigDecimal("4.00")
+            ),
+            new BebidaDemo(
+                    "Refrigerante lata 350ml",
+                    new BigDecimal("6.50")
+            )
     );
 
     private final EstoqueService estoqueService;
@@ -42,11 +76,13 @@ public class DemoCatalogSeedRunner implements CommandLineRunner {
     private final ProdutoRepository produtoRepository;
     private final Usuario adminSuperior;
 
-    public DemoCatalogSeedRunner(EstoqueService estoqueService,
-                                 CategoriaCardapioRepository categoriaRepository,
-                                 ItemCardapioRepository itemRepository,
-                                 ProdutoRepository produtoRepository,
-                                 Usuario adminSuperior) {
+    public DemoCatalogSeedRunner(
+            EstoqueService estoqueService,
+            CategoriaCardapioRepository categoriaRepository,
+            ItemCardapioRepository itemRepository,
+            ProdutoRepository produtoRepository,
+            Usuario adminSuperior
+    ) {
         this.estoqueService = estoqueService;
         this.categoriaRepository = categoriaRepository;
         this.itemRepository = itemRepository;
@@ -55,72 +91,167 @@ public class DemoCatalogSeedRunner implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
-        CategoriaCardapio preparados = garantirCategoria("preparados", "Preparados", 10);
-        CategoriaCardapio bebidas = garantirCategoria("bebidas", "Bebidas", 20);
 
-        criarPreparadoDemo(preparados);
-        int ordem = 10;
-        for (BebidaDemo exemplo : BEBIDAS) {
-            Produto produto = estoqueService.buscarProdutoPorNome(exemplo.nome()).orElseGet(
-                    () -> estoqueService.cadastrarProduto(
-                            adminSuperior,
-                            exemplo.nome(),
-                            30,
-                            8,
-                            exemplo.preco(),
-                            CategoriaEstoque.BEBIDAS
-                    )
-            );
-            vincularProdutoDemo(bebidas, produto, ordem);
-            ordem += 10;
+        log.warn("Seed demonstrativo habilitado.");
+
+        CategoriaCardapio preparados = garantirCategoria(
+                CATEGORIA_PREPARADOS,
+                "Preparados",
+                10
+        );
+
+        CategoriaCardapio bebidas = garantirCategoria(
+                CATEGORIA_BEBIDAS,
+                "Bebidas",
+                20
+        );
+
+        garantirPratoDemo(preparados);
+        cadastrarBebidasDemo(bebidas);
+
+        log.info("Verificação do catálogo demonstrativo concluída.");
+    }
+
+    private CategoriaCardapio garantirCategoria(
+            String codigo,
+            String nome,
+            int ordem
+    ) {
+        return categoriaRepository.buscarPorCodigo(codigo)
+                .orElseGet(() -> {
+
+                    CategoriaCardapio categoria =
+                            new CategoriaCardapio(
+                                    0,
+                                    codigo,
+                                    nome,
+                                    ordem,
+                                    true
+                            );
+
+                    CategoriaCardapio salva =
+                            categoriaRepository.salvar(categoria);
+
+                    log.info(
+                            "Categoria demonstrativa criada: {}",
+                            codigo
+                    );
+
+                    return salva;
+                });
+    }
+
+    private void garantirPratoDemo(CategoriaCardapio categoria) {
+
+        if (itemRepository.buscarPorCodigo(CODIGO_PRATO).isPresent()) {
+            return;
+        }
+
+        ItemCardapio prato = new ItemCardapio(
+                0,
+                CODIGO_PRATO,
+                "Prato da casa (demo)",
+                "Exemplo de item preparado sob demanda; personalize o cardapio.",
+                PRECO_PRATO,
+                categoria,
+                TipoItemCardapio.PREPARADO_SOB_DEMANDA,
+                true,
+                true,
+                10,
+                null
+        );
+
+        itemRepository.salvar(prato);
+
+        log.info("Prato demonstrativo cadastrado.");
+    }
+
+    private void cadastrarBebidasDemo(CategoriaCardapio categoria) {
+
+        int ordem = INTERVALO_ORDEM;
+
+        for (BebidaDemo bebida : BEBIDAS) {
+
+            Produto produto = garantirProdutoDemo(bebida);
+
+            garantirItemBebida(categoria, produto, ordem);
+
+            ordem += INTERVALO_ORDEM;
         }
     }
 
-    private CategoriaCardapio garantirCategoria(String codigo, String nome, int ordem) {
-        return categoriaRepository.buscarPorCodigo(codigo).orElseGet(
-                () -> categoriaRepository.salvar(
-                        new CategoriaCardapio(0, codigo, nome, ordem, Boolean.TRUE)
-                )
-        );
+    private Produto garantirProdutoDemo(BebidaDemo bebida) {
+
+        return produtoRepository.buscarPorNome(bebida.nome())
+                .filter(Produto::isControladoPorEstoque)
+                .orElseGet(() -> {
+
+                    Produto produto = estoqueService.cadastrarProduto(
+                            adminSuperior,
+                            bebida.nome(),
+                            ESTOQUE_INICIAL,
+                            ESTOQUE_MINIMO,
+                            bebida.preco(),
+                            CategoriaEstoque.BEBIDAS
+                    );
+
+                    log.info(
+                            "Produto demonstrativo criado: {}",
+                            produto.getNome()
+                    );
+
+                    return produto;
+                });
     }
 
-    private void criarPreparadoDemo(CategoriaCardapio preparados) {
-        if (itemRepository.buscarPorCodigo("demo_prato_da_casa").isPresent()) return;
-        itemRepository.salvar(new ItemCardapio(
-                0,
-                "demo_prato_da_casa",
-                "Prato da casa (demo)",
-                "Exemplo de item preparado sob demanda; personalize o cardapio.",
-                new BigDecimal("29.90"),
-                preparados,
-                TipoItemCardapio.PREPARADO_SOB_DEMANDA,
-                Boolean.TRUE,
-                Boolean.TRUE,
-                10,
-                null
-        ));
-    }
+    private void garantirItemBebida(
+            CategoriaCardapio categoria,
+            Produto produto,
+            int ordem
+    ) {
 
-    private void vincularProdutoDemo(CategoriaCardapio bebidas, Produto produto, int ordem) {
-        // Respect existing menus, even if the product is linked elsewhere.
-        if (itemRepository.buscarPrimeiroPorProdutoVinculadoId(produto.getId()).isPresent()) return;
-        String codigo = "demo_bebida_produto_" + produto.getId();
-        if (itemRepository.buscarPorCodigo(codigo).isPresent()) return;
-        itemRepository.salvar(new ItemCardapio(
+        // Produto já vinculado a outro item do cardápio.
+        if (itemRepository
+                .buscarPrimeiroPorProdutoVinculadoId(produto.getId())
+                .isPresent()) {
+            return;
+        }
+
+        String codigo = PREFIXO_BEBIDA + produto.getId();
+
+        // Evita cadastrar novamente o mesmo código.
+        if (itemRepository.buscarPorCodigo(codigo).isPresent()) {
+            return;
+        }
+
+        ItemCardapio item = new ItemCardapio(
                 0,
                 codigo,
                 produto.getNome(),
                 "Exemplo de venda direta com controle de estoque.",
                 produto.getPrecoUnitario(),
-                bebidas,
+                categoria,
                 TipoItemCardapio.ESTOQUE_DIRETO,
-                Boolean.TRUE,
-                Boolean.TRUE,
+                true,
+                true,
                 ordem,
                 produto
-        ));
+        );
+
+        itemRepository.salvar(item);
+
+        log.info(
+                "Item demonstrativo vinculado ao produto ID: {}",
+                produto.getId()
+        );
     }
 
-    private record BebidaDemo(String nome, BigDecimal preco) {}
+    private record BebidaDemo(
+            String nome,
+            BigDecimal preco
+    ) {
+    }
 }
+
