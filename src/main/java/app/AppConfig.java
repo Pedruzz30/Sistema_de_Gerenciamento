@@ -55,6 +55,16 @@ public class AppConfig {
     }
 
     @Bean
+    public ComandaService comandaService(ComandaRepository comandaRepository,
+                                         VendaService vendaService,
+                                         VendaRepository vendaRepository,
+                                         VendaItemRepository vendaItemRepository,
+                                         LogRepository logRepository,
+                                         Clock appClock) {
+        return new ComandaService(comandaRepository, vendaService, vendaRepository, vendaItemRepository, logRepository, appClock);
+    }
+
+    @Bean
     public DescontoVendaService descontoVendaService(VendaRepository vendaRepository,
                                                      VendaItemRepository vendaItemRepository,
                                                      LogRepository logRepository) {

@@ -29,6 +29,8 @@ async function abrirPDV(numeroCaixa) {
   pdvNumeroCaixa = numeroCaixa;
   pdvCarrinho = [];
   pdvVendaAtual = null;
+  pdvComandaAtual = null;
+  atualizarComandaPDV();
   pdvDraftPayloadPorItemVenda = {};
   pdvCategoriaAtiva = 'todos';
 
@@ -1060,13 +1062,17 @@ async function finalizarVendaPDV() {
 
     await resp.json();
     // Próximo cliente: o PDV continua aberto, com carrinho limpo e foco na leitura.
+    const comandaPaga = pdvComandaAtual;
+    pdvComandaAtual = null;
+    atualizarComandaPDV();
     pdvCarrinho = [];
     pdvVendaAtual = null;
     pdvDraftPayloadPorItemVenda = {};
     cancelarPagamentoPDV();
     renderCarrinho();
     const mensagemTroco = troco > 0 ? ` · TROCO ${formatarMoedaPDV(troco)}` : '';
-    mostrarAlert('alert-pdv', `Venda de ${formatarMoedaPDV(total)} registrada${mensagemTroco}.`, 'success');
+    const rotulo = comandaPaga ? `Comanda ${comandaPaga.numero} paga: ` : 'Venda de ';
+    mostrarAlert('alert-pdv', `${rotulo}${formatarMoedaPDV(total)} registrada${mensagemTroco}.`, 'success');
     showToast(`${formatarMoedaPDV(total)} registrado no Caixa ${pdvNumeroCaixa}${mensagemTroco}`, 'success');
     carregarCaixas();
     focarLeituraPDV();
@@ -1234,6 +1240,15 @@ async function lerCodigoPDV(event) {
   const { quantidade, codigo } = interpretarLeituraPDV(campo.value);
   campo.value = '';
   if (!codigo) return;
+  const numeroComanda = numeroComandaPDV(codigo);
+  if (numeroComanda) {
+    try {
+      await abrirComandaPDV(numeroComanda);
+    } finally {
+      focarLeituraPDV();
+    }
+    return;
+  }
   if (!quantidade || quantidade <= 0) {
     mostrarAlert('alert-pdv', 'Quantidade inválida.', 'error');
     bipPDV(false);
@@ -1444,6 +1459,8 @@ async function confirmarPagamentoPDV() {
 }
 
 function fecharPDV() {
+  // A comanda continua aberta no servidor: sair do PDV só a guarda.
+  if (pdvComandaAtual) guardarComandaPDV();
   if (pdvCarrinho.length > 0
       && !window.confirm('Sair do PDV? A venda em andamento fica guardada como rascunho e não é registrada no caixa.')) {
     focarLeituraPDV();
@@ -1457,6 +1474,153 @@ function fecharPDV() {
 // ── Troca de operador por PIN ─────────────────────────────────────────────
 
 let pdvOperadorTrocado = false;
+
+// ── Comandas: quem consome na loja e paga no fim ─────────────────────────
+// O cartão traz um EAN-13 começando com 29 (faixa de uso interno) com o número.
+// Digitar "c15" também abre a comanda 15.
+
+let pdvComandaAtual = null;
+
+function numeroComandaPDV(codigo) {
+  const texto = String(codigo || '').trim();
+  const digitado = texto.match(/^[cC](\d{1,4})$/);
+  if (digitado) return Number(digitado[1]) || null;
+  if (/^29\d{11}$/.test(texto) && window.StockOSCodigoBarras && window.StockOSCodigoBarras.ehEan13(texto)) {
+    const numero = Number(texto.slice(2, 12));
+    return numero >= 1 && numero <= 9999 ? numero : null;
+  }
+  return null;
+}
+
+function atualizarComandaPDV() {
+  const selo = document.getElementById('pdv-comanda-label');
+  if (!selo) return;
+  selo.hidden = !pdvComandaAtual;
+  selo.textContent = pdvComandaAtual ? `Comanda ${pdvComandaAtual.numero}` : '';
+}
+
+async function abrirComandaPDV(numero) {
+  limparAlert('alert-pdv');
+  if (pdvComandaAtual && pdvComandaAtual.numero === numero) {
+    mostrarAlert('alert-pdv', `A comanda ${numero} já está aberta aqui.`, 'info');
+    return true;
+  }
+  if (!document.getElementById('pdv-pagamento').hidden) {
+    mostrarAlert('alert-pdv', 'Termine ou volte do pagamento (Esc) antes de abrir uma comanda.', 'error');
+    bipPDV(false);
+    return false;
+  }
+  if (!pdvComandaAtual && pdvCarrinho.length > 0) {
+    mostrarAlert('alert-pdv', 'Termine ou limpe a venda de balcão antes de abrir uma comanda.', 'error');
+    bipPDV(false);
+    return false;
+  }
+  const resp = await fetch(`/api/comandas/${numero}/abrir`, { method: 'POST' });
+  if (!resp.ok) {
+    mostrarAlert('alert-pdv', await safeReadErrorMessage(resp, 'Não foi possível abrir a comanda.'), 'error');
+    bipPDV(false);
+    return false;
+  }
+  const comanda = await resp.json();
+  const respVenda = await fetch(`/api/vendas/${comanda.vendaId}`);
+  if (!respVenda.ok) {
+    mostrarAlert('alert-pdv', await safeReadErrorMessage(respVenda, 'Não foi possível carregar a comanda.'), 'error');
+    return false;
+  }
+  pdvVendaAtual = await respVenda.json();
+  pdvDraftPayloadPorItemVenda = {};
+  pdvComandaAtual = { numero };
+  atualizarComandaPDV();
+  renderCarrinho();
+  bipPDV(true);
+  const quantidade = pdvCarrinho.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
+  mostrarAlert('alert-pdv', quantidade > 0
+    ? `Comanda ${numero}: ${quantidade} ${quantidade === 1 ? 'item' : 'itens'}, ${formatarMoedaPDV(calcularTotalCarrinho())}. Bipe o que o cliente pedir, F10 fecha a conta e Esc guarda a comanda.`
+    : `Comanda ${numero} aberta. Bipe o que o cliente pedir. Esc guarda a comanda.`, 'success');
+  return true;
+}
+
+function guardarComandaPDV() {
+  if (!pdvComandaAtual) return;
+  const { numero } = pdvComandaAtual;
+  const total = calcularTotalCarrinho();
+  pdvComandaAtual = null;
+  pdvVendaAtual = null;
+  pdvCarrinho = [];
+  pdvDraftPayloadPorItemVenda = {};
+  atualizarComandaPDV();
+  renderCarrinho();
+  mostrarAlert('alert-pdv', `Comanda ${numero} guardada com ${formatarMoedaPDV(total)}. O caixa voltou ao balcão.`, 'info');
+  focarLeituraPDV();
+}
+
+async function abrirComandasPDV() {
+  limparAlert('alert-pdv-comandas');
+  document.getElementById('pdv-comanda-numero').value = '';
+  const guardar = document.getElementById('btn-pdv-guardar-comanda');
+  guardar.hidden = !pdvComandaAtual;
+  if (pdvComandaAtual) guardar.textContent = `Guardar a comanda ${pdvComandaAtual.numero} e voltar ao balcão`;
+  abrirModal('modal-pdv-comandas');
+  document.getElementById('pdv-comanda-numero').focus();
+  const lista = document.getElementById('pdv-comandas-lista');
+  lista.innerHTML = '<p class="inline-note">Carregando...</p>';
+  try {
+    const resp = await fetch('/api/comandas');
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível listar as comandas.'));
+    const comandas = await resp.json();
+    if (comandas.length === 0) {
+      lista.innerHTML = '<p class="inline-note">Nenhuma comanda aberta.</p>';
+      return;
+    }
+    lista.innerHTML = comandas.map(c => {
+      const itens = Number(c.itens || 0);
+      return `<div class="pdv-comanda-linha">
+          <button type="button" class="pdv-venda-linha" data-comanda-pdv="${c.numero}">
+            <span class="pdv-venda-linha__hora">${escapeHtml(horaPDV(c.abertaEm))}</span>
+            <span>Comanda ${c.numero} · ${itens} ${itens === 1 ? 'item' : 'itens'}</span>
+            <strong>${formatarMoedaPDV(c.total)}</strong>
+          </button>
+          ${itens === 0 ? `<button type="button" class="pdv-pag-link" data-excluir-comanda="${c.numero}">Excluir vazia</button>` : ''}
+        </div>`;
+    }).join('');
+    lista.querySelectorAll('[data-comanda-pdv]').forEach(botao => botao.addEventListener('click', async () => {
+      if (await abrirComandaPDV(Number(botao.dataset.comandaPdv))) fecharComandasPDV();
+    }));
+    lista.querySelectorAll('[data-excluir-comanda]').forEach(botao => botao.addEventListener('click', async () => {
+      const resp = await fetch(`/api/comandas/${botao.dataset.excluirComanda}`, { method: 'DELETE' });
+      if (!resp.ok) mostrarAlert('alert-pdv-comandas', await safeReadErrorMessage(resp, 'Não foi possível excluir.'), 'error');
+      else abrirComandasPDV();
+    }));
+  } catch (error) {
+    lista.innerHTML = '';
+    mostrarAlert('alert-pdv-comandas', error.message, 'error');
+  }
+}
+
+async function abrirComandaDigitadaPDV() {
+  const texto = document.getElementById('pdv-comanda-numero').value.trim();
+  const numero = /^\d{1,4}$/.test(texto) ? Number(texto) : numeroComandaPDV(texto);
+  if (!numero) {
+    mostrarAlert('alert-pdv-comandas', 'Digite o número da comanda, de 1 a 9999.', 'error');
+    return;
+  }
+  if (await abrirComandaPDV(numero)) fecharComandasPDV();
+  else mostrarAlert('alert-pdv-comandas', document.getElementById('alert-pdv').textContent, 'error');
+}
+
+function fecharComandasPDV() {
+  fecharModal('modal-pdv-comandas');
+  focarLeituraPDV();
+}
+
+function atalhosComandasPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharComandasPDV(); return; }
+  if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
+  if (event.key === 'Enter' && event.target && event.target.id === 'pdv-comanda-numero') {
+    event.preventDefault();
+    abrirComandaDigitadaPDV();
+  }
+}
 
 // ── Código bipado que não existe: cadastrar ou ligar a um produto, sem sair do caixa ──
 
@@ -1956,10 +2120,15 @@ function atalhosPDV(event) {
     atalhosNovoCodigoPDV(event);
     return;
   }
+  if (document.getElementById('modal-pdv-comandas')?.classList.contains('open')) {
+    atalhosComandasPDV(event);
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
   if (event.key === 'F9') { event.preventDefault(); if (!pagamentoAberto) abrirVendasPDV(); return; }
+  if (event.key === 'F7' && !pagamentoAberto) { event.preventDefault(); abrirComandasPDV(); return; }
 
   if (/^F[5-8]$/.test(event.key)) event.preventDefault();
   if (event.key === 'F12') { event.preventDefault(); abrirTrocaOperadorPDV(); return; }
@@ -1978,6 +2147,7 @@ function atalhosPDV(event) {
     const descontoAberto = !document.getElementById('pdv-desconto-form')?.hidden;
     if (pagamentoAberto && descontoAberto) fecharDescontoPDV();
     else if (pagamentoAberto) cancelarPagamentoPDV();
+    else if (pdvComandaAtual) guardarComandaPDV();
     else fecharPDV();
     return;
   }
@@ -2069,6 +2239,10 @@ window.StockOSPDV = {
       focarLeituraPDV,
       abrirTrocaOperadorPDV,
       abrirVendasPDV,
+      abrirComandasPDV,
+      abrirComandaDigitadaPDV,
+      guardarComandaPDV,
+      fecharComandasPDV,
       fecharNovoCodigoPDV,
       escolherAbaNovoCodigoPDV,
       buscarProdutoNovoCodigoPDV,

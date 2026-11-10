@@ -59,6 +59,13 @@ public class VendaController {
         this.descontoService = descontoService;
     }
 
+    private service.ComandaService comandaService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComandaService(service.ComandaService comandaService) {
+        this.comandaService = comandaService;
+    }
+
     public VendaController(VendaService vendaService,
                            FinalizacaoVendaService finalizacaoService,
                            CancelamentoVendaService cancelamentoService,
@@ -187,6 +194,8 @@ public class VendaController {
                 request == null ? null : request.numeroCaixaLegado(),
                 request == null ? null : request.pagamentosInput()
         );
+        // Venda de comanda paga: o cartão fica livre para o próximo cliente.
+        if (comandaService != null) comandaService.fecharPorVenda(usuario, venda.getId());
         return ResponseEntity.ok(response(venda, usuario));
     }
 

@@ -80,4 +80,29 @@ async function gerarCodigosFaltando() {
   }
 }
 
+/** Código do cartão: EAN-13 começando com 29 (uso interno) seguido do número da comanda. */
+function codigoComanda(numero) {
+  const base = '29' + String(numero).padStart(10, '0');
+  return base + window.StockOSCodigoBarras.digitoVerificador(base);
+}
+
+function mostrarCartoesComanda() {
+  const de = Number(document.getElementById('comanda-de').value);
+  const ate = Number(document.getElementById('comanda-ate').value);
+  if (!Number.isInteger(de) || !Number.isInteger(ate) || de < 1 || ate > 9999 || ate < de || ate - de >= 200) {
+    mostrarAlertaFolha('Escolha números de 1 a 9999, até 200 cartões por vez.', 'error');
+    return;
+  }
+  const cartoes = [];
+  for (let numero = de; numero <= ate; numero++) {
+    const codigo = codigoComanda(numero);
+    cartoes.push(`<article class="etiqueta etiqueta--comanda" data-comanda="${numero}" data-codigo="${codigo}">
+        <div class="etiqueta-nome">COMANDA</div>
+        <div class="etiqueta-numero">${numero}</div>
+        ${window.StockOSCodigoBarras.svgEan13(codigo)}
+      </article>`);
+  }
+  document.getElementById('folha-comandas').innerHTML = cartoes.join('');
+}
+
 document.addEventListener('DOMContentLoaded', carregarFolhaCodigos);

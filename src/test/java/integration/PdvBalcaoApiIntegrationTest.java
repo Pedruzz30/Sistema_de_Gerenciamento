@@ -202,6 +202,50 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void comandaGuardaOsItensEFechaQuandoPaga() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "1");
+        int numeroCaixa = numeroCaixaUnico();
+        int numero = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda("Comanda " + sufixo, eanLata, ""), gerente)));
+        int produtoId = cadastro.path("produtoId").asInt();
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+        assertOk(post("/api/caixas/abrir", Map.of("numeroCaixa", numeroCaixa, "saldoInicial", 0), caixa));
+
+        // Bipar o cartão abre; bipar de novo retoma a mesma comanda.
+        JsonNode aberta = json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa)));
+        long vendaId = aberta.path("vendaId").asLong();
+        assertEquals(vendaId, json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa))).path("vendaId").asLong());
+        assertTrue(post("/api/comandas/0/abrir", Map.of(), caixa).getStatusCode().is4xxClientError(), "Número fora da faixa");
+
+        // Os pedidos entram ao longo do consumo, pelas rotas de sempre da venda.
+        assertOk(post("/api/vendas/" + vendaId + "/itens", Map.of("variacaoId", gelada, "quantidade", "2"), caixa));
+        assertOk(post("/api/vendas/" + vendaId + "/itens", Map.of("variacaoId", gelada, "quantidade", "1"), caixa));
+        assertEquals(24, quantidadeNaTelaDeEstoque(produtoId), "Consumo ainda não pago não baixa o estoque");
+        JsonNode lista = json(assertOk(get("/api/comandas", caixa)));
+        JsonNode resumo = null;
+        for (JsonNode c : lista) if (c.path("numero").asInt() == numero) resumo = c;
+        assertTrue(resumo != null, "Comanda aparece entre as abertas");
+        assertBig("15", resumo.path("total").decimalValue());
+        assertBig("3", resumo.path("itens").decimalValue());
+        assertTrue(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa).getStatusCode().is2xxSuccessful());
+        assertEquals(422 / 100, delete("/api/comandas/" + numero, caixa).getStatusCode().value() / 100,
+                "Comanda com itens não se exclui");
+
+        // Pagar fecha a comanda, baixa o estoque e libera o número.
+        assertOk(postIdempotente("/api/vendas/" + vendaId + "/finalizar", Map.of(
+                "numeroCaixaLegado", numeroCaixa, "pagamentos", List.of(Map.of("forma", "PIX", "valor", "15.00"))
+        ), caixa, "pag-comanda-" + sufixo));
+        assertEquals(21, quantidadeNaTelaDeEstoque(produtoId));
+        for (JsonNode c : json(assertOk(get("/api/comandas", caixa)))) {
+            assertFalse(c.path("numero").asInt() == numero, "Comanda paga sai da lista");
+        }
+        long novaVenda = json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa))).path("vendaId").asLong();
+        assertTrue(novaVenda != vendaId, "O mesmo cartão abre uma comanda nova");
+        assertEquals(204, delete("/api/comandas/" + numero, caixa).getStatusCode().value(), "Comanda vazia se exclui");
+    }
+
+    @Test
     void folhaDeCodigosCriaCodigoDaLojaParaQuemNaoTem() throws Exception {
         String sufixo = sufixoUnico();
         JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda("Copo " + sufixo, "", ""), gerente)));
@@ -586,6 +630,10 @@ class PdvBalcaoApiIntegrationTest {
 
     private ResponseEntity<String> post(String path, Object body, Usuario usuario) {
         return restTemplate.exchange(url(path), HttpMethod.POST, new HttpEntity<>(body, headers(usuario)), String.class);
+    }
+
+    private ResponseEntity<String> delete(String path, Usuario usuario) {
+        return restTemplate.exchange(url(path), org.springframework.http.HttpMethod.DELETE, new HttpEntity<>(headers(usuario)), String.class);
     }
 
     private ResponseEntity<String> postIdempotente(String path, Object body, Usuario usuario, String chave) {

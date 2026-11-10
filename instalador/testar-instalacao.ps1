@@ -48,7 +48,7 @@ function Get-Saldo($Produtos, [string]$Nome) {
 function Assert-DadosDaLoja([string]$Quando) {
     $sessao = Connect-Dono
     $produtos = Get-Produtos $sessao
-    Assert ((Get-Saldo $produtos 'Skol lata 350ml') -eq 90) "$Quando`: estoque da Skol (90) e senha do dono continuam"
+    Assert ((Get-Saldo $produtos 'Skol lata 350ml') -eq 87) "$Quando`: estoque da Skol (87) e senha do dono continuam"
     $sessao
 }
 

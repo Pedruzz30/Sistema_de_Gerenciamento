@@ -87,7 +87,8 @@ public class SessaoFilter extends OncePerRequestFilter {
 
     /** Área de caixa: o que o PDV precisa para vender. */
     static boolean permitidoPorPin(String caminho, String metodo) {
-        if (dentroDe(caminho, "/api/auth") || dentroDe(caminho, "/api/caixas") || dentroDe(caminho, "/api/vendas")) {
+        if (dentroDe(caminho, "/api/auth") || dentroDe(caminho, "/api/caixas") || dentroDe(caminho, "/api/vendas")
+                || dentroDe(caminho, "/api/comandas")) {
             return true;
         }
         boolean leitura = "GET".equalsIgnoreCase(metodo);

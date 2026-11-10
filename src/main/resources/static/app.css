@@ -3612,10 +3612,15 @@ body.bridge-page .bridge-actions a {
 .etiqueta-detalhe { margin-bottom: 2mm; font-size: 12px; color: #444; }
 .etiqueta .codigo-barras { display: block; width: 46mm; height: auto; margin: 0 auto; }
 .etiqueta-digitar { padding: 4mm 0; font-size: 14px; }
+.folha-comandas-controle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 24px 0 12px; font-size: 13px; }
+.folha-comandas-controle h2 { flex-basis: 100%; margin: 0; font-size: 18px; }
+.folha-comandas-controle p { flex-basis: 100%; margin: 0; color: var(--text-muted, #6b6760); }
+.folha-comandas-controle label { display: flex; align-items: center; gap: 6px; }
 @media print {
   @page { size: A4; margin: 10mm; }
   .folha-codigos-page { padding: 0; background: #fff; }
-  .folha-cabecalho p, .folha-acoes, .folha-faltando, #alert-folha { display: none !important; }
+  .folha-cabecalho p, .folha-acoes, .folha-faltando, #alert-folha, .folha-comandas-controle { display: none !important; }
+  #folha-comandas:not(:empty) { margin-top: 6mm; break-before: page; }
   .folha-cabecalho { margin-bottom: 4mm; }
   .folha-etiquetas { grid-template-columns: repeat(3, 1fr); gap: 4mm; }
 }
@@ -3637,6 +3642,13 @@ body.bridge-page .bridge-actions a {
   body.imprimindo-fechamento .fechamento-imprimir { display: none !important; }
   body.imprimindo-fechamento .resumo-operadores { font-size: 11px; }
 }
+
+/* ───────── Comandas ───────── */
+.pdv-comanda-selo { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #0369a1; color: #fff; font-size: 12px; font-weight: 700; }
+.pdv-comanda-abrir { display: grid; gap: 4px; margin-bottom: 10px; font-size: 13px; }
+.pdv-comanda-abrir__linha { display: flex; gap: 8px; }
+#btn-pdv-guardar-comanda { margin-bottom: 10px; }
+.etiqueta--comanda .etiqueta-numero { font-size: 34px; font-weight: 800; line-height: 1.1; }
 
 /* ───────── Código desconhecido no PDV ───────── */
 .pdv-alerta-acao { margin-left: 8px; }

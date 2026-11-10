@@ -845,6 +845,74 @@ try {
     await dono.emulateMedia({ media: 'screen' });
   });
 
+  let codigoComanda7 = '';
+  await passo(dono, 'Folha imprime os cartoes de comanda e o leitor le', async () => {
+    await dono.fill('#comanda-de', '7');
+    await dono.fill('#comanda-ate', '8');
+    await dono.click('#btn-cartoes-comanda');
+    const cartao = dono.locator('.etiqueta--comanda[data-comanda="7"]');
+    await cartao.waitFor();
+    await esperarTexto(dono, '.etiqueta--comanda[data-comanda="7"]', 'COMANDA 7');
+    codigoComanda7 = await cartao.getAttribute('data-codigo');
+    assert.match(codigoComanda7, /^29\d{11}$/, 'Cartão na faixa 29, separada dos produtos');
+    const barras = cartao.locator('svg');
+    await barras.evaluate(el => { el.style.width = '452px'; });
+    assert.equal((await lerCodigoDeBarras(await barras.screenshot())).padStart(13, '0'), codigoComanda7);
+    await barras.evaluate(el => { el.style.width = ''; });
+  });
+
+  await passo(dono, 'Comanda abre pelo cartao e guarda o que o cliente pede', async () => {
+    await dono.goto(`${BASE}/caixas.html`);
+    await dono.click('button:has-text("Abrir Caixa")');
+    await dono.fill('#abrir-numero', '2');
+    await dono.fill('#abrir-saldo', '0');
+    await dono.click('#modal-abrir .btn-primary');
+    await cardDoCaixa(dono, 2).waitFor();
+    await cardDoCaixa(dono, 2).locator('button:has-text("PDV")').click();
+    await dono.waitForSelector('#modal-pdv.open');
+    await dono.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
+    await bipar(dono, codigoComanda7);
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 7');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 7 aberta');
+    await naTela(dono, '#pdv-comanda-label');
+    await bipar(dono, `2*${EAN_LATA}`);
+    await esperarTexto(dono, '#pdv-total', 'R$ 9,00');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 7 guardada com R$ 9,00');
+    assert.equal(await dono.locator('#pdv-comanda-label').isVisible(), false);
+    assert.equal(await dono.locator('#modal-pdv.open').count(), 1, 'Guardar a comanda não fecha o PDV');
+    await esperarTexto(dono, '#pdv-total', 'R$ 0,00');
+    const { corpo } = await api(dono, '/api/produtos');
+    assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 90, 'Consumo ainda não pago não baixa o estoque');
+  });
+
+  await passo(dono, 'F7 mostra a comanda e o caixa fecha a conta', async () => {
+    await dono.focus('#pdv-leitura');
+    await dono.keyboard.press('F7');
+    await dono.waitForSelector('#modal-pdv-comandas.open');
+    await esperarTexto(dono, '#pdv-comandas-lista', 'Comanda 7');
+    await esperarTexto(dono, '#pdv-comandas-lista', 'R$ 9,00');
+    await dono.waitForFunction(() => document.activeElement.id === 'pdv-comanda-numero');
+    await dono.keyboard.type('7');
+    await dono.keyboard.press('Enter');
+    await dono.waitForSelector('#modal-pdv-comandas:not(.open)', { state: 'attached' });
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 7');
+    await esperarTexto(dono, '#pdv-total', 'R$ 9,00');
+    await bipar(dono, EAN_LATA);
+    await esperarTexto(dono, '#pdv-total', 'R$ 13,50');
+    await dono.keyboard.press('F10');
+    await dono.waitForSelector('#pdv-pagamento:not([hidden])');
+    await dono.keyboard.press('F6');
+    await dono.waitForSelector('[data-forma-pdv="PIX"].pdv-forma--ativa');
+    await dono.keyboard.press('Enter');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 7 paga');
+    assert.equal(await dono.locator('#pdv-comanda-label').isVisible(), false);
+    const produtos = await api(dono, '/api/produtos');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 87, 'Pagou: baixa as 3 latas');
+    const comandas = await api(dono, '/api/comandas');
+    assert.equal(comandas.corpo.some(c => c.numero === 7), false, 'Comanda paga sai da lista');
+  });
+
   await passo(dono, 'Sair encerra a sessao', async () => {
     await dono.goto(`${BASE}/estoque.html`);
     // Sair troca de página: chamar depois de responder evita disputar com a navegação.
