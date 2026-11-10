@@ -414,7 +414,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 0c. ✅ **Importar XML da NF-e** (seção 14) do distribuidor (EAN, embalagem, NCM/CEST/CFOP e custo).
 
 **Fase 1 – Abrir a loja (MVP do caixa)**
-1. 🔶 Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN. Vincular código a um produto que já existe, pelo PDV (seção 21). **Falta:** a folha de códigos.
+1. 🔶 Tabela `codigos_venda` (código → variação, seção 11.4) + endpoint de busca + cadastro "bipe aqui" + folha de códigos para itens sem EAN. Vincular código a um produto que já existe, pelo PDV (seção 21), e folha de códigos para o que não tem código (seção 23).
 2. 🔶 Tela PDV própria, voltada para teclado: campo de leitura, multiplicador `6*`, lista, último item, atalhos (caldo, gelo, porções). Cadastrar na hora quando o código não é encontrado (seção 21). **Falta:** os atalhos de caldo, gelo e porções.
 3. ✅ **Gelada × Natural:** variações irmãs do mesmo produto (seção 11.2), padrão "Gelada", tecla F4 e padrão por embalagem (fardo = natural).
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
@@ -913,6 +913,31 @@ Venda conta para quem finalizou; cancelamento e sangria, para quem fez. Quem mai
 - **A tabela é larga.** Numa impressora térmica de 80 mm, ela sai reduzida ou cortada, conforme o driver. Para a bobina, faria falta um layout estreito próprio, junto com o cupom (próximo item do roteiro).
 - **A impressão não foi feita numa impressora de verdade.** O teste confere a página no modo de impressão do navegador.
 - **É por sessão de caixa.** Ainda não há o mesmo resumo por dia ou por mês.
+
+---
+
+## 23. Folha de códigos (10/11/2026)
+
+**O que era o problema:** gelo, copo, petiscos e caldos não têm código de barras. O caixa precisava procurar pelo nome a cada venda.
+
+**Como ficou:** em **Estoque**, o botão **Folha de códigos** abre uma página que:
+- avisa quais itens ainda não podem ser bipados;
+- cria, com um clique, um código para cada um. É um EAN-13 começando com 20, faixa que o padrão GS1 reserva para uso dentro da loja: qualquer leitor bipa, e ele nunca coincide com o código de fábrica de outro produto. O código é sempre o mesmo para o mesmo item;
+- imprime em A4, três etiquetas por linha, com nome, versão (gelada, natural, fardo), preço e código de barras. Na impressão saem só as etiquetas. É para deixar no balcão, de preferência plastificada.
+
+Os produtos com código de fábrica ficam fora da folha, mas uma opção mostra todos.
+
+**Como o código de barras é feito:** desenhado em SVG pela própria página, sem biblioteca de fora, pela codificação EAN-13 do padrão GS1.
+
+**Testado:**
+- **Leitor de verdade:** o leitor ZXing, o mesmo tipo de leitura que celulares e leitores usam, decodificou um código para cada primeiro dígito de 0 a 9. É esse dígito que muda o desenho do lado esquerdo.
+- **Navegador real:** o dono cadastra um item sem código, cria o código pela folha, o ZXing lê a etiqueta na tela e o código vende no caixa; a versão impressa sai só com as etiquetas.
+- **Banco:** só quem pode editar o estoque cria códigos; o item some da lista do que falta.
+
+**Limites conhecidos:**
+- **Não testei com um leitor físico nem numa impressora.** A leitura foi feita na imagem da tela. Vale imprimir uma folha e bipar antes de plastificar.
+- **Impressoras muito simples** podem borrar as barras finas. Se o leitor não pegar, imprima em qualidade alta.
+- **Um código por versão:** o código da etiqueta vende a versão escolhida, como a natural. Para a gelada, use o F4 ou outra etiqueta.
 
 ---
 
