@@ -440,7 +440,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 
 **Pedido fora das fases:** ✅ redefinir senha esquecida, pelo gerente ou, para o dono, no notebook (seção 19).
 
-**Fora do escopo (confirmado):** fiado, casco retornável e comandas/cobrança por mesa.
+**Fora do escopo (confirmado):** fiado e casco retornável. Comandas entraram em 10/11/2026 (seção 24).
 
 **Ainda falta descobrir:**
 - O regime do CNPJ (consulta no Portal do Simples, ver 8.1).
@@ -938,6 +938,46 @@ Os produtos com código de fábrica ficam fora da folha, mas uma opção mostra 
 - **Não testei com um leitor físico nem numa impressora.** A leitura foi feita na imagem da tela. Vale imprimir uma folha e bipar antes de plastificar.
 - **Impressoras muito simples** podem borrar as barras finas. Se o leitor não pegar, imprima em qualidade alta.
 - **Um código por versão:** o código da etiqueta vende a versão escolhida, como a natural. Para a gelada, use o F4 ou outra etiqueta.
+
+---
+
+## 24. Comandas para quem consome na loja (10/11/2026)
+
+**Mudança de escopo:** em 04/11, a cliente disse que não havia comandas. Em 10/11, o fluxo pedido passou a ser: quem só compra paga na hora, no balcão; quem consome na loja paga no fim, por comanda. Decisões:
+- cada comanda é um **cartão numerado com código de barras**;
+- os pedidos são **lançados no próprio PDV**;
+- comandas vieram antes da maquininha integrada.
+
+**Como funciona no balcão:**
+
+| Momento | O que a operadora faz |
+|---|---|
+| Cliente vai consumir | Entrega um cartão. Bipa o cartão no PDV: a comanda abre, e o selo "Comanda 7" aparece no topo |
+| Cliente pede algo | Bipa o cartão (ou digita `c7`), bipa o produto e aperta **Esc**: a comanda fica guardada e o caixa volta ao balcão |
+| Conferir | **F7** lista as comandas abertas com hora, quantidade de itens e total |
+| Fechar a conta | Bipa o cartão, confere os itens na tela e paga com **F10**, como no balcão: forma, troco, divisão, desconto |
+| Depois de pagar | A comanda fecha, o estoque baixa e o número do cartão fica livre para o próximo cliente |
+
+- Uma venda de balcão pela metade bloqueia a abertura de comanda, para não misturar as duas.
+- Comanda aberta por engano, ainda vazia, pode ser excluída pelo F7.
+- **O estoque só baixa no pagamento.** Enquanto a comanda está aberta, o que foi consumido ainda aparece como disponível.
+
+**Os cartões:** a Folha de códigos imprime os cartões (escolha "do número X até Y"), com um EAN-13 começando com 29. Essa faixa fica separada da dos produtos (20), e qualquer leitor bipa.
+
+**Como foi feito:** cada comanda é uma venda em rascunho ligada ao número (tabela `comandas`, migração `V20261110_01`), com um só número aberto por vez. Por isso ela usa o mesmo carrinho, pagamento, desconto, cancelamento e resumo por operador do balcão, sem um segundo caminho de venda. Ao pagar, o servidor fecha a comanda.
+
+**Testado:**
+- **Banco:** abrir e retomar pelo número, itens em vários momentos, estoque intocado até pagar, lista de abertas com total, recusa de excluir com itens, pagamento fechando a comanda e liberando o número, e exclusão de comanda vazia.
+- **Navegador real:** o leitor ZXing lê o cartão impresso; o dono abre a comanda pelo cartão, lança 2 latas e guarda; acha a comanda pelo F7, acrescenta 1 lata e paga no Pix; a comanda fecha e o estoque baixa 3.
+
+**Limites conhecidos:**
+- **Um aparelho só:** os pedidos são lançados no PDV. Celular de atendente ou segundo computador exigem rede local e HTTPS.
+- **Sem divisão da conta entre pessoas da mesma comanda.** Dá para dividir o pagamento entre formas, mas não "cada um paga o seu".
+- **Sem transferir itens entre comandas** nem juntar duas comandas.
+- **Se o estoque acabar** enquanto a comanda está aberta, o pagamento é recusado, como no balcão. Corrija o estoque e pague de novo.
+- **A demonstração não tem comandas.**
+
+**Maquininha integrada (cartão e Pix):** ainda não feita. Depende da maquininha que a loja escolher. Mercado Pago Point integra pela internet, sem programa no notebook; Cielo, Rede e Getnet costumam exigir TEF (SiTef ou PayGo), um programa pago. Hoje a operadora escolhe a forma no PDV e cobra na maquininha à parte.
 
 ---
 
