@@ -1065,6 +1065,20 @@ try {
     await dono.emulateMedia({ media: 'screen' });
   });
 
+  await passo(dono, 'Curva ABC mostra a classe e para quantos dias da o estoque', async () => {
+    await dono.click('#rel-modo-abc');
+    await dono.waitForSelector('#rel-abc-tabela tbody tr');
+    const linha = limpar(await dono.locator('#rel-abc-tabela tbody tr').first().textContent());
+    // Hoje saíram 24 latas (11 geladas, 1 natural, 1 fardo de 12): 0,8 por dia em 30 dias; 84 em estoque dão 105 dias.
+    for (const valor of ['ASkol lata 350ml', 'R$ 91,39', '100%', '84', '105 dias']) {
+      assert.ok(linha.includes(valor), `${valor} na curva ABC: ${linha}`);
+    }
+    assert.ok(limpar(await dono.textContent('#rel-cards')).includes('Classe A1 produto'));
+    await dono.selectOption('#rel-abc-criterio', 'margem');
+    await esperarTexto(dono, '#rel-titulo', 'por margem');
+    await naTela(dono, '#rel-abc-tabela');
+  });
+
   await passo(dono, 'Sair encerra a sessao', async () => {
     await dono.goto(`${BASE}/estoque.html`);
     // Sair troca de página: chamar depois de responder evita disputar com a navegação.

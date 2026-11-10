@@ -49,6 +49,19 @@ public class RelatorioController {
         return ResponseEntity.ok(relatorioService.mes(periodo));
     }
 
+    /** Curva ABC do período (padrão: últimos 30 dias), por faturamento ou por margem. */
+    @GetMapping("/abc")
+    public ResponseEntity<RelatorioVendasService.Abc> abc(
+            @RequestParam(required = false) String inicio,
+            @RequestParam(required = false) String fim,
+            @RequestParam(required = false, defaultValue = "valor") String criterio,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        exigirFinanceiro(ruHeader);
+        LocalDate ate = fim == null || fim.isBlank() ? LocalDate.now() : lerData(fim);
+        LocalDate de = inicio == null || inicio.isBlank() ? ate.minusDays(29) : lerData(inicio);
+        return ResponseEntity.ok(relatorioService.abc(de, ate, criterio));
+    }
+
     private static LocalDate lerData(String data) {
         try {
             return LocalDate.parse(data);

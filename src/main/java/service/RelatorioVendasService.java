@@ -60,15 +60,111 @@ public class RelatorioVendasService {
     private final VendaRepository vendaRepository;
     private final VendaItemRepository itemRepository;
     private final ComandaRepository comandaRepository;
+    private final repository.VendaItemConsumoRepository consumoRepository;
 
     public RelatorioVendasService(CaixaRepository caixaRepository,
                                   VendaRepository vendaRepository,
                                   VendaItemRepository itemRepository,
-                                  ComandaRepository comandaRepository) {
+                                  ComandaRepository comandaRepository,
+                                  repository.VendaItemConsumoRepository consumoRepository) {
         this.caixaRepository = caixaRepository;
         this.vendaRepository = vendaRepository;
         this.itemRepository = itemRepository;
         this.comandaRepository = comandaRepository;
+        this.consumoRepository = consumoRepository;
+    }
+
+    // ── Curva ABC ────────────────────────────────────────────────────────────
+
+    /** Um produto do cardápio no período: gelada, natural e fardo somados. */
+    public record VendidoNoPeriodo(String nome, BigDecimal valor, BigDecimal custo, BigDecimal consumoBase,
+                                   Integer estoqueAtual) {}
+
+    public record LinhaAbc(String nome, String classe, BigDecimal valor, BigDecimal margem, BigDecimal percentual,
+                           BigDecimal acumulado, BigDecimal consumoBase, Integer estoqueAtual, BigDecimal coberturaDias) {}
+
+    public record Abc(LocalDate inicio, LocalDate fim, String criterio, int dias, BigDecimal total,
+                      Map<String, Integer> produtosPorClasse, Map<String, BigDecimal> percentualPorClasse,
+                      List<LinhaAbc> linhas) {}
+
+    @Transactional(readOnly = true)
+    public Abc abc(LocalDate inicio, LocalDate fim, String criterio) {
+        if (fim.isBefore(inicio)) throw new IllegalArgumentException("O fim do período vem antes do início.");
+        if (java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) > 366) {
+            throw new IllegalArgumentException("Escolha um período de até um ano.");
+        }
+        Map<String, BigDecimal[]> somas = new LinkedHashMap<>();
+        Map<String, Map<Integer, model.Produto>> produtos = new LinkedHashMap<>();
+        for (Venda venda : vendaRepository.listarFinalizadasEntre(inicio.atStartOfDay(), fim.plusDays(1).atStartOfDay())) {
+            List<VendaItem> itens = itemRepository.listarPorVenda(venda.getId()).stream()
+                    .filter(i -> i.getStatus() == StatusVendaItem.ATIVO).toList();
+            Map<Long, List<model.VendaItemConsumo>> consumosPorItem = new LinkedHashMap<>();
+            if (consumoRepository != null && !itens.isEmpty()) {
+                for (model.VendaItemConsumo c : consumoRepository.listarPorVendaItens(itens.stream().map(VendaItem::getId).toList())) {
+                    consumosPorItem.computeIfAbsent(c.getVendaItem().getId(), k -> new ArrayList<>()).add(c);
+                }
+            }
+            for (VendaItem item : itens) {
+                String nome = item.getNomeItemSnapshot();
+                BigDecimal[] s = somas.computeIfAbsent(nome, n -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
+                s[0] = s[0].add(item.getSubtotal());
+                s[1] = s[1].add(item.getCustoTotalEstimado() == null ? BigDecimal.ZERO : item.getCustoTotalEstimado());
+                for (model.VendaItemConsumo c : consumosPorItem.getOrDefault(item.getId(), List.of())) {
+                    s[2] = s[2].add(c.getQuantidadeBaseTotal());
+                    produtos.computeIfAbsent(nome, n -> new LinkedHashMap<>()).put(c.getProduto().getId(), c.getProduto());
+                }
+            }
+        }
+        List<VendidoNoPeriodo> vendidos = new ArrayList<>();
+        somas.forEach((nome, s) -> {
+            // Cobertura só quando o item baixa um produto só (bebida); petisco com receita não tem.
+            Map<Integer, model.Produto> doItem = produtos.getOrDefault(nome, Map.of());
+            Integer estoque = doItem.size() == 1 ? doItem.values().iterator().next().getQuantidadeAtual() : null;
+            vendidos.add(new VendidoNoPeriodo(nome, s[0], s[1], doItem.size() == 1 ? s[2] : null, estoque));
+        });
+        return classificarAbc(inicio, fim, criterio, vendidos);
+    }
+
+    /**
+     * A: os que somam os primeiros 80% do critério; B: até 95%; C: o resto. O produto que
+     * cruza a faixa fica na classe de cima, como é o costume da curva ABC.
+     */
+    public static Abc classificarAbc(LocalDate inicio, LocalDate fim, String criterio, List<VendidoNoPeriodo> vendidos) {
+        boolean porMargem = "margem".equalsIgnoreCase(criterio);
+        int dias = (int) java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) + 1;
+        List<VendidoNoPeriodo> ordenados = new ArrayList<>(vendidos);
+        java.util.function.Function<VendidoNoPeriodo, BigDecimal> peso = v -> {
+            BigDecimal base = porMargem ? v.valor().subtract(v.custo()) : v.valor();
+            return base.max(BigDecimal.ZERO);
+        };
+        ordenados.sort(Comparator.comparing(peso).reversed().thenComparing(VendidoNoPeriodo::nome));
+        BigDecimal total = ordenados.stream().map(peso).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal cem = BigDecimal.valueOf(100);
+        BigDecimal acumuladoAntes = BigDecimal.ZERO;
+        List<LinhaAbc> linhas = new ArrayList<>();
+        Map<String, Integer> porClasse = new LinkedHashMap<>(Map.of("A", 0, "B", 0, "C", 0));
+        Map<String, BigDecimal> percentualPorClasse = new LinkedHashMap<>(Map.of("A", BigDecimal.ZERO, "B", BigDecimal.ZERO, "C", BigDecimal.ZERO));
+        for (VendidoNoPeriodo v : ordenados) {
+            BigDecimal valorPeso = peso.apply(v);
+            BigDecimal percentual = total.signum() == 0 ? BigDecimal.ZERO : valorPeso.multiply(cem).divide(total, 4, RoundingMode.HALF_UP);
+            String classe = valorPeso.signum() == 0 ? "C"
+                    : acumuladoAntes.compareTo(BigDecimal.valueOf(80)) < 0 ? "A"
+                    : acumuladoAntes.compareTo(BigDecimal.valueOf(95)) < 0 ? "B" : "C";
+            BigDecimal acumulado = acumuladoAntes.add(percentual);
+            acumuladoAntes = acumulado;
+            BigDecimal cobertura = null;
+            if (v.consumoBase() != null && v.estoqueAtual() != null && v.consumoBase().signum() > 0) {
+                BigDecimal porDia = v.consumoBase().divide(BigDecimal.valueOf(dias), 6, RoundingMode.HALF_UP);
+                cobertura = BigDecimal.valueOf(Math.max(0, v.estoqueAtual())).divide(porDia, 0, RoundingMode.DOWN);
+            }
+            linhas.add(new LinhaAbc(v.nome(), classe, dinheiro(v.valor()), dinheiro(v.valor().subtract(v.custo())),
+                    percentual.setScale(1, RoundingMode.HALF_UP), acumulado.min(cem).setScale(1, RoundingMode.HALF_UP),
+                    v.consumoBase() == null ? null : v.consumoBase().stripTrailingZeros(), v.estoqueAtual(), cobertura));
+            porClasse.merge(classe, 1, Integer::sum);
+            percentualPorClasse.merge(classe, percentual, BigDecimal::add);
+        }
+        percentualPorClasse.replaceAll((k, p) -> p.setScale(1, RoundingMode.HALF_UP));
+        return new Abc(inicio, fim, porMargem ? "margem" : "valor", dias, dinheiro(total), porClasse, percentualPorClasse, linhas);
     }
 
     @Transactional(readOnly = true)

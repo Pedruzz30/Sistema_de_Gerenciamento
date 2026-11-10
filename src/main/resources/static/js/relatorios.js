@@ -14,8 +14,13 @@ function escolherModoRelatorio(modo) {
   modoRelatorio = modo;
   document.getElementById('rel-modo-dia').classList.toggle('pdv-novo-aba--ativa', modo === 'dia');
   document.getElementById('rel-modo-mes').classList.toggle('pdv-novo-aba--ativa', modo === 'mes');
+  document.getElementById('rel-modo-abc').classList.toggle('pdv-novo-aba--ativa', modo === 'abc');
   document.getElementById('rel-data').hidden = modo !== 'dia';
   document.getElementById('rel-mes').hidden = modo !== 'mes';
+  document.getElementById('rel-abc-filtros').hidden = modo !== 'abc';
+  document.getElementById('rel-abc').hidden = modo !== 'abc';
+  document.getElementById('rel-grade').hidden = modo === 'abc';
+  document.querySelectorAll('[aria-label="Anterior"], [aria-label="Próximo"]').forEach(b => { b.hidden = modo === 'abc'; });
   document.getElementById('rel-bloco-horas').hidden = modo !== 'dia';
   document.getElementById('rel-bloco-operadores').hidden = modo !== 'dia';
   document.getElementById('rel-bloco-dias').hidden = modo !== 'mes';
@@ -43,11 +48,16 @@ async function carregarRelatorio() {
   alerta.textContent = '';
   const url = modoRelatorio === 'dia'
     ? `/api/relatorios/dia?data=${encodeURIComponent(document.getElementById('rel-data').value)}`
-    : `/api/relatorios/mes?mes=${encodeURIComponent(document.getElementById('rel-mes').value)}`;
+    : modoRelatorio === 'mes'
+      ? `/api/relatorios/mes?mes=${encodeURIComponent(document.getElementById('rel-mes').value)}`
+      : `/api/relatorios/abc?inicio=${encodeURIComponent(document.getElementById('rel-abc-inicio').value)}`
+        + `&fim=${encodeURIComponent(document.getElementById('rel-abc-fim').value)}`
+        + `&criterio=${encodeURIComponent(document.getElementById('rel-abc-criterio').value)}`;
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível montar o relatório.'));
-    renderRelatorio(await resp.json());
+    if (modoRelatorio === 'abc') renderAbc(await resp.json());
+    else renderRelatorio(await resp.json());
   } catch (error) {
     alerta.textContent = error.message;
     alerta.className = 'alert-modal error';
@@ -117,9 +127,42 @@ function renderRelatorio(dados) {
     }), [1, 2, 3]);
 }
 
+const formatoDataRel = iso => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function renderAbc(abc) {
+  const porMargem = abc.criterio === 'margem';
+  document.getElementById('rel-titulo').textContent =
+    `Curva ABC de ${formatoDataRel(abc.inicio)} a ${formatoDataRel(abc.fim)} (${abc.dias} dias), por ${porMargem ? 'margem' : 'faturamento'}`;
+  const qtd = abc.produtosPorClasse;
+  const pct = abc.percentualPorClasse;
+  const plural = n => `${n} produto${n === 1 ? '' : 's'}`;
+  document.getElementById('rel-cards').innerHTML = [
+    ['Classe A', plural(qtd.A), `${numeroRel(pct.A)}% ${porMargem ? 'da margem' : 'do faturamento'} · nunca deixe faltar`],
+    ['Classe B', plural(qtd.B), `${numeroRel(pct.B)}% · acompanhe`],
+    ['Classe C', plural(qtd.C), `${numeroRel(pct.C)}% · compre pouco`],
+    [porMargem ? 'Margem no período' : 'Faturamento no período', moedaRel(abc.total), 'base da curva']
+  ].map(([rotulo, valor, detalhe]) => `
+    <div class="relatorio-card"><span>${escapeHtml(rotulo)}</span><strong>${escapeHtml(valor)}</strong><small>${escapeHtml(detalhe)}</small></div>`).join('');
+  document.getElementById('rel-abc-explica').textContent = 'A curva ordena os produtos do que mais pesa para o que menos pesa. '
+    + 'A: os poucos que somam 80%. B: até 95%. C: o resto. "Dura" é o estoque de agora dividido pela média de venda por dia no período, '
+    + 'contando o fardo pelas latas.';
+  document.getElementById('rel-abc-tabela').innerHTML = tabela(
+    ['Classe', 'Produto', 'Vendido', 'Margem', '%', '% acumulado', 'Estoque', 'Dura'],
+    abc.linhas.map(l => [
+      `<span class="abc-classe abc-classe--${escapeHtml(l.classe)}">${escapeHtml(l.classe)}</span>`,
+      escapeHtml(l.nome), moedaRel(l.valor), moedaRel(l.margem), `${numeroRel(l.percentual)}%`, `${numeroRel(l.acumulado)}%`,
+      l.estoqueAtual == null ? '—' : numeroRel(l.estoqueAtual),
+      l.coberturaDias == null ? '—' : `<span class="${Number(l.coberturaDias) < 7 ? 'abc-pouco' : ''}">${numeroRel(l.coberturaDias)} dias</span>`
+    ]), [2, 3, 4, 5, 6, 7]);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const hoje = hojeLocal();
   document.getElementById('rel-data').value = hoje;
   document.getElementById('rel-mes').value = hoje.slice(0, 7);
+  const [a, m, d] = hoje.split('-').map(Number);
+  const inicio = new Date(a, m - 1, d - 29);
+  document.getElementById('rel-abc-inicio').value = `${inicio.getFullYear()}-${doisDigitos(inicio.getMonth() + 1)}-${doisDigitos(inicio.getDate())}`;
+  document.getElementById('rel-abc-fim').value = hoje;
   carregarRelatorio();
 });

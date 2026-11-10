@@ -363,6 +363,11 @@ class PdvBalcaoApiIntegrationTest {
         assertEquals(HttpStatus.FORBIDDEN, get("/api/relatorios/dia", caixa).getStatusCode());
         assertTrue(get("/api/relatorios/dia?data=ontem", gerente).getStatusCode().is4xxClientError());
         assertOk(get("/api/relatorios/mes", gerente));
+        JsonNode abc = json(assertOk(get("/api/relatorios/abc", gerente)));
+        assertEquals(30, abc.path("dias").asInt());
+        assertTrue(abc.path("linhas").size() > 0);
+        assertTrue(get("/api/relatorios/abc?inicio=2026-11-10&fim=2026-11-01", gerente).getStatusCode().is4xxClientError());
+        assertEquals(HttpStatus.FORBIDDEN, get("/api/relatorios/abc", caixa).getStatusCode());
 
         // O resumo por operador mostra a venda e o desconto no nome de quem operou.
         JsonNode resumo = json(assertOk(get("/api/caixas/sessoes/" + caixaAberto(numeroCaixa).path("caixaId").asLong()

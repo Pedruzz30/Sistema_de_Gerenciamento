@@ -104,6 +104,51 @@ class RelatorioVendasNovoTest {
         assertBig("91.39", mes.resumo().liquido());
     }
 
+    private static RelatorioVendasService.VendidoNoPeriodo vendido(String nome, String valor, String custo, String consumo, Integer estoque) {
+        return new RelatorioVendasService.VendidoNoPeriodo(nome, new BigDecimal(valor), new BigDecimal(custo),
+                consumo == null ? null : new BigDecimal(consumo), estoque);
+    }
+
+    @Test
+    void curvaAbcSeparaOsQueFazemOFaturamento() {
+        LocalDate inicio = LocalDate.of(2026, 10, 12);
+        LocalDate fim = LocalDate.of(2026, 11, 10);
+        List<RelatorioVendasService.VendidoNoPeriodo> vendidos = List.of(
+                vendido("Gelo 5kg", "50.00", "30.00", "5", 20),
+                vendido("Skol lata 350ml", "600.00", "420.00", "150", 84),
+                vendido("Caldo de feijão", "20.00", "8.00", null, null),
+                vendido("Heineken long neck", "250.00", "160.00", "40", 6),
+                vendido("Copo de gelo", "80.00", "20.00", "40", 100));
+        RelatorioVendasService.Abc abc = RelatorioVendasService.classificarAbc(inicio, fim, "valor", vendidos);
+
+        assertEquals(30, abc.dias());
+        assertBig("1000.00", abc.total());
+        assertEquals(List.of("Skol lata 350ml", "Heineken long neck", "Copo de gelo", "Gelo 5kg", "Caldo de feijão"),
+                abc.linhas().stream().map(RelatorioVendasService.LinhaAbc::nome).toList());
+        // A Heineken cruza os 80% (60% → 85%) e fica em A; o Gelo cruza os 95% (93% → 98%) e fica em B; o Caldo, em C.
+        assertEquals(List.of("A", "A", "B", "B", "C"), abc.linhas().stream().map(RelatorioVendasService.LinhaAbc::classe).toList());
+        assertBig("60.0", abc.linhas().get(0).percentual());
+        assertBig("85.0", abc.linhas().get(1).acumulado());
+        assertEquals(2, abc.produtosPorClasse().get("A"));
+        assertBig("85.0", abc.percentualPorClasse().get("A"));
+        // 150 latas em 30 dias = 5 por dia; 84 em estoque dão 16 dias. A Heineken dura 4.
+        assertBig("16", abc.linhas().get(0).coberturaDias());
+        assertBig("4", abc.linhas().get(1).coberturaDias());
+        assertEquals(null, abc.linhas().get(4).coberturaDias(), "Petisco com receita não tem cobertura");
+    }
+
+    @Test
+    void curvaAbcPorMargemMudaAOrdem() {
+        RelatorioVendasService.Abc abc = RelatorioVendasService.classificarAbc(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10),
+                "margem", List.of(
+                        vendido("Skol lata 350ml", "600.00", "580.00", null, null),
+                        vendido("Copo de gelo", "80.00", "20.00", null, null),
+                        vendido("Prejuízo", "10.00", "15.00", null, null)));
+        assertEquals("Copo de gelo", abc.linhas().get(0).nome(), "Copo dá mais margem que a Skol");
+        assertEquals("C", abc.linhas().get(2).classe(), "Margem negativa fica em C");
+        assertBig("-5.00", abc.linhas().get(2).margem());
+    }
+
     @Test
     void diaSemMovimentoFicaZerado() {
         RelatorioVendasService.Dia dia = RelatorioVendasService.montarDia(LocalDate.of(2026, 11, 9), List.of(), List.of(), 0);

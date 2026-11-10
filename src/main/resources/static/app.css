@@ -3599,6 +3599,13 @@ body.bridge-page .bridge-actions a {
 
 /* ───────── Relatório do dia e do mês ───────── */
 .relatorio-titulo { margin: 8px 0 12px; font-size: 18px; }
+.relatorio-abc-filtros { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.relatorio-abc { padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; }
+.abc-classe { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 4px; font-weight: 800; text-align: center; color: #fff; }
+.abc-classe--A { background: #15803d; }
+.abc-classe--B { background: #b45309; }
+.abc-classe--C { background: #6b7280; }
+.abc-pouco { color: #b91c1c; font-weight: 700; }
 .relatorio-page .folha-acoes .input { width: auto; min-width: 0; }
 .relatorio-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .relatorio-card { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--rule, #e5e2dc); border-radius: 10px; background: #fff; }
