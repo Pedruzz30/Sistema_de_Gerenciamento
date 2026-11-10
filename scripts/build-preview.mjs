@@ -10,6 +10,15 @@ await cp(root, out, {recursive:true});
 await cp(resolve('preview-source/js/preview-beverages.js'),join(out,'js/preview-beverages.js'));
 await cp(resolve('preview-source/js/preview-scale.js'),join(out,'js/preview-scale.js'));
 await cp(resolve('preview-source/js/preview-mock.js'),join(out,'js/preview-mock.js'));
+// Nunca alterar o shared.js do Java. Somente o artefato mock usa
+// identidade fictícia quando o armazenamento da sessão está indisponível.
+const sharedPath=join(out,'js/shared.js');
+const canonicalShared=await readFile(sharedPath,'utf8');
+const loginMarker='const usuario = lerUsuarioPersistido();';
+if(!canonicalShared.includes(loginMarker)) throw Error('Contrato do login canônico mudou; revisar build do mock.');
+await writeFile(sharedPath,canonicalShared.replace(
+  loginMarker,'const usuario = lerUsuarioPersistido() || window.StockosPreviewUser;'
+));
 await cp(resolve('preview-source/js/preview-notes.js'),join(out,'js/preview-notes.js'));
 await cp(resolve('preview-source/js/preview-pdv.js'),join(out,'js/preview-pdv.js'));
 await cp(resolve('preview-source/comandas-demo.html'),join(out,'comandas-demo.html'));
@@ -74,6 +83,12 @@ for (const page of pages) {
     if (!html.includes('<div class="main-body content">')) throw new Error('Missing main content section on '+page);
     html=html.replace('<div class="main-body content">','<div class="main-body content">'+shortcut);
   }
+  if(page==='login.html'){
+    const entry='<div class="stockos-demo-entry" style="padding:14px;text-align:center">' +
+      '<a href="/dashboard.html" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 16px;border:1px solid var(--rule,#5c7087);border-radius:10px;text-decoration:none;color:var(--ink,#f4f7fa);background:var(--paper-raised,#142236);font-weight:700">Abrir demonstração sem login</a>' +
+      '<p style="font-size:12px;margin:8px 0 0">Dados fictícios. Nenhuma conta real é necessária.</p></div>';
+    html=html.replace('</form>','</form>'+entry);
+  }
   await writeFile(p,html);
 }
 await writeFile(join(out,'_redirects'), [
@@ -89,7 +104,7 @@ await writeFile(join(out,'_redirects'), [
   '/cardapio /cardapio.html 200',
   '/comandas-demo /comandas-demo.html 200'
 ].join('\n')+'\n');
-await writeFile(join(out,'index.html'), '<meta http-equiv="refresh" content="0;url=/login.html"><a href="/login.html">Abrir StockOS Demo</a>\n');
+await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demo</title></head><body><a href="/dashboard.html">Abrir StockOS Demo</a></body></html>\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');
 await writeFile(join(out,'robots.txt'), 'User-agent: *\nDisallow: /\n');
 console.log('StockOS mock preview pronto em dist-preview/');

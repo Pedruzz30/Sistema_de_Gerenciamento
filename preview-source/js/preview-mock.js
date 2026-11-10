@@ -77,6 +77,8 @@
   save();
   const respond=(value,status=200)=>Promise.resolve(new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}}));
   const user = {ru:1,nome:'Admin',sobrenome:'Demo',nomeClasse:'SUPERIOR',perfil:'ADMIN',ativo:true,permissoes:['VER_ESTOQUE','EDITAR_ESTOQUE','VER_COMPRAS','VER_VENDAS','VER_FINANCAS','GERENCIAR_FUNCIONARIOS','VER_LOGS']};
+  // Identidade falsa presente somente no pacote mock do Netlify.
+  window.StockosPreviewUser = user;
   async function handle(input, init={}) {
     const raw = input instanceof Request ? input.url : String(input);
     const url = new URL(raw, location.href);
@@ -279,7 +281,7 @@
   });
   const banner=document.createElement('div');
   banner.setAttribute('role','status');
-  banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:10px 12px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;display:flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:min(92vw,620px)';
+  banner.style.cssText='position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:60;max-width:calc(100vw - 138px);padding:10px 12px;border-radius:9px;background:#182c22;color:#d7ffe0;border:1px solid #58b68a;font:600 12px system-ui;box-shadow:0 6px 20px #0004;display:flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:min(92vw,620px)';
   if (typeof window.StockOSCreateScaleDemo === 'function') {
     const caption=document.createElement('span');
     caption.textContent= mode==='beverages'
