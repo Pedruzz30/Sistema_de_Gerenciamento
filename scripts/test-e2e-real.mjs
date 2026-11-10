@@ -414,7 +414,38 @@ try {
     await admin.waitForFunction(() => document.activeElement.id === 'pdv-leitura');
   });
 
+  await passo(admin, 'F8 imprime o cupom so com a bobina', async () => {
+    await admin.evaluate(() => {
+      window.__impressoes = [];
+      window.print = () => window.__impressoes.push({
+        texto: document.getElementById('cupom-impressao').textContent,
+        soCupom: document.body.classList.contains('imprimindo-cupom')
+      });
+    });
+    await admin.focus('#pdv-leitura');
+    await admin.keyboard.press('F8');
+    const impressoes = await admin.evaluate(() => window.__impressoes);
+    assert.equal(impressoes.length, 1, 'F8 manda o último cupom para a impressora');
+    assert.ok(impressoes[0].soCupom, 'Só o cupom vai para o papel');
+    const texto = limpar(impressoes[0].texto);
+    for (const valor of ['CUPOM NÃO FISCAL', 'Skol lata 350ml', 'Fardo', 'R$ 52,40', 'Dinheiro', 'R$ 100,00', 'TROCO', 'R$ 47,60', 'Não é documento fiscal']) {
+      assert.ok(texto.includes(valor), `${valor} no cupom: ${texto}`);
+    }
+    await admin.evaluate(() => document.body.classList.add('imprimindo-cupom'));
+    await admin.emulateMedia({ media: 'print' });
+    const cupom = admin.locator('#cupom-impressao');
+    assert.equal(await cupom.isVisible(), true);
+    assert.ok((await cupom.boundingBox()).width <= 305, 'Cabe na bobina de 80 mm');
+    assert.equal(await admin.locator('#pdv-total').isVisible(), false, 'O resto da tela não sai no papel');
+    await print(admin, 'cupom-no-papel');
+    await admin.emulateMedia({ media: 'screen' });
+    await admin.evaluate(() => document.body.classList.remove('imprimindo-cupom'));
+    await admin.focus('#pdv-leitura');
+  });
+
   await passo(admin, 'F4 vende a natural e F6 paga no Pix', async () => {
+    await admin.check('#pdv-cupom-auto');
+    await admin.focus('#pdv-leitura');
     await admin.keyboard.press('F4');
     await esperarTexto(admin, '#pdv-indicador-alternativo', 'alternativa');
     await bipar(admin, EAN_LATA);
@@ -426,6 +457,11 @@ try {
     await admin.keyboard.press('Enter');
     await esperarTexto(admin, '#pdv-total', 'R$ 0,00');
     await esperarTexto(admin, '#alert-pdv', 'R$ 3,99 registrada');
+    const impressoes = await admin.evaluate(() => window.__impressoes);
+    assert.equal(impressoes.length, 2, 'Com cupom automático, sai sozinho ao finalizar');
+    assert.ok(limpar(impressoes[1].texto).includes('Pix'), 'Cupom do Pix');
+    await admin.uncheck('#pdv-cupom-auto');
+    await admin.focus('#pdv-leitura');
   });
 
   await passo(admin, 'Gaveta soma so o dinheiro', async () => {
@@ -912,6 +948,17 @@ try {
     await esperarTexto(dono, '#pdv-total', 'R$ 9,00');
     await bipar(dono, EAN_LATA);
     await esperarTexto(dono, '#pdv-total', 'R$ 13,50');
+    await dono.evaluate(() => {
+      window.__impressoes = [];
+      window.print = () => window.__impressoes.push(document.getElementById('cupom-impressao').textContent);
+    });
+    await dono.keyboard.press('F8');
+    const conferencia = limpar((await dono.evaluate(() => window.__impressoes))[0] || '');
+    for (const valor of ['CONFERÊNCIA DA COMANDA', 'COMANDA 7', 'Skol lata 350ml', 'R$ 13,50', 'Confira os itens']) {
+      assert.ok(conferencia.includes(valor), `${valor} na conferência: ${conferencia}`);
+    }
+    await esperarTexto(dono, '#alert-pdv', 'Conferência da comanda 7');
+    await dono.focus('#pdv-leitura');
     await dono.keyboard.press('F10');
     await dono.waitForSelector('#pdv-pagamento:not([hidden])');
     await dono.keyboard.press('F6');

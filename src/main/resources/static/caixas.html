@@ -243,7 +243,7 @@
                  onkeydown="lerCodigoPDV(event)">
           <div class="pdv-scan__hint">
             <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
-            <span>F2 buscar · F3 desconto · F7 comandas · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
+            <span>F2 buscar · F3 desconto · F7 comandas · F8 cupom · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
           </div>
         </div>
         <div class="pdv-catalog-toolbar">
@@ -269,6 +269,9 @@
             <span class="pdv-cart-title">Pedido</span>
             <span id="pdv-carrinho-qtd" class="pdv-cart-count"></span>
           </div>
+          <label class="pdv-cupom-auto" title="Imprime o cupom ao finalizar. F8 imprime de novo o último.">
+            <input type="checkbox" id="pdv-cupom-auto" onchange="alternarCupomAutomaticoPDV()"> Cupom automático
+          </label>
           <button type="button" class="pdv-clear-btn" onclick="limparCarrinho()">Limpar</button>
         </div>
 
@@ -499,5 +502,7 @@
 <script src="/js/codigo-barras.js"></script>
 <script src="/js/pdv.js"></script>
 <script src="/js/spa-navigation.js"></script>
+<!-- Cupom de 80 mm: só aparece na impressão. -->
+<div id="cupom-impressao" class="cupom" aria-hidden="true"></div>
 </body>
 </html>

@@ -30,7 +30,10 @@ async function abrirPDV(numeroCaixa) {
   pdvCarrinho = [];
   pdvVendaAtual = null;
   pdvComandaAtual = null;
+  pdvUltimoCupom = null;
   atualizarComandaPDV();
+  const cupomAuto = document.getElementById('pdv-cupom-auto');
+  if (cupomAuto) cupomAuto.checked = cupomAutomaticoPDV();
   pdvDraftPayloadPorItemVenda = {};
   pdvCategoriaAtiva = 'todos';
 
@@ -1060,7 +1063,14 @@ async function finalizarVendaPDV() {
       return;
     }
 
-    await resp.json();
+    const vendaFinalizada = await resp.json();
+    pdvUltimoCupom = dadosCupomPDV({
+      titulo: 'CUPOM NÃO FISCAL',
+      venda: vendaFinalizada,
+      comanda: pdvComandaAtual,
+      pagamentos: pdvPagamentos.map(p => ({ ...p })),
+      troco
+    });
     // Próximo cliente: o PDV continua aberto, com carrinho limpo e foco na leitura.
     const comandaPaga = pdvComandaAtual;
     pdvComandaAtual = null;
@@ -1073,6 +1083,8 @@ async function finalizarVendaPDV() {
     const mensagemTroco = troco > 0 ? ` · TROCO ${formatarMoedaPDV(troco)}` : '';
     const rotulo = comandaPaga ? `Comanda ${comandaPaga.numero} paga: ` : 'Venda de ';
     mostrarAlert('alert-pdv', `${rotulo}${formatarMoedaPDV(total)} registrada${mensagemTroco}.`, 'success');
+    if (cupomAutomaticoPDV()) imprimirCupomPDV(pdvUltimoCupom);
+    else acrescentarBotaoAlertaPDV('Imprimir cupom (F8)', () => imprimirCupomPDV(pdvUltimoCupom));
     showToast(`${formatarMoedaPDV(total)} registrado no Caixa ${pdvNumeroCaixa}${mensagemTroco}`, 'success');
     carregarCaixas();
     focarLeituraPDV();
@@ -1474,6 +1486,112 @@ function fecharPDV() {
 // ── Troca de operador por PIN ─────────────────────────────────────────────
 
 let pdvOperadorTrocado = false;
+
+// ── Cupom de 80 mm ───────────────────────────────────────────────────────
+// Impresso pelo navegador, na impressora padrão do Windows. Não é documento fiscal.
+
+let pdvUltimoCupom = null;
+const CHAVE_CUPOM_AUTOMATICO = 'stockos.pdv.cupomAutomatico';
+
+function cupomAutomaticoPDV() {
+  try { return window.localStorage.getItem(CHAVE_CUPOM_AUTOMATICO) === '1'; } catch { return false; }
+}
+
+function alternarCupomAutomaticoPDV() {
+  const ligado = document.getElementById('pdv-cupom-auto').checked;
+  try { window.localStorage.setItem(CHAVE_CUPOM_AUTOMATICO, ligado ? '1' : '0'); } catch { /* sem preferência salva */ }
+  focarLeituraPDV();
+}
+
+function acrescentarBotaoAlertaPDV(texto, acao) {
+  const botao = document.createElement('button');
+  botao.type = 'button';
+  botao.className = 'btn btn-secondary btn-sm pdv-alerta-acao';
+  botao.textContent = texto;
+  botao.addEventListener('click', () => { acao(); focarLeituraPDV(); });
+  document.getElementById('alert-pdv').append(botao);
+}
+
+/** Retrato da venda para o papel: itens, totais e pagamentos. */
+function dadosCupomPDV({ titulo, venda, comanda, pagamentos, troco }) {
+  const itens = ((venda && venda.itens) || []).filter(i => i.status !== 'CANCELADO').map(i => ({
+    nome: `${i.item}${i.variacao ? ' ' + i.variacao : ''}`,
+    quantidade: Number(i.quantidade || 0),
+    unitario: Number(i.precoUnitarioBase || 0) + Number(i.acrescimoUnitario || 0),
+    subtotalBruto: (Number(i.precoUnitarioBase || 0) + Number(i.acrescimoUnitario || 0)) * Number(i.quantidade || 0),
+    desconto: Number(i.descontoUnitario || 0) * Number(i.quantidade || 0)
+  }));
+  const subtotal = arred2(itens.reduce((s, i) => s + i.subtotalBruto, 0));
+  const desconto = arred2(itens.reduce((s, i) => s + i.desconto, 0));
+  return {
+    titulo,
+    vendaId: venda ? venda.id : null,
+    comanda: comanda ? comanda.numero : null,
+    quando: new Date(),
+    caixa: pdvNumeroCaixa,
+    operador: nomeDoOperadorAtual(),
+    itens,
+    subtotal,
+    desconto,
+    total: arred2(subtotal - desconto),
+    pagamentos: pagamentos || [],
+    troco: troco || 0
+  };
+}
+
+function htmlCupomPDV(c) {
+  const linha = (esquerda, direita, classe = '') =>
+    `<div class="cupom-linha ${classe}"><span>${escapeHtml(esquerda)}</span><span>${escapeHtml(direita)}</span></div>`;
+  const rotulo = codigo => (PDV_FORMAS.find(f => f.codigo === codigo) || { rotulo: codigo }).rotulo;
+  const data = c.quando.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  let html = `<h2>${escapeHtml(c.titulo)}</h2>`
+    + `<p class="cupom-centro">${escapeHtml(data)} · Caixa ${escapeHtml(String(c.caixa ?? '—'))}</p>`
+    + (c.comanda ? `<p class="cupom-centro"><strong>COMANDA ${c.comanda}</strong></p>` : '')
+    + (c.vendaId ? `<p class="cupom-centro">Venda #${c.vendaId} · ${escapeHtml(c.operador)}</p>` : `<p class="cupom-centro">${escapeHtml(c.operador)}</p>`)
+    + '<hr>';
+  c.itens.forEach(i => {
+    html += `<p>${escapeHtml(i.nome)}</p>`
+      + linha(`  ${String(i.quantidade).replace('.', ',')} x ${formatarMoedaPDV(i.unitario)}`, formatarMoedaPDV(i.subtotalBruto));
+  });
+  html += '<hr>' + linha('Subtotal', formatarMoedaPDV(c.subtotal));
+  if (c.desconto > 0) html += linha('Desconto', '-' + formatarMoedaPDV(c.desconto));
+  html += linha('TOTAL', formatarMoedaPDV(c.total), 'cupom-total');
+  if (c.pagamentos.length) {
+    html += '<hr>';
+    c.pagamentos.forEach(p => {
+      html += linha(rotulo(p.forma), formatarMoedaPDV(p.valor));
+      if (p.valorRecebido != null && p.valorRecebido > p.valor) html += linha('  Recebido', formatarMoedaPDV(p.valorRecebido));
+    });
+    if (c.troco > 0) html += linha('TROCO', formatarMoedaPDV(c.troco), 'cupom-total');
+  }
+  html += '<hr><p class="cupom-centro">Não é documento fiscal.</p>'
+    + (c.vendaId ? '<p class="cupom-centro">Obrigado e volte sempre!</p>' : '<p class="cupom-centro">Confira os itens antes de pagar.</p>');
+  return html;
+}
+
+function imprimirCupomPDV(dados) {
+  if (!dados) return false;
+  document.getElementById('cupom-impressao').innerHTML = htmlCupomPDV(dados);
+  document.body.classList.add('imprimindo-cupom');
+  try {
+    window.print();
+  } finally {
+    document.body.classList.remove('imprimindo-cupom');
+  }
+  return true;
+}
+
+/** F8: com comanda aberta, a conferência para o cliente; senão, o último cupom de novo. */
+function imprimirConferenciaOuUltimoCupomPDV() {
+  if (pdvComandaAtual && pdvVendaAtual) {
+    imprimirCupomPDV(dadosCupomPDV({ titulo: 'CONFERÊNCIA DA COMANDA', venda: pdvVendaAtual, comanda: pdvComandaAtual }));
+    mostrarAlert('alert-pdv', `Conferência da comanda ${pdvComandaAtual.numero} enviada para a impressora.`, 'info');
+    return;
+  }
+  if (!imprimirCupomPDV(pdvUltimoCupom)) {
+    mostrarAlert('alert-pdv', 'Ainda não há cupom para imprimir neste caixa.', 'info');
+  }
+}
 
 // ── Comandas: quem consome na loja e paga no fim ─────────────────────────
 // O cartão traz um EAN-13 começando com 29 (faixa de uso interno) com o número.
@@ -2129,6 +2247,7 @@ function atalhosPDV(event) {
 
   if (event.key === 'F9') { event.preventDefault(); if (!pagamentoAberto) abrirVendasPDV(); return; }
   if (event.key === 'F7' && !pagamentoAberto) { event.preventDefault(); abrirComandasPDV(); return; }
+  if (event.key === 'F8' && !pagamentoAberto) { event.preventDefault(); imprimirConferenciaOuUltimoCupomPDV(); return; }
 
   if (/^F[5-8]$/.test(event.key)) event.preventDefault();
   if (event.key === 'F12') { event.preventDefault(); abrirTrocaOperadorPDV(); return; }
@@ -2239,6 +2358,7 @@ window.StockOSPDV = {
       focarLeituraPDV,
       abrirTrocaOperadorPDV,
       abrirVendasPDV,
+      alternarCupomAutomaticoPDV,
       abrirComandasPDV,
       abrirComandaDigitadaPDV,
       guardarComandaPDV,

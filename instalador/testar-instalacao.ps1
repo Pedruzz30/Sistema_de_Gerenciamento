@@ -71,6 +71,8 @@ Assert ((Install-Pacote $Pacote) -eq 0) 'instalador terminou sem erro'
 Assert (Test-Path "$Raiz\dados\PG_VERSION") 'banco criado'
 Assert ((Invoke-WebRequest "$Base/login.html" -UseBasicParsing).StatusCode -eq 200) 'tela de login no ar'
 Assert (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'StockOS.lnk')) 'atalho na Área de Trabalho'
+$atalhoCaixa = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'StockOS Caixa.lnk'))
+Assert ($atalhoCaixa.Arguments -match 'abrir\.ps1" -Caixa$') 'atalho do caixa com impressão direta'
 Assert (Test-Path (Join-Path ([Environment]::GetFolderPath('Startup')) 'StockOS (iniciar).lnk')) 'início automático com o Windows'
 Assert (Test-Path "$Raiz\Restaurar backup.cmd") 'atalho de restauração na pasta'
 

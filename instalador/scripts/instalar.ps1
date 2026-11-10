@@ -20,11 +20,11 @@ function Get-PortaLivre([int[]]$Opcoes, [string]$Nome) {
     throw "Nenhuma porta livre para $Nome ($($Opcoes -join ', '))."
 }
 
-function New-Atalho([string]$Arquivo, [string]$Script, [string]$Descricao) {
+function New-Atalho([string]$Arquivo, [string]$Script, [string]$Descricao, [string]$Extra = '') {
     $shell = New-Object -ComObject WScript.Shell
     $atalho = $shell.CreateShortcut($Arquivo)
     $atalho.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    $atalho.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Script`""
+    $atalho.Arguments = ("-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Script`" " + $Extra).Trim()
     $atalho.WorkingDirectory = Split-Path $Script
     $atalho.WindowStyle = 7
     $atalho.Description = $Descricao
@@ -35,6 +35,8 @@ function New-Atalho([string]$Arquivo, [string]$Script, [string]$Descricao) {
 function Set-Atalhos([hashtable]$C) {
     $scripts = Join-Path $C.Programa 'scripts'
     New-Atalho (Join-Path ([Environment]::GetFolderPath('Desktop')) 'StockOS.lnk') (Join-Path $scripts 'abrir.ps1') 'Abre o StockOS'
+    New-Atalho (Join-Path ([Environment]::GetFolderPath('Desktop')) 'StockOS Caixa.lnk') (Join-Path $scripts 'abrir.ps1') `
+        'Abre o caixa; o cupom sai direto na impressora padrao' '-Caixa'
     New-Atalho (Join-Path ([Environment]::GetFolderPath('Startup')) 'StockOS (iniciar).lnk') (Join-Path $scripts 'iniciar.ps1') 'Liga o StockOS ao entrar no Windows'
     Get-ChildItem -LiteralPath (Join-Path $C.Programa 'atalhos') -Filter '*.cmd' | Copy-Item -Destination $C.Raiz -Force
 }

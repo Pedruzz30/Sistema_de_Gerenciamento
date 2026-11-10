@@ -3643,6 +3643,25 @@ body.bridge-page .bridge-actions a {
   body.imprimindo-fechamento .resumo-operadores { font-size: 11px; }
 }
 
+/* ───────── Cupom de 80 mm ───────── */
+.pdv-cupom-auto { display: flex; align-items: center; gap: 4px; margin-left: auto; margin-right: 8px; font-size: 11px; color: var(--text-muted, #6b6760); cursor: pointer; }
+.cupom { display: none; }
+@page cupom { size: 80mm auto; margin: 2mm; }
+@media print {
+  body.imprimindo-cupom * { visibility: hidden !important; }
+  body.imprimindo-cupom .cupom, body.imprimindo-cupom .cupom * { visibility: visible !important; }
+  body.imprimindo-cupom .cupom { display: block; position: absolute; top: 0; left: 0; page: cupom; }
+}
+.cupom { width: 72mm; padding: 0; color: #000; background: #fff; font: 11px/1.35 ui-monospace, "Courier New", monospace; }
+.cupom h2 { margin: 0; font-size: 13px; text-align: center; }
+.cupom p { margin: 0; }
+.cupom .cupom-centro { text-align: center; }
+.cupom .cupom-linha { display: flex; justify-content: space-between; gap: 6px; }
+.cupom .cupom-linha span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.cupom .cupom-linha span:last-child { white-space: nowrap; }
+.cupom .cupom-total { font-size: 14px; font-weight: 700; }
+.cupom hr { margin: 4px 0; border: 0; border-top: 1px dashed #000; }
+
 /* ───────── Comandas ───────── */
 .pdv-comanda-selo { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #0369a1; color: #fff; font-size: 12px; font-weight: 700; }
 .pdv-comanda-abrir { display: grid; gap: 4px; margin-bottom: 10px; font-size: 13px; }
