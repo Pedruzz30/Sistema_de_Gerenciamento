@@ -67,6 +67,7 @@ window.StockOSPages.estoque = {
       filtrar,
       filtrarCategoria,
       filtrarProdutos,
+      resetarFiltrosEstoque,
       abrirModalCadastro,
       abrirModalEdicao,
       abrirModalMov,
@@ -244,21 +245,21 @@ function renderTabela() {
           })}
         </td></tr>`;
     } else {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum produto encontrado para os filtros aplicados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum produto encontrado. <button type="button" class="btn btn-secondary" onclick="resetarFiltrosEstoque()">Limpar filtros</button></td></tr>';
     }
     return;
   }
 
   tbody.innerHTML = itensPagina.map(p => `
     <tr>
-      <td>
+      <td data-label="Produto">
         <div class="produto-nome">${escapeHtml(p.nome)}</div>
         <div class="produto-id">#${p.id}</div>
       </td>
-      <td>${renderCategoriaBadge(p.categoriaEstoque)}</td>
-      <td><strong>${p.quantidadeAtual}</strong> un.</td>
-      <td>${p.quantidadeMinima} un.</td>
-      <td>
+      <td data-label="Categoria">${renderCategoriaBadge(p.categoriaEstoque)}</td>
+      <td data-label="Quantidade atual"><strong>${p.quantidadeAtual}</strong> un.</td>
+      <td data-label="Mínimo">${p.quantidadeMinima} un.</td>
+      <td data-label="Nível">
         <div class="nivel-wrap nivel-${p.nivelEstoque}">
           <div class="nivel-bar">
             <div class="nivel-bar-fill"></div>
@@ -266,8 +267,8 @@ function renderTabela() {
           <span class="nivel-badge">${nivelLabel(p.nivelEstoque)}</span>
         </div>
       </td>
-      <td>R$ ${p.precoUnitario.toFixed(2)}</td>
-      <td>
+      <td data-label="Preço">R$ ${p.precoUnitario.toFixed(2)}</td>
+      <td data-label="Ações">
           <div class="acoes">
             ${podeEditar ? `<button class="btn-acao editar" onclick="abrirModalEdicao(${p.id})">Editar</button>` : ''}
             ${podeEditar ? `<button class="btn-acao entrada" onclick="abrirModalMov(${p.id}, 'ENTRADA')">Entrada</button>` : ''}
@@ -307,10 +308,12 @@ function nivelLabel(nivel) {
 }
 
 function getProdutosVisiveis() {
-  const busca = document.getElementById('busca').value.toLowerCase();
+  const normalizarBusca = texto => String(texto || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const busca = normalizarBusca(document.getElementById('busca').value);
 
   return todosOsProdutos.filter(p => {
-    const nome = String(p.nome || '').toLowerCase();
+    const nome = normalizarBusca(p.nome);
     const categoria = p.categoriaEstoque || '';
 
     const matchBusca = nome.includes(busca);
@@ -474,6 +477,21 @@ function filtrarCategoria(tipo, btn) {
 function filtrarProdutos() {
   paginaEstoque = 1;
   renderTabela();
+}
+
+function resetarFiltrosEstoque() {
+  paginaEstoque = 1;
+  filtroNivelAtivo = 'todos';
+  filtroCategoriaAtiva = 'todas';
+  const busca = document.getElementById('busca');
+  if (busca) busca.value = '';
+  document.querySelectorAll('[data-filter-group]').forEach(group => {
+    group.querySelectorAll('.filter-btn').forEach((button, index) => {
+      button.classList.toggle('active', index === 0);
+    });
+  });
+  renderTabela();
+  busca?.focus();
 }
 
 function abrirModalCadastro() {
