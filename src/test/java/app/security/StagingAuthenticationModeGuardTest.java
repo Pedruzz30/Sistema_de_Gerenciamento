@@ -91,6 +91,37 @@ class StagingAuthenticationModeGuardTest {
     }
 
     @Test
+    void productionProfilesMustRejectLegacyAndMissingDatabaseIsolation() {
+        for (String profile : new String[]{"prod", "production", "PRODUCTION"}) {
+            MockEnvironment legacy = staging("legacy", "https://example.supabase.co");
+            legacy.setActiveProfiles(profile);
+            assertThrows(IllegalStateException.class,
+                    () -> guard.postProcessEnvironment(legacy, mock(SpringApplication.class)),
+                    "Legacy mode cannot run under " + profile);
+
+            MockEnvironment valid = staging("supabase", "https://example.supabase.co");
+            valid.setActiveProfiles(profile);
+            assertDoesNotThrow(() -> guard.postProcessEnvironment(
+                    valid, mock(SpringApplication.class)));
+
+            MockEnvironment flyway = staging("supabase", "https://example.supabase.co");
+            flyway.setActiveProfiles(profile);
+            flyway.setProperty("spring.flyway.enabled", "true");
+            assertThrows(IllegalStateException.class,
+                    () -> guard.postProcessEnvironment(flyway, mock(SpringApplication.class)),
+                    "Production must never migrate as the application runtime");
+        }
+    }
+
+    @Test
+    void mixedProfileCannotDowngradeAuthentication() {
+        MockEnvironment env = staging("legacy", "https://example.supabase.co");
+        env.setActiveProfiles("test", "production");
+        assertThrows(IllegalStateException.class,
+                () -> guard.postProcessEnvironment(env, mock(SpringApplication.class)));
+    }
+
+    @Test
     void preservesLocalLegacyDevelopment() {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("test");
