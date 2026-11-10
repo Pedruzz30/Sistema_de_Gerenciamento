@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+
+const js='src/main/resources/static/js/estoque.js';
+execFileSync(process.execPath,['--check',js],{stdio:'inherit'});
+const source=await readFile(js,'utf8');
+const css=await readFile('src/main/resources/static/css/estoque-refinement.css','utf8');
+assert.match(source,/data-label="Produto"/);
+assert.match(source,/data-label="Categoria"/);
+assert.match(source,/data-label="Quantidade atual"/);
+assert.match(source,/data-label="Ações"/);
+assert.match(source,/function resetarFiltrosEstoque\(\)/);
+assert.match(source,/filtroNivelAtivo = 'todos'/);
+assert.match(source,/filtroCategoriaAtiva = 'todas'/);
+assert.match(source,/normalize\('NFD'\)/);
+assert.match(source,/resetarFiltrosEstoque\(\)">Limpar filtros/);
+assert.match(css,/@media \(max-width: 640px\)/);
+assert.match(css,/td::before \{content:attr\(data-label\)/);
+assert.match(css,/min-height:44px/);
+console.log('PASS inventory mobile cards, search normalization and reversible filters');

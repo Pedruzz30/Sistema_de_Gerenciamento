@@ -294,3 +294,28 @@ body.estoque-page .modal-footer .btn-primary {
   border-color: var(--accent);
   color: var(--accent-ink, #211403);
 }
+
+/* Operação móvel: a tabela vira cartões legíveis, sem scroll horizontal. */
+@media (max-width: 640px) {
+  body.estoque-page .table-wrap {overflow-x:visible;border:0;background:transparent;}
+  body.estoque-page .table {width:100%;min-width:0;border-collapse:separate;border-spacing:0 12px;}
+  body.estoque-page .table thead {position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  body.estoque-page .table tbody {display:block;}
+  body.estoque-page .table tbody tr {display:block;border:1px solid var(--rule);border-radius:12px;background:var(--paper-raised);padding:12px 14px;box-shadow:var(--shadow-sm);margin-bottom:12px;}
+  body.estoque-page .table tbody td {display:flex;justify-content:space-between;align-items:center;gap:12px;min-width:0;width:100%;padding:10px 0;border:0;background:transparent;text-align:right;overflow-wrap:anywhere;}
+  body.estoque-page .table tbody td + td {border-top:1px solid var(--rule);}
+  body.estoque-page .table tbody td::before {content:attr(data-label);min-width:98px;flex:0 0 98px;font-size:11px;font-weight:650;color:var(--ink-3);text-align:left;}
+  body.estoque-page .table tbody td[data-label="Produto"] {justify-content:flex-start;text-align:left;}
+  body.estoque-page .table tbody td[data-label="Produto"]::before {display:none;}
+  body.estoque-page .table tbody td[data-label="Produto"] .produto-nome {font-size:15px;line-height:1.3;}
+  body.estoque-page .table tbody td[data-label="Ações"] {display:block;text-align:left;}
+  body.estoque-page .table tbody td[data-label="Ações"]::before {display:block;min-width:0;margin:0 0 9px;}
+  body.estoque-page .table tbody td[data-label="Ações"] .acoes {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+  body.estoque-page .table tbody td[data-label="Ações"] .btn-acao {min-height:44px;justify-content:center;text-align:center;padding:8px 5px;font-size:12px;}
+  body.estoque-page .table tbody td[colspan] {display:block;text-align:center;}
+  body.estoque-page .table tbody td[colspan]::before {display:none;}
+  body.estoque-page .table tbody td .nivel-wrap {justify-content:flex-end;flex-wrap:wrap;}
+  body.estoque-page .toolbar .filter-btn {min-height:44px;}
+  body.estoque-page .table-pagination {display:flex;flex-wrap:wrap;gap:8px!important;align-items:center;justify-content:center;}
+  body.estoque-page .table-pagination button {min-height:44px;padding:9px 12px;}
+}
