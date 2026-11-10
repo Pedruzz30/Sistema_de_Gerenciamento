@@ -5,7 +5,7 @@
 // porque cria a senha dos usuários padrão. Nunca aponte para o banco de uma loja.
 // Roda no GitHub pelo workflow stockos-e2e.yml. Grava um print de cada passo em e2e-artifacts/.
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { isIP } from 'node:net';
 import { join } from 'node:path';
 import tls from 'node:tls';
@@ -14,6 +14,8 @@ import { chromium, devices, webkit } from 'playwright';
 const BASE = process.env.E2E_URL || 'http://localhost:8080';
 // Porta do celular do atendente (https). Sem ela, os passos do celular ficam de fora.
 const CELULAR = (process.env.E2E_CELULAR || '').replace(/\/$/, '');
+// Pasta onde o servidor grava o papel da cozinha nos testes. Sem ela, os passos da cozinha ficam de fora.
+const COZINHA = process.env.E2E_COZINHA || '';
 
 /** Conecta como o celular: confia só no certificado da loja (ou em nada) e confere o nome. */
 async function conferirCertificado(url, arquivoCa) {
@@ -1322,7 +1324,9 @@ try {
         assert.equal(perfil.status(), 200);
         assert.match(perfil.headers()['content-type'], /apple-aspen-config/);
         assert.ok((await perfil.text()).includes('com.apple.security.root'));
-        await naTela(ip, '#ajuda-iphone');
+        // O guia é mais alto que a tela: rola até o botão do perfil, como a pessoa faria.
+        await ip.locator('#link-perfil-iphone').scrollIntoViewIfNeeded();
+        await naTela(ip, '#link-perfil-iphone');
       });
 
       await passo(ip, 'iPhone: atendente lanca na comanda pelo Safari', async () => {
@@ -1365,6 +1369,106 @@ try {
       const { corpo } = await api(dono, '/api/comandas');
       assert.equal(corpo.find(c => c.numero === 12).total, 4.5);
     });
+
+    // Cozinha: o servidor grava cada papel em E2E_COZINHA em vez de mandar para a térmica.
+    if (COZINHA) {
+      const papeis = async () => {
+        try { return (await readdir(COZINHA)).filter(nome => nome.endsWith('.txt')); } catch { return []; }
+      };
+      const esperarPapel = async (condicao, descricao) => {
+        const limite = Date.now() + 20000;
+        while (Date.now() < limite) {
+          for (const nome of await papeis()) {
+            const texto = await readFile(join(COZINHA, nome), 'utf8');
+            if (condicao(texto)) return texto;
+          }
+          await new Promise(r => setTimeout(r, 300));
+        }
+        throw new Error('O papel da cozinha não saiu: ' + descricao);
+      };
+
+      await passo(dono, 'Cozinha: dono escolhe o que vai para a cozinha', async () => {
+        const criado = await dono.evaluate(async () => (await fetch('/api/produtos/revenda', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome: 'Porção de batata', categoriaCardapioCodigo: 'porcoes', categoriaCardapioNome: 'Porções',
+            categoriaEstoque: 'FRIO', codigoBarras: '', precoVenda: 25, custoUnitario: 10, quantidadeInicial: 10, quantidadeMinima: 0 })
+        })).status);
+        assert.ok(criado < 300, `Cadastro da porção: ${criado}`);
+        await dono.goto(`${BASE}/caixas.html`);
+        await botoesLigados(dono);
+        await dono.waitForSelector('#btn-cozinha:not([hidden])');
+        await dono.click('#btn-cozinha');
+        await dono.waitForSelector('#modal-cozinha.open');
+        await dono.waitForSelector('#cozinha-config:not([hidden]) #cozinha-categorias input', { state: 'attached' });
+        if (!(await dono.$eval('#cozinha-config', d => d.open))) await dono.click('#cozinha-config summary');
+        await dono.locator('#cozinha-categorias label', { hasText: 'Porções' }).locator('input').check();
+        await dono.click('#btn-cozinha-salvar');
+        await esperarTexto(dono, '#alert-cozinha', 'Cozinha salva');
+        await esperarTexto(dono, '#cozinha-situacao', 'arquivo de teste');
+        await print(dono, 'cozinha-configurada');
+        await dono.click('#modal-cozinha .modal-footer .btn');
+      });
+
+      await passo(dono, 'Cozinha: pedido do celular imprime so o que e da cozinha', async () => {
+        const contexto = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR' });
+        const garcom = await contexto.newPage();
+        garcom.setDefaultTimeout(15000);
+        try {
+          await garcom.goto(`${CELULAR}/celular.html`);
+          await garcom.locator('.operador', { hasText: 'Ana Caixa' }).click();
+          await garcom.fill('#pin', PIN_ANA);
+          await garcom.click('#btn-entrar');
+          await garcom.waitForSelector('#tela-comandas:not([hidden])');
+          await garcom.fill('#numero-comanda', '13');
+          await garcom.click('#btn-abrir-comanda');
+          await esperarTexto(garcom, '#comanda-titulo', 'Comanda 13');
+          await garcom.fill('#busca', 'porcao');
+          const porcao = garcom.locator('#resultados .produto', { hasText: 'Porção de batata' }).first();
+          await porcao.click();
+          await porcao.click();
+          await garcom.fill('#busca', 'skol');
+          await garcom.locator('#resultados .produto', { hasText: 'Gelada' }).first().click();
+          await garcom.click('#btn-lancar');
+          await esperarTexto(garcom, '#aviso', '3 itens lançados na comanda 13');
+        } finally {
+          await contexto.close();
+        }
+        const papel = await esperarPapel(t => t.includes('## COZINHA') && t.includes('COMANDA 13'), 'pedido da comanda 13');
+        assert.ok(papel.includes('2 x Porção de batata'), papel);
+        assert.ok(!papel.includes('Skol'), 'Bebida não vai para a cozinha');
+        assert.ok(papel.includes('Ana Caixa'), papel);
+      });
+
+      await passo(dono, 'Cozinha: tirar a porcao manda o aviso de cancelar', async () => {
+        const { corpo: comanda } = await api(dono, '/api/comandas/13');
+        const { corpo: venda } = await api(dono, `/api/vendas/${comanda.vendaId}`);
+        const item = venda.itens.find(i => /Porção/.test(i.item) && i.status !== 'CANCELADO');
+        assert.ok(item, JSON.stringify(venda.itens));
+        const status = await dono.evaluate(async itemId => (await fetch('/api/comandas/13/retirar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itens: [{ itemId, quantidade: 1 }], motivo: 'Cliente desistiu' })
+        })).status, item.id);
+        assert.equal(status, 200);
+        const papel = await esperarPapel(t => t.includes('CANCELAR') && t.includes('COMANDA 13'), 'cancelamento da comanda 13');
+        assert.ok(papel.includes('1 x Porção de batata'), papel);
+      });
+
+      await passo(dono, 'Cozinha: tela mostra os pedidos e reimprime', async () => {
+        await dono.click('#btn-cozinha');
+        await dono.waitForSelector('#modal-cozinha.open');
+        await esperarTexto(dono, '#cozinha-pedidos', 'Cancelamento · Comanda 13');
+        await esperarTexto(dono, '#cozinha-pedidos', 'Pedido · Comanda 13');
+        await esperarTexto(dono, '#cozinha-pedidos', 'Impresso');
+        const antes = (await papeis()).length;
+        await dono.locator('.cozinha-pedido', { hasText: 'Pedido · Comanda 13' }).first().locator('[data-reimprimir]').click();
+        await esperarTexto(dono, '#alert-cozinha', 'Mandado de novo');
+        const limite = Date.now() + 15000;
+        while ((await papeis()).length <= antes && Date.now() < limite) await new Promise(r => setTimeout(r, 300));
+        assert.ok((await papeis()).length > antes, 'A reimpressão gera outro papel');
+        await print(dono, 'cozinha-pedidos');
+        await dono.click('#modal-cozinha .modal-footer .btn');
+      });
+    }
   }
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {

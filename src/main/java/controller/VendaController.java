@@ -60,6 +60,12 @@ public class VendaController {
     }
 
     private service.ComandaService comandaService;
+    private service.CozinhaService cozinhaService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCozinhaService(service.CozinhaService cozinhaService) {
+        this.cozinhaService = cozinhaService;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setComandaService(service.ComandaService comandaService) {
@@ -202,6 +208,14 @@ public class VendaController {
         );
         // Venda de comanda paga: o cartão fica livre para o próximo cliente.
         if (comandaService != null) comandaService.fecharPorVenda(usuario, venda.getId());
+        // O que é da cozinha e ainda não tinha ido (venda de balcão com porção, por exemplo).
+        if (cozinhaService != null) {
+            try {
+                cozinhaService.enviar(usuario, venda.getId());
+            } catch (RuntimeException e) {
+                org.slf4j.LoggerFactory.getLogger(VendaController.class).warn("Venda {} paga, mas o pedido da cozinha falhou", venda.getId(), e);
+            }
+        }
         return ResponseEntity.ok(response(venda, usuario));
     }
 

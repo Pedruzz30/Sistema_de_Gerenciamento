@@ -38,6 +38,21 @@ public class ComandaService {
     private VendaItemService vendaItemService;
     private repository.VendaItemModificadorRepository modificadorRepository;
 
+    private CozinhaService cozinha;
+
+    /** Pedido impresso para a cozinha: lançar, tirar e transferir avisam a cozinha. */
+    public void setCozinha(CozinhaService cozinha) {
+        this.cozinha = cozinha;
+    }
+
+    /** Manda para a cozinha o que é dela e ainda não foi (o caixa chama ao guardar a comanda). */
+    @Transactional
+    public boolean enviarCozinha(Usuario usuario, int numero) {
+        Comanda comanda = comandaRepository.buscarAbertaPorNumero(numero)
+                .orElseThrow(() -> new ErroNegocioException("COMANDA_NAO_ENCONTRADA", "Nao ha comanda aberta com o numero " + numero + "."));
+        return cozinha != null && cozinha.enviar(usuario, comanda.getVendaId()).isPresent();
+    }
+
     /** Para transferir parte de um item: reduz a linha de origem e cria outra no destino. */
     public void setTransferencia(VendaItemService vendaItemService, repository.VendaItemModificadorRepository modificadorRepository) {
         this.vendaItemService = vendaItemService;
@@ -167,7 +182,8 @@ public class ComandaService {
                 long variacaoId = item.getVariacaoItemCardapio().getId();
                 vendaItemService.editarItemRascunho(usuario, vendaOrigemId, item.getId(), variacaoId,
                         item.getQuantidade().subtract(pedido.quantidade()), item.getObservacao(), null, List.of(), null, List.of());
-                vendaItemService.adicionarItem(usuario, vendaDestino.getId(), variacaoId, pedido.quantidade(), item.getObservacao());
+                VendaItem novo = vendaItemService.adicionarItem(usuario, vendaDestino.getId(), variacaoId, pedido.quantidade(), item.getObservacao());
+                if (cozinha != null) cozinha.moverEnviado(item.getId(), novo.getId(), pedido.quantidade());
             }
             movidos++;
         }
@@ -253,6 +269,7 @@ public class ComandaService {
         }
         logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_ITENS_LANCADOS",
                 "Comanda " + numero + ": " + descricao + " (por " + nomeDe(usuario) + ")."));
+        if (cozinha != null) cozinha.enviar(usuario, vendaId);
         return detalhar(comanda);
     }
 
@@ -320,6 +337,7 @@ public class ComandaService {
             descricao.append(pedido.quantidade().stripTrailingZeros().toPlainString()).append(" x ").append(nome);
         }
 
+        if (cozinha != null) cozinha.cancelarExcedente(operador, vendaId);
         boolean vazia = itemRepository.listarAtivosPorVenda(vendaId).isEmpty();
         if (vazia) {
             comanda.cancelar(LocalDateTime.now(clock));

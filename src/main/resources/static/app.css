@@ -3842,3 +3842,18 @@ body.bridge-page .bridge-actions a {
 .celular-painel__qr svg { display: block; width: 132px; height: 132px; }
 .celular-painel__texto { min-width: 0; overflow-wrap: anywhere; }
 .celular-painel__url { font-family: var(--font-mono, ui-monospace, monospace); font-weight: 600; }
+
+/* Cozinha: pedidos impressos e configuração */
+.cozinha-alerta { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 10px; background: #b91c1c; color: #fff; font-size: 11px; font-weight: 700; }
+.cozinha-pedidos { display: grid; gap: 8px; max-height: 340px; overflow-y: auto; margin: 8px 0 12px; }
+.cozinha-pedido { border: 1px solid var(--rule, #e5e2dc); border-left-width: 4px; border-radius: 8px; padding: 8px 10px; }
+.cozinha-pedido--ok { border-left-color: #15803d; }
+.cozinha-pedido--erro { border-left-color: #b91c1c; background: #fef2f2; }
+.cozinha-pedido--espera { border-left-color: #ca8a04; }
+.cozinha-pedido__topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.cozinha-pedido__topo span { color: var(--text-muted, #6b6760); flex: 1; }
+.cozinha-pedido__texto { margin: 6px 0 0; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; white-space: pre-wrap; }
+.cozinha-config summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.cozinha-categorias { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cozinha-categoria { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.cozinha-config__botoes { display: flex; gap: 8px; }

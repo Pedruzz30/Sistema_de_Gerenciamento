@@ -58,7 +58,8 @@ jobs:
           STOCKOS_SEED_DEMO_CATALOG_ENABLED: "false"
         run: |
           DB_PASSWORD="$STOCKOS_DB_PASSWORD" nohup java -jar target/sistema-gerenciamento-*.jar \
-            --stockos.celular.porta=8443 --stockos.celular.pasta=target/celular > app.log 2>&1 &
+            --stockos.celular.porta=8443 --stockos.celular.pasta=target/celular \
+            --stockos.cozinha.pasta-teste=target/cozinha > app.log 2>&1 &
           for tentativa in $(seq 1 90); do
             if curl -sf http://localhost:8080/api/auth/config > /dev/null; then
               echo "Sistema no ar depois de ${tentativa}s."
@@ -82,6 +83,7 @@ jobs:
         env:
           E2E_CELULAR: https://localhost:8443
           E2E_CELULAR_CA: target/celular/stockos-loja.crt
+          E2E_COZINHA: target/cozinha
         run: node scripts/test-e2e-real.mjs
 
       - name: Show application log

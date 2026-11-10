@@ -57,6 +57,13 @@ public class ComandaController {
         return ResponseEntity.ok(comandaService.lancar(usuario, numero, itens));
     }
 
+    /** O caixa guardou a comanda: o que é da cozinha e ainda não foi, vai agora. */
+    @PostMapping("/{numero}/cozinha")
+    public ResponseEntity<java.util.Map<String, Boolean>> cozinha(@PathVariable int numero,
+                                                                  @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        return ResponseEntity.ok(java.util.Map.of("enviado", comandaService.enviarCozinha(operador(ruHeader), numero)));
+    }
+
     public record ItemLancarRequest(Long variacaoId, java.math.BigDecimal quantidade) {}
 
     public record LancarRequest(List<ItemLancarRequest> itens) {}

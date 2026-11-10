@@ -72,10 +72,21 @@ public class AppConfig {
                                          LogRepository logRepository,
                                          Clock appClock,
                                          VendaItemService vendaItemService,
-                                         VendaItemModificadorRepository vendaItemModificadorRepository) {
+                                         VendaItemModificadorRepository vendaItemModificadorRepository,
+                                         CozinhaService cozinhaService) {
         ComandaService servico = new ComandaService(comandaRepository, vendaService, vendaRepository, vendaItemRepository, logRepository, appClock);
         servico.setTransferencia(vendaItemService, vendaItemModificadorRepository);
+        servico.setCozinha(cozinhaService);
         return servico;
+    }
+
+    @Bean
+    public CozinhaService cozinhaService(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+                                         LogRepository logRepository,
+                                         Clock appClock,
+                                         @Value("${stockos.cozinha.pasta-teste:}") String pastaTeste) {
+        return new CozinhaService(jdbcTemplate, logRepository, appClock, new ImpressoraCozinha(),
+                pastaTeste == null || pastaTeste.isBlank() ? null : java.nio.file.Path.of(pastaTeste).toAbsolutePath());
     }
 
     @Bean

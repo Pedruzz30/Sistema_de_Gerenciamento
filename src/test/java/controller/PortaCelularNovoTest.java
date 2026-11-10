@@ -22,6 +22,17 @@ class PortaCelularNovoTest {
     }
 
     @Test
+    void caixaPorPinVeEReimprimeACozinhaMasNaoConfigura() {
+        assertTrue(SessaoFilter.permitidoPorPin("/api/cozinha/situacao", "GET"));
+        assertTrue(SessaoFilter.permitidoPorPin("/api/cozinha/pedidos", "GET"));
+        assertTrue(SessaoFilter.permitidoPorPin("/api/cozinha/pedidos/7/reimprimir", "POST"));
+        assertFalse(SessaoFilter.permitidoPorPin("/api/cozinha/config", "GET"));
+        assertFalse(SessaoFilter.permitidoPorPin("/api/cozinha/config", "PUT"));
+        assertFalse(SessaoFilter.permitidoPorPin("/api/cozinha/teste", "POST"));
+        assertFalse(PortaCelularFilter.permitidoNoCelular("/api/cozinha/pedidos", "GET"), "Cozinha não abre pela rede");
+    }
+
+    @Test
     void restoDoSistemaNaoApareceNaRede() {
         assertFalse(PortaCelularFilter.permitidoNoCelular("/estoque.html", "GET"));
         assertFalse(PortaCelularFilter.permitidoNoCelular("/api/produtos", "GET"));

@@ -1762,6 +1762,150 @@ function atalhosTeclasPDV(event) {
   if (/^F\d+$/.test(event.key)) event.preventDefault();
 }
 
+// ── Cozinha: pedidos impressos, reimpressão e configuração ──────────────
+// A comanda guardada e a venda paga mandam para a cozinha o que é dela (o servidor imprime).
+
+let cozinhaLigada = false;
+let cozinhaPodeConfigurar = false;
+
+function enviarCozinhaPDV(numero) {
+  if (!cozinhaLigada || !numero) return;
+  fetch(`/api/comandas/${numero}/cozinha`, { method: 'POST' })
+    .then(resp => (resp.ok ? resp.json() : null))
+    .then(resultado => {
+      if (resultado && resultado.enviado) showToast(`Pedido da comanda ${numero} mandado para a cozinha.`, 'success');
+    })
+    .catch(() => {});
+}
+
+async function atualizarSituacaoCozinha() {
+  if (document.hidden) return;
+  try {
+    const resp = await fetch('/api/cozinha/situacao');
+    if (!resp.ok) return;
+    const situacao = await resp.json();
+    cozinhaLigada = situacao.ligada;
+    const mostrar = situacao.ligada || temAlgumaPermissao([PERMISSOES.VER_FINANCAS, PERMISSOES.EDITAR_ESTOQUE]);
+    const botao = document.getElementById('btn-cozinha');
+    if (botao) botao.hidden = !mostrar;
+    const noPdv = document.getElementById('pdv-cozinha');
+    if (noPdv) noPdv.hidden = !situacao.ligada;
+    const texto = situacao.comErro > 0 ? `${situacao.comErro} não saiu` : '';
+    ['cozinha-alerta', 'pdv-cozinha-alerta'].forEach(id => {
+      const alerta = document.getElementById(id);
+      if (!alerta) return;
+      alerta.textContent = texto;
+      alerta.hidden = !texto;
+    });
+  } catch (e) {
+    // Sem servidor agora: tenta na próxima.
+  }
+}
+
+async function abrirCozinha() {
+  limparAlert('alert-cozinha');
+  abrirModal('modal-cozinha');
+  await Promise.all([carregarPedidosCozinha(), carregarConfigCozinha()]);
+}
+
+function fecharCozinha() {
+  fecharModal('modal-cozinha');
+  if (document.getElementById('modal-pdv')?.classList.contains('open')) focarLeituraPDV();
+}
+
+async function carregarPedidosCozinha() {
+  const lista = document.getElementById('cozinha-pedidos');
+  try {
+    const [respSituacao, respPedidos] = await Promise.all([fetch('/api/cozinha/situacao'), fetch('/api/cozinha/pedidos')]);
+    if (!respSituacao.ok || !respPedidos.ok) throw new Error(await safeReadErrorMessage(respPedidos.ok ? respSituacao : respPedidos, 'Não foi possível carregar a cozinha.'));
+    const situacao = await respSituacao.json();
+    const pedidos = await respPedidos.json();
+    cozinhaLigada = situacao.ligada;
+    document.getElementById('cozinha-situacao').textContent = situacao.ligada
+      ? `Impressora: ${situacao.impressora}.` + (situacao.comErro ? ` ${situacao.comErro} pedido(s) não saíram: confira se a impressora está ligada e com papel.` : '')
+      : 'Pedido da cozinha desligado: escolha a impressora abaixo.';
+    lista.innerHTML = pedidos.length ? pedidos.map(p => {
+      const hora = new Date(p.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const onde = p.comanda ? `Comanda ${p.comanda}` : (p.vendaId ? `Balcão, venda ${p.vendaId}` : 'Teste');
+      const tipo = p.tipo === 'CANCELAMENTO' ? 'Cancelamento' : (p.tipo === 'TESTE' ? 'Teste' : 'Pedido');
+      const situacaoTexto = p.impressoEm ? 'Impresso' : (p.tentativas ? 'Não saiu: ' + (p.erro || 'erro') : 'Aguardando');
+      const classe = p.impressoEm ? 'ok' : (p.tentativas ? 'erro' : 'espera');
+      const texto = String(p.texto || '').replace(/^## /gm, '');
+      return `<div class="cozinha-pedido cozinha-pedido--${classe}" data-pedido="${p.id}">
+        <div class="cozinha-pedido__topo"><strong>${escapeHtml(tipo)} · ${escapeHtml(onde)}</strong> <span>${hora} · ${escapeHtml(situacaoTexto)}</span>
+          <button type="button" class="btn btn-secondary btn-sm" data-reimprimir="${p.id}">Reimprimir</button></div>
+        <pre class="cozinha-pedido__texto">${escapeHtml(texto)}</pre></div>`;
+    }).join('') : '<p class="inline-note">Nenhum pedido mandado para a cozinha ainda.</p>';
+  } catch (error) {
+    mostrarAlert('alert-cozinha', error.message, 'error');
+  }
+}
+
+async function carregarConfigCozinha() {
+  const bloco = document.getElementById('cozinha-config');
+  const resp = await fetch('/api/cozinha/config').catch(() => null);
+  cozinhaPodeConfigurar = !!(resp && resp.ok);
+  bloco.hidden = !cozinhaPodeConfigurar;
+  if (!cozinhaPodeConfigurar) return;
+  const config = await resp.json();
+  const seletor = document.getElementById('cozinha-impressora');
+  const nomes = [...config.impressoras];
+  if (config.impressora && !nomes.includes(config.impressora)) nomes.unshift(config.impressora);
+  seletor.innerHTML = '<option value="">Nenhuma (desligado)</option>' + nomes.map(nome =>
+    `<option value="${escapeHtml(nome)}">${escapeHtml(nome)}${config.impressoras.includes(nome) ? '' : ' (não encontrada)'}</option>`).join('');
+  seletor.value = config.impressora || '';
+  document.getElementById('cozinha-colunas').value = config.colunas <= 32 ? '32' : '48';
+  document.getElementById('cozinha-categorias').innerHTML = config.categoriasDisponiveis.map(c => `
+    <label class="cozinha-categoria"><input type="checkbox" value="${escapeHtml(c.codigo)}" ${config.categorias.includes(String(c.codigo).toLowerCase()) ? 'checked' : ''}> ${escapeHtml(c.nome)}</label>`).join('');
+  if (!config.impressora && !cozinhaLigada) bloco.open = true;
+}
+
+async function salvarCozinha() {
+  limparAlert('alert-cozinha');
+  const corpo = {
+    impressora: document.getElementById('cozinha-impressora').value,
+    colunas: Number(document.getElementById('cozinha-colunas').value),
+    categorias: [...document.querySelectorAll('#cozinha-categorias input:checked')].map(c => c.value)
+  };
+  const botao = document.getElementById('btn-cozinha-salvar');
+  setLoading(botao, true);
+  try {
+    const resp = await fetch('/api/cozinha/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível salvar.'));
+    mostrarAlert('alert-cozinha', 'Cozinha salva.', 'success');
+    await atualizarSituacaoCozinha();
+    await carregarPedidosCozinha();
+  } catch (error) {
+    mostrarAlert('alert-cozinha', error.message, 'error');
+  } finally {
+    setLoading(botao, false);
+  }
+}
+
+async function testarCozinha() {
+  limparAlert('alert-cozinha');
+  const resp = await fetch('/api/cozinha/teste', { method: 'POST' });
+  if (!resp.ok) {
+    mostrarAlert('alert-cozinha', await safeReadErrorMessage(resp, 'Não foi possível testar.'), 'error');
+    return;
+  }
+  mostrarAlert('alert-cozinha', 'Teste mandado. Se não sair em alguns segundos, confira se a impressora está ligada e com papel.', 'info');
+  setTimeout(carregarPedidosCozinha, 4000);
+}
+
+document.addEventListener('click', async event => {
+  const botao = event.target.closest && event.target.closest('[data-reimprimir]');
+  if (!botao) return;
+  botao.disabled = true;
+  const resp = await fetch(`/api/cozinha/pedidos/${botao.dataset.reimprimir}/reimprimir`, { method: 'POST' });
+  if (!resp.ok) mostrarAlert('alert-cozinha', await safeReadErrorMessage(resp, 'Não foi possível reimprimir.'), 'error');
+  else mostrarAlert('alert-cozinha', 'Mandado de novo para a impressora da cozinha.', 'success');
+  setTimeout(carregarPedidosCozinha, 3000);
+});
+
+atualizarSituacaoCozinha();
+setInterval(atualizarSituacaoCozinha, 20000);
+
 // ── Tirar item já lançado numa comanda ──────────────────────────────────
 // Na comanda o item pode já ter sido servido: só sai com o gerente e com motivo.
 
@@ -2188,6 +2332,8 @@ async function abrirComandaPDV(numero) {
     bipPDV(false);
     return false;
   }
+  // Trocando de comanda: a anterior manda para a cozinha o que ainda não foi.
+  if (pdvComandaAtual) enviarCozinhaPDV(pdvComandaAtual.numero);
   const resp = await fetch(`/api/comandas/${numero}/abrir`, { method: 'POST' });
   if (!resp.ok) {
     mostrarAlert('alert-pdv', await safeReadErrorMessage(resp, 'Não foi possível abrir a comanda.'), 'error');
@@ -2217,6 +2363,7 @@ async function abrirComandaPDV(numero) {
 function guardarComandaPDV() {
   if (!pdvComandaAtual) return;
   const { numero } = pdvComandaAtual;
+  enviarCozinhaPDV(numero);
   const total = calcularTotalCarrinho();
   pdvComandaAtual = null;
   pdvVendaAtual = null;
@@ -2815,6 +2962,11 @@ function atalhosPDV(event) {
     atalhosTeclasPDV(event);
     return;
   }
+  if (document.getElementById('modal-cozinha')?.classList.contains('open')) {
+    if (event.key === 'Escape') { event.preventDefault(); fecharCozinha(); }
+    else if (/^F\d+$/.test(event.key)) event.preventDefault();
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
@@ -2943,6 +3095,10 @@ window.StockOSPDV = {
       confirmarTransferenciaPDV,
       abrirRetiradaPDV,
       lancarTeclaPDV,
+      abrirCozinha,
+      fecharCozinha,
+      salvarCozinha,
+      testarCozinha,
       abrirTeclasPDV,
       fecharTeclasPDV,
       salvarTeclasPDV,

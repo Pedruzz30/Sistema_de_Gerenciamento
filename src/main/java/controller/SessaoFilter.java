@@ -96,6 +96,11 @@ public class SessaoFilter extends OncePerRequestFilter {
         if (dentroDe(caminho, "/api/pdv/codigos")) {
             return leitura;
         }
+        // Cozinha: ver e reimprimir; configurar só entrando com a senha.
+        if (dentroDe(caminho, "/api/cozinha")) {
+            return leitura && !caminho.equals("/api/cozinha/config")
+                    || ("POST".equalsIgnoreCase(metodo) && caminho.matches("/api/cozinha/pedidos/\\d+/reimprimir"));
+        }
         // Teclas rápidas: mudar pede o login do gerente no pedido.
         if (dentroDe(caminho, "/api/pdv/teclas")) {
             return leitura || "PUT".equalsIgnoreCase(metodo);

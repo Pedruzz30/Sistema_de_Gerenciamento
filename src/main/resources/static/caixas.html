@@ -50,6 +50,7 @@
         <p class="page-sub header-sub" id="header-sub">Gerencie abertura, vendas e encerramento de caixas.</p>
       </div>
       <div class="topbar-right header-right">
+        <button class="btn btn-secondary" type="button" id="btn-cozinha" onclick="abrirCozinha()" hidden>Cozinha <span class="cozinha-alerta" id="cozinha-alerta" hidden></span></button>
         <button class="btn btn-accent btn-primary" onclick="abrirModalAbrirCaixa()">+ Abrir Caixa</button>
       </div>
     </header>
@@ -232,7 +233,7 @@
         <span class="pdv-shell__icon" aria-hidden="true" data-icon="cart"></span>
         <div>
           <div class="pdv-shell__title">Terminal de Vendas</div>
-          <div class="pdv-shell__meta"><span id="pdv-caixa-label">Caixa —</span> <span id="pdv-comanda-label" class="pdv-comanda-selo" hidden></span> · Operando: <strong id="pdv-operador-label">—</strong> · <button type="button" class="pdv-trocar-operador" onclick="abrirTrocaOperadorPDV()">Trocar (F12)</button></div>
+          <div class="pdv-shell__meta"><span id="pdv-caixa-label">Caixa —</span> <span id="pdv-comanda-label" class="pdv-comanda-selo" hidden></span> · Operando: <strong id="pdv-operador-label">—</strong> · <button type="button" class="pdv-trocar-operador" onclick="abrirTrocaOperadorPDV()">Trocar (F12)</button> <span id="pdv-cozinha" hidden>· <button type="button" class="pdv-trocar-operador" onclick="abrirCozinha()">Cozinha</button> <span class="cozinha-alerta" id="pdv-cozinha-alerta" hidden></span></span></div>
         </div>
       </div>
       <button class="pdv-shell__close" type="button" onclick="fecharPDV()" aria-label="Fechar terminal (Esc)">
@@ -421,6 +422,45 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" type="button" onclick="fecharTransferenciaPDV()">Voltar (Esc)</button>
       <button class="btn btn-primary" type="button" id="btn-pdv-confirmar-transferencia" onclick="confirmarTransferenciaPDV()">Transferir (Enter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: cozinha (pedidos impressos e configuração) ── -->
+<div class="modal-overlay" id="modal-cozinha">
+  <div class="modal modal--wide" role="dialog" aria-labelledby="cozinha-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="cozinha-titulo">Cozinha</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharCozinha()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-cozinha" role="status" aria-live="polite"></div>
+      <p class="inline-note" id="cozinha-situacao">Carregando...</p>
+      <div class="cozinha-pedidos" id="cozinha-pedidos"></div>
+      <details class="cozinha-config" id="cozinha-config" hidden>
+        <summary>Configurar a impressora da cozinha</summary>
+        <div class="field form-group">
+          <label for="cozinha-impressora">Impressora</label>
+          <select class="input" id="cozinha-impressora"></select>
+          <p class="inline-note">Térmica de cupom (ESC/POS), instalada no Windows deste notebook. "Nenhuma" desliga o pedido da cozinha.</p>
+        </div>
+        <div class="field form-group">
+          <label for="cozinha-colunas">Papel</label>
+          <select class="input" id="cozinha-colunas"><option value="48">80 mm</option><option value="32">58 mm</option></select>
+        </div>
+        <fieldset class="field form-group">
+          <legend>O que vai para a cozinha</legend>
+          <div class="cozinha-categorias" id="cozinha-categorias"></div>
+          <p class="inline-note">Sem nada marcado, vão os itens cadastrados como preparo na hora. Bebidas não vão.</p>
+        </fieldset>
+        <div class="cozinha-config__botoes">
+          <button class="btn btn-primary" type="button" id="btn-cozinha-salvar" onclick="salvarCozinha()">Salvar</button>
+          <button class="btn btn-secondary" type="button" id="btn-cozinha-teste" onclick="testarCozinha()">Imprimir teste</button>
+        </div>
+      </details>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharCozinha()">Fechar (Esc)</button>
     </div>
   </div>
 </div>
