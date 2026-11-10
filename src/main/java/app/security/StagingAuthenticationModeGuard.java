@@ -9,8 +9,8 @@ import java.util.Arrays;
 
 /**
  * Runs while Boot is preparing configuration, BEFORE the application context,
- * Flyway or HTTP server starts. Staging must never silently inherit the
- * legacy no-authentication fallback from application.properties.
+ * Flyway or HTTP server starts. Staging and production profiles must never
+ * inherit the legacy no-authentication fallback from application.properties.
  */
 public final class StagingAuthenticationModeGuard implements EnvironmentPostProcessor, Ordered {
     @Override
@@ -21,14 +21,19 @@ public final class StagingAuthenticationModeGuard implements EnvironmentPostProc
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment env, SpringApplication application) {
-        boolean staging = Arrays.asList(env.getActiveProfiles()).contains("staging");
-        if (!staging) {
+        // A permissive legacy default is valid only for isolated local development.
+        // Any externally deployed profile must fail closed before Flyway or HTTP.
+        boolean deployed = Arrays.stream(env.getActiveProfiles())
+                .anyMatch(profile -> "staging".equalsIgnoreCase(profile)
+                        || "prod".equalsIgnoreCase(profile)
+                        || "production".equalsIgnoreCase(profile));
+        if (!deployed) {
             return;
         }
         String mode = env.getProperty("stockos.auth.mode", "").trim();
         if (!"supabase".equals(mode)) {
             throw new IllegalStateException(
-                    "Perfil staging requer stockos.auth.mode=supabase; "
+                    "Perfil remoto requer stockos.auth.mode=supabase; "
                     + "autenticacao legada indisponivel antes do startup.");
         }
         String supabaseUrl = env.getProperty("stockos.auth.supabase-url", "").trim();
@@ -56,7 +61,7 @@ public final class StagingAuthenticationModeGuard implements EnvironmentPostProc
                 || "stockos_local".equalsIgnoreCase(runtime)
                 || "stockos_migrator".equalsIgnoreCase(runtime)) {
             throw new IllegalStateException(
-                    "Perfil staging exige usuario JDBC runtime restrito.");
+                    "Perfil remoto exige usuario JDBC runtime restrito.");
         }
         // Separate schema migrations are run once, outside the always-on web
         // service; never carry the migrator's credentials into the API process.
@@ -66,7 +71,7 @@ public final class StagingAuthenticationModeGuard implements EnvironmentPostProc
         }
         if (env.getProperty("spring.flyway.enabled", Boolean.class, true)) {
             throw new IllegalStateException(
-                    "Perfil staging nao permite Flyway embutido na API.");
+                    "Perfil remoto nao permite Flyway embutido na API.");
         }
         for (String secret : new String[]{
                 "SPRING_FLYWAY_USER", "SPRING_FLYWAY_PASSWORD",
