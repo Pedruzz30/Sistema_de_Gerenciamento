@@ -34,6 +34,14 @@ public class ComandaService {
     private final VendaItemRepository itemRepository;
     private final LogRepository logRepository;
     private final Clock clock;
+    private VendaItemService vendaItemService;
+    private repository.VendaItemModificadorRepository modificadorRepository;
+
+    /** Para transferir parte de um item: reduz a linha de origem e cria outra no destino. */
+    public void setTransferencia(VendaItemService vendaItemService, repository.VendaItemModificadorRepository modificadorRepository) {
+        this.vendaItemService = vendaItemService;
+        this.modificadorRepository = modificadorRepository;
+    }
 
     public ComandaService(ComandaRepository comandaRepository,
                           VendaService vendaService,
@@ -106,6 +114,88 @@ public class ComandaService {
         comandaRepository.salvar(comanda);
         logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_CANCELADA",
                 "Comanda " + numero + " excluida vazia."));
+    }
+
+    public record ItemTransferido(long itemId, BigDecimal quantidade) {}
+
+    public record Transferencia(int destino, long vendaDestinoId, int itensMovidos, boolean origemVazia,
+                                Integer comandaOrigemFechada) {}
+
+    /**
+     * Passa itens de uma venda em rascunho (outra comanda ou o balcão) para a comanda de destino,
+     * abrindo-a se preciso. Tudo ou nada. Se a comanda de origem ficar vazia, ela fecha: é o
+     * "juntar comandas".
+     */
+    @Transactional
+    public Transferencia transferir(Usuario usuario, int numeroDestino, long vendaOrigemId, List<ItemTransferido> itens) {
+        if (itens == null || itens.stream().noneMatch(i -> i.quantidade() != null && i.quantidade().signum() > 0)) {
+            throw new ErroNegocioException("TRANSFERENCIA_VAZIA", "Escolha o que transferir.");
+        }
+        Comanda destino = abrirOuRetomar(usuario, numeroDestino);
+        if (destino.getVendaId() == vendaOrigemId) {
+            throw new ErroNegocioException("TRANSFERENCIA_MESMA_COMANDA", "Os itens já estão na comanda " + numeroDestino + ".");
+        }
+        // Trava as duas vendas sempre na mesma ordem, para dois caixas não se travarem.
+        long primeira = Math.min(vendaOrigemId, destino.getVendaId());
+        long segunda = Math.max(vendaOrigemId, destino.getVendaId());
+        Venda a = travarRascunho(primeira);
+        Venda b = travarRascunho(segunda);
+        Venda vendaDestino = a.getId() == destino.getVendaId() ? a : b;
+
+        int movidos = 0;
+        for (ItemTransferido pedido : itens) {
+            if (pedido.quantidade() == null || pedido.quantidade().signum() <= 0) continue;
+            VendaItem item = itemRepository.buscarPorId(pedido.itemId())
+                    .filter(i -> i.getVenda().getId() == vendaOrigemId && i.getStatus() == model.StatusVendaItem.ATIVO)
+                    .orElseThrow(() -> new ErroNegocioException("ITEM_VENDA_NAO_ENCONTRADO", "Item não encontrado nesta conta."));
+            int comparacao = pedido.quantidade().compareTo(item.getQuantidade());
+            if (comparacao > 0) {
+                throw new ErroNegocioException("TRANSFERENCIA_QUANTIDADE", "Só há " + item.getQuantidade().stripTrailingZeros().toPlainString()
+                        + " de " + item.getNomeItemSnapshot() + " para transferir.");
+            }
+            if (comparacao == 0) {
+                item.transferirPara(vendaDestino);
+                itemRepository.salvar(item);
+            } else {
+                boolean temAdicionais = item.isComposicaoMultipla()
+                        || (modificadorRepository != null && !modificadorRepository.listarPorItem(item.getId()).isEmpty());
+                if (temAdicionais || vendaItemService == null) {
+                    throw new ErroNegocioException("TRANSFERENCIA_ITEM_INTEIRO",
+                            item.getNomeItemSnapshot() + " tem adicionais: transfira o item inteiro.");
+                }
+                long variacaoId = item.getVariacaoItemCardapio().getId();
+                vendaItemService.editarItemRascunho(usuario, vendaOrigemId, item.getId(), variacaoId,
+                        item.getQuantidade().subtract(pedido.quantidade()), item.getObservacao(), null, List.of(), null, List.of());
+                vendaItemService.adicionarItem(usuario, vendaDestino.getId(), variacaoId, pedido.quantidade(), item.getObservacao());
+            }
+            movidos++;
+        }
+
+        boolean origemVazia = itemRepository.listarAtivosPorVenda(vendaOrigemId).isEmpty();
+        Integer fechada = null;
+        if (origemVazia) {
+            Optional<Comanda> origem = comandaRepository.buscarPorVendaId(vendaOrigemId).filter(Comanda::isAberta);
+            if (origem.isPresent()) {
+                origem.get().cancelar(LocalDateTime.now(clock));
+                comandaRepository.salvar(origem.get());
+                fechada = origem.get().getNumero();
+            }
+        }
+        logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_TRANSFERENCIA",
+                movidos + " item(ns) da venda " + vendaOrigemId + " para a comanda " + numeroDestino
+                        + (fechada != null ? "; comanda " + fechada + " juntada e fechada." : ".")));
+        return new Transferencia(numeroDestino, vendaDestino.getId(), movidos, origemVazia, fechada);
+    }
+
+    private Venda travarRascunho(long vendaId) {
+        Venda venda = vendaRepository.buscarPorIdComLock(vendaId)
+                .orElseThrow(() -> new ErroNegocioException("VENDA_NAO_ENCONTRADA", "Venda nao encontrada."));
+        try {
+            venda.exigirRascunho();
+        } catch (IllegalStateException e) {
+            throw new ErroNegocioException("VENDA_NAO_ESTA_EM_RASCUNHO", "Só dá para transferir de uma conta ainda não paga.");
+        }
+        return venda;
     }
 
     public Optional<Venda> vendaDa(Comanda comanda) {

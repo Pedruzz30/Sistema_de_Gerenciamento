@@ -43,6 +43,25 @@ public class ComandaController {
         return ResponseEntity.ok(ComandaResponse.from(comanda));
     }
 
+    /** Passa itens de outra comanda (ou do balcão) para esta. Sem itens na origem, ela fecha. */
+    @PostMapping("/{numero}/transferir")
+    public ResponseEntity<ComandaService.Transferencia> transferir(
+            @PathVariable int numero,
+            @org.springframework.web.bind.annotation.RequestBody TransferirRequest request,
+            @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Usuario usuario = operador(ruHeader);
+        if (request == null || request.vendaOrigemId() == null) {
+            throw new IllegalArgumentException("Informe de onde vêm os itens.");
+        }
+        List<ComandaService.ItemTransferido> itens = request.itens() == null ? List.of()
+                : request.itens().stream().map(i -> new ComandaService.ItemTransferido(i.itemId(), i.quantidade())).toList();
+        return ResponseEntity.ok(comandaService.transferir(usuario, numero, request.vendaOrigemId(), itens));
+    }
+
+    public record ItemTransferirRequest(long itemId, java.math.BigDecimal quantidade) {}
+
+    public record TransferirRequest(Long vendaOrigemId, List<ItemTransferirRequest> itens) {}
+
     @DeleteMapping("/{numero}")
     public ResponseEntity<Void> excluirVazia(@PathVariable int numero,
                                              @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {

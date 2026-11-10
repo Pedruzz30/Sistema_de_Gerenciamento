@@ -202,6 +202,49 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void transferirParteDeUmItemEJuntarComandas() throws Exception {
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "1");
+        int origem = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        int destino = origem + 1;
+        json(assertOk(post("/api/produtos/revenda", revenda("Transferir " + sufixo, eanLata, ""), gerente)));
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+
+        long vendaOrigem = json(assertOk(post("/api/comandas/" + origem + "/abrir", Map.of(), caixa))).path("vendaId").asLong();
+        long item = json(assertOk(post("/api/vendas/" + vendaOrigem + "/itens", Map.of("variacaoId", gelada, "quantidade", "3"), caixa))).path("id").asLong();
+
+        // Uma das 3 latas foi para a mesa do lado.
+        JsonNode parte = json(assertOk(post("/api/comandas/" + destino + "/transferir", Map.of(
+                "vendaOrigemId", vendaOrigem, "itens", List.of(Map.of("itemId", item, "quantidade", "1"))), caixa)));
+        assertEquals(1, parte.path("itensMovidos").asInt());
+        assertFalse(parte.path("origemVazia").asBoolean());
+        assertBig("10", totalComanda(origem));
+        assertBig("5", totalComanda(destino));
+
+        assertTrue(post("/api/comandas/" + destino + "/transferir", Map.of(
+                "vendaOrigemId", vendaOrigem, "itens", List.of(Map.of("itemId", item, "quantidade", "5"))), caixa)
+                .getStatusCode().is4xxClientError(), "Mais do que tem é recusado");
+        assertTrue(post("/api/comandas/" + origem + "/transferir", Map.of(
+                "vendaOrigemId", vendaOrigem, "itens", List.of(Map.of("itemId", item, "quantidade", "1"))), caixa)
+                .getStatusCode().is4xxClientError(), "Para a própria comanda é recusado");
+
+        // Juntar: o resto vai inteiro e a comanda de origem fecha.
+        JsonNode juntar = json(assertOk(post("/api/comandas/" + destino + "/transferir", Map.of(
+                "vendaOrigemId", vendaOrigem, "itens", List.of(Map.of("itemId", item, "quantidade", "2"))), caixa)));
+        assertTrue(juntar.path("origemVazia").asBoolean());
+        assertEquals(origem, juntar.path("comandaOrigemFechada").asInt());
+        assertBig("15", totalComanda(destino));
+        assertEquals(null, totalComanda(origem), "A comanda juntada sai da lista");
+    }
+
+    private BigDecimal totalComanda(int numero) throws Exception {
+        for (JsonNode c : json(assertOk(get("/api/comandas", caixa)))) {
+            if (c.path("numero").asInt() == numero) return c.path("total").decimalValue();
+        }
+        return null;
+    }
+
+    @Test
     void comandaGuardaOsItensEFechaQuandoPaga() throws Exception {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "1");

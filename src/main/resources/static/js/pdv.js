@@ -1521,6 +1521,111 @@ function fecharPDV() {
 
 let pdvOperadorTrocado = false;
 
+// ── Transferir itens para uma comanda (F6) ───────────────────────────────
+// Mesa errada, cliente que mudou de mesa ou duas comandas que viram uma.
+
+function abrirTransferenciaPDV() {
+  if (!pdvVendaAtual || pdvCarrinho.length === 0) {
+    mostrarAlert('alert-pdv', 'Não há itens para transferir.', 'info');
+    return;
+  }
+  if (!document.getElementById('pdv-pagamento').hidden) {
+    mostrarAlert('alert-pdv', 'Volte do pagamento (Esc) antes de transferir.', 'error');
+    return;
+  }
+  limparAlert('alert-pdv-transferir');
+  document.getElementById('pdv-transferir-titulo').textContent = pdvComandaAtual
+    ? `Transferir itens da comanda ${pdvComandaAtual.numero}` : 'Lançar estes itens numa comanda';
+  document.getElementById('pdv-transferir-destino').value = '';
+  document.getElementById('pdv-transferir-lista').innerHTML = pdvCarrinho.map(item => `
+    <label class="pdv-dividir-linha">
+      <span>${escapeHtml(item.item)}${item.variacao ? ' ' + escapeHtml(item.variacao) : ''}<br><small>${formatarMoedaPDV(item.subtotal)}</small></span>
+      <small>de ${String(Number(item.quantidade)).replace('.', ',')}</small>
+      <input class="input" type="text" inputmode="decimal" data-transferir-item="${item.id}" data-maximo="${Number(item.quantidade)}" value="${Number(item.quantidade)}">
+    </label>`).join('');
+  abrirModal('modal-pdv-transferir');
+  document.getElementById('pdv-transferir-destino').focus();
+}
+
+function marcarTransferenciaPDV(tudo) {
+  document.querySelectorAll('[data-transferir-item]').forEach(campo => { campo.value = tudo ? campo.dataset.maximo : '0'; });
+}
+
+function fecharTransferenciaPDV() {
+  fecharModal('modal-pdv-transferir');
+  focarLeituraPDV();
+}
+
+async function confirmarTransferenciaPDV() {
+  limparAlert('alert-pdv-transferir');
+  const texto = document.getElementById('pdv-transferir-destino').value.trim();
+  const destino = /^\d{1,4}$/.test(texto) ? Number(texto) : numeroComandaPDV(texto);
+  if (!destino) {
+    mostrarAlert('alert-pdv-transferir', 'Digite o número da comanda de destino, de 1 a 9999.', 'error');
+    document.getElementById('pdv-transferir-destino').focus();
+    return;
+  }
+  if (pdvComandaAtual && pdvComandaAtual.numero === destino) {
+    mostrarAlert('alert-pdv-transferir', `Os itens já estão na comanda ${destino}.`, 'error');
+    return;
+  }
+  const itens = [];
+  let erro = null;
+  document.querySelectorAll('[data-transferir-item]').forEach(campo => {
+    const qtd = Number(campo.value.trim().replace(',', '.') || '0');
+    if (!Number.isFinite(qtd) || qtd < 0 || qtd > Number(campo.dataset.maximo)) erro = 'Quantidade inválida em um dos itens.';
+    else if (qtd > 0) itens.push({ itemId: Number(campo.dataset.transferirItem), quantidade: qtd });
+  });
+  if (erro || itens.length === 0) {
+    mostrarAlert('alert-pdv-transferir', erro || 'Escolha pelo menos um item.', 'error');
+    return;
+  }
+  const botao = document.getElementById('btn-pdv-confirmar-transferencia');
+  setLoading(botao, true);
+  try {
+    const origem = pdvComandaAtual;
+    const resp = await fetch(`/api/comandas/${destino}/transferir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vendaOrigemId: pdvVendaAtual.id, itens })
+    });
+    if (!resp.ok) {
+      mostrarAlert('alert-pdv-transferir', await safeReadErrorMessage(resp, 'Não foi possível transferir.'), 'error');
+      return;
+    }
+    const resultado = await resp.json();
+    fecharModal('modal-pdv-transferir');
+    if (resultado.origemVazia) {
+      pdvComandaAtual = null;
+      pdvVendaAtual = null;
+      pdvCarrinho = [];
+      pdvDraftPayloadPorItemVenda = {};
+      atualizarComandaPDV();
+      renderCarrinho();
+    } else {
+      await recarregarVendaAtualPDV();
+      pdvCarrinho = itensAtivosVendaPDV();
+      renderCarrinho();
+    }
+    const quantos = `${resultado.itensMovidos} ${resultado.itensMovidos === 1 ? 'item transferido' : 'itens transferidos'} para a comanda ${destino}`;
+    mostrarAlert('alert-pdv', resultado.comandaOrigemFechada
+      ? `Comanda ${resultado.comandaOrigemFechada} juntada na ${destino}: ${quantos}. A ${resultado.comandaOrigemFechada} foi fechada.`
+      : `${quantos}.${resultado.origemVazia && !origem ? ' O caixa voltou ao balcão.' : ''}`, 'success');
+  } finally {
+    setLoading(botao, false);
+    focarLeituraPDV();
+  }
+}
+
+function atalhosTransferenciaPDV(event) {
+  if (event.key === 'Escape') { event.preventDefault(); fecharTransferenciaPDV(); return; }
+  if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
+  if (event.key === 'Enter' && event.target && event.target.tagName === 'INPUT') {
+    event.preventDefault();
+    confirmarTransferenciaPDV();
+  }
+}
+
 // ── Dividir a conta entre pessoas ────────────────────────────────────────
 // Continua sendo uma venda só: cada pessoa vira um pagamento, com a forma e o troco dela.
 
@@ -2446,11 +2551,16 @@ function atalhosPDV(event) {
     atalhosDivisaoPDV(event);
     return;
   }
+  if (document.getElementById('modal-pdv-transferir')?.classList.contains('open')) {
+    atalhosTransferenciaPDV(event);
+    return;
+  }
   if (document.getElementById('modal-pdv-configuracao')?.classList.contains('open')) return;
   const pagamentoAberto = !document.getElementById('pdv-pagamento')?.hidden;
 
   if (event.key === 'F9') { event.preventDefault(); if (pagamentoAberto) abrirDivisaoPDV(); else abrirVendasPDV(); return; }
   if (event.key === 'F7' && !pagamentoAberto) { event.preventDefault(); abrirComandasPDV(); return; }
+  if (event.key === 'F6' && !pagamentoAberto) { event.preventDefault(); abrirTransferenciaPDV(); return; }
   if (event.key === 'F8' && !pagamentoAberto) { event.preventDefault(); imprimirConferenciaOuUltimoCupomPDV(); return; }
 
   if (/^F[5-8]$/.test(event.key)) event.preventDefault();
@@ -2562,6 +2672,10 @@ window.StockOSPDV = {
       focarLeituraPDV,
       abrirTrocaOperadorPDV,
       abrirVendasPDV,
+      abrirTransferenciaPDV,
+      marcarTransferenciaPDV,
+      fecharTransferenciaPDV,
+      confirmarTransferenciaPDV,
       abrirDivisaoPDV,
       escolherAbaDivisaoPDV,
       previaDivisaoIgualPDV,

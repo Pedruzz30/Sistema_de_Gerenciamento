@@ -70,8 +70,12 @@ public class AppConfig {
                                          VendaRepository vendaRepository,
                                          VendaItemRepository vendaItemRepository,
                                          LogRepository logRepository,
-                                         Clock appClock) {
-        return new ComandaService(comandaRepository, vendaService, vendaRepository, vendaItemRepository, logRepository, appClock);
+                                         Clock appClock,
+                                         VendaItemService vendaItemService,
+                                         VendaItemModificadorRepository vendaItemModificadorRepository) {
+        ComandaService servico = new ComandaService(comandaRepository, vendaService, vendaRepository, vendaItemRepository, logRepository, appClock);
+        servico.setTransferencia(vendaItemService, vendaItemModificadorRepository);
+        return servico;
     }
 
     @Bean

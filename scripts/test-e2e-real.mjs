@@ -1035,6 +1035,49 @@ try {
     assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 84);
   });
 
+  await passo(dono, 'Transferir parte do balcao e juntar comandas', async () => {
+    // Bipou no balcão, mas o cliente vai consumir: 1 das 2 latas vai para a comanda 9.
+    await dono.focus('#pdv-leitura');
+    await bipar(dono, `2*${EAN_LATA}`);
+    await esperarTexto(dono, '#pdv-total', 'R$ 9,00');
+    await dono.keyboard.press('F6');
+    await dono.waitForSelector('#modal-pdv-transferir.open');
+    await dono.waitForFunction(() => document.activeElement.id === 'pdv-transferir-destino');
+    await dono.keyboard.type('9');
+    await dono.locator('#pdv-transferir-lista input').first().fill('1');
+    await dono.click('#btn-pdv-confirmar-transferencia');
+    await esperarTexto(dono, '#alert-pdv', '1 item transferido para a comanda 9');
+    await esperarTexto(dono, '#pdv-total', 'R$ 4,50');
+
+    // O resto também.
+    await dono.keyboard.press('F6');
+    await dono.waitForSelector('#modal-pdv-transferir.open');
+    await dono.keyboard.type('9');
+    await dono.keyboard.press('Enter');
+    await esperarTexto(dono, '#alert-pdv', 'O caixa voltou ao balcão');
+    await esperarTexto(dono, '#pdv-total', 'R$ 0,00');
+
+    // A comanda 10 é juntada na 9 e fecha.
+    await dono.focus('#pdv-leitura');
+    await bipar(dono, 'c10');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 10');
+    await bipar(dono, EAN_LATA);
+    await esperarTexto(dono, '#pdv-total', 'R$ 4,50');
+    await dono.click('#btn-pdv-transferir');
+    await dono.waitForSelector('#modal-pdv-transferir.open');
+    await esperarTexto(dono, '#pdv-transferir-titulo', 'comanda 10');
+    await dono.keyboard.type('9');
+    await dono.keyboard.press('Enter');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 10 juntada na 9');
+    assert.equal(await dono.locator('#pdv-comanda-label').isVisible(), false);
+
+    const { corpo } = await api(dono, '/api/comandas');
+    assert.equal(corpo.find(c => c.numero === 9).total, 13.5, 'A comanda 9 ficou com as 3 latas');
+    assert.equal(corpo.some(c => c.numero === 10), false, 'A comanda juntada fecha');
+    const produtos = await api(dono, '/api/produtos');
+    assert.equal(produtos.corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 84, 'Transferir não mexe no estoque');
+  });
+
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {
     await dono.goto(`${BASE}/dashboard.html`);
     await dono.click('#btn-relatorio-dia');

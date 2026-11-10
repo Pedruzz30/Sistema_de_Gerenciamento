@@ -243,7 +243,7 @@
                  onkeydown="lerCodigoPDV(event)">
           <div class="pdv-scan__hint">
             <span id="pdv-indicador-alternativo">Próximo item: variação padrão (ex.: Gelada) · F4 troca</span>
-            <span>F2 buscar · F3 desconto · F7 comandas · F8 cupom · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
+            <span>F2 buscar · F3 desconto · F6 transferir · F7 comandas · F8 cupom · F9 vendas · F10 pagamento · F12 operador · Esc sair</span>
           </div>
         </div>
         <div class="pdv-catalog-toolbar">
@@ -272,6 +272,7 @@
           <label class="pdv-cupom-auto" title="Imprime o cupom ao finalizar. F8 imprime de novo o último.">
             <input type="checkbox" id="pdv-cupom-auto" onchange="alternarCupomAutomaticoPDV()"> Cupom automático
           </label>
+          <button type="button" class="pdv-clear-btn" id="btn-pdv-transferir" onclick="abrirTransferenciaPDV()" title="Passa itens para uma comanda (F6)">Transferir</button>
           <button type="button" class="pdv-clear-btn" onclick="limparCarrinho()">Limpar</button>
         </div>
 
@@ -387,6 +388,32 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" type="button" onclick="fecharTrocaOperadorPDV()">Cancelar (Esc)</button>
       <button class="btn btn-primary" type="button" id="btn-pdv-operador" onclick="confirmarTrocaOperadorPDV()">Trocar (Enter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: transferir itens para uma comanda (F6 no PDV) ── -->
+<div class="modal-overlay" id="modal-pdv-transferir">
+  <div class="modal" role="dialog" aria-labelledby="pdv-transferir-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="pdv-transferir-titulo">Transferir itens</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharTransferenciaPDV()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-pdv-transferir" role="status" aria-live="polite"></div>
+      <div class="pdv-novo-campos">
+        <label>Para a comanda número <input class="input" type="text" inputmode="numeric" id="pdv-transferir-destino" autocomplete="off" placeholder="Ex.: 12"></label>
+        <p class="inline-note">Quanto de cada item vai. Mandando tudo, esta comanda é juntada na outra e fecha.</p>
+        <div id="pdv-transferir-lista" class="pdv-dividir-lista"></div>
+        <div class="pdv-pag-links">
+          <button type="button" class="pdv-pag-link" onclick="marcarTransferenciaPDV(true)">Tudo</button>
+          <button type="button" class="pdv-pag-link" onclick="marcarTransferenciaPDV(false)">Nada</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharTransferenciaPDV()">Voltar (Esc)</button>
+      <button class="btn btn-primary" type="button" id="btn-pdv-confirmar-transferencia" onclick="confirmarTransferenciaPDV()">Transferir (Enter)</button>
     </div>
   </div>
 </div>
