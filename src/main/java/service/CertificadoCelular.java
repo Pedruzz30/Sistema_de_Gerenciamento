@@ -151,6 +151,55 @@ public class CertificadoCelular {
         }
     }
 
+    /**
+     * Perfil de configuração do iPhone com o certificado da loja: aparece no iPhone com o nome
+     * da loja. Os identificadores saem do próprio certificado, então baixar de novo não duplica.
+     */
+    public static String perfilApple(byte[] certificadoDer) {
+        String base64 = java.util.Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII)).encodeToString(certificadoDer);
+        String uuidCertificado = java.util.UUID.nameUUIDFromBytes(concat("cert:", certificadoDer)).toString().toUpperCase(Locale.ROOT);
+        String uuidPerfil = java.util.UUID.nameUUIDFromBytes(concat("perfil:", certificadoDer)).toString().toUpperCase(Locale.ROOT);
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+                <plist version="1.0">
+                <dict>
+                  <key>PayloadContent</key>
+                  <array>
+                    <dict>
+                      <key>PayloadCertificateFileName</key><string>stockos-loja.cer</string>
+                      <key>PayloadContent</key>
+                      <data>
+                %s
+                      </data>
+                      <key>PayloadDescription</key><string>Certificado da loja para a conexão segura do celular do atendente.</string>
+                      <key>PayloadDisplayName</key><string>StockOS - certificado da loja</string>
+                      <key>PayloadIdentifier</key><string>br.stockos.loja.certificado.%s</string>
+                      <key>PayloadType</key><string>com.apple.security.root</string>
+                      <key>PayloadUUID</key><string>%s</string>
+                      <key>PayloadVersion</key><integer>1</integer>
+                    </dict>
+                  </array>
+                  <key>PayloadDescription</key><string>Instala o certificado da loja para abrir as comandas do StockOS com conexão segura.</string>
+                  <key>PayloadDisplayName</key><string>StockOS - celular do atendente</string>
+                  <key>PayloadIdentifier</key><string>br.stockos.loja.%s</string>
+                  <key>PayloadRemovalDisallowed</key><false/>
+                  <key>PayloadType</key><string>Configuration</string>
+                  <key>PayloadUUID</key><string>%s</string>
+                  <key>PayloadVersion</key><integer>1</integer>
+                </dict>
+                </plist>
+                """.formatted(base64, uuidCertificado, uuidCertificado, uuidPerfil, uuidPerfil);
+    }
+
+    private static byte[] concat(String prefixo, byte[] dados) {
+        byte[] inicio = prefixo.getBytes(StandardCharsets.US_ASCII);
+        byte[] tudo = new byte[inicio.length + dados.length];
+        System.arraycopy(inicio, 0, tudo, 0, inicio.length);
+        System.arraycopy(dados, 0, tudo, inicio.length, dados.length);
+        return tudo;
+    }
+
     /** Os nomes que o certificado aceita: os endereços da rede, o próprio notebook e o nome dele. */
     static String san(List<String> ips, String nomeComputador) {
         Set<String> partes = new LinkedHashSet<>();

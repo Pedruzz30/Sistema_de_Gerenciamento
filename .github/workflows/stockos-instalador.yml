@@ -46,7 +46,7 @@ jobs:
         shell: pwsh
         run: |
           npm install --no-save --no-audit --no-fund playwright@1 @zxing/library@0.21.3 pngjs@7.0.0
-          npx playwright install chromium
+          npx playwright install chromium webkit
 
       - name: Test installation and disasters
         shell: pwsh

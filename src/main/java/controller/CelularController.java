@@ -38,6 +38,19 @@ public class CelularController {
                 .body(new FileSystemResource(certificado.getArquivoCa()));
     }
 
+    /** O mesmo certificado, como perfil do iPhone (instala pelo Safari, com o nome da loja). */
+    @GetMapping("/certificado.mobileconfig")
+    public ResponseEntity<byte[]> perfilIphone() throws java.io.IOException {
+        if (!certificado.ativo() || !Files.exists(certificado.getArquivoCa())) {
+            return ResponseEntity.notFound().build();
+        }
+        String perfil = CertificadoCelular.perfilApple(Files.readAllBytes(certificado.getArquivoCa()));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/x-apple-aspen-config"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"stockos-loja.mobileconfig\"")
+                .body(perfil.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     @GetMapping("/api/sistema/celular")
     public ResponseEntity<SituacaoResponse> situacao(@RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         ControllerUtils.resolveUserAndRequireAnyPermission(ruHeader, usuarioRepository,

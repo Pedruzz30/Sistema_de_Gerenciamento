@@ -40,6 +40,10 @@ h2 { font-size: 15px; margin: 18px 0 8px; color: var(--suave); text-transform: u
 .pin { display: grid; gap: 10px; margin-top: 16px; }
 .ajuda { margin-top: 24px; padding: 12px; border: 1px dashed var(--linha); border-radius: 10px; font-size: 14px; color: var(--suave); }
 .ajuda summary { font-weight: 600; color: var(--texto); cursor: pointer; }
+.ajuda__bloco { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--linha); }
+.ajuda ol { padding-left: 20px; margin: 8px 0; }
+.ajuda li { margin-bottom: 6px; }
+.ajuda__alerta { padding: 8px 10px; border-radius: 8px; background: #fee2e2; color: var(--erro); }
 
 .abrir { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .comandas { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }

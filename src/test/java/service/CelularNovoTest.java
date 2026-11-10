@@ -61,6 +61,19 @@ class CelularNovoTest {
         folha.verify(ca.getPublicKey());
         assertTrue(folha.getExtendedKeyUsage().contains("1.3.6.1.5.5.7.3.1"), "Uso para servidor");
         assertTrue(folha.getSubjectAlternativeNames().stream().anyMatch(n -> "127.0.0.1".equals(n.get(1))));
+        // Regras da Apple para o iPhone aceitar: SHA-256 ou mais, RSA de 2048, até 825 dias.
+        assertTrue(folha.getSigAlgName().matches("SHA(256|384|512)withRSA"), folha.getSigAlgName());
+        assertTrue(((java.security.interfaces.RSAPublicKey) folha.getPublicKey()).getModulus().bitLength() >= 2048);
+        long dias = java.time.Duration.between(folha.getNotBefore().toInstant(), folha.getNotAfter().toInstant()).toDays();
+        assertTrue(dias <= 825, dias + " dias");
+
+        String perfil = CertificadoCelular.perfilApple(Files.readAllBytes(certificado.getArquivoCa()));
+        assertTrue(perfil.contains("<string>com.apple.security.root</string>"));
+        assertTrue(perfil.contains(java.util.Base64.getEncoder().encodeToString(ca.getEncoded()).substring(0, 60)));
+        assertEquals(perfil, CertificadoCelular.perfilApple(Files.readAllBytes(certificado.getArquivoCa())), "Baixar de novo não duplica o perfil");
+        javax.xml.parsers.DocumentBuilderFactory fabrica = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+        fabrica.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        fabrica.newDocumentBuilder().parse(new java.io.ByteArrayInputStream(perfil.getBytes(StandardCharsets.UTF_8)));
 
         // Reiniciar sem mudar de rede não troca o certificado.
         FileTime antes = Files.getLastModifiedTime(certificado.getKeystoreServidor());

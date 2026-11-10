@@ -12,6 +12,7 @@ class PortaCelularNovoTest {
     void celularAlcancaSoATelaDeComanda() {
         assertTrue(PortaCelularFilter.permitidoNoCelular("/celular.html", "GET"));
         assertTrue(PortaCelularFilter.permitidoNoCelular("/certificado", "GET"));
+        assertTrue(PortaCelularFilter.permitidoNoCelular("/certificado.mobileconfig", "GET"));
         assertTrue(PortaCelularFilter.permitidoNoCelular("/api/auth/celular/entrar", "POST"));
         assertTrue(PortaCelularFilter.permitidoNoCelular("/api/comandas", "GET"));
         assertTrue(PortaCelularFilter.permitidoNoCelular("/api/comandas/12", "GET"));

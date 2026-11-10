@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#c2410c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Comandas">
+  <meta name="format-detection" content="telephone=no">
   <title>StockOS · Comandas</title>
   <link rel="stylesheet" href="/css/celular.css">
 </head>
@@ -26,11 +29,28 @@
   </form>
   <details class="ajuda" id="ajuda-certificado">
     <summary>Primeira vez neste celular?</summary>
-    <p>Para o cadeado de conexão segura e a câmera, instale uma vez o certificado da loja:</p>
-    <p><a class="botao" href="/certificado" download>Baixar o certificado da loja</a></p>
-    <p><strong>Android:</strong> Configurações → Segurança → Mais configurações de segurança → Criptografia e credenciais → Instalar um certificado → Certificado de CA → escolha <em>stockos-loja.crt</em> em Downloads.</p>
-    <p><strong>iPhone:</strong> abra o arquivo baixado e instale o perfil em Ajustes → Geral → VPN e Gerenciamento de Dispositivo. Depois ligue a confiança em Ajustes → Geral → Sobre → Ajustes de Confiança de Certificado.</p>
-    <p>Pronto: feche e abra de novo o endereço da loja.</p>
+    <p>Para o cadeado de conexão segura e a câmera, instale uma vez o certificado da loja.</p>
+    <div class="ajuda__bloco" id="ajuda-android">
+      <p><strong>Android</strong></p>
+      <p><a class="botao" href="/certificado" download>Baixar o certificado da loja</a></p>
+      <ol>
+        <li>Configurações → Segurança (ou Segurança e privacidade) → Mais configurações de segurança → Criptografia e credenciais.</li>
+        <li>Instalar um certificado → <strong>Certificado de CA</strong> → Instalar mesmo assim.</li>
+        <li>Escolha <em>stockos-loja.crt</em> em Downloads.</li>
+      </ol>
+    </div>
+    <div class="ajuda__bloco" id="ajuda-iphone">
+      <p><strong>iPhone</strong></p>
+      <p class="ajuda__alerta" id="aviso-safari" hidden>No iPhone, o certificado só se instala pelo <strong>Safari</strong>. Copie este endereço e abra no Safari.</p>
+      <p><a class="botao" href="/certificado.mobileconfig" id="link-perfil-iphone">Baixar o perfil da loja</a></p>
+      <ol>
+        <li>Toque em <strong>Permitir</strong> quando o iPhone perguntar sobre o perfil.</li>
+        <li>Ajustes → Geral → <strong>VPN e Gerenciamento de Dispositivo</strong> → "StockOS - celular do atendente" → Instalar (pede o código do iPhone).</li>
+        <li>Ajustes → Geral → Sobre → <strong>Ajustes de Confiança de Certificado</strong> → ligue "StockOS certificado da loja".</li>
+        <li>Para usar como aplicativo: no Safari, Compartilhar → <strong>Adicionar à Tela de Início</strong>.</li>
+      </ol>
+    </div>
+    <p>Pronto: feche e abra de novo o endereço da loja. O aviso de conexão some e a câmera passa a ler o cartão.</p>
   </details>
 </main>
 

@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isIP } from 'node:net';
 import { join } from 'node:path';
 import tls from 'node:tls';
-import { chromium, devices } from 'playwright';
+import { chromium, devices, webkit } from 'playwright';
 
 const BASE = process.env.E2E_URL || 'http://localhost:8080';
 // Porta do celular do atendente (https). Sem ela, os passos do celular ficam de fora.
@@ -1301,6 +1301,70 @@ try {
       assert.ok(entradas.some(l => l.includes('Ana Caixa')), 'PIN errado no celular fica registrado');
     });
     await contextoCelular.close();
+
+    // iPhone: o motor do Safari (WebKit), com a tela e o jeito de tocar de um iPhone 13.
+    const safari = await webkit.launch();
+    try {
+      const iphone = devices['iPhone 13'];
+      const contextoIphone = await safari.newContext({ ...iphone, ignoreHTTPSErrors: true, locale: 'pt-BR' });
+      const ip = await contextoIphone.newPage();
+      ip.setDefaultTimeout(15000);
+      ip.on('pageerror', erro => errosDePagina.push(`iphone ${ip.url()}: ${erro.message}`));
+
+      await passo(ip, 'iPhone: guia proprio e perfil do certificado', async () => {
+        await ip.goto(`${CELULAR}/`);
+        await ip.waitForURL('**/celular.html');
+        await ip.click('#ajuda-certificado summary');
+        assert.equal(await ip.locator('#ajuda-iphone').isVisible(), true, 'Mostra o passo a passo do iPhone');
+        assert.equal(await ip.locator('#ajuda-android').isVisible(), false, 'Esconde o do Android');
+        assert.equal(await ip.locator('#aviso-safari').isVisible(), false, 'No Safari não pede para trocar de navegador');
+        const perfil = await ip.request.get(`${CELULAR}/certificado.mobileconfig`);
+        assert.equal(perfil.status(), 200);
+        assert.match(perfil.headers()['content-type'], /apple-aspen-config/);
+        assert.ok((await perfil.text()).includes('com.apple.security.root'));
+        await naTela(ip, '#ajuda-iphone');
+      });
+
+      await passo(ip, 'iPhone: atendente lanca na comanda pelo Safari', async () => {
+        await ip.click('#ajuda-certificado summary');
+        await ip.locator('.operador', { hasText: 'Ana Caixa' }).tap();
+        await ip.fill('#pin', PIN_ANA);
+        await ip.locator('#btn-entrar').tap();
+        await ip.waitForSelector('#tela-comandas:not([hidden])');
+        await ip.fill('#numero-comanda', '12');
+        await ip.locator('#btn-abrir-comanda').tap();
+        await esperarTexto(ip, '#comanda-titulo', 'Comanda 12');
+        await ip.fill('#busca', 'skol');
+        await ip.locator('#resultados .produto', { hasText: 'Gelada' }).first().tap();
+        await esperarTexto(ip, '#btn-lancar', 'Lançar 1 item · R$ 4,50');
+        await ip.locator('#btn-lancar').tap();
+        await esperarTexto(ip, '#aviso', '1 item lançado na comanda 12');
+        await esperarTexto(ip, '#comanda-total', 'R$ 4,50');
+        await naTela(ip, '#comanda-total');
+        await ip.locator('#btn-sair').tap();
+        await ip.waitForSelector('#tela-entrar:not([hidden])');
+      });
+      await contextoIphone.close();
+
+      // Chrome do iPhone não instala perfil: a tela manda abrir no Safari.
+      const contextoChromeIphone = await safari.newContext({
+        ...iphone, userAgent: iphone.userAgent.replace('Version/', 'CriOS/120.0.6099.119 Version/'), ignoreHTTPSErrors: true, locale: 'pt-BR' });
+      const chromeIphone = await contextoChromeIphone.newPage();
+      await passo(chromeIphone, 'iPhone: no Chrome pede para abrir no Safari', async () => {
+        await chromeIphone.goto(`${CELULAR}/celular.html`);
+        await chromeIphone.click('#ajuda-certificado summary');
+        assert.equal(await chromeIphone.locator('#aviso-safari').isVisible(), true);
+        assert.equal(await chromeIphone.locator('#link-perfil-iphone').isVisible(), false);
+      });
+      await contextoChromeIphone.close();
+    } finally {
+      await safari.close();
+    }
+
+    await passo(dono, 'iPhone: o caixa ve o que foi lancado', async () => {
+      const { corpo } = await api(dono, '/api/comandas');
+      assert.equal(corpo.find(c => c.numero === 12).total, 4.5);
+    });
   }
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {

@@ -73,7 +73,7 @@ jobs:
       - name: Install browser
         run: |
           npm install --no-save --no-audit --no-fund playwright@1 @zxing/library@0.21.3 pngjs@7.0.0
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
 
       - name: Check printed barcodes with a real reader
         run: node scripts/test-codigo-barras.mjs

@@ -306,8 +306,23 @@ function fecharCamera() {
   $('camera').hidden = true;
 }
 
+// ── Guia do certificado: mostra o do aparelho que está abrindo ───────────
+
+function prepararGuia() {
+  const ua = navigator.userAgent || '';
+  const iphone = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(ua);
+  // Chrome, Firefox e Edge do iPhone não instalam perfil: só o Safari.
+  const foraDoSafari = iphone && /CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
+  $('ajuda-iphone').hidden = android;
+  $('ajuda-android').hidden = iphone;
+  $('aviso-safari').hidden = !foraDoSafari;
+  $('link-perfil-iphone').hidden = foraDoSafari;
+}
+
 // ── Ligações ────────────────────────────────────────────────────────────
 
+prepararGuia();
 $('operadores').addEventListener('click', event => {
   const botao = event.target.closest('.operador');
   if (botao) escolherOperador(botao);

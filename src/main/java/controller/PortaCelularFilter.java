@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public class PortaCelularFilter extends OncePerRequestFilter {
 
     private static final Set<String> LEITURA = Set.of(
-            "/celular.html", "/css/celular.css", "/js/celular.js", "/vendor/zxing-0.21.3.min.js", "/certificado",
+            "/celular.html", "/css/celular.css", "/js/celular.js", "/vendor/zxing-0.21.3.min.js", "/certificado", "/certificado.mobileconfig",
             "/api/auth/celular/operadores", "/api/auth/celular/sessao",
             "/api/comandas", "/api/pdv/teclas", "/api/pdv/teclas/opcoes");
     private static final Set<String> ESCRITA = Set.of("/api/auth/celular/entrar", "/api/auth/logout");
