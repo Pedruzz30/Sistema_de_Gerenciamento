@@ -52,4 +52,11 @@ public class InMemoryMovimentoEstoqueRepository implements MovimentoEstoqueRepos
                         .thenComparing(Comparator.comparingLong(MovimentoEstoque::getId).reversed()))
                 .toList();
     }
+
+    @Override
+    public synchronized List<MovimentoEstoque> listarPorProduto(int produtoId) {
+        return listarTodos().stream()
+                .filter(movimento -> movimento.getProduto().getId() == produtoId)
+                .toList();
+    }
 }
