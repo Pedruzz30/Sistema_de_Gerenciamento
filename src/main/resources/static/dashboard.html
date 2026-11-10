@@ -62,6 +62,17 @@
 
         <!-- Cards de resumo (sempre visíveis acima das abas) -->
         <div class="summary-grid" id="summary-grid"></div>
+        <section class="operations-panel fade-up" id="daily-actions" aria-labelledby="daily-actions-title" hidden>
+          <div class="operations-heading">
+            <div>
+              <p class="operations-kicker">Seu turno</p>
+              <h2 id="daily-actions-title">Próximas ações</h2>
+              <p class="operations-description">Resolva pendências com acesso direto à tarefa.</p>
+            </div>
+            <span id="daily-actions-count" class="operations-count" aria-live="polite"></span>
+          </div>
+          <div class="operations-list" id="daily-actions-list"></div>
+        </section>
 
         <!-- Abas -->
         <div class="tabs fade-up dashboard-tabs">
