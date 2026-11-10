@@ -406,7 +406,7 @@ TROCO: R$ 26,16        (fonte enorme, cor de destaque)
 
 ## 10. Roteiro sugerido (em fases)
 
-Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem marca: não começou.
+Situação conferida no código em 10/11/2026. ✅ feito; 🔶 em parte; sem marca: não começou.
 
 **Fase 0 – Pré-requisitos do estoque (seção 11)**
 0a. ✅ (seção 12) **Um único saldo de estoque** (o decimal): cadastro, entrada manual, notas e tela de Estoque passam a usar `estoque_produtos`, com migração que copia os saldos atuais.
@@ -420,8 +420,8 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
 5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). Desconto no total pelo F3, com o gerente (seção 20).
 6. ✅ Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
-7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. Resumo por operador e impressão do fechamento (seção 22). Cupom de 80 mm (seção 25).
-8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
+7. ✅ Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso (seção 22).
+8. ✅ Cupom não fiscal impresso (80 mm), conferência da comanda e abertura da gaveta pelo driver da impressora (seção 25).
 9. ✅ Desligar a venda avulsa sem itens no PDV (só gerente).
 10. ✅ (seção 15) Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
 11. ✅ (seção 17) Instalação local no notebook, sem Docker, + backup automático. **Falta:** conferir no notebook real.
@@ -438,7 +438,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
 19. Delivery pelo WhatsApp (se existir).
 
-**Pedido fora das fases:** ✅ redefinir senha esquecida, pelo gerente ou, para o dono, no notebook (seção 19).
+**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta e transferência (seções 24, 26 e 29).
 
 **Fora do escopo (confirmado):** fiado e casco retornável. Comandas entraram em 10/11/2026 (seção 24).
 
