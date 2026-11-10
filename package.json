@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs && npm run test:comandas-demo",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs && npm run test:comandas-demo && npm run test:operational-dashboard",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
@@ -14,6 +14,7 @@
     "test:performance": "node scripts/test-preview-performance.mjs",
     "test:spa": "node scripts/test-spa-preview.mjs",
     "test:atomic-pdv": "node scripts/test-atomic-pdv-preview.mjs",
-    "test:comandas-demo": "node scripts/test-comandas-demo.mjs"
+    "test:comandas-demo": "node scripts/test-comandas-demo.mjs",
+    "test:operational-dashboard": "node scripts/test-operational-dashboard.mjs"
   }
 }
