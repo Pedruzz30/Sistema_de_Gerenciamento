@@ -420,7 +420,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 4. ✅ `venda_pagamentos`: dinheiro/Pix/débito/crédito, multi-pagamento e troco. A gaveta recebe só dinheiro.
 5. ✅ **Troca rápida de operador por PIN (F12)** (seção 15), com cada venda gravando quem passou. Sangria e fechamento pedem a senha do gerente na hora. Cancelar venda finalizada pelo F9, com o gerente (seção 18). Desconto no total pelo F3, com o gerente (seção 20).
 6. ✅ Tipo `ESTORNO_VENDA` no lugar da sangria no cancelamento.
-7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. Resumo por operador e impressão do fechamento (seção 22). **Falta:** cupom na bobina de 80 mm.
+7. 🔶 Fechamento cego por forma de pagamento, com vendas por operador, + relatório de fechamento impresso. Resumo por operador e impressão do fechamento (seção 22). Cupom de 80 mm (seção 25).
 8. Cupom não fiscal impresso (80 mm) e abertura da gaveta.
 9. ✅ Desligar a venda avulsa sem itens no PDV (só gerente).
 10. ✅ (seção 15) Login com senha em hash (BCrypt) e sessão/JWT no lugar do `X-User-RU`. **Trocar as senhas padrão `1234`.**
@@ -978,6 +978,35 @@ Os produtos com código de fábrica ficam fora da folha, mas uma opção mostra 
 - **A demonstração não tem comandas.**
 
 **Maquininha integrada (cartão e Pix):** ainda não feita. Depende da maquininha que a loja escolher. Mercado Pago Point integra pela internet, sem programa no notebook; Cielo, Rede e Getnet costumam exigir TEF (SiTef ou PayGo), um programa pago. Hoje a operadora escolhe a forma no PDV e cobra na maquininha à parte.
+
+---
+
+## 25. Cupom de 80 mm e conferência da comanda (10/11/2026)
+
+**Como funciona no PDV:**
+
+| Tecla ou opção | O que imprime |
+|---|---|
+| **F8**, no balcão | O último cupom de novo (2ª via) |
+| **F8**, com uma comanda aberta | A conferência da comanda, para o cliente conferir antes de pagar. Ela diz que ainda não foi paga |
+| **Cupom automático** (marcado no topo do pedido) | O cupom sai sozinho ao finalizar cada venda. Fica guardado neste computador |
+| Botão "Imprimir cupom" no aviso da venda | Quando o cupom automático está desligado |
+
+O cupom tem data, caixa, número da venda, operador, comanda (se houver), itens com quantidade e preço, subtotal, desconto, total, formas pagas, valor recebido e troco. A largura cabe na bobina de 80 mm, e na impressão sai só o cupom. Ele diz "Não é documento fiscal": a NFC-e continua dependendo do regime da loja (seção 8).
+
+**Imprimir sem a janela de impressão:** o instalador cria dois atalhos.
+- **StockOS Caixa:** abre o Edge em janela própria, com impressão direta. O cupom sai na impressora **padrão** do Windows, sem perguntar. Por isso a térmica precisa ser a padrão.
+- **StockOS:** o de sempre, com a janela de impressão, para a folha de códigos (A4) e o fechamento.
+
+**Gaveta:** o navegador não manda o comando de abrir a gaveta. Nas térmicas comuns (Elgin, Epson, Bematech), o driver do Windows tem a opção "abrir gaveta ao imprimir". Com ela ligada, a gaveta abre a cada cupom.
+
+**Testado:** no navegador real, o F8 manda para a impressora o cupom da venda com troco, e só ele vai para o papel, em largura de bobina. O cupom automático sai ao finalizar uma venda no Pix. A conferência da comanda sai com os itens e o total, e não como recibo. No Windows limpo, o instalador cria o atalho do caixa com impressão direta.
+
+**Limites conhecidos:**
+- **Não testei numa impressora térmica de verdade**, nem a impressão direta do Edge. Na primeira instalação, imprima um cupom de teste.
+- **Sem nome e endereço da loja no cupom.** Pode entrar quando houver uma tela de dados da loja.
+- **Sem 2ª via de vendas antigas:** o F8 reimprime só a última venda deste caixa desde que o PDV foi aberto.
+- **Gaveta só pelo driver:** se a impressora não tiver essa opção, a gaveta abre na chave.
 
 ---
 

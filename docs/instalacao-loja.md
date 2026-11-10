@@ -25,6 +25,10 @@ O sistema fica em `C:\StockOS`. Instale com o usuário do Windows que vai usar o
 
 Faça uma vez, depois de instalar:
 
+- **Impressora térmica como padrão:** em Configurações, Bluetooth e dispositivos, Impressoras, escolha a térmica e clique em "Definir como padrão". No caixa, use o atalho **StockOS Caixa**: o cupom sai direto nela, sem a janela de impressão. Para imprimir a folha de códigos ou o fechamento em outra impressora, use o atalho **StockOS**.
+- **Gaveta:** nas propriedades da impressora térmica, ligue a opção de abrir a gaveta ao imprimir, se o driver tiver.
+- **Cupom de teste:** abra o caixa, faça uma venda e aperte **F8**. Confira se o cupom sai inteiro e se a gaveta abre.
+
 - **Não deixar suspender na tomada:** em Configurações, Sistema, Energia. Com o notebook suspenso, o sistema e os backups param.
 - **Entrada automática no Windows:** o sistema liga quando o usuário entra. Se o notebook reiniciar sozinho, ele só volta depois que alguém entrar no Windows.
 - **Pen drive com a pasta de backup:** veja a próxima seção.
