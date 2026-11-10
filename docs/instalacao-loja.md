@@ -80,7 +80,29 @@ Se aparecer "muitas tentativas", espere 5 minutos.
 
 Baixe o pacote novo, extraia e abra `Instalar.cmd`. Os dados continuam. Antes de trocar, ele guarda uma cópia. Se a versão nova não ligar, ele volta sozinho para a anterior, com os dados de antes da atualização.
 
-## 9. Se algo der errado
+## 9. Celular do atendente
+
+O atendente lança os pedidos da comanda pelo próprio celular, no Wi-Fi da loja. O celular só vê a tela de comanda; o resto do sistema continua só no notebook.
+
+**Uma vez no notebook:** abra `C:\StockOS\Liberar celular.cmd` e aceite o pedido de administrador do Windows. Ele libera a porta do celular só para aparelhos da mesma rede.
+
+**Uma vez em cada celular:**
+1. Conecte o celular no Wi-Fi da loja (o mesmo do notebook).
+2. No Dashboard do notebook, aponte a câmera do celular para o código do quadro **Celular do atendente**, ou digite o endereço que aparece ali (algo como `https://192.168.0.10:8443`).
+3. Na primeira vez, o navegador avisa que a conexão não é particular: toque em **Avançado** e **Continuar**.
+4. Na tela que abrir, toque em **Primeira vez neste celular?** e siga o passo a passo para instalar o certificado da loja. Depois disso o aviso some e a câmera passa a ler o cartão da comanda.
+5. Salve o endereço na tela inicial do celular (menu do navegador, **Adicionar à tela inicial**).
+
+**No dia a dia:** toque no seu nome e digite o seu PIN. Abra a comanda pelo número ou pela câmera, toque nos produtos, confira o pedido e toque em **Lançar**. Tirar item já lançado e receber o pagamento continuam no caixa.
+
+| Problema | O que tentar |
+|---|---|
+| O celular não abre o endereço | Celular e notebook no mesmo Wi-Fi; rode `Liberar celular.cmd` de novo |
+| O endereço do Dashboard mudou | O roteador trocou o endereço do notebook: aponte a câmera para o código novo. O certificado instalado continua valendo |
+| A câmera não abre | Instale o certificado da loja (passo 4) e permita a câmera no navegador. Enquanto isso, digite o número |
+| "PIN incorreto" várias vezes | Depois de 5 erros, aquela pessoa espera 5 minutos |
+
+## 10. Se algo der errado
 
 | Problema | O que tentar |
 |---|---|
@@ -94,6 +116,6 @@ Baixe o pacote novo, extraia e abra `Instalar.cmd`. Os dados continuam. Antes de
 
 ## Limites
 
-- **Só este notebook acessa o sistema.** Um segundo computador em rede exige ativar o acesso e decidir sobre HTTPS, porque a senha não pode trafegar aberta na rede.
+- **Só este notebook acessa o sistema completo.** Pela rede, só a tela de comanda do celular, com conexão segura e PIN (item 9). Um segundo computador de caixa em rede ainda não existe.
 - **Atualização com troca da versão principal do banco** não é automática: o instalador recusa e não altera nada.
 - **Remover o sistema:** apague o atalho da Área de Trabalho e o `StockOS (iniciar)` da pasta Inicializar, rode `parar.ps1` e apague `C:\StockOS`. Antes, confira se há backup fora dele.

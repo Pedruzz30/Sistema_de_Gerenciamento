@@ -132,7 +132,8 @@ public class SessaoService {
      * Entrada pelo celular do atendente: nome e PIN, sem senha. A sessão nasce restrita à
      * área de caixa, como a troca de operador. O PIN respeita o limite de tentativas.
      */
-    @Transactional
+    // O PIN errado fica no log mesmo com a entrada recusada.
+    @Transactional(noRollbackFor = SecurityException.class)
     public Map.Entry<String, SessaoUsuario> entrarPorPin(long ru, String pin) {
         Usuario operador = usuarioRepository.buscarPorRu(ru)
                 .filter(Usuario::isAtivo)

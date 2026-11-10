@@ -737,6 +737,8 @@ try {
   await passo(admin, 'Fechamento cego so mostra a diferenca no fim', async () => {
     await cardDoCaixa(admin, 1).locator('button:has-text("Encerrar")').click();
     await admin.waitForSelector('#modal-encerrar.open');
+    // A janela põe o cursor no dinheiro logo depois de abrir: espera, para não digitar em outro campo.
+    await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'encerrar-valor-contado');
     assert.equal(await admin.inputValue('#encerrar-valor-contado'), '', 'O campo começa vazio');
     assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('110,40'), 'Não pode mostrar o valor esperado');
     await admin.fill('#encerrar-valor-contado', '100');
@@ -1195,6 +1197,7 @@ try {
     const gaveta = caixas.find(c => c.numeroCaixa === 2).dinheiroNaGaveta;
     await cardDoCaixa(dono, 2).locator('button:has-text("Encerrar")').click();
     await dono.waitForSelector('#modal-encerrar.open');
+    await dono.waitForFunction(() => document.activeElement && document.activeElement.id === 'encerrar-valor-contado');
     await esperarTexto(dono, '#encerrar-comandas-texto', 'A comanda 9 ainda não foi paga');
     await dono.fill('#encerrar-valor-contado', String(gaveta));
     await dono.click('#btn-confirmar-encerrar');

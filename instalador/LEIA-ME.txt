@@ -26,6 +26,11 @@ Extraia o ZIP da versão nova e abra "Instalar.cmd". Os dados não são apagados
 Voltar um backup
 Abra "Restaurar backup.cmd" na pasta C:\StockOS.
 
+Celular do atendente
+- Uma vez: abra "Liberar celular.cmd" na pasta C:\StockOS e aceite o pedido do Windows.
+- No Dashboard aparece o código para o celular abrir pelo Wi-Fi da loja.
+- Na primeira vez em cada celular, toque em "Primeira vez neste celular?" e instale o certificado da loja.
+
 Esqueceu a senha
 - Funcionário: o gerente redefine em Funcionários, botão "Redefinir senha".
 - Dono: abra "Redefinir senha do dono.cmd" na pasta C:\StockOS deste notebook.

@@ -438,7 +438,7 @@ Situação conferida no código em 10/11/2026. ✅ feito; 🔶 em parte; sem mar
 18. Integração com maquininha (TEF/Smart POS) e Pix com QR dinâmico e conciliação.
 19. Delivery pelo WhatsApp (se existir).
 
-**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta, transferência e controles (seções 24, 26, 29 e 30). Próximo: atendente lançando a comanda pelo celular.
+**Pedidos fora das fases:** ✅ redefinir senha esquecida (seção 19); ✅ comandas com cartão, divisão da conta, transferência e controles (seções 24, 26, 29 e 30). ✅ atendente lançando a comanda pelo celular (seção 31).
 
 **Fora do escopo (confirmado):** fiado e casco retornável. Comandas entraram em 10/11/2026 (seção 24).
 
@@ -971,7 +971,7 @@ Os produtos com código de fábrica ficam fora da folha, mas uma opção mostra 
 - **Navegador real:** o leitor ZXing lê o cartão impresso; o dono abre a comanda pelo cartão, lança 2 latas e guarda; acha a comanda pelo F7, acrescenta 1 lata e paga no Pix; a comanda fecha e o estoque baixa 3.
 
 **Limites conhecidos:**
-- **Um aparelho só:** os pedidos são lançados no PDV. Celular de atendente ou segundo computador exigem rede local e HTTPS.
+- **Um aparelho só:** feito depois para o celular do atendente (seção 31). Segundo computador de caixa ainda não.
 - **Divisão da conta:** feita depois, na seção 26.
 - **Transferir e juntar comandas:** feito depois, na seção 29.
 - **Se o estoque acabar** enquanto a comanda está aberta, o pagamento é recusado, como no balcão. Corrija o estoque e pague de novo.
@@ -1180,6 +1180,55 @@ Uma faixa abaixo do campo de leitura, com até 8 botões para o que não tem có
 - **Diminuir a quantidade pela tela de edição do item**, numa comanda, também é recusado para a operadora, com o aviso de usar o x. É o mesmo controle, por outro caminho.
 - **Item quebrado ou derramado** sai da comanda, mas não vira perda no estoque sozinho: lance a perda no Estoque.
 - **As teclas usam Alt.** Se algum programa do notebook usar Alt+número, toque nos botões.
+
+---
+
+## 31. Comanda pelo celular do atendente (10/11/2026)
+
+**Para que serve:** o atendente anota na mesa e lança na hora, pelo próprio celular, sem ir ao caixa. O caixa vê a comanda atualizada e cobra no fim, como antes.
+
+**Como funciona no celular:**
+1. Abre o endereço da loja (QR no Dashboard), toca no nome e digita o PIN.
+2. Vê as comandas abertas, com total e há quanto tempo estão abertas. Abre uma pelo número ou lendo o cartão com a câmera.
+3. Toca nos produtos (busca pelo nome ou teclas rápidas, as mesmas do caixa) e monta o pedido. Antes de lançar, ajusta as quantidades com − e + à vontade.
+4. Toca em **Lançar**: o pedido entra de uma vez. O mesmo produto soma na mesma linha da comanda.
+
+| Pode pelo celular | Fica só no caixa |
+|---|---|
+| Ver comandas e o que já foi lançado | Tirar item já lançado (com o gerente) |
+| Abrir comanda e lançar pedido | Receber, dividir, transferir, desconto |
+| Ler o cartão com a câmera | Todo o resto do sistema |
+
+**Segurança (decisão de 10/11/2026: conexão segura):**
+- O sistema completo continua aceitando só o próprio notebook. O celular usa outra porta (8443), com conexão segura (HTTPS), que só serve a tela de comanda: qualquer outro endereço responde "não encontrado", inclusive o login por senha.
+- O atendente entra só por PIN, e a sessão fica restrita à área de caixa. 5 PINs errados bloqueiam aquela pessoa por 5 minutos, e cada erro fica no log.
+- **Certificado da loja:** o próprio sistema cria uma autoridade só desta loja, que se instala uma vez em cada celular. Quando o roteador troca o endereço do notebook, o sistema refaz o certificado do servidor, assinado por ela, e o celular continua confiando. Sem instalar, funciona tocando em "Continuar" no aviso do navegador.
+- O firewall do Windows libera a porta só para a rede local (`Liberar celular.cmd`, pede administrador uma vez).
+
+**Como foi feito:**
+- Um segundo conector do Tomcat com TLS, ligado por `stockos.celular.porta` e `stockos.celular.pasta`. O pacote da loja liga sozinho.
+- O certificado é feito com o `keytool` do próprio Java, que vem no pacote.
+- O filtro `PortaCelularFilter` só deixa passar a lista fechada de endereços da tela de comanda.
+- `POST /api/comandas/{numero}/lancar` lança o pedido inteiro numa operação, abrindo a comanda se preciso. `GET /api/comandas/{numero}` mostra o que já foi lançado.
+- Tela própria (`celular.html`), feita para o dedo. A câmera usa o ZXing 0.21.3 (licença Apache 2.0), embutido no sistema para funcionar sem internet. O mesmo ZXing desenha o QR do Dashboard.
+
+**Testado:**
+- **Unidade:** o que a porta do celular deixa passar e o que recusa (login por senha, tirar item, rota da venda, `..` no caminho); o certificado da loja criado de verdade, com a cadeia conferida e uma conexão TLS que confia só nele.
+- **Banco:** o primeiro pedido abre a comanda; o segundo soma na mesma linha; pedido vazio é recusado.
+- **Navegador real como celular (Pixel 7):**
+  - Conexão que confia só no certificado da loja passa, e sem ele é recusada.
+  - Pela porta do celular, Estoque, produtos, login por senha e rota da venda dão "não encontrado".
+  - A Ana erra o PIN (fica no log), entra e vê a comanda 9.
+  - Abre a comanda 11 pelo número, monta 2 Skol e 1 gelo (tira um gelo do pedido antes) e lança.
+  - Depois lança mais 1 Skol, que soma na mesma linha. Sai.
+  - O caixa vê a comanda 11 com o total certo e o log com quem lançou.
+- **Windows:** a porta do celular abre pela rede e a do sistema não; o resto responde 404; `Liberar celular` cria a regra só para a rede local; o roteiro do celular roda pelo endereço de rede do notebook.
+
+**Limites conhecidos:**
+- **Itens com adicionais obrigatórios** (ex.: porção que exige escolher o molho) ainda não se montam no celular: o lançamento é recusado com a mensagem do sistema. Lance esses no caixa.
+- **iPhone:** instalar o certificado tem mais passos (perfil + confiança). O guia na tela explica. Sem ele, funciona com o aviso, e a câmera pode não abrir.
+- **Antivírus que inspeciona conexões** no notebook (visto com o Norton no computador de desenvolvimento) não afeta o celular, que conecta direto no notebook.
+- **Pedido para a cozinha** (impressão na hora do lançamento) ainda não existe.
 
 ---
 
