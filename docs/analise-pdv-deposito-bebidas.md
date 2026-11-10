@@ -427,7 +427,7 @@ Situação conferida no código em 06/11/2026. ✅ feito; 🔶 em parte; sem mar
 11. ✅ (seção 17) Instalação local no notebook, sem Docker, + backup automático. **Falta:** conferir no notebook real.
 
 **Fase 2 – Substituir o caderno**
-12. 🔶 Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário. Feitos: relatório do dia e do mês, com mais vendidos, margem, operador e hora (seção 27). **Falta:** curva ABC e comparativos.
+12. 🔶 Relatórios: mais vendidos, curva ABC, margem por produto, gelada × natural, vendas por operador e por horário. Feitos: relatório do dia e do mês, com mais vendidos, margem, operador e hora (seção 27), e curva ABC com cobertura de estoque (seção 28). **Falta:** comparativos entre períodos.
 13. Estoque mínimo e sugestão de compra por fornecedor.
 14. Inventário pelo celular (câmera no Chrome Android) ou leitor sem fio, bipando a prateleira para contar.
 15. Alerta de faturamento acumulado no ano (limite do MEI, se for o caso).
@@ -1068,6 +1068,34 @@ O cupom tem data, caixa, número da venda, operador, comanda (se houver), itens 
 - **Sem exportar para planilha.** Dá para imprimir ou salvar em PDF pela impressão do Windows.
 - **Gelada × natural aparecem como produtos separados**, não como um comparativo pronto.
 - **O mês lê todas as vendas do mês de uma vez.** Com muitos anos de uso, pode ficar mais lento; dá para otimizar depois.
+
+---
+
+## 28. Curva ABC (10/11/2026)
+
+**Onde fica:** no Relatório, aba **Curva ABC**. O período padrão são os últimos 30 dias, e dá para escolher outro de até um ano. O critério pode ser **faturamento** ou **margem**.
+
+**Como lê:**
+
+| Classe | Quem entra | O que fazer |
+|---|---|---|
+| **A** | Os poucos produtos que somam os primeiros 80% | Nunca deixar faltar; negociar preço com o distribuidor |
+| **B** | Os que levam a soma até 95% | Acompanhar |
+| **C** | O resto | Comprar pouco; avaliar se vale manter |
+
+O produto que cruza a faixa fica na classe de cima, como é o costume. Gelada, natural e fardo do mesmo produto somam juntos. Margem negativa vai para C.
+
+**Estoque e "Dura":** para cada bebida, a tabela mostra o estoque de agora e para quantos dias ele dá. A conta usa a média de venda por dia no período, com o fardo contado pelas latas. Menos de 7 dias aparece em vermelho. Petiscos com receita, que baixam vários ingredientes, ficam sem esse cálculo.
+
+**Testado:**
+- **Unidade:** classes com o produto que cruza a faixa, ordem diferente por margem, margem negativa em C e cobertura (150 latas em 30 dias com 84 em estoque dão 16 dias).
+- **Banco:** a curva responde; período invertido é recusado; o caixa não vê.
+- **Navegador real:** a Skol aparece em A com 100%, estoque de 84 e "105 dias". Foram 24 latas vendidas no dia, contando o fardo, o que dá 0,8 por dia em 30 dias. A troca para margem também foi testada.
+
+**Limites conhecidos:**
+- **A cobertura usa a média do período inteiro.** Num período com poucos dias de venda, ela parece maior do que é. Para comprar, olhe um período de movimento normal.
+- **O estoque é o de agora**, não o do fim do período escolhido.
+- **Sem sugestão de quanto comprar.** Pode vir depois, juntando a cobertura com o estoque mínimo.
 
 ---
 
