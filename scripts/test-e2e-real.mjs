@@ -349,6 +349,8 @@ try {
     await admin.waitForSelector('#modal-pdv.open');
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
     await esperarTexto(admin, '#pdv-operador-label', 'Admin Superior');
+    // Os botões Produtos/Pedido são do celular: no computador não aparecem.
+    assert.equal(await admin.locator('.pdv-mobile-navigation').isVisible(), false, 'Botões do celular escondidos no computador');
     await admin.mouse.click(5, 5);
     assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Clique fora não pode fechar o PDV');
     await admin.focus('#pdv-leitura');

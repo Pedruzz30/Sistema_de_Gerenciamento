@@ -3859,3 +3859,30 @@ body.bridge-page .bridge-actions a {
 .cozinha-categorias { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .cozinha-categoria { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .cozinha-config__botoes { display: flex; gap: 8px; }
+
+/* PDV em tela estreita (celular, tablet em pé): um painel de cada vez, Produtos ou Pedido.
+   No computador os dois botões ficam escondidos. O pdv.css tem as mesmas regras, mas só a
+   demonstração carrega aquele arquivo; a tela do caixa usa este. */
+.pdv-mobile-navigation { display: none; }
+@media (max-width: 640px) {
+  .pdv-mobile-navigation {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+    flex-shrink: 0; padding: 10px 12px;
+    background: var(--paper-raised, #fff); border-bottom: 1px solid var(--rule, #e5e2dc);
+  }
+  .pdv-mobile-navigation__button {
+    min-height: 48px; border-radius: 10px; padding: 10px;
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--rule, #e5e2dc); background: var(--paper, #faf8f5); color: var(--ink, #1c1917);
+  }
+  .pdv-mobile-navigation__button.is-active { background: var(--accent-soft, #fff1e8); border-color: var(--accent, #c2410c); }
+  .pdv-mobile-navigation__button:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; }
+  .pdv-mobile-navigation__button span { font-size: 12px; margin-left: 4px; opacity: .85; }
+  .pdv-shell[data-mobile-panel="produtos"] .pdv-cart-panel { display: none; }
+  .pdv-shell[data-mobile-panel="pedido"] .pdv-catalog-panel { display: none; }
+  .pdv-shell[data-mobile-panel="produtos"] .pdv-catalog-panel,
+  .pdv-shell[data-mobile-panel="pedido"] .pdv-cart-panel {
+    display: flex; flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; border-right: 0;
+  }
+  .pdv-shell[data-mobile-panel="pedido"] .pdv-cart-items { flex: 1 1 auto; min-height: 0; }
+}
