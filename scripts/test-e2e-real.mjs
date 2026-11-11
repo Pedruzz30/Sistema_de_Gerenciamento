@@ -12,6 +12,8 @@ import tls from 'node:tls';
 import { chromium, devices, webkit } from 'playwright';
 
 const BASE = process.env.E2E_URL || 'http://localhost:8080';
+// O navegador no fuso da loja, como no notebook dela (o GitHub roda no horário de Londres).
+const FUSO_DA_LOJA = 'America/Sao_Paulo';
 // Porta do celular do atendente (https). Sem ela, os passos do celular ficam de fora.
 const CELULAR = (process.env.E2E_CELULAR || '').replace(/\/$/, '');
 // Pasta onde o servidor grava o papel da cozinha nos testes. Sem ela, os passos da cozinha ficam de fora.
@@ -74,7 +76,7 @@ let contador = 0;
 const errosDePagina = [];
 
 async function novaPagina(navegador) {
-  const contexto = await navegador.newContext({ viewport: { width: 1366, height: 650 }, locale: 'pt-BR' });
+  const contexto = await navegador.newContext({ viewport: { width: 1366, height: 650 }, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
   const pagina = await contexto.newPage();
   pagina.setDefaultTimeout(15000);
   pagina.on('pageerror', erro => errosDePagina.push(`${pagina.url()}: ${erro.message}`));
@@ -1217,7 +1219,7 @@ try {
   });
 
   if (CELULAR) {
-    const contextoCelular = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR' });
+    const contextoCelular = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
     const cel = await contextoCelular.newPage();
     cel.setDefaultTimeout(15000);
     cel.on('pageerror', erro => errosDePagina.push(`celular ${cel.url()}: ${erro.message}`));
@@ -1310,7 +1312,7 @@ try {
     const safari = await webkit.launch();
     try {
       const iphone = devices['iPhone 13'];
-      const contextoIphone = await safari.newContext({ ...iphone, ignoreHTTPSErrors: true, locale: 'pt-BR' });
+      const contextoIphone = await safari.newContext({ ...iphone, ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
       const ip = await contextoIphone.newPage();
       ip.setDefaultTimeout(15000);
       ip.on('pageerror', erro => errosDePagina.push(`iphone ${ip.url()}: ${erro.message}`));
@@ -1354,7 +1356,7 @@ try {
 
       // Chrome do iPhone não instala perfil: a tela manda abrir no Safari.
       const contextoChromeIphone = await safari.newContext({
-        ...iphone, userAgent: iphone.userAgent.replace('Version/', 'CriOS/120.0.6099.119 Version/'), ignoreHTTPSErrors: true, locale: 'pt-BR' });
+        ...iphone, userAgent: iphone.userAgent.replace('Version/', 'CriOS/120.0.6099.119 Version/'), ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
       const chromeIphone = await contextoChromeIphone.newPage();
       await passo(chromeIphone, 'iPhone: no Chrome pede para abrir no Safari', async () => {
         await chromeIphone.goto(`${CELULAR}/celular.html`);
@@ -1412,7 +1414,7 @@ try {
       });
 
       await passo(dono, 'Cozinha: pedido do celular imprime so o que e da cozinha', async () => {
-        const contexto = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR' });
+        const contexto = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
         const garcom = await contexto.newPage();
         garcom.setDefaultTimeout(15000);
         try {
