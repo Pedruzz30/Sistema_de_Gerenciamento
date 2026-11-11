@@ -40,6 +40,20 @@ class CelularNovoTest {
     }
 
     @Test
+    void placaVirtualNaoViraOEnderecoDoCelular() {
+        // Visto num PC com Hyper-V e VirtualBox: o QR apontava para a placa do Hyper-V.
+        List<String> ordem = CertificadoCelular.ordenar(List.of(
+                new String[]{"vEthernet (Default Switch)", "172.27.192.1"},
+                new String[]{"VirtualBox Host-Only Ethernet Adapter", "192.168.56.1"},
+                new String[]{"Realtek PCIe GbE Family Controller", "192.168.3.12"}));
+        assertEquals("192.168.3.12", ordem.get(0));
+        assertEquals(3, ordem.size(), "As virtuais continuam na lista, no fim");
+        assertEquals("192.168.0.20", CertificadoCelular.ordenar(List.of(
+                new String[]{"Ethernet", "10.0.0.5"},
+                new String[]{"Intel(R) Wi-Fi 6 AX201", "192.168.0.20"})).get(0), "Wi-Fi antes do cabo");
+    }
+
+    @Test
     void certificadoDaLojaTornaAConexaoConfiavel(@TempDir Path pasta) throws Exception {
         CertificadoCelular certificado = new CertificadoCelular(8443, pasta);
         certificado.preparar();

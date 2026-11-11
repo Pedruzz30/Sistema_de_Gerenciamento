@@ -227,8 +227,32 @@ public class CertificadoCelular {
         } catch (SocketException e) {
             return List.of();
         }
-        redes.sort(Comparator.comparing((Rede r) -> !ehSemFio(r.nome())).thenComparing(Rede::ip));
+        redes.sort(ordemDasRedes());
         return redes;
+    }
+
+    /**
+     * Primeiro a rede de verdade (Wi-Fi, depois cabo); por último as placas virtuais
+     * (VirtualBox, Hyper-V, WSL, Docker, VMware), que o celular não alcança.
+     */
+    static Comparator<Rede> ordemDasRedes() {
+        return Comparator.comparing((Rede r) -> ehVirtual(r.nome(), r.ip()))
+                .thenComparing(r -> !ehSemFio(r.nome()))
+                .thenComparing(r -> !r.ip().startsWith("192.168."))
+                .thenComparing(Rede::ip);
+    }
+
+    static boolean ehVirtual(String nome, String ip) {
+        String texto = nome == null ? "" : nome.toLowerCase(Locale.ROOT);
+        return texto.contains("virtual") || texto.contains("vethernet") || texto.contains("hyper-v")
+                || texto.contains("vmware") || texto.contains("docker") || texto.contains("wsl")
+                || texto.contains("host-only") || texto.contains("loopback") || texto.contains("tap-")
+                || (ip != null && ip.startsWith("192.168.56."));
+    }
+
+    /** Ordena endereços como o painel mostra: o primeiro vira o QR. Para teste. */
+    static List<String> ordenar(List<String[]> nomesEIps) {
+        return nomesEIps.stream().map(n -> new Rede(n[1], n[0])).sorted(ordemDasRedes()).map(Rede::ip).toList();
     }
 
     static boolean ehSemFio(String nome) {
