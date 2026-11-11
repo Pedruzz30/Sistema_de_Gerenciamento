@@ -98,6 +98,37 @@ for (const page of pages) {
   }
   await writeFile(p,html);
 }
+// ── Demonstração do caixa completo ────────────────────────────────────────
+// As telas de verdade do PDV e das comandas (as mesmas do sistema), numa pasta separada e com
+// o servidor simulado no navegador por preview-caixa-completo.js. A demonstração acima não muda.
+await mkdir(join(out,'caixa-completo'),{recursive:true});
+await cp(resolve('preview-source/js/preview-caixa-completo.js'),join(out,'js/preview-caixa-completo.js'));
+for (const pagina of ['caixas.html','comandas.html']) {
+  let html = await readFile(join(root,pagina),'utf8');
+  if (!html.includes('<head>') || !html.includes('href="tokens.css"') || !html.includes('href="app.css"')) {
+    throw new Error('Caixa completo: a página '+pagina+' mudou; revisar a montagem.');
+  }
+  html = html
+    .replace('<head>','<head>\n<script src="/js/preview-caixa-completo.js"></script>')
+    .replace('href="tokens.css"','href="/tokens.css"')
+    .replace('href="app.css"','href="/app.css"')
+    .replace(/<title>([^<]*)<\/title>/, '<title>$1 · Caixa completo (demonstração)</title>');
+  await writeFile(join(out,'caixa-completo',pagina),html);
+}
+await writeFile(join(out,'caixa-completo','index.html'),
+  '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/caixa-completo/caixas.html">' +
+  '<title>StockOS · Caixa completo (demonstração)</title></head><body><a href="/caixa-completo/caixas.html">Abrir o caixa completo</a></body></html>\n');
+// Atalho na demonstração atual para o caixa completo.
+const atalhoCaixaCompleto = '<div class="caixa-completo-entry" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 0;padding:13px;border:1px solid var(--rule,#53667a);border-radius:12px;background:var(--paper-raised,#172638)">' +
+  '<span style="font-size:13px;color:var(--ink,#f4f7fa)"><strong>Caixa completo</strong> · O PDV de verdade do sistema: leitor de código, formas de pagamento, troco, comandas e teclas rápidas, com dados fictícios.</span>' +
+  '<a href="/caixa-completo/" style="min-height:44px;display:inline-flex;align-items:center;padding:10px 15px;border-radius:9px;background:var(--accent,#dca062);color:#211607;text-decoration:none;font-weight:750;font-size:13px">Ver o caixa completo</a></div>';
+for (const pagina of ['dashboard.html','caixas.html']) {
+  const caminho = join(out,pagina);
+  const html = await readFile(caminho,'utf8');
+  if (!html.includes('<div class="main-body content">')) throw new Error('Missing main content section on '+pagina);
+  await writeFile(caminho, html.replace('<div class="main-body content">','<div class="main-body content">'+atalhoCaixaCompleto));
+}
+
 await writeFile(join(out,'_redirects'), [
   '/login /login.html 200',
   '/dashboard /dashboard.html 200',
@@ -110,7 +141,8 @@ await writeFile(join(out,'_redirects'), [
   '/logs /logs.html 200',
   '/cardapio /cardapio.html 200',
   '/comandas-demo /comandas-demo.html 200',
-  '/comandas /comandas-demo.html 200'
+  '/comandas /comandas-demo.html 200',
+  '/caixa-completo /caixa-completo/caixas.html 200'
 ].join('\n')+'\n');
 await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demo</title></head><body><a href="/dashboard.html">Abrir StockOS Demo</a></body></html>\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');

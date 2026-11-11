@@ -166,7 +166,7 @@ async function criarComanda() {
     return;
   }
   if (caixaAbertoNovaComanda) {
-    window.location.href = `/caixas.html?comanda=${numero}`;
+    window.location.href = `caixas.html?comanda=${numero}`;
     return;
   }
   const botao = document.getElementById('btn-criar-comanda');
@@ -193,7 +193,7 @@ document.addEventListener('keydown', event => {
 
 function cobrarComanda() {
   if (!selecionada) return;
-  window.location.href = `/caixas.html?comanda=${selecionada}`;
+  window.location.href = `caixas.html?comanda=${selecionada}`;
 }
 
 document.addEventListener('click', event => {

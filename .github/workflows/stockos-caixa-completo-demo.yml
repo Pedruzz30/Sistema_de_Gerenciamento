@@ -1,0 +1,58 @@
+name: StockOS demonstração do caixa completo
+
+# Monta a demonstração (Netlify) e usa o "Caixa completo" num navegador de verdade:
+# as telas reais do PDV e das comandas com o servidor simulado. Sem Java e sem banco.
+
+on:
+  push:
+    branches: ["feat/caixas-pdv-*"]
+    paths:
+      - "src/main/resources/static/**"
+      - "preview-source/**"
+      - "scripts/build-preview.mjs"
+      - "scripts/test-caixa-completo-demo.mjs"
+      - ".github/workflows/stockos-caixa-completo-demo.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/main/resources/static/**"
+      - "preview-source/**"
+      - "scripts/build-preview.mjs"
+      - "scripts/test-caixa-completo-demo.mjs"
+      - ".github/workflows/stockos-caixa-completo-demo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build the demo
+        run: node scripts/build-preview.mjs && node scripts/check-preview.mjs
+
+      - name: Install browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1
+          npx playwright install --with-deps chromium
+
+      - name: Use the full cashier in a real browser
+        run: |
+          python3 -m http.server 5174 --bind 127.0.0.1 --directory dist-preview > server.log 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://127.0.0.1:5174/caixa-completo/ > /dev/null && break; sleep 1; done
+          DEMO_URL=http://127.0.0.1:5174 node scripts/test-caixa-completo-demo.mjs
+
+      - name: Keep the screenshot of a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caixa-completo-falha
+          path: caixa-completo-falha.png
+          if-no-files-found: ignore
