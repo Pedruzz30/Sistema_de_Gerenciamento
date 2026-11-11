@@ -64,6 +64,45 @@ function renderSituacaoBackup(situacao) {
   document.getElementById('btn-backup-agora').addEventListener('click', fazerBackupAgora);
 }
 
+// Relógio da loja: a hora vem do sistema, no fuso da loja (não do fuso do Windows) e anda
+// sozinha a cada segundo; acerta de novo com o sistema a cada 10 minutos.
+let relogioDiferenca = 0;
+let relogioFuso = 'America/Sao_Paulo';
+let relogioNomeFuso = 'Horário de Brasília';
+
+async function sincronizarRelogio() {
+  try {
+    const antes = Date.now();
+    const resp = await fetch('/api/sistema/hora');
+    if (!resp.ok) return;
+    const hora = await resp.json();
+    const depois = Date.now();
+    relogioDiferenca = hora.agora - Math.round((antes + depois) / 2);
+    relogioFuso = hora.fuso || relogioFuso;
+    relogioNomeFuso = hora.nomeFuso || relogioNomeFuso;
+  } catch {
+    // Sem resposta agora: segue com a última diferença conhecida.
+  }
+}
+
+function desenharRelogio() {
+  const horaEl = document.getElementById('relogio-hora');
+  if (!horaEl) return;
+  const agora = new Date(Date.now() + relogioDiferenca);
+  horaEl.textContent = agora.toLocaleTimeString('pt-BR', { timeZone: relogioFuso, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const data = agora.toLocaleDateString('pt-BR', { timeZone: relogioFuso, weekday: 'long', day: '2-digit', month: '2-digit' });
+  document.getElementById('relogio-data').textContent = `${data.charAt(0).toUpperCase()}${data.slice(1)} · ${relogioNomeFuso}`;
+}
+
+function iniciarRelogioLoja() {
+  if (!document.getElementById('relogio-hora')) return;
+  desenharRelogio();
+  if (window.__stockosRelogio) return;
+  window.__stockosRelogio = setInterval(desenharRelogio, 1000);
+  sincronizarRelogio().then(desenharRelogio);
+  setInterval(sincronizarRelogio, 10 * 60 * 1000);
+}
+
 async function carregarSituacaoBackup() {
   if (!PODE_VER_RENTABILIDADE_DASH) return;
   const relatorio = document.getElementById('btn-relatorio-dia');
@@ -135,6 +174,7 @@ async function fazerBackupAgora() {
 async function carregarDados() {
   carregarSituacaoBackup();
   carregarCelular();
+  iniciarRelogioLoja();
   const pedir = async (url, fallback) => {
     const inicio = performance.now();
     try {

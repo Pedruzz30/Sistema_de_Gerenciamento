@@ -3223,6 +3223,7 @@ window.StockOSPDV = {
       fecharDivisaoPDV,
       alternarCupomAutomaticoPDV,
       abrirComandasPDV,
+      abrirComandaPDV,
       abrirComandaDigitadaPDV,
       guardarComandaPDV,
       fecharComandasPDV,

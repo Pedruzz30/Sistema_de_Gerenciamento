@@ -12,6 +12,8 @@ import tls from 'node:tls';
 import { chromium, devices, webkit } from 'playwright';
 
 const BASE = process.env.E2E_URL || 'http://localhost:8080';
+// O navegador no fuso da loja, como no notebook dela (o GitHub roda no horário de Londres).
+const FUSO_DA_LOJA = 'America/Sao_Paulo';
 // Porta do celular do atendente (https). Sem ela, os passos do celular ficam de fora.
 const CELULAR = (process.env.E2E_CELULAR || '').replace(/\/$/, '');
 // Pasta onde o servidor grava o papel da cozinha nos testes. Sem ela, os passos da cozinha ficam de fora.
@@ -74,7 +76,7 @@ let contador = 0;
 const errosDePagina = [];
 
 async function novaPagina(navegador) {
-  const contexto = await navegador.newContext({ viewport: { width: 1366, height: 650 }, locale: 'pt-BR' });
+  const contexto = await navegador.newContext({ viewport: { width: 1366, height: 650 }, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
   const pagina = await contexto.newPage();
   pagina.setDefaultTimeout(15000);
   pagina.on('pageerror', erro => errosDePagina.push(`${pagina.url()}: ${erro.message}`));
@@ -349,6 +351,8 @@ try {
     await admin.waitForSelector('#modal-pdv.open');
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'pdv-leitura');
     await esperarTexto(admin, '#pdv-operador-label', 'Admin Superior');
+    // Os botões Produtos/Pedido são do celular: no computador não aparecem.
+    assert.equal(await admin.locator('.pdv-mobile-navigation').isVisible(), false, 'Botões do celular escondidos no computador');
     await admin.mouse.click(5, 5);
     assert.equal(await admin.locator('#modal-pdv.open').count(), 1, 'Clique fora não pode fechar o PDV');
     await admin.focus('#pdv-leitura');
@@ -704,7 +708,7 @@ try {
 
   await passo(admin, 'Menu de quem entrou por PIN mostra so o caixa', async () => {
     await admin.waitForSelector('#nav-items a');
-    assert.deepEqual((await admin.locator('#nav-items a').allTextContents()).map(limpar), ['Caixas PDV']);
+    assert.deepEqual((await admin.locator('#nav-items a').allTextContents()).map(limpar), ['Caixas PDV', 'Comandas']);
     await admin.goto(`${BASE}/estoque.html`);
     await admin.waitForURL('**/caixas.html');
   });
@@ -1215,7 +1219,7 @@ try {
   });
 
   if (CELULAR) {
-    const contextoCelular = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR' });
+    const contextoCelular = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
     const cel = await contextoCelular.newPage();
     cel.setDefaultTimeout(15000);
     cel.on('pageerror', erro => errosDePagina.push(`celular ${cel.url()}: ${erro.message}`));
@@ -1308,7 +1312,7 @@ try {
     const safari = await webkit.launch();
     try {
       const iphone = devices['iPhone 13'];
-      const contextoIphone = await safari.newContext({ ...iphone, ignoreHTTPSErrors: true, locale: 'pt-BR' });
+      const contextoIphone = await safari.newContext({ ...iphone, ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
       const ip = await contextoIphone.newPage();
       ip.setDefaultTimeout(15000);
       ip.on('pageerror', erro => errosDePagina.push(`iphone ${ip.url()}: ${erro.message}`));
@@ -1352,7 +1356,7 @@ try {
 
       // Chrome do iPhone não instala perfil: a tela manda abrir no Safari.
       const contextoChromeIphone = await safari.newContext({
-        ...iphone, userAgent: iphone.userAgent.replace('Version/', 'CriOS/120.0.6099.119 Version/'), ignoreHTTPSErrors: true, locale: 'pt-BR' });
+        ...iphone, userAgent: iphone.userAgent.replace('Version/', 'CriOS/120.0.6099.119 Version/'), ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
       const chromeIphone = await contextoChromeIphone.newPage();
       await passo(chromeIphone, 'iPhone: no Chrome pede para abrir no Safari', async () => {
         await chromeIphone.goto(`${CELULAR}/celular.html`);
@@ -1410,7 +1414,7 @@ try {
       });
 
       await passo(dono, 'Cozinha: pedido do celular imprime so o que e da cozinha', async () => {
-        const contexto = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR' });
+        const contexto = await navegador.newContext({ ...devices['Pixel 7'], ignoreHTTPSErrors: true, locale: 'pt-BR', timezoneId: FUSO_DA_LOJA });
         const garcom = await contexto.newPage();
         garcom.setDefaultTimeout(15000);
         try {
@@ -1472,6 +1476,74 @@ try {
       });
     }
   }
+
+  await passo(dono, 'Painel mostra o relogio da loja e ele anda', async () => {
+    await dono.goto(`${BASE}/dashboard.html`);
+    await dono.waitForFunction(() => /^\d{2}:\d{2}:\d{2}$/.test(document.getElementById('relogio-hora')?.textContent || ''));
+    const primeira = await dono.textContent('#relogio-hora');
+    await dono.waitForFunction(anterior => document.getElementById('relogio-hora').textContent !== anterior, primeira, { timeout: 4000 });
+    // Hora de Brasília, seja qual for o fuso do computador que roda o teste.
+    const segundos = t => { const [h, m, s] = t.split(':').map(Number); return h * 3600 + m * 60 + s; };
+    const brasilia = new Date().toLocaleTimeString('pt-BR', { timeZone: FUSO_DA_LOJA, hour12: false });
+    const diferenca = Math.abs(segundos(await dono.textContent('#relogio-hora')) - segundos(brasilia));
+    assert.ok(diferenca <= 5 || diferenca >= 86395, `Relógio fora da hora de Brasília: ${await dono.textContent('#relogio-hora')} x ${brasilia}`);
+    await esperarTexto(dono, '#relogio-data', 'Horário de Brasília');
+    await naTela(dono, '#relogio-loja');
+  });
+
+  await passo(dono, 'Comandas: o menu mostra as abertas e cobra no caixa', async () => {
+    await dono.locator('#nav-items a', { hasText: 'Comandas' }).click();
+    await dono.waitForURL('**/comandas.html');
+    const cartao = dono.locator('.comanda-cartao', { hasText: 'Comanda 9' });
+    await cartao.waitFor();
+    assert.ok(limpar(await cartao.textContent()).includes(reais(13.5 + precoGelo)), limpar(await cartao.textContent()));
+    await esperarTexto(dono, '#comandas-resumo', 'Abertas');
+    await cartao.click();
+    await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
+    await esperarTexto(dono, '#comandas-detalhe-linhas', 'Skol lata 350ml');
+    await esperarTexto(dono, '#comandas-detalhe-linhas', 'Gelo 5kg');
+    await naTela(dono, '#btn-cobrar-comanda');
+    // Nova comanda sem caixa aberto: abre vazia aqui mesmo.
+    await dono.click('#btn-nova-comanda');
+    await dono.waitForSelector('#modal-nova-comanda.open');
+    await esperarTexto(dono, '#nova-comanda-explica', 'Nenhum caixa aberto');
+    assert.equal(await dono.inputValue('#nova-comanda-numero'), '1', 'Sugere o primeiro número livre');
+    await dono.fill('#nova-comanda-numero', '9');
+    await dono.click('#btn-criar-comanda');
+    await esperarTexto(dono, '#alert-nova-comanda', 'já está aberta');
+    await dono.fill('#nova-comanda-numero', '20');
+    await dono.press('#nova-comanda-numero', 'Enter');
+    await esperarTexto(dono, '#alert-comandas', 'Comanda 20 aberta');
+    await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 20');
+    await esperarTexto(dono, '#comandas-detalhe-linhas', 'Nada lançado ainda');
+    await dono.locator('.comanda-cartao', { hasText: 'Comanda 9' }).click();
+    await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
+    // Com o caixa 3 aberto, "Cobrar no caixa" abre o PDV já na comanda.
+    const aberto = await dono.evaluate(async () => (await fetch('/api/caixas/abrir', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numeroCaixa: 3, saldoInicial: 0 })
+    })).status);
+    assert.ok(aberto < 300, `Abrir o caixa 3: ${aberto}`);
+    await dono.click('#btn-cobrar-comanda');
+    await dono.waitForURL(/\/caixas\.html/);
+    await dono.waitForSelector('#modal-pdv.open');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 9');
+    await esperarTexto(dono, '#pdv-total', reais(13.5 + precoGelo));
+    assert.equal(new URL(dono.url()).search, '', 'O número sai do endereço, para não reabrir ao atualizar');
+    await naTela(dono, '#pdv-comanda-label');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 9 guardada');
+
+    // Nova comanda com caixa aberto: vai direto para o PDV, pronta para bipar.
+    await dono.goto(`${BASE}/comandas.html`);
+    await dono.click('#btn-nova-comanda');
+    await esperarTexto(dono, '#nova-comanda-explica', 'Caixa 3');
+    await dono.fill('#nova-comanda-numero', '21');
+    await dono.press('#nova-comanda-numero', 'Enter');
+    await dono.waitForSelector('#modal-pdv.open');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 21');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 21 guardada');
+  });
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {
     await dono.goto(`${BASE}/dashboard.html`);

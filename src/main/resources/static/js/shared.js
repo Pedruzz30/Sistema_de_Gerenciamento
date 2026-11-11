@@ -206,6 +206,7 @@ const ICONS = {
   grid: '<rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/>',
   box: '<path d="M12 3l8 4-8 4-8-4 8-4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>',
   truck: '<path d="M10 17H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h8v11Z"/><path d="M10 10h5l3 3v4h-8"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/>',
+  ticket: '<path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4V6Z"/><path d="M9 9h6"/><path d="M9 15h4"/>',
   receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h6"/>',
   wallet: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M15 12h6"/><circle cx="15" cy="12" r="1"/><path d="M6 9h6"/>',
   chart: '<path d="M4 19h16"/><path d="M7 15l4-4 3 3 5-6"/>',
@@ -381,6 +382,7 @@ function paginaAtual() {
   if (path.includes('estoque')) return 'estoque';
   if (path.includes('fornecedores')) return 'fornecedores';
   if (path.includes('notas')) return 'notas';
+  if (path.includes('comandas')) return 'comandas';
   if (path.includes('caixas')) return 'caixas';
   if (path.includes('cotacoes')) return 'cotacoes';
   if (path.includes('funcionarios')) return 'funcionarios';
@@ -396,6 +398,7 @@ const NAV_ITENS = [
   { icon: 'truck', label: 'Fornecedores', permsAny: [PERMISSOES.VER_COMPRAS], href: '/fornecedores.html', id: 'fornecedores' },
   { icon: 'receipt', label: 'Notas Fiscais', permsAny: [PERMISSOES.VER_COMPRAS], href: '/notas.html', id: 'notas' },
   { icon: 'wallet', label: 'Caixas PDV', permsAny: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS], href: '/caixas.html', id: 'caixas' },
+  { icon: 'ticket', label: 'Comandas', permsAny: [PERMISSOES.VER_VENDAS], href: '/comandas.html', id: 'comandas' },
   { icon: 'chart', label: 'Cotações', permsAny: [PERMISSOES.VER_FINANCAS], href: '/cotacoes.html', id: 'cotacoes' },
   { icon: 'users', label: 'Funcionários', permsAny: [PERMISSOES.GERENCIAR_FUNCIONARIOS], href: '/funcionarios.html', id: 'funcionarios' },
   { icon: 'clipboard', label: 'Logs', permsAny: [PERMISSOES.VER_LOGS], href: '/logs.html', id: 'logs' },
@@ -408,7 +411,7 @@ function renderSidebar() {
 
   nav.innerHTML = NAV_ITENS
     .filter(function (item) {
-      if (usuario.viaPin) return item.id === 'caixas';
+      if (usuario.viaPin) return item.id === 'caixas' || item.id === 'comandas';
       return !item.permsAny || temAlgumaPermissao(item.permsAny);
     })
     .map(function (item) {
@@ -425,6 +428,7 @@ const PERMISSOES_POR_PAGINA = {
   fornecedores: [PERMISSOES.VER_COMPRAS],
   notas: [PERMISSOES.VER_COMPRAS],
   caixas: [PERMISSOES.VER_VENDAS, PERMISSOES.VER_FINANCAS],
+  comandas: [PERMISSOES.VER_VENDAS],
   cotacoes: [PERMISSOES.VER_FINANCAS],
   relatorios: [PERMISSOES.VER_FINANCAS],
   funcionarios: [PERMISSOES.GERENCIAR_FUNCIONARIOS],
@@ -433,7 +437,7 @@ const PERMISSOES_POR_PAGINA = {
 
 function garantirPermissaoDaPagina() {
   const pagina = paginaAtual();
-  if (usuario.viaPin && pagina !== 'caixas') {
+  if (usuario.viaPin && pagina !== 'caixas' && pagina !== 'comandas') {
     window.location.replace('/caixas.html');
     return false;
   }

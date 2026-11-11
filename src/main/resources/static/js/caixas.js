@@ -35,7 +35,22 @@ const PODE_GERIR_FINANCAS_CAIXA = temPermissao(PERMISSOES.VER_FINANCAS);
 async function stockOSMount_caixas() {
   if (typeof paginaAtual === 'function' && paginaAtual() !== 'caixas') return;
   aplicarPermissoesUI();
-    carregarCaixas();
+  await carregarCaixas();
+  await cobrarComandaDaTela();
+}
+
+// Vindo da tela Comandas ("Cobrar no caixa"): abre o PDV no caixa aberto, já com a comanda.
+async function cobrarComandaDaTela() {
+  const numero = Number(new URLSearchParams(location.search).get('comanda'));
+  if (!numero) return;
+  history.replaceState(null, '', location.pathname);
+  const abertos = caixas.filter(c => c.status === 'ABERTO').sort((a, b) => a.numeroCaixa - b.numeroCaixa);
+  if (!abertos.length) {
+    showToast(`Abra um caixa para cobrar a comanda ${numero}.`, 'error');
+    return;
+  }
+  await abrirPDV(abertos[0].numeroCaixa);
+  await abrirComandaPDV(numero);
 }
 
 // ── Permissões de UI ──────────────────────────────────────────────────────

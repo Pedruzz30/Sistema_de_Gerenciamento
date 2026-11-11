@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockOS — Comandas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter+Tight:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="comandas-page">
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <span class="name">StockOS</span>
+        <span class="sub">Forno · V2</span>
+      </div>
+    </div>
+    <span class="nav-label">Operação</span>
+    <nav class="nav" id="nav-items"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar user-avatar" id="user-avatar">--</div>
+        <div class="user-meta user-info">
+          <span class="name user-name" id="user-name">Carregando...</span>
+          <span class="role user-role" id="user-role">Operador · RU --</span>
+        </div>
+        <button class="iconbtn btn-logout" onclick="logout()" title="Sair" aria-label="Sair"></button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main page">
+    <header class="topbar header">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>StockOS</span>
+          <span class="sep">›</span>
+          <span class="cur">Comandas</span>
+        </div>
+        <h1 class="page-title header-title">Comandas</h1>
+        <p class="page-sub header-sub">Contas de quem consome na loja e paga no fim. A lista se atualiza sozinha.</p>
+      </div>
+      <div class="topbar-right header-right">
+        <span class="inline-note" id="comandas-atualizado"></span>
+        <button type="button" class="btn btn-secondary btn-secondary--compact" onclick="carregarComandas()">
+          <span class="btn-inline-icon" data-icon="refresh"></span>
+          Atualizar
+        </button>
+        <button type="button" class="btn btn-accent btn-primary" id="btn-nova-comanda" onclick="abrirNovaComanda()">+ Nova comanda</button>
+      </div>
+    </header>
+
+    <div class="main-body content">
+      <div class="alert-modal" id="alert-comandas" role="status" aria-live="polite"></div>
+      <div class="page-summary-grid" id="comandas-resumo"></div>
+
+      <div class="comandas-layout">
+        <section class="table-card comandas-lista-card" aria-label="Comandas abertas">
+          <div class="table-header">
+            <span class="table-title">Abertas agora</span>
+            <span class="table-count" id="comandas-contagem">—</span>
+          </div>
+          <div class="comandas-grade" id="comandas-grade"><div class="empty">Carregando...</div></div>
+        </section>
+
+        <aside class="table-card comandas-detalhe" id="comandas-detalhe" aria-live="polite">
+          <div class="comandas-detalhe__vazio" id="comandas-detalhe-vazio">
+            <strong>Escolha uma comanda</strong>
+            <p>Toque numa comanda para ver o que foi lançado e cobrar no caixa.</p>
+          </div>
+          <div id="comandas-detalhe-conteudo" hidden>
+            <div class="comandas-detalhe__topo">
+              <h2 id="comandas-detalhe-titulo">Comanda</h2>
+              <strong class="comandas-detalhe__total" id="comandas-detalhe-total"></strong>
+            </div>
+            <p class="inline-note" id="comandas-detalhe-info"></p>
+            <ul class="comandas-detalhe__linhas" id="comandas-detalhe-linhas"></ul>
+            <button type="button" class="btn btn-primary comandas-detalhe__cobrar" id="btn-cobrar-comanda" onclick="cobrarComanda()">Cobrar no caixa</button>
+            <p class="inline-note">Abre o PDV no caixa aberto, já com esta comanda. Tirar item e dividir a conta também são feitos lá.</p>
+          </div>
+        </aside>
+      </div>
+
+      <details class="table-card comandas-ajuda">
+        <summary>Como as comandas funcionam</summary>
+        <ol>
+          <li><strong>Abrir:</strong> aqui, em <strong>+ Nova comanda</strong>; no caixa, bipe o cartão da comanda (ou digite <kbd>c15</kbd> e Enter, ou F7). No celular do atendente, digite o número ou leia o cartão com a câmera.</li>
+          <li><strong>Lançar:</strong> no caixa, bipe os produtos com a comanda aberta e aperte Esc para guardar. No celular, monte o pedido e toque em Lançar.</li>
+          <li><strong>Cobrar:</strong> aqui, em "Cobrar no caixa", ou bipando o cartão no PDV. Paga a conta, a comanda fecha e o estoque baixa.</li>
+        </ol>
+        <p class="inline-note">O estoque só baixa quando a comanda é paga. O endereço do celular está no Dashboard, no quadro "Celular do atendente".</p>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- Nova comanda: escolhe o número do cartão; com caixa aberto, já vai para o PDV -->
+<div class="modal-overlay" id="modal-nova-comanda" onclick="if (event.target.id === 'modal-nova-comanda') fecharNovaComanda()">
+  <div class="modal" role="dialog" aria-labelledby="nova-comanda-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="nova-comanda-titulo">Nova comanda</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharNovaComanda()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-nova-comanda" role="status" aria-live="polite"></div>
+      <div class="field form-group">
+        <label for="nova-comanda-numero">Número do cartão</label>
+        <input class="input" type="number" id="nova-comanda-numero" min="1" max="9999" inputmode="numeric" autocomplete="off">
+        <p class="inline-note">Use o número impresso no cartão que vai para a mesa. Já vem o primeiro número livre.</p>
+      </div>
+      <p class="inline-note" id="nova-comanda-explica"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharNovaComanda()">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btn-criar-comanda" onclick="criarComanda()">Abrir comanda</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/stockos-auth.js"></script>
+<script src="/js/shared.js"></script>
+<script src="/js/comandas.js"></script>
+<script src="/js/spa-navigation.js"></script>
+</body>
+</html>

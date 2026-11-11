@@ -3859,3 +3859,58 @@ body.bridge-page .bridge-actions a {
 .cozinha-categorias { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .cozinha-categoria { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .cozinha-config__botoes { display: flex; gap: 8px; }
+
+/* PDV em tela estreita (celular, tablet em pé): um painel de cada vez, Produtos ou Pedido.
+   No computador os dois botões ficam escondidos. O pdv.css tem as mesmas regras, mas só a
+   demonstração carrega aquele arquivo; a tela do caixa usa este. */
+.pdv-mobile-navigation { display: none; }
+@media (max-width: 640px) {
+  .pdv-mobile-navigation {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+    flex-shrink: 0; padding: 10px 12px;
+    background: var(--paper-raised, #fff); border-bottom: 1px solid var(--rule, #e5e2dc);
+  }
+  .pdv-mobile-navigation__button {
+    min-height: 48px; border-radius: 10px; padding: 10px;
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--rule, #e5e2dc); background: var(--paper, #faf8f5); color: var(--ink, #1c1917);
+  }
+  .pdv-mobile-navigation__button.is-active { background: var(--accent-soft, #fff1e8); border-color: var(--accent, #c2410c); }
+  .pdv-mobile-navigation__button:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; }
+  .pdv-mobile-navigation__button span { font-size: 12px; margin-left: 4px; opacity: .85; }
+  .pdv-shell[data-mobile-panel="produtos"] .pdv-cart-panel { display: none; }
+  .pdv-shell[data-mobile-panel="pedido"] .pdv-catalog-panel { display: none; }
+  .pdv-shell[data-mobile-panel="produtos"] .pdv-catalog-panel,
+  .pdv-shell[data-mobile-panel="pedido"] .pdv-cart-panel {
+    display: flex; flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; border-right: 0;
+  }
+  .pdv-shell[data-mobile-panel="pedido"] .pdv-cart-items { flex: 1 1 auto; min-height: 0; }
+}
+
+/* Relógio da loja no painel */
+.relogio-loja { display: inline-flex; flex-direction: column; align-items: flex-end; margin-right: 12px; line-height: 1.15; }
+.relogio-loja__hora { font-family: var(--font-mono, ui-monospace, monospace); font-size: 22px; font-weight: 600; letter-spacing: .02em; color: var(--ink, #1c1917); font-variant-numeric: tabular-nums; }
+.relogio-loja__data { font-size: 11px; color: var(--text-muted, #6b6760); }
+
+/* Tela Comandas */
+.comandas-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; margin-top: 16px; }
+.comandas-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; padding: 14px; }
+.comanda-cartao { display: grid; gap: 4px; padding: 14px; text-align: left; font: inherit; border: 1px solid var(--rule, #e5e2dc); border-left: 4px solid var(--accent, #c2410c); border-radius: 10px; background: var(--paper-raised, #fff); cursor: pointer; }
+.comanda-cartao:hover, .comanda-cartao:focus-visible { border-color: var(--accent, #c2410c); }
+.comanda-cartao--ativa { background: var(--accent-soft, #fff1e8); border-color: var(--accent, #c2410c); }
+.comanda-cartao__numero { font-size: 13px; color: var(--text-muted, #6b6760); }
+.comanda-cartao__total { font-size: 22px; }
+.comanda-cartao__info { font-size: 12px; color: var(--text-muted, #6b6760); }
+.comandas-detalhe { padding: 16px; position: sticky; top: 12px; }
+.comandas-detalhe__vazio p { color: var(--text-muted, #6b6760); font-size: 13px; }
+.comandas-detalhe__topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.comandas-detalhe__topo h2 { margin: 0; font-size: 20px; }
+.comandas-detalhe__total { font-size: 22px; color: var(--accent, #c2410c); }
+.comandas-detalhe__linhas { list-style: none; margin: 10px 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.comandas-detalhe__linhas li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--rule, #e5e2dc); font-size: 14px; }
+.comandas-detalhe__linhas small { color: var(--text-muted, #6b6760); }
+.comandas-detalhe__cobrar { width: 100%; margin-top: 6px; }
+.comandas-ajuda { margin-top: 16px; padding: 14px 18px; }
+.comandas-ajuda summary { cursor: pointer; font-weight: 600; }
+.comandas-ajuda li { margin: 6px 0; }
+@media (max-width: 900px) { .comandas-layout { grid-template-columns: 1fr; } .comandas-detalhe { position: static; } }
