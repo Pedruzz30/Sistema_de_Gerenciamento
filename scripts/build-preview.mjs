@@ -54,6 +54,13 @@ const { readdir } = await import('node:fs/promises');
 for (const entry of await readdir(out)) {
   if (entry.endsWith('.html') && !allowed.has(entry)) await rm(join(out,entry),{force:true});
 }
+// O menu do sistema tem "Comandas" (/comandas.html), que precisa do servidor Java.
+// Na demonstração, esse endereço leva às comandas demonstrativas, em vez de "não encontrada".
+await writeFile(join(out,'comandas.html'),
+  '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+  '<meta http-equiv="refresh" content="0;url=/comandas-demo.html"><title>StockOS · Comandas (demonstração)</title></head>' +
+  '<body><p>As comandas desta demonstração ficam em <a href="/comandas-demo.html">Comandas demonstrativas</a>.</p>' +
+  '<script>location.replace("/comandas-demo.html")</script></body></html>\n');
 const pages = ['login.html','dashboard.html','estoque.html','fornecedores.html','notas.html','caixas.html','cotacoes.html','funcionarios.html','logs.html','cardapio.html'];
 // Only initialize browser-only mock extensions on pages that use them.
 const previewScriptsFor = page => [
@@ -102,7 +109,8 @@ await writeFile(join(out,'_redirects'), [
   '/funcionarios /funcionarios.html 200',
   '/logs /logs.html 200',
   '/cardapio /cardapio.html 200',
-  '/comandas-demo /comandas-demo.html 200'
+  '/comandas-demo /comandas-demo.html 200',
+  '/comandas /comandas-demo.html 200'
 ].join('\n')+'\n');
 await writeFile(join(out,'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=/dashboard.html"><title>StockOS · Demo</title></head><body><a href="/dashboard.html">Abrir StockOS Demo</a></body></html>\n');
 await writeFile(join(out,'_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: connect-src \'self\'; frame-ancestors \'none\'\n');
