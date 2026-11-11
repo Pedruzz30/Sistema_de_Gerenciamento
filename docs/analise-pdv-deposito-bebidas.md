@@ -1292,6 +1292,28 @@ O papel tem em letra grande "COZINHA" e o número da comanda (ou "BALCÃO - VEND
 
 ---
 
+## 34. Tela Comandas, relógio da loja e acertos (10/11/2026, branch feat/caixas-pdv-20261110)
+
+**Por quê:** as comandas só apareciam dentro do PDV (bipar o cartão, `c15` ou F7). Quem abria o sistema não achava onde elas estavam.
+
+**Tela Comandas** (menu lateral, logo abaixo de Caixas PDV; também para quem entrou por PIN):
+- As comandas abertas, atualizando a cada 10 segundos: número, total, itens e há quanto tempo estão abertas.
+- Resumo: quantas estão abertas, quanto há a receber, itens lançados e a mais antiga.
+- Tocar numa comanda mostra o que foi lançado. **Cobrar no caixa** abre o PDV no caixa aberto, já com a comanda. Sem caixa aberto, avisa para abrir um.
+- Um quadro "Como as comandas funcionam" explica como abrir, lançar e cobrar.
+
+**Relógio da loja no Dashboard:** hora e data no fuso da loja (Brasília), andando a cada segundo. A hora vem do sistema (`GET /api/sistema/hora`) e acerta de novo a cada 10 minutos. O que aparece não depende do fuso configurado no Windows. Se o relógio do próprio notebook estiver errado, o horário fica errado também: sistema e Windows usam o mesmo relógio.
+
+**Acertos na mesma branch:**
+- Os botões Produtos/Pedido do PDV no celular estavam sem estilo no computador. Agora ficam escondidos no computador e funcionam no celular.
+- O sistema passou a assumir o fuso da loja ao ligar. Antes, com o Windows em outro fuso, o caixa e as comandas caíam em dias diferentes perto da meia-noite, e o relatório contava 0 comandas pagas.
+
+**Testado:**
+- No sistema rodando, com o pacote da loja: o menu leva à tela, aparecem 3 comandas, o detalhe da 12 mostra o lançado, e "Cobrar no caixa" abre o PDV na comanda 12. O relógio anda e mostra "Horário de Brasília".
+- **Navegador (GitHub):** o relógio anda e bate com Brasília. Pelo menu Comandas, a comanda 9 tem o total certo e os itens, e "Cobrar no caixa" abre o PDV do caixa 3 já nela.
+
+---
+
 ## Fontes
 
 - [Guia Completo da NFC-e 2026 (Contmatic)](https://simplifique.contmatic.com.br/blogs/guia-completo-nfc-e-2026)
