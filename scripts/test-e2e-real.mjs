@@ -708,7 +708,7 @@ try {
 
   await passo(admin, 'Menu de quem entrou por PIN mostra so o caixa', async () => {
     await admin.waitForSelector('#nav-items a');
-    assert.deepEqual((await admin.locator('#nav-items a').allTextContents()).map(limpar), ['Caixas PDV']);
+    assert.deepEqual((await admin.locator('#nav-items a').allTextContents()).map(limpar), ['Caixas PDV', 'Comandas']);
     await admin.goto(`${BASE}/estoque.html`);
     await admin.waitForURL('**/caixas.html');
   });
@@ -1476,6 +1476,48 @@ try {
       });
     }
   }
+
+  await passo(dono, 'Painel mostra o relogio da loja e ele anda', async () => {
+    await dono.goto(`${BASE}/dashboard.html`);
+    await dono.waitForFunction(() => /^\d{2}:\d{2}:\d{2}$/.test(document.getElementById('relogio-hora')?.textContent || ''));
+    const primeira = await dono.textContent('#relogio-hora');
+    await dono.waitForFunction(anterior => document.getElementById('relogio-hora').textContent !== anterior, primeira, { timeout: 4000 });
+    // Hora de Brasília, seja qual for o fuso do computador que roda o teste.
+    const segundos = t => { const [h, m, s] = t.split(':').map(Number); return h * 3600 + m * 60 + s; };
+    const brasilia = new Date().toLocaleTimeString('pt-BR', { timeZone: FUSO_DA_LOJA, hour12: false });
+    const diferenca = Math.abs(segundos(await dono.textContent('#relogio-hora')) - segundos(brasilia));
+    assert.ok(diferenca <= 5 || diferenca >= 86395, `Relógio fora da hora de Brasília: ${await dono.textContent('#relogio-hora')} x ${brasilia}`);
+    await esperarTexto(dono, '#relogio-data', 'Horário de Brasília');
+    await naTela(dono, '#relogio-loja');
+  });
+
+  await passo(dono, 'Comandas: o menu mostra as abertas e cobra no caixa', async () => {
+    await dono.locator('#nav-items a', { hasText: 'Comandas' }).click();
+    await dono.waitForURL('**/comandas.html');
+    const cartao = dono.locator('.comanda-cartao', { hasText: 'Comanda 9' });
+    await cartao.waitFor();
+    assert.ok(limpar(await cartao.textContent()).includes(reais(13.5 + precoGelo)), limpar(await cartao.textContent()));
+    await esperarTexto(dono, '#comandas-resumo', 'Abertas');
+    await cartao.click();
+    await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
+    await esperarTexto(dono, '#comandas-detalhe-linhas', 'Skol lata 350ml');
+    await esperarTexto(dono, '#comandas-detalhe-linhas', 'Gelo 5kg');
+    await naTela(dono, '#btn-cobrar-comanda');
+    // Com o caixa 3 aberto, "Cobrar no caixa" abre o PDV já na comanda.
+    const aberto = await dono.evaluate(async () => (await fetch('/api/caixas/abrir', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numeroCaixa: 3, saldoInicial: 0 })
+    })).status);
+    assert.ok(aberto < 300, `Abrir o caixa 3: ${aberto}`);
+    await dono.click('#btn-cobrar-comanda');
+    await dono.waitForURL(/\/caixas\.html/);
+    await dono.waitForSelector('#modal-pdv.open');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 9');
+    await esperarTexto(dono, '#pdv-total', reais(13.5 + precoGelo));
+    assert.equal(new URL(dono.url()).search, '', 'O número sai do endereço, para não reabrir ao atualizar');
+    await naTela(dono, '#pdv-comanda-label');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 9 guardada');
+  });
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {
     await dono.goto(`${BASE}/dashboard.html`);

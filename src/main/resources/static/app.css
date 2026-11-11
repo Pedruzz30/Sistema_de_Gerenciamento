@@ -3886,3 +3886,31 @@ body.bridge-page .bridge-actions a {
   }
   .pdv-shell[data-mobile-panel="pedido"] .pdv-cart-items { flex: 1 1 auto; min-height: 0; }
 }
+
+/* Relógio da loja no painel */
+.relogio-loja { display: inline-flex; flex-direction: column; align-items: flex-end; margin-right: 12px; line-height: 1.15; }
+.relogio-loja__hora { font-family: var(--font-mono, ui-monospace, monospace); font-size: 22px; font-weight: 600; letter-spacing: .02em; color: var(--ink, #1c1917); font-variant-numeric: tabular-nums; }
+.relogio-loja__data { font-size: 11px; color: var(--text-muted, #6b6760); }
+
+/* Tela Comandas */
+.comandas-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; margin-top: 16px; }
+.comandas-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; padding: 14px; }
+.comanda-cartao { display: grid; gap: 4px; padding: 14px; text-align: left; font: inherit; border: 1px solid var(--rule, #e5e2dc); border-left: 4px solid var(--accent, #c2410c); border-radius: 10px; background: var(--paper-raised, #fff); cursor: pointer; }
+.comanda-cartao:hover, .comanda-cartao:focus-visible { border-color: var(--accent, #c2410c); }
+.comanda-cartao--ativa { background: var(--accent-soft, #fff1e8); border-color: var(--accent, #c2410c); }
+.comanda-cartao__numero { font-size: 13px; color: var(--text-muted, #6b6760); }
+.comanda-cartao__total { font-size: 22px; }
+.comanda-cartao__info { font-size: 12px; color: var(--text-muted, #6b6760); }
+.comandas-detalhe { padding: 16px; position: sticky; top: 12px; }
+.comandas-detalhe__vazio p { color: var(--text-muted, #6b6760); font-size: 13px; }
+.comandas-detalhe__topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.comandas-detalhe__topo h2 { margin: 0; font-size: 20px; }
+.comandas-detalhe__total { font-size: 22px; color: var(--accent, #c2410c); }
+.comandas-detalhe__linhas { list-style: none; margin: 10px 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.comandas-detalhe__linhas li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--rule, #e5e2dc); font-size: 14px; }
+.comandas-detalhe__linhas small { color: var(--text-muted, #6b6760); }
+.comandas-detalhe__cobrar { width: 100%; margin-top: 6px; }
+.comandas-ajuda { margin-top: 16px; padding: 14px 18px; }
+.comandas-ajuda summary { cursor: pointer; font-weight: 600; }
+.comandas-ajuda li { margin: 6px 0; }
+@media (max-width: 900px) { .comandas-layout { grid-template-columns: 1fr; } .comandas-detalhe { position: static; } }
