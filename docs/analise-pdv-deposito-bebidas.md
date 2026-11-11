@@ -1300,6 +1300,7 @@ O papel tem em letra grande "COZINHA" e o número da comanda (ou "BALCÃO - VEND
 - As comandas abertas, atualizando a cada 10 segundos: número, total, itens e há quanto tempo estão abertas.
 - Resumo: quantas estão abertas, quanto há a receber, itens lançados e a mais antiga.
 - Tocar numa comanda mostra o que foi lançado. **Cobrar no caixa** abre o PDV no caixa aberto, já com a comanda. Sem caixa aberto, avisa para abrir um.
+- **+ Nova comanda:** pede o número do cartão, já sugerindo o primeiro livre, e recusa número já aberto. Com caixa aberto, vai direto para o PDV já na comanda nova, para bipar o pedido. Sem caixa aberto, abre a comanda vazia ali mesmo; os itens entram pelo celular ou depois no caixa.
 - Um quadro "Como as comandas funcionam" explica como abrir, lançar e cobrar.
 
 **Relógio da loja no Dashboard:** hora e data no fuso da loja (Brasília), andando a cada segundo. A hora vem do sistema (`GET /api/sistema/hora`) e acerta de novo a cada 10 minutos. O que aparece não depende do fuso configurado no Windows. Se o relógio do próprio notebook estiver errado, o horário fica errado também: sistema e Windows usam o mesmo relógio.

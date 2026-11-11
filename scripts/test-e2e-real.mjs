@@ -1503,6 +1503,21 @@ try {
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Skol lata 350ml');
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Gelo 5kg');
     await naTela(dono, '#btn-cobrar-comanda');
+    // Nova comanda sem caixa aberto: abre vazia aqui mesmo.
+    await dono.click('#btn-nova-comanda');
+    await dono.waitForSelector('#modal-nova-comanda.open');
+    await esperarTexto(dono, '#nova-comanda-explica', 'Nenhum caixa aberto');
+    assert.equal(await dono.inputValue('#nova-comanda-numero'), '1', 'Sugere o primeiro número livre');
+    await dono.fill('#nova-comanda-numero', '9');
+    await dono.click('#btn-criar-comanda');
+    await esperarTexto(dono, '#alert-nova-comanda', 'já está aberta');
+    await dono.fill('#nova-comanda-numero', '20');
+    await dono.press('#nova-comanda-numero', 'Enter');
+    await esperarTexto(dono, '#alert-comandas', 'Comanda 20 aberta');
+    await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 20');
+    await esperarTexto(dono, '#comandas-detalhe-linhas', 'Nada lançado ainda');
+    await dono.locator('.comanda-cartao', { hasText: 'Comanda 9' }).click();
+    await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
     // Com o caixa 3 aberto, "Cobrar no caixa" abre o PDV já na comanda.
     const aberto = await dono.evaluate(async () => (await fetch('/api/caixas/abrir', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numeroCaixa: 3, saldoInicial: 0 })
@@ -1517,6 +1532,17 @@ try {
     await naTela(dono, '#pdv-comanda-label');
     await dono.keyboard.press('Escape');
     await esperarTexto(dono, '#alert-pdv', 'Comanda 9 guardada');
+
+    // Nova comanda com caixa aberto: vai direto para o PDV, pronta para bipar.
+    await dono.goto(`${BASE}/comandas.html`);
+    await dono.click('#btn-nova-comanda');
+    await esperarTexto(dono, '#nova-comanda-explica', 'Caixa 3');
+    await dono.fill('#nova-comanda-numero', '21');
+    await dono.press('#nova-comanda-numero', 'Enter');
+    await dono.waitForSelector('#modal-pdv.open');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 21');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 21 guardada');
   });
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {

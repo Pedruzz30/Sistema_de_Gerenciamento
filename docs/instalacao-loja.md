@@ -94,7 +94,7 @@ O atendente lança os pedidos da comanda pelo próprio celular, no Wi-Fi da loja
    - **iPhone:** abra o endereço no **Safari** (pelo Chrome do iPhone o perfil não instala; a tela avisa). Toque em "Baixar o perfil da loja", depois instale em Ajustes → Geral → VPN e Gerenciamento de Dispositivo, e ligue a confiança em Ajustes → Geral → Sobre → Ajustes de Confiança de Certificado.
 5. Salve o endereço na tela inicial do celular (Android: menu do navegador, **Adicionar à tela inicial**; iPhone: Safari, Compartilhar, **Adicionar à Tela de Início**). No iPhone, o atalho da tela inicial pede o PIN uma vez a mais, porque guarda a entrada separada do Safari.
 
-**Onde ver as comandas no notebook:** menu **Comandas**. Lá estão as abertas, o que cada uma tem e o botão **Cobrar no caixa**.
+**Onde ver as comandas no notebook:** menu **Comandas**. Lá estão as abertas, o que cada uma tem, o botão **+ Nova comanda** e o botão **Cobrar no caixa**.
 
 **No dia a dia:** toque no seu nome e digite o seu PIN. Abra a comanda pelo número ou pela câmera, toque nos produtos, confira o pedido e toque em **Lançar**. Tirar item já lançado e receber o pagamento continuam no caixa.
 

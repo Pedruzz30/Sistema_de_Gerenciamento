@@ -80,7 +80,7 @@ function renderGrade() {
   document.getElementById('comandas-contagem').textContent = `${comandas.length} aberta${comandas.length === 1 ? '' : 's'}`;
   const grade = document.getElementById('comandas-grade');
   if (!comandas.length) {
-    grade.innerHTML = '<div class="empty">Nenhuma comanda aberta. Para abrir, bipe o cartão no caixa ou digite o número no celular do atendente.</div>';
+    grade.innerHTML = '<div class="empty">Nenhuma comanda aberta. Para abrir uma, use "+ Nova comanda", bipe o cartão no caixa ou digite o número no celular do atendente.</div>';
     return;
   }
   grade.innerHTML = comandas.map(c => `
@@ -119,6 +119,78 @@ async function selecionarComanda(numero) {
   await carregarDetalhe(numero);
 }
 
+// ── Nova comanda ─────────────────────────────────────────────────────────
+// Com caixa aberto, vai direto para o PDV já na comanda nova (para bipar o pedido).
+// Sem caixa aberto, a comanda abre vazia aqui; os itens entram pelo celular ou depois no caixa.
+
+let caixaAbertoNovaComanda = null;
+
+async function abrirNovaComanda() {
+  limparAlert('alert-nova-comanda');
+  const campo = document.getElementById('nova-comanda-numero');
+  const ocupados = new Set(comandas.map(c => c.numero));
+  let livre = 1;
+  while (ocupados.has(livre) && livre < 9999) livre++;
+  campo.value = String(livre);
+  caixaAbertoNovaComanda = null;
+  try {
+    const resp = await fetch('/api/caixas');
+    if (resp.ok) {
+      const abertos = (await resp.json()).filter(c => c.status === 'ABERTO').sort((a, b) => a.numeroCaixa - b.numeroCaixa);
+      caixaAbertoNovaComanda = abertos.length ? abertos[0].numeroCaixa : null;
+    }
+  } catch (e) {
+    caixaAbertoNovaComanda = null;
+  }
+  document.getElementById('nova-comanda-explica').textContent = caixaAbertoNovaComanda
+    ? `Abre o PDV no Caixa ${caixaAbertoNovaComanda} já com a comanda, para bipar o que o cliente pedir.`
+    : 'Nenhum caixa aberto: a comanda fica aberta aqui, vazia. Os itens entram pelo celular do atendente ou quando abrirem um caixa.';
+  document.getElementById('modal-nova-comanda').classList.add('open');
+  campo.focus();
+  campo.select();
+}
+
+function fecharNovaComanda() {
+  document.getElementById('modal-nova-comanda').classList.remove('open');
+}
+
+async function criarComanda() {
+  limparAlert('alert-nova-comanda');
+  const numero = Number(document.getElementById('nova-comanda-numero').value);
+  if (!Number.isInteger(numero) || numero < 1 || numero > 9999) {
+    mostrarAlert('alert-nova-comanda', 'Digite o número do cartão, de 1 a 9999.', 'error');
+    return;
+  }
+  if (comandas.some(c => c.numero === numero)) {
+    mostrarAlert('alert-nova-comanda', `A comanda ${numero} já está aberta. Escolha outro número ou toque nela na lista.`, 'error');
+    return;
+  }
+  if (caixaAbertoNovaComanda) {
+    window.location.href = `/caixas.html?comanda=${numero}`;
+    return;
+  }
+  const botao = document.getElementById('btn-criar-comanda');
+  botao.disabled = true;
+  try {
+    const resp = await fetch(`/api/comandas/${numero}/abrir`, { method: 'POST' });
+    if (!resp.ok) throw new Error(await lerErro(resp, 'Não foi possível abrir a comanda.'));
+    fecharNovaComanda();
+    await carregarComandas();
+    await selecionarComanda(numero);
+    mostrarAlert('alert-comandas', `Comanda ${numero} aberta. Para lançar, use o celular do atendente ou abra um caixa.`, 'success');
+  } catch (error) {
+    mostrarAlert('alert-nova-comanda', error.message, 'error');
+  } finally {
+    botao.disabled = false;
+  }
+}
+
+document.addEventListener('keydown', event => {
+  if (!document.getElementById('modal-nova-comanda')?.classList.contains('open')) return;
+  if (event.key === 'Enter' && event.target && event.target.id === 'nova-comanda-numero') { event.preventDefault(); criarComanda(); }
+  if (event.key === 'Escape') fecharNovaComanda();
+});
+
 function cobrarComanda() {
   if (!selecionada) return;
   window.location.href = `/caixas.html?comanda=${selecionada}`;
@@ -133,7 +205,7 @@ window.StockOSPages = window.StockOSPages || {};
 window.StockOSPages.comandas = {
   mount: stockOSMount_comandas,
   activate() {
-    Object.assign(window, { carregarComandas, cobrarComanda, selecionarComanda });
+    Object.assign(window, { carregarComandas, cobrarComanda, selecionarComanda, abrirNovaComanda, fecharNovaComanda, criarComanda });
   }
 };
 if (/^\/comandas(?:\.html)?\/?$/.test(location.pathname)) {

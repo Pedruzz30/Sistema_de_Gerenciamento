@@ -53,6 +53,7 @@
           <span class="btn-inline-icon" data-icon="refresh"></span>
           Atualizar
         </button>
+        <button type="button" class="btn btn-accent btn-primary" id="btn-nova-comanda" onclick="abrirNovaComanda()">+ Nova comanda</button>
       </div>
     </header>
 
@@ -90,12 +91,35 @@
       <details class="table-card comandas-ajuda">
         <summary>Como as comandas funcionam</summary>
         <ol>
-          <li><strong>Abrir:</strong> no caixa, bipe o cartão da comanda (ou digite <kbd>c15</kbd> e Enter, ou F7). No celular do atendente, digite o número ou leia o cartão com a câmera.</li>
+          <li><strong>Abrir:</strong> aqui, em <strong>+ Nova comanda</strong>; no caixa, bipe o cartão da comanda (ou digite <kbd>c15</kbd> e Enter, ou F7). No celular do atendente, digite o número ou leia o cartão com a câmera.</li>
           <li><strong>Lançar:</strong> no caixa, bipe os produtos com a comanda aberta e aperte Esc para guardar. No celular, monte o pedido e toque em Lançar.</li>
           <li><strong>Cobrar:</strong> aqui, em "Cobrar no caixa", ou bipando o cartão no PDV. Paga a conta, a comanda fecha e o estoque baixa.</li>
         </ol>
         <p class="inline-note">O estoque só baixa quando a comanda é paga. O endereço do celular está no Dashboard, no quadro "Celular do atendente".</p>
       </details>
+    </div>
+  </div>
+</div>
+
+<!-- Nova comanda: escolhe o número do cartão; com caixa aberto, já vai para o PDV -->
+<div class="modal-overlay" id="modal-nova-comanda" onclick="if (event.target.id === 'modal-nova-comanda') fecharNovaComanda()">
+  <div class="modal" role="dialog" aria-labelledby="nova-comanda-titulo">
+    <div class="modal-header">
+      <h3 class="modal-title" id="nova-comanda-titulo">Nova comanda</h3>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharNovaComanda()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert-modal" id="alert-nova-comanda" role="status" aria-live="polite"></div>
+      <div class="field form-group">
+        <label for="nova-comanda-numero">Número do cartão</label>
+        <input class="input" type="number" id="nova-comanda-numero" min="1" max="9999" inputmode="numeric" autocomplete="off">
+        <p class="inline-note">Use o número impresso no cartão que vai para a mesa. Já vem o primeiro número livre.</p>
+      </div>
+      <p class="inline-note" id="nova-comanda-explica"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="fecharNovaComanda()">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btn-criar-comanda" onclick="criarComanda()">Abrir comanda</button>
     </div>
   </div>
 </div>
