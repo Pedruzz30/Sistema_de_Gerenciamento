@@ -55,6 +55,9 @@ const routes=await readFile('dist-preview/_redirects','utf8');
 assert.match(routes,/^\/dashboard \/dashboard.html 200$/m);
 assert.match(routes,/^\/estoque \/estoque.html 200$/m);
 assert.match(routes,/^\/comandas-demo \/comandas-demo.html 200$/m);
+// O "Comandas" do menu (página do sistema real) leva às comandas demonstrativas.
+assert.match(await readFile('dist-preview/comandas.html','utf8'),/comandas-demo\.html/);
+assert.match(routes,/^\/comandas \/comandas-demo.html 200$/m);
 for(const f of ['saas-admin.html','saas-comandas.html','application.properties']) {
   await assert.rejects(access(join('dist-preview',f)));
 }
