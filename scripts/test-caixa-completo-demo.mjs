@@ -49,12 +49,12 @@ try {
   // Comanda pelo número e tecla rápida.
   await pagina.focus('#pdv-leitura');
   await bipar('c7');
-  await esperarTexto('#pdv-comanda-label', 'Comanda 7');
+  await esperarTexto('#pdv-comanda-label', 'Comanda 7 · Carlos');
   await esperarTexto('#pdv-total', 'R$ 34,00');
   await pagina.keyboard.press('Alt+1');
   await esperarTexto('#pdv-total', 'R$ 44,00');
   await pagina.keyboard.press('Escape');
-  await esperarTexto('#alert-pdv', 'Comanda 7 guardada');
+  await esperarTexto('#alert-pdv', 'Comanda 7 · Carlos guardada');
 
   // Tela Comandas, Nova comanda e Cobrar no caixa (no Pix).
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
@@ -63,9 +63,10 @@ try {
   await pagina.click('#btn-nova-comanda');
   await pagina.waitForSelector('#modal-nova-comanda.open');
   await pagina.fill('#nova-comanda-numero', '30');
-  await pagina.press('#nova-comanda-numero', 'Enter');
+  await pagina.fill('#nova-comanda-cliente', '  Marina   Souza ');
+  await pagina.press('#nova-comanda-cliente', 'Enter');
   await pagina.waitForURL(/\/caixa-completo\/caixas\.html/, { waitUntil: 'domcontentloaded' });
-  await esperarTexto('#pdv-comanda-label', 'Comanda 30');
+  await esperarTexto('#pdv-comanda-label', 'Comanda 30 · Marina Souza');
   await pagina.keyboard.press('Escape');
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
   await pagina.locator('.comanda-cartao', { hasText: 'Comanda 12' }).click();
@@ -79,10 +80,20 @@ try {
   await pagina.keyboard.press('Enter');
   await esperarTexto('#alert-pdv', 'Comanda 12 paga');
 
-  // Recomeçar (na faixa do topo) volta aos dados de exemplo.
-  // Na tela Comandas, que se atualiza sozinha: uma atualização no meio não pode desfazer o Recomeçar.
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
   await pagina.locator('.comanda-cartao', { hasText: 'Comanda 30' }).waitFor();
+  // Busca pelo nome e troca o nome pela tela Comandas.
+  await pagina.fill('#comandas-busca', 'marina');
+  assert.equal(await pagina.locator('.comanda-cartao').count(), 1, 'A busca pelo nome acha só a comanda da Marina');
+  await pagina.click('.comanda-cartao:has-text("Marina Souza")');
+  await esperarTexto('#comandas-detalhe-cliente', 'Marina Souza');
+  await pagina.fill('#comandas-nome-input', 'Marina');
+  await pagina.click('#btn-salvar-nome');
+  await pagina.locator('.comanda-cartao', { hasText: 'Comanda 30' }).filter({ hasText: 'Marina' }).filter({ hasNotText: 'Souza' }).waitFor();
+  await pagina.fill('#comandas-busca', '');
+
+  // Recomeçar (na faixa do topo) volta aos dados de exemplo.
+  // Na tela Comandas, que se atualiza sozinha: uma atualização no meio não pode desfazer o Recomeçar.
   await pagina.evaluate(() => { for (let i = 0; i < 5; i++) fetch('/api/comandas'); });
   await pagina.click('#caixa-completo-recomecar');
   await pagina.waitForURL('**/caixa-completo/caixas.html', { waitUntil: 'domcontentloaded' });

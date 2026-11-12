@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 public class Comanda {
 
     public static final int NUMERO_MAXIMO = 9999;
+    public static final int CLIENTE_MAXIMO = 60;
 
     public enum Status { ABERTA, FECHADA, CANCELADA }
 
@@ -47,6 +48,10 @@ public class Comanda {
     @Column(name = "fechada_em")
     private LocalDateTime fechadaEm;
 
+    /** Nome de quem está com a comanda. Opcional: o número continua sendo o que vale. */
+    @Column(length = CLIENTE_MAXIMO)
+    private String cliente;
+
     protected Comanda() {
     }
 
@@ -66,6 +71,25 @@ public class Comanda {
         if (numero < 1 || numero > NUMERO_MAXIMO) {
             throw new IllegalArgumentException("Numero da comanda vai de 1 a " + NUMERO_MAXIMO + ".");
         }
+    }
+
+    /**
+     * Nome como foi digitado, sem espaços sobrando. Em branco vira "sem nome" (null).
+     * Nome longo demais é recusado, para não cortar o nome de alguém sem avisar.
+     */
+    public static String normalizarCliente(String nome) {
+        if (nome == null) return null;
+        String limpo = nome.replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").trim();
+        if (limpo.isEmpty()) return null;
+        if (limpo.length() > CLIENTE_MAXIMO) {
+            throw new IllegalArgumentException("O nome do cliente vai até " + CLIENTE_MAXIMO + " letras.");
+        }
+        return limpo;
+    }
+
+    public void definirCliente(String nome) {
+        exigirAberta();
+        this.cliente = normalizarCliente(nome);
     }
 
     public void fechar(LocalDateTime agora) {
@@ -93,5 +117,6 @@ public class Comanda {
     public LocalDateTime getAbertaEm() { return abertaEm; }
     public Long getAbertaPor() { return abertaPor; }
     public LocalDateTime getFechadaEm() { return fechadaEm; }
+    public String getCliente() { return cliente; }
     public boolean isAberta() { return status == Status.ABERTA; }
 }

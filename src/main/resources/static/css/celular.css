@@ -50,6 +50,7 @@ h2 { font-size: 15px; margin: 18px 0 8px; color: var(--suave); text-transform: u
 .comanda-card { display: grid; gap: 2px; padding: 12px; font: inherit; text-align: left; border: 2px solid var(--linha); border-radius: 10px; background: var(--papel); cursor: pointer; }
 .comanda-card strong { font-size: 20px; }
 .comanda-card small { color: var(--suave); }
+.comanda-card em { font-style: normal; font-weight: 700; overflow-wrap: anywhere; }
 
 .comanda-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
 .comanda-topo strong { font-size: 20px; }

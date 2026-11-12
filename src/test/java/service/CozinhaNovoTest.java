@@ -27,6 +27,9 @@ class CozinhaNovoTest {
         List<CozinhaService.Linha> linhas = List.of(
                 new CozinhaService.Linha(1, CozinhaService.descricao("Porção de batata", "Unidade"), new BigDecimal("2"), List.of("+ Cheddar", "obs: sem sal")),
                 new CozinhaService.Linha(2, CozinhaService.descricao("Caldo de mocotó", "Grande"), new BigDecimal("1.5"), List.of()));
+        String comNome = CozinhaService.montarTexto("PEDIDO", 13, "João", 99, LocalDateTime.of(2026, 11, 10, 21, 35), "Ana Caixa",
+                List.of(), 32);
+        org.junit.jupiter.api.Assertions.assertTrue(comNome.contains("## COMANDA 13\nCliente: João\n"), comNome);
         String texto = CozinhaService.montarTexto("PEDIDO", 13, 99, LocalDateTime.of(2026, 11, 10, 21, 35), "Ana Caixa", linhas, 32);
         assertTrue(texto.startsWith("## COZINHA\n## COMANDA 13\n10/11 21:35 - Ana Caixa\n"), texto);
         assertTrue(texto.contains("2 x Porção de batata\n    + Cheddar\n    obs: sem sal\n"), texto);

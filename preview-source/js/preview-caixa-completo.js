@@ -8,7 +8,7 @@
  */
 (function () {
   'use strict';
-  const KEY = 'stockos-caixa-completo-v1';
+  const KEY = 'stockos-caixa-completo-v2'; // v2: comandas com o nome do cliente
   const BASE = '/caixa-completo/';
   const PIN = '1234';
   const SENHA_GERENTE = '1234';
@@ -76,15 +76,15 @@
       { posicao: 4, variacaoId: variacao('Caldo de mocotó', 'Unidade') }
     ];
     // Duas mesas já consumindo, para a tela Comandas não começar vazia.
-    abrirComandaComItens(db, 7, hora(18, 30), [[variacao('Skol lata 350ml', 'Gelada'), 2], [variacao('Porção de batata frita', 'Unidade'), 1]]);
-    abrirComandaComItens(db, 12, hora(19, 5), [[variacao('Heineken long neck 330ml', 'Gelada'), 2], [variacao('Caldo de mocotó', 'Unidade'), 1]]);
+    abrirComandaComItens(db, 7, hora(18, 30), [[variacao('Skol lata 350ml', 'Gelada'), 2], [variacao('Porção de batata frita', 'Unidade'), 1]], 'Carlos');
+    abrirComandaComItens(db, 12, hora(19, 5), [[variacao('Heineken long neck 330ml', 'Gelada'), 2], [variacao('Caldo de mocotó', 'Unidade'), 1]], 'Fernanda');
     return db;
   }
 
-  function abrirComandaComItens(base, numero, quando, itens) {
+  function abrirComandaComItens(base, numero, quando, itens, cliente) {
     const venda = criarVenda(base, 'SALAO', quando);
     itens.forEach(([variacaoId, qtd]) => venda.itens.push(novoItem(base, variacaoId, qtd, null)));
-    base.comandas.push({ numero, vendaId: venda.id, status: 'ABERTA', abertaEm: quando });
+    base.comandas.push({ numero, vendaId: venda.id, status: 'ABERTA', abertaEm: quando, cliente: cliente || null });
   }
 
   let db;
@@ -145,7 +145,7 @@
 
   function resumoComanda(c) {
     const v = db.vendas[c.vendaId];
-    return { numero: c.numero, vendaId: c.vendaId, abertaEm: c.abertaEm, itens: ativosDe(v).reduce((s, i) => s + i.quantidade, 0), total: totalVenda(v) };
+    return { numero: c.numero, vendaId: c.vendaId, abertaEm: c.abertaEm, itens: ativosDe(v).reduce((s, i) => s + i.quantidade, 0), total: totalVenda(v), cliente: c.cliente || null };
   }
 
   function detalheComanda(c) {
@@ -153,12 +153,23 @@
     return Object.assign(resumoComanda(c), { linhas: ativosDe(v).map(i => ({ nome: i.item, variacao: i.variacao, quantidade: i.quantidade, subtotal: r2(itemResposta(i).subtotal) })) });
   }
 
-  function abrirOuRetomar(numero) {
+  // Mesma regra do servidor: sem espaços sobrando, em branco é "sem nome", até 60 letras.
+  function nomeCliente(texto) {
+    const limpo = String(texto == null ? '' : texto).replace(/\s+/g, ' ').trim();
+    if (limpo.length > 60) throw erro(400, 'O nome do cliente vai até 60 letras.', null);
+    return limpo || null;
+  }
+
+  function abrirOuRetomar(numero, cliente) {
     if (!(numero >= 1 && numero <= 9999)) throw erro(400, 'O número da comanda vai de 1 a 9999.', 'COMANDA_NUMERO_INVALIDO');
+    const nome = nomeCliente(cliente);
     const existente = comandaAberta(numero);
-    if (existente) return existente;
+    if (existente) {
+      if (nome) existente.cliente = nome;
+      return existente;
+    }
     const venda = criarVenda(db, 'SALAO');
-    const nova = { numero, vendaId: venda.id, status: 'ABERTA', abertaEm: agora() };
+    const nova = { numero, vendaId: venda.id, status: 'ABERTA', abertaEm: agora(), cliente: nome };
     db.comandas.push(nova);
     return nova;
   }
@@ -367,11 +378,18 @@
       return detalheComanda(c);
     }
     if ((m = caminho.match(/^\/api\/comandas\/(\d+)\/abrir$/))) {
-      const c = abrirOuRetomar(Number(m[1]));
-      return { numero: c.numero, vendaId: c.vendaId, status: 'ABERTA', abertaEm: c.abertaEm };
+      const c = abrirOuRetomar(Number(m[1]), corpo.cliente);
+      return { numero: c.numero, vendaId: c.vendaId, status: 'ABERTA', abertaEm: c.abertaEm, cliente: c.cliente || null };
+    }
+    if ((m = caminho.match(/^\/api\/comandas\/(\d+)\/cliente$/)) && metodo === 'PUT') {
+      const c = comandaAberta(m[1]);
+      if (!c) throw erro(404, `Nao ha comanda aberta com o numero ${m[1]}.`, 'COMANDA_NAO_ENCONTRADA');
+      c.cliente = nomeCliente(corpo.cliente);
+      return { numero: c.numero, vendaId: c.vendaId, status: 'ABERTA', abertaEm: c.abertaEm, cliente: c.cliente || null };
     }
     if ((m = caminho.match(/^\/api\/comandas\/(\d+)\/lancar$/))) {
-      const c = abrirOuRetomar(Number(m[1]));
+      nomeCliente(corpo.cliente);
+      const c = abrirOuRetomar(Number(m[1]), corpo.cliente);
       const v = rascunho(c.vendaId);
       (corpo.itens || []).filter(i => Number(i.quantidade) > 0).forEach(i => {
         const mesmo = ativosDe(v).find(x => x.variacaoId === Number(i.variacaoId) && !x.observacao);

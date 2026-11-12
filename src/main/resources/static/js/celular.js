@@ -132,7 +132,7 @@ async function carregarComandas() {
       const minutos = Math.max(0, Math.round((agora - new Date(c.abertaEm).getTime()) / 60000));
       const tempo = minutos < 60 ? `${minutos} min` : `${Math.floor(minutos / 60)} h ${minutos % 60} min`;
       return `<button type="button" class="comanda-card" data-numero="${c.numero}">
-        <span>Comanda ${c.numero}</span><strong>${moeda(c.total)}</strong><small>${qtdTexto(c.itens)} itens · há ${tempo}</small></button>`;
+        <span>Comanda ${c.numero}</span>${c.cliente ? `<em>${escapeHtml(c.cliente)}</em>` : ''}<strong>${moeda(c.total)}</strong><small>${qtdTexto(c.itens)} itens · há ${tempo}</small></button>`;
     }).join('') : '<p class="nota">Nenhuma comanda aberta.</p>';
   } catch (erro) {
     if (erro.status !== 401) aviso(erro.message, 'erro');
@@ -173,6 +173,7 @@ async function abrirComanda(numero) {
   pedido = [];
   $('numero-comanda').value = '';
   $('busca').value = '';
+  $('cliente-comanda').value = comanda.cliente || '';
   aviso(comanda.nova ? `Comanda ${numero} nova: monte o pedido e lance.` : '', 'info');
   mostrarTela('comanda');
   renderComanda();
@@ -191,6 +192,7 @@ function voltarComandas() {
 
 function renderComanda() {
   $('comanda-titulo').textContent = `Comanda ${comanda.numero}`;
+  if (document.activeElement !== $('cliente-comanda')) $('cliente-comanda').value = comanda.cliente || '';
   $('comanda-total').textContent = moeda(comanda.total);
   const linhas = comanda.linhas || [];
   $('lancados-resumo').textContent = linhas.length ? `Já lançado: ${qtdTexto(comanda.itens)} itens` : 'Nada lançado ainda';
@@ -251,7 +253,8 @@ async function lancar() {
   try {
     comanda = await api(`/api/comandas/${comanda.numero}/lancar`, {
       method: 'POST',
-      body: JSON.stringify({ itens: pedido.map(p => ({ variacaoId: p.variacaoId, quantidade: p.quantidade })) })
+      // O nome vai junto do pedido; em branco, fica o que já estava anotado.
+      body: JSON.stringify({ itens: pedido.map(p => ({ variacaoId: p.variacaoId, quantidade: p.quantidade })), cliente: $('cliente-comanda').value.trim() })
     });
     pedido = [];
     $('busca').value = '';

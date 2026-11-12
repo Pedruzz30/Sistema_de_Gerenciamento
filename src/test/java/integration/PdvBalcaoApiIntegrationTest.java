@@ -407,6 +407,46 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void nomeDoClienteFicaJuntoDaComanda() throws Exception {
+        int numero = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        String sufixo = sufixoUnico();
+        String eanLata = ean13(sufixo + "1");
+        assertOk(post("/api/produtos/revenda", revenda("Cliente " + sufixo, eanLata, ""), gerente));
+        long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
+
+        // Abre com o nome, sem espaços sobrando; bipar de novo sem nome não apaga.
+        JsonNode aberta = json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of("cliente", "  João   da Silva "), caixa)));
+        assertEquals("João da Silva", aberta.path("cliente").asText());
+        assertEquals("João da Silva", json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa))).path("cliente").asText());
+        assertEquals("João da Silva", clienteNaLista(numero));
+        assertEquals("João da Silva", json(assertOk(get("/api/comandas/" + numero, caixa))).path("cliente").asText());
+
+        // Corrigir, nome longo demais recusado, e apagar.
+        assertEquals("Carla", json(assertOk(put("/api/comandas/" + numero + "/cliente", Map.of("cliente", "Carla"), caixa))).path("cliente").asText());
+        assertEquals(400, put("/api/comandas/" + numero + "/cliente", Map.of("cliente", "x".repeat(61)), caixa).getStatusCode().value());
+        assertEquals("Carla", clienteNaLista(numero));
+        assertTrue(json(assertOk(put("/api/comandas/" + numero + "/cliente", Map.of("cliente", " "), caixa))).path("cliente").isNull());
+
+        // O celular manda o nome junto do primeiro pedido.
+        int outra = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        JsonNode pedido = json(assertOk(post("/api/comandas/" + outra + "/lancar", Map.of(
+                "itens", List.of(Map.of("variacaoId", gelada, "quantidade", "1")), "cliente", "Mesa da varanda"), caixa)));
+        assertEquals("Mesa da varanda", pedido.path("cliente").asText());
+        assertTrue(post("/api/comandas/" + outra + "/lancar", Map.of(
+                "itens", List.of(Map.of("variacaoId", gelada, "quantidade", "1")), "cliente", "y".repeat(61)), caixa)
+                .getStatusCode().is4xxClientError(), "Nome inválido não lança nada");
+        assertBig("1", json(assertOk(get("/api/comandas/" + outra, caixa))).path("itens").decimalValue());
+        assertEquals(204, delete("/api/comandas/" + numero, caixa).getStatusCode().value());
+    }
+
+    private String clienteNaLista(int numero) throws Exception {
+        for (JsonNode c : json(assertOk(get("/api/comandas", caixa)))) {
+            if (c.path("numero").asInt() == numero) return c.path("cliente").isNull() ? null : c.path("cliente").asText();
+        }
+        return null;
+    }
+
+    @Test
     void folhaDeCodigosCriaCodigoDaLojaParaQuemNaoTem() throws Exception {
         String sufixo = sufixoUnico();
         JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda("Copo " + sufixo, "", ""), gerente)));

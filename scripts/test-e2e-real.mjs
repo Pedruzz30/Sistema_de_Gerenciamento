@@ -1512,9 +1512,20 @@ try {
     await dono.click('#btn-criar-comanda');
     await esperarTexto(dono, '#alert-nova-comanda', 'já está aberta');
     await dono.fill('#nova-comanda-numero', '20');
-    await dono.press('#nova-comanda-numero', 'Enter');
+    await dono.fill('#nova-comanda-cliente', 'Ana Paula');
+    await dono.press('#nova-comanda-cliente', 'Enter');
     await esperarTexto(dono, '#alert-comandas', 'Comanda 20 aberta');
     await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 20');
+    await esperarTexto(dono, '#comandas-detalhe-cliente', 'Ana Paula');
+    await dono.locator('.comanda-cartao', { hasText: 'Comanda 20' }).filter({ hasText: 'Ana Paula' }).waitFor();
+    // Buscar pelo nome e corrigir o nome.
+    await dono.fill('#comandas-busca', 'ana');
+    assert.equal(await dono.locator('.comanda-cartao').count(), 1, 'A busca pelo nome deixa só a comanda da Ana');
+    await dono.fill('#comandas-busca', '');
+    await dono.fill('#comandas-nome-input', 'Ana Paula Lima');
+    await dono.click('#btn-salvar-nome');
+    await esperarTexto(dono, '#alert-comandas', 'Ana Paula Lima');
+    await esperarTexto(dono, '#comandas-detalhe-cliente', 'Ana Paula Lima');
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Nada lançado ainda');
     await dono.locator('.comanda-cartao', { hasText: 'Comanda 9' }).click();
     await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
@@ -1538,11 +1549,22 @@ try {
     await dono.click('#btn-nova-comanda');
     await esperarTexto(dono, '#nova-comanda-explica', 'Caixa 3');
     await dono.fill('#nova-comanda-numero', '21');
+    await dono.fill('#nova-comanda-cliente', 'Bruno');
     await dono.press('#nova-comanda-numero', 'Enter');
     await dono.waitForSelector('#modal-pdv.open');
-    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 21');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 21 · Bruno');
     await dono.keyboard.press('Escape');
-    await esperarTexto(dono, '#alert-pdv', 'Comanda 21 guardada');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 21 · Bruno guardada');
+    // F7: achar a comanda pelo nome do cliente.
+    await dono.keyboard.press('F7');
+    await dono.waitForSelector('#modal-pdv-comandas.open');
+    await dono.locator('#pdv-comandas-lista [data-comanda-pdv]').first().waitFor();
+    await dono.fill('#pdv-comanda-numero', 'brun');
+    assert.equal(await dono.locator('#pdv-comandas-lista [data-comanda-pdv]').count(), 1, 'F7 filtra pelo nome');
+    await dono.press('#pdv-comanda-numero', 'Enter');
+    await esperarTexto(dono, '#pdv-comanda-label', 'Comanda 21 · Bruno');
+    await dono.keyboard.press('Escape');
+    await esperarTexto(dono, '#alert-pdv', 'Comanda 21 · Bruno guardada');
   });
 
   await passo(dono, 'Relatorio do dia confere com o caixa', async () => {

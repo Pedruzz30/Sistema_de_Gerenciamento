@@ -577,11 +577,13 @@
     <div class="modal-body">
       <div class="alert-modal" id="alert-pdv-comandas" role="status" aria-live="polite"></div>
       <div class="pdv-comanda-abrir">
-        <label for="pdv-comanda-numero">Número da comanda (ou bipe o cartão)</label>
+        <label for="pdv-comanda-numero">Número da comanda, nome do cliente ou bipe o cartão</label>
         <div class="pdv-comanda-abrir__linha">
-          <input class="input" type="text" inputmode="numeric" id="pdv-comanda-numero" autocomplete="off" placeholder="Ex.: 15">
+          <input class="input" type="text" id="pdv-comanda-numero" autocomplete="off" placeholder="Ex.: 15 ou João">
           <button class="btn btn-primary btn-sm" type="button" onclick="abrirComandaDigitadaPDV()">Abrir (Enter)</button>
         </div>
+        <label for="pdv-comanda-cliente">Anotar o nome do cliente <span class="inline-note">(opcional)</span></label>
+        <input class="input" type="text" id="pdv-comanda-cliente" maxlength="60" autocomplete="off" placeholder="Fica junto do número da comanda">
       </div>
       <button class="btn btn-secondary btn-sm" type="button" id="btn-pdv-guardar-comanda" onclick="guardarComandaPDV(); fecharComandasPDV();" hidden>Guardar esta comanda e voltar ao balcão</button>
       <div id="pdv-comandas-lista" class="pdv-vendas-lista"></div>

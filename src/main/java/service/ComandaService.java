@@ -27,7 +27,11 @@ import java.util.Optional;
  */
 public class ComandaService {
 
-    public record Resumo(int numero, long vendaId, LocalDateTime abertaEm, BigDecimal itens, BigDecimal total) {}
+    public record Resumo(int numero, long vendaId, LocalDateTime abertaEm, BigDecimal itens, BigDecimal total, String cliente) {
+        public Resumo(int numero, long vendaId, LocalDateTime abertaEm, BigDecimal itens, BigDecimal total) {
+            this(numero, vendaId, abertaEm, itens, total, null);
+        }
+    }
 
     private final ComandaRepository comandaRepository;
     private final VendaService vendaService;
@@ -76,22 +80,59 @@ public class ComandaService {
     /** Bipar o cartão: devolve a comanda aberta com esse número, ou abre uma nova. */
     @Transactional
     public Comanda abrirOuRetomar(Usuario usuario, int numero) {
+        return abrirOuRetomar(usuario, numero, null);
+    }
+
+    /**
+     * Igual, anotando o nome do cliente. Nome em branco não mexe no que já está anotado; um nome
+     * diferente troca (quem digitou está vendo a comanda), e a troca fica no log.
+     */
+    @Transactional
+    public Comanda abrirOuRetomar(Usuario usuario, int numero, String cliente) {
         Comanda.validarNumero(numero);
+        String nome = Comanda.normalizarCliente(cliente);
         Optional<Comanda> aberta = comandaRepository.buscarAbertaPorNumero(numero);
         if (aberta.isPresent()) {
-            return aberta.get();
+            Comanda comanda = aberta.get();
+            if (nome != null && !nome.equals(comanda.getCliente())) {
+                return trocarCliente(usuario, comanda, nome);
+            }
+            return comanda;
         }
         Venda venda = vendaService.criarVenda(usuario, null, CanalVenda.SALAO, List.of());
         try {
-            Comanda comanda = comandaRepository.salvar(
-                    new Comanda(numero, venda.getId(), usuario == null ? null : usuario.getRu(), LocalDateTime.now(clock)));
+            Comanda nova = new Comanda(numero, venda.getId(), usuario == null ? null : usuario.getRu(), LocalDateTime.now(clock));
+            nova.definirCliente(nome);
+            Comanda comanda = comandaRepository.salvar(nova);
             logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_ABERTA",
-                    "Comanda " + numero + " aberta (venda " + venda.getId() + ")."));
+                    "Comanda " + numero + (nome == null ? "" : " (" + nome + ")") + " aberta (venda " + venda.getId() + ")."));
             return comanda;
         } catch (DataIntegrityViolationException e) {
             // Outro caixa abriu o mesmo número no mesmo instante.
             throw new ErroNegocioException("COMANDA_JA_ABERTA", "A comanda " + numero + " acabou de ser aberta em outro caixa. Bipe de novo.");
         }
+    }
+
+    /** Anota, corrige ou apaga (em branco) o nome do cliente de uma comanda aberta. */
+    @Transactional
+    public Comanda definirCliente(Usuario usuario, int numero, String cliente) {
+        Comanda comanda = comandaRepository.buscarAbertaPorNumero(numero)
+                .orElseThrow(() -> new ErroNegocioException("COMANDA_NAO_ENCONTRADA", "Nao ha comanda aberta com o numero " + numero + "."));
+        String nome = Comanda.normalizarCliente(cliente);
+        if (java.util.Objects.equals(nome, comanda.getCliente())) {
+            return comanda;
+        }
+        return trocarCliente(usuario, comanda, nome);
+    }
+
+    private Comanda trocarCliente(Usuario usuario, Comanda comanda, String nome) {
+        String antes = comanda.getCliente();
+        comanda.definirCliente(nome);
+        Comanda salva = comandaRepository.salvar(comanda);
+        logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_CLIENTE",
+                "Comanda " + comanda.getNumero() + ": cliente " + (antes == null ? "sem nome" : "\"" + antes + "\"")
+                        + " -> " + (nome == null ? "sem nome" : "\"" + nome + "\"") + "."));
+        return salva;
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +145,7 @@ public class ComandaService {
         BigDecimal quantidade = itens.stream().map(VendaItem::getQuantidade).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal total = itens.stream().map(VendaItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Resumo(comanda.getNumero(), comanda.getVendaId(), comanda.getAbertaEm(),
-                quantidade.stripTrailingZeros(), total.setScale(2, RoundingMode.HALF_UP));
+                quantidade.stripTrailingZeros(), total.setScale(2, RoundingMode.HALF_UP), comanda.getCliente());
     }
 
     /** Chamado depois que a venda é paga no caixa. Venda sem comanda não muda nada. */
@@ -209,7 +250,7 @@ public class ComandaService {
     public record LinhaDetalhe(String nome, String variacao, BigDecimal quantidade, BigDecimal subtotal) {}
 
     public record Detalhe(int numero, long vendaId, LocalDateTime abertaEm, BigDecimal itens, BigDecimal total,
-                          List<LinhaDetalhe> linhas) {}
+                          List<LinhaDetalhe> linhas, String cliente) {}
 
     /** O que já está na comanda aberta, para o celular mostrar. */
     @Transactional(readOnly = true)
@@ -226,7 +267,8 @@ public class ComandaService {
                         i.getQuantidade().stripTrailingZeros(), i.getSubtotal().setScale(2, RoundingMode.HALF_UP)))
                 .toList();
         Resumo resumo = resumir(comanda);
-        return new Detalhe(comanda.getNumero(), comanda.getVendaId(), comanda.getAbertaEm(), resumo.itens(), resumo.total(), linhas);
+        return new Detalhe(comanda.getNumero(), comanda.getVendaId(), comanda.getAbertaEm(), resumo.itens(), resumo.total(), linhas,
+                comanda.getCliente());
     }
 
     /**
@@ -236,6 +278,12 @@ public class ComandaService {
      */
     @Transactional
     public Detalhe lancar(Usuario usuario, int numero, List<ItemLancado> itens) {
+        return lancar(usuario, numero, itens, null);
+    }
+
+    /** Igual, anotando o nome do cliente (o celular manda quando a comanda é nova). */
+    @Transactional
+    public Detalhe lancar(Usuario usuario, int numero, List<ItemLancado> itens, String cliente) {
         List<ItemLancado> validos = itens == null ? List.of()
                 : itens.stream().filter(i -> i != null && i.quantidade() != null && i.quantidade().signum() > 0).toList();
         if (validos.isEmpty()) {
@@ -247,7 +295,8 @@ public class ComandaService {
         if (vendaItemService == null) {
             throw new IllegalStateException("Lancamento indisponivel.");
         }
-        Comanda comanda = abrirOuRetomar(usuario, numero);
+        Comanda.normalizarCliente(cliente); // nome inválido recusa antes de lançar qualquer coisa
+        Comanda comanda = abrirOuRetomar(usuario, numero, cliente);
         long vendaId = comanda.getVendaId();
         travarRascunho(vendaId);
         StringBuilder descricao = new StringBuilder();
