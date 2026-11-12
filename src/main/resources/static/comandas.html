@@ -84,6 +84,8 @@
             <p class="comandas-detalhe__cliente" id="comandas-detalhe-cliente"></p>
             <p class="inline-note" id="comandas-detalhe-info"></p>
             <ul class="comandas-detalhe__linhas" id="comandas-detalhe-linhas"></ul>
+            <button type="button" class="btn btn-primary comandas-detalhe__cobrar" id="btn-cobrar-comanda" onclick="cobrarComanda()">Cobrar no caixa</button>
+            <p class="inline-note">Abre o PDV no caixa aberto, já com esta comanda. Tirar item e dividir a conta também são feitos lá.</p>
             <form class="comandas-detalhe__nome" id="comandas-nome-form">
               <label for="comandas-nome-input">Nome do cliente</label>
               <div class="comandas-detalhe__nome-linha">
@@ -91,8 +93,6 @@
                 <button class="btn btn-secondary btn-sm" type="submit" id="btn-salvar-nome">Salvar nome</button>
               </div>
             </form>
-            <button type="button" class="btn btn-primary comandas-detalhe__cobrar" id="btn-cobrar-comanda" onclick="cobrarComanda()">Cobrar no caixa</button>
-            <p class="inline-note">Abre o PDV no caixa aberto, já com esta comanda. Tirar item e dividir a conta também são feitos lá.</p>
           </div>
         </aside>
       </div>

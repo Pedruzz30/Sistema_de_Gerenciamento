@@ -54,7 +54,7 @@ try {
   await pagina.keyboard.press('Alt+1');
   await esperarTexto('#pdv-total', 'R$ 44,00');
   await pagina.keyboard.press('Escape');
-  await esperarTexto('#alert-pdv', 'Comanda 7 guardada');
+  await esperarTexto('#alert-pdv', 'Comanda 7 · Carlos guardada');
 
   // Tela Comandas, Nova comanda e Cobrar no caixa (no Pix).
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
