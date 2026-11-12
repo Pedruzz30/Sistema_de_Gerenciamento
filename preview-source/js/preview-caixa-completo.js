@@ -90,7 +90,10 @@
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { db = null; }
   if (!db || !db.seq || !Array.isArray(db.itens) || !db.vendas) db = inicial();
-  const salvar = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* sem armazenamento: fica só na memória */ } };
+  // Depois de Recomeçar nada mais grava: uma atualização da tela que termine durante a troca de
+  // página não pode devolver os dados antigos.
+  let recomecando = false;
+  const salvar = () => { if (recomecando) return; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* sem armazenamento: fica só na memória */ } };
   salvar();
 
   // Quem está operando: o mesmo usuário que a tela guarda (troca de operador por PIN).
@@ -525,6 +528,7 @@
 
   // ── Faixa da demonstração e menu só com as telas do caixa ───────────────
   function recomecar() {
+    recomecando = true;
     try { localStorage.removeItem(KEY); sessionStorage.removeItem('usuario'); localStorage.removeItem('usuario'); } catch (e) { /* nada */ }
     location.href = BASE + 'caixas.html';
   }
