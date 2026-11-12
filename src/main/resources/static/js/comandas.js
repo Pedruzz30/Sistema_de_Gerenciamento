@@ -5,6 +5,8 @@
 let comandas = [];
 let selecionada = null;
 let atualizador = null;
+let busca = '';
+let nomeEditado = false; // quem está digitando o nome não perde o texto na atualização automática
 
 // Apoio próprio: esta tela não carrega o caixas.js, onde ficam os do caixa.
 const escapeHtml = texto => String(texto ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -22,6 +24,7 @@ async function lerErro(resp, padrao) {
 
 // Nome de variação que não diz nada (item de uma variação só).
 const VARIACOES_GENERICAS = new Set(['unidade', 'padrão', 'padrao', 'única', 'unica', 'normal']);
+const semAcento = texto => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const moeda = valor => Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const quantidade = q => String(Number(q)).replace('.', ',');
 
@@ -67,7 +70,7 @@ function renderResumo() {
     { label: 'Abertas', value: comandas.length, sub: comandas.length === 1 ? 'mesa consumindo agora' : 'mesas consumindo agora' },
     { label: 'Em aberto', value: moeda(total), sub: 'a receber quando pagarem' },
     { label: 'Itens lançados', value: quantidade(itens), sub: 'em todas as comandas abertas' },
-    { label: 'Mais antiga', value: maisAntiga ? `Comanda ${maisAntiga.numero}` : '—', sub: maisAntiga ? 'aberta ' + tempoAberta(maisAntiga.abertaEm) : 'nenhuma aberta' }
+    { label: 'Mais antiga', value: maisAntiga ? `Comanda ${maisAntiga.numero}` : '—', sub: maisAntiga ? (maisAntiga.cliente ? maisAntiga.cliente + ' · ' : '') + 'aberta ' + tempoAberta(maisAntiga.abertaEm) : 'nenhuma aberta' }
   ].map(card => `
     <div class="page-summary-card">
       <div class="page-summary-label">${card.label}</div>
@@ -83,9 +86,18 @@ function renderGrade() {
     grade.innerHTML = '<div class="empty">Nenhuma comanda aberta. Para abrir uma, use "+ Nova comanda", bipe o cartão no caixa ou digite o número no celular do atendente.</div>';
     return;
   }
-  grade.innerHTML = comandas.map(c => `
+  const termo = semAcento(busca.trim());
+  const visiveis = !termo ? comandas : comandas.filter(c => /^\d+$/.test(termo)
+    ? String(c.numero).startsWith(termo)
+    : semAcento(c.cliente).includes(termo));
+  if (!visiveis.length) {
+    grade.innerHTML = `<div class="empty">Nenhuma comanda aberta com "${escapeHtml(busca.trim())}".</div>`;
+    return;
+  }
+  grade.innerHTML = visiveis.map(c => `
     <button type="button" class="comanda-cartao${c.numero === selecionada ? ' comanda-cartao--ativa' : ''}" data-comanda="${c.numero}">
       <span class="comanda-cartao__numero">Comanda ${c.numero}</span>
+      ${c.cliente ? `<span class="comanda-cartao__cliente">${escapeHtml(c.cliente)}</span>` : ''}
       <strong class="comanda-cartao__total">${moeda(c.total)}</strong>
       <span class="comanda-cartao__info">${quantidade(c.itens)} ${Number(c.itens) === 1 ? 'item' : 'itens'} · aberta ${tempoAberta(c.abertaEm)}</span>
     </button>`).join('');
@@ -105,6 +117,9 @@ function mostrarDetalhe(detalhe) {
   document.getElementById('comandas-detalhe-conteudo').hidden = !detalhe;
   if (!detalhe) return;
   document.getElementById('comandas-detalhe-titulo').textContent = `Comanda ${detalhe.numero}`;
+  document.getElementById('comandas-detalhe-cliente').textContent = detalhe.cliente || '';
+  const campoNome = document.getElementById('comandas-nome-input');
+  if (!nomeEditado && document.activeElement !== campoNome) campoNome.value = detalhe.cliente || '';
   document.getElementById('comandas-detalhe-total').textContent = moeda(detalhe.total);
   const hora = new Date(detalhe.abertaEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   document.getElementById('comandas-detalhe-info').textContent = `Aberta às ${hora} (${tempoAberta(detalhe.abertaEm)}) · ${quantidade(detalhe.itens)} itens`;
@@ -114,9 +129,33 @@ function mostrarDetalhe(detalhe) {
 }
 
 async function selecionarComanda(numero) {
+  if (numero !== selecionada) nomeEditado = false;
   selecionada = numero;
   renderGrade();
   await carregarDetalhe(numero);
+}
+
+async function salvarNomeComanda() {
+  if (!selecionada) return;
+  const numero = selecionada;
+  const cliente = document.getElementById('comandas-nome-input').value.trim();
+  const botao = document.getElementById('btn-salvar-nome');
+  botao.disabled = true;
+  try {
+    const resp = await fetch(`/api/comandas/${numero}/cliente`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cliente })
+    });
+    if (!resp.ok) throw new Error(await lerErro(resp, 'Não foi possível salvar o nome.'));
+    nomeEditado = false;
+    await carregarComandas();
+    mostrarAlert('alert-comandas', cliente ? `Comanda ${numero}: nome "${cliente}" anotado.` : `Comanda ${numero} ficou sem nome.`, 'success');
+  } catch (error) {
+    mostrarAlert('alert-comandas', error.message, 'error');
+  } finally {
+    botao.disabled = false;
+  }
 }
 
 // ── Nova comanda ─────────────────────────────────────────────────────────
@@ -132,6 +171,7 @@ async function abrirNovaComanda() {
   let livre = 1;
   while (ocupados.has(livre) && livre < 9999) livre++;
   campo.value = String(livre);
+  document.getElementById('nova-comanda-cliente').value = '';
   caixaAbertoNovaComanda = null;
   try {
     const resp = await fetch('/api/caixas');
@@ -165,15 +205,21 @@ async function criarComanda() {
     mostrarAlert('alert-nova-comanda', `A comanda ${numero} já está aberta. Escolha outro número ou toque nela na lista.`, 'error');
     return;
   }
-  if (caixaAbertoNovaComanda) {
-    window.location.href = `caixas.html?comanda=${numero}`;
-    return;
-  }
+  const cliente = document.getElementById('nova-comanda-cliente').value.trim();
   const botao = document.getElementById('btn-criar-comanda');
   botao.disabled = true;
   try {
-    const resp = await fetch(`/api/comandas/${numero}/abrir`, { method: 'POST' });
+    // Abre aqui mesmo (com o nome); com caixa aberto, o PDV retoma a comanda já aberta.
+    const resp = await fetch(`/api/comandas/${numero}/abrir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cliente })
+    });
     if (!resp.ok) throw new Error(await lerErro(resp, 'Não foi possível abrir a comanda.'));
+    if (caixaAbertoNovaComanda) {
+      window.location.href = `caixas.html?comanda=${numero}`;
+      return;
+    }
     fecharNovaComanda();
     await carregarComandas();
     await selecionarComanda(numero);
@@ -187,7 +233,7 @@ async function criarComanda() {
 
 document.addEventListener('keydown', event => {
   if (!document.getElementById('modal-nova-comanda')?.classList.contains('open')) return;
-  if (event.key === 'Enter' && event.target && event.target.id === 'nova-comanda-numero') { event.preventDefault(); criarComanda(); }
+  if (event.key === 'Enter' && event.target && ['nova-comanda-numero', 'nova-comanda-cliente'].includes(event.target.id)) { event.preventDefault(); criarComanda(); }
   if (event.key === 'Escape') fecharNovaComanda();
 });
 
@@ -195,6 +241,16 @@ function cobrarComanda() {
   if (!selecionada) return;
   window.location.href = `caixas.html?comanda=${selecionada}`;
 }
+
+document.addEventListener('input', event => {
+  if (!event.target) return;
+  if (event.target.id === 'comandas-busca') { busca = event.target.value; renderGrade(); }
+  if (event.target.id === 'comandas-nome-input') nomeEditado = true;
+});
+
+document.addEventListener('submit', event => {
+  if (event.target && event.target.id === 'comandas-nome-form') { event.preventDefault(); salvarNomeComanda(); }
+});
 
 document.addEventListener('click', event => {
   const cartao = event.target.closest && event.target.closest('[data-comanda]');

@@ -65,6 +65,7 @@
         <section class="table-card comandas-lista-card" aria-label="Comandas abertas">
           <div class="table-header">
             <span class="table-title">Abertas agora</span>
+            <input class="input comandas-busca" type="search" id="comandas-busca" placeholder="Buscar número ou nome" autocomplete="off" aria-label="Buscar comanda pelo número ou pelo nome do cliente">
             <span class="table-count" id="comandas-contagem">—</span>
           </div>
           <div class="comandas-grade" id="comandas-grade"><div class="empty">Carregando...</div></div>
@@ -80,8 +81,16 @@
               <h2 id="comandas-detalhe-titulo">Comanda</h2>
               <strong class="comandas-detalhe__total" id="comandas-detalhe-total"></strong>
             </div>
+            <p class="comandas-detalhe__cliente" id="comandas-detalhe-cliente"></p>
             <p class="inline-note" id="comandas-detalhe-info"></p>
             <ul class="comandas-detalhe__linhas" id="comandas-detalhe-linhas"></ul>
+            <form class="comandas-detalhe__nome" id="comandas-nome-form">
+              <label for="comandas-nome-input">Nome do cliente</label>
+              <div class="comandas-detalhe__nome-linha">
+                <input class="input" type="text" id="comandas-nome-input" maxlength="60" autocomplete="off" placeholder="Sem nome">
+                <button class="btn btn-secondary btn-sm" type="submit" id="btn-salvar-nome">Salvar nome</button>
+              </div>
+            </form>
             <button type="button" class="btn btn-primary comandas-detalhe__cobrar" id="btn-cobrar-comanda" onclick="cobrarComanda()">Cobrar no caixa</button>
             <p class="inline-note">Abre o PDV no caixa aberto, já com esta comanda. Tirar item e dividir a conta também são feitos lá.</p>
           </div>
@@ -91,6 +100,7 @@
       <details class="table-card comandas-ajuda">
         <summary>Como as comandas funcionam</summary>
         <ol>
+          <li><strong>Nome do cliente:</strong> opcional. Anote ao abrir (aqui, no F7 do caixa ou no celular) ou depois, escolhendo a comanda nesta tela. O nome aparece junto do número, no papel da cozinha e no cupom, e dá para buscar a comanda pelo nome.</li>
           <li><strong>Abrir:</strong> aqui, em <strong>+ Nova comanda</strong>; no caixa, bipe o cartão da comanda (ou digite <kbd>c15</kbd> e Enter, ou F7). No celular do atendente, digite o número ou leia o cartão com a câmera.</li>
           <li><strong>Lançar:</strong> no caixa, bipe os produtos com a comanda aberta e aperte Esc para guardar. No celular, monte o pedido e toque em Lançar.</li>
           <li><strong>Cobrar:</strong> aqui, em "Cobrar no caixa", ou bipando o cartão no PDV. Paga a conta, a comanda fecha e o estoque baixa.</li>
@@ -114,6 +124,11 @@
         <label for="nova-comanda-numero">Número do cartão</label>
         <input class="input" type="number" id="nova-comanda-numero" min="1" max="9999" inputmode="numeric" autocomplete="off">
         <p class="inline-note">Use o número impresso no cartão que vai para a mesa. Já vem o primeiro número livre.</p>
+      </div>
+      <div class="field form-group">
+        <label for="nova-comanda-cliente">Nome do cliente <span class="inline-note">(opcional)</span></label>
+        <input class="input" type="text" id="nova-comanda-cliente" maxlength="60" autocomplete="off" placeholder="Ex.: João, Carla da mesa 3">
+        <p class="inline-note">Aparece junto do número nas telas, no celular e no papel da cozinha.</p>
       </div>
       <p class="inline-note" id="nova-comanda-explica"></p>
     </div>

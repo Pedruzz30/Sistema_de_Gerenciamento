@@ -3701,6 +3701,7 @@ body.bridge-page .bridge-actions a {
 .pdv-comanda-selo { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #0369a1; color: #fff; font-size: 12px; font-weight: 700; }
 .pdv-comanda-abrir { display: grid; gap: 4px; margin-bottom: 10px; font-size: 13px; }
 .pdv-comanda-abrir__linha { display: flex; gap: 8px; }
+.pdv-comanda-cliente { display: block; font-weight: 700; overflow-wrap: anywhere; }
 #btn-pdv-guardar-comanda { margin-bottom: 10px; }
 .etiqueta--comanda .etiqueta-numero { font-size: 34px; font-weight: 800; line-height: 1.1; }
 
@@ -3901,6 +3902,13 @@ body.bridge-page .bridge-actions a {
 .comanda-cartao__numero { font-size: 13px; color: var(--text-muted, #6b6760); }
 .comanda-cartao__total { font-size: 22px; }
 .comanda-cartao__info { font-size: 12px; color: var(--text-muted, #6b6760); }
+.comanda-cartao__cliente { font-size: 15px; font-weight: 700; color: var(--ink, #1c1917); overflow-wrap: anywhere; }
+.comandas-busca { flex: 1 1 160px; max-width: 240px; min-height: 36px; margin: 0 8px; }
+.comandas-detalhe__cliente { margin: 4px 0 0; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.comandas-detalhe__cliente:empty { display: none; }
+.comandas-detalhe__nome { display: grid; gap: 4px; margin: 10px 0; font-size: 13px; }
+.comandas-detalhe__nome-linha { display: flex; gap: 8px; }
+.comandas-detalhe__nome-linha .input { flex: 1; min-width: 0; }
 .comandas-detalhe { padding: 16px; position: sticky; top: 12px; }
 .comandas-detalhe__vazio p { color: var(--text-muted, #6b6760); font-size: 13px; }
 .comandas-detalhe__topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }

@@ -1338,6 +1338,52 @@ O papel tem em letra grande "COZINHA" e o número da comanda (ou "BALCÃO - VEND
 - `scripts/test-caixa-completo-demo.mjs` (workflow *StockOS demonstração do caixa completo*) usa a área num navegador de verdade: venda com troco, comanda pelo número, tecla rápida, Nova comanda, cobrança da comanda no Pix e Recomeçar.
 - Na tela Comandas, os botões passaram a usar endereço relativo (`caixas.html?comanda=N`). Assim funcionam igual no sistema e na demonstração.
 
+## 36. Nome do cliente na comanda e o cartão que vai para a mesa (12/11/2026, branch feat/caixas-pdv-20261112)
+
+**O que muda.** A comanda pode ter o nome do cliente, que é opcional. O número continua sendo o que vale. O nome fica junto do número em todo lugar:
+- tela Comandas (cartões, detalhe e busca);
+- selo do PDV ("Comanda 7 · João"), lista do F7 e cupom;
+- celular do atendente;
+- papel da cozinha (linha "Cliente: João" logo abaixo de "COMANDA 7").
+
+**Onde anotar o nome:**
+
+| Onde | Como |
+|---|---|
+| Tela Comandas, **+ Nova comanda** | Campo "Nome do cliente (opcional)" junto do número |
+| Tela Comandas, comanda escolhida | Campo "Nome do cliente" e **Salvar nome**. Corrige ou apaga (deixe em branco) |
+| Caixa, **F7** | Campo "Anotar o nome do cliente". Vale para comanda nova e para a que já está aberta |
+| Celular | Campo "Nome do cliente (opcional)" na tela da comanda; vai junto do pedido ao tocar em Lançar |
+
+**Achar pelo nome:**
+- Tela Comandas: campo "Buscar número ou nome".
+- F7 do caixa: digitar o nome no lugar do número. A lista mostra só as comandas daquele cliente, e Enter abre quando sobra uma só.
+
+**Regras:**
+- Espaços sobrando são tirados, e o nome vai até 60 letras. Nome maior é recusado com aviso, sem cortar.
+- Bipar o cartão sem digitar nome não apaga o nome que já estava.
+- Digitar um nome diferente troca o nome, e a troca fica no log (`COMANDA_CLIENTE`, com o nome antes e depois).
+- Quando a comanda é paga, o nome some junto. O mesmo cartão abre a próxima comanda sem nome.
+
+**Como foi feito:**
+- Coluna `cliente` em `comandas`, criada pela migração `V20261112_01`.
+- `ComandaService.abrirOuRetomar(usuario, numero, cliente)`, `definirCliente` e `lancar(..., cliente)`.
+- Rotas: `POST /api/comandas/{n}/abrir` aceita `{cliente}`; nova `PUT /api/comandas/{n}/cliente`; `lancar` aceita `cliente`. As listas e o detalhe devolvem `cliente`.
+- A **+ Nova comanda** agora abre a comanda já com o nome antes de ir para o PDV.
+- A demonstração da Netlify (`/caixa-completo/`) faz o mesmo. As comandas de exemplo são do Carlos e da Fernanda.
+
+**Testes:**
+- Integração: abrir com nome (espaços tirados), bipar sem nome mantém, corrigir, recusar nome longo, apagar, e celular mandando o nome com o primeiro pedido. Nome inválido não lança nada.
+- Cozinha: a linha do cliente sai no papel.
+- E2E real: Nova comanda com nome, busca, correção, PDV com "Comanda 21 · Bruno" e F7 achando pelo nome.
+- Demonstração: os mesmos passos no navegador.
+
+**O cartão que fica com o cliente (recomendação para começar).** O controle está no sistema, então o cartão só precisa trazer o número e o código de barras. Ninguém anota nada nele, e o cliente pede a conferência no caixa (F8).
+- **Começar com o cartão impresso pelo próprio StockOS:** Estoque → Folha de códigos → Cartões de comanda, do número 1 ao 30. Imprimir em papel mais grosso (180 a 240 g) e plastificar numa papelaria, ou colocar em capa plástica de crachá. Custa poucos reais por cartão e o código já é o que o caixa e o celular leem (EAN-13 começando com 29).
+- **Na mesa:** o cartão fica com o cliente, ou num suporte de acrílico de mesa (porta-preço ou prisma), vendido em kits baratos.
+- **Quando crescer:** cartão de PVC personalizado, que custava cerca de R$ 10 a R$ 15 cada em lotes de 30 a 200 nos anúncios vistos em 12/11/2026. Para funcionar sem mudar nada, peça ao fornecedor o mesmo código da Folha de códigos.
+- **Rotina:** o cartão volta para a caixinha do caixa quando a conta é paga. Perdeu um cartão: imprime outro com o mesmo número.
+
 ## Fontes
 
 - [Guia Completo da NFC-e 2026 (Contmatic)](https://simplifique.contmatic.com.br/blogs/guia-completo-nfc-e-2026)

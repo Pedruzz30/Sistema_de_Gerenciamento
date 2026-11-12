@@ -2331,6 +2331,7 @@ function dadosCupomPDV({ titulo, venda, comanda, pagamentos, troco, conferencia 
     conferencia,
     vendaId: venda ? venda.id : null,
     comanda: comanda ? comanda.numero : null,
+    cliente: comanda ? comanda.cliente || null : null,
     quando: new Date(),
     caixa: pdvNumeroCaixa,
     operador: nomeDoOperadorAtual(),
@@ -2350,7 +2351,7 @@ function htmlCupomPDV(c) {
   const data = c.quando.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   let html = `<h2>${escapeHtml(c.titulo)}</h2>`
     + `<p class="cupom-centro">${escapeHtml(data)} · Caixa ${escapeHtml(String(c.caixa ?? '—'))}</p>`
-    + (c.comanda ? `<p class="cupom-centro"><strong>COMANDA ${c.comanda}</strong></p>` : '')
+    + (c.comanda ? `<p class="cupom-centro"><strong>COMANDA ${c.comanda}</strong>${c.cliente ? '<br>' + escapeHtml(c.cliente) : ''}</p>` : '')
     + (c.vendaId && !c.conferencia ? `<p class="cupom-centro">Venda #${c.vendaId} · ${escapeHtml(c.operador)}</p>` : `<p class="cupom-centro">${escapeHtml(c.operador)}</p>`)
     + '<hr>';
   c.itens.forEach(i => {
@@ -2421,14 +2422,35 @@ function atualizarComandaPDV() {
   const selo = document.getElementById('pdv-comanda-label');
   if (!selo) return;
   selo.hidden = !pdvComandaAtual;
-  selo.textContent = pdvComandaAtual ? `Comanda ${pdvComandaAtual.numero}` : '';
+  selo.textContent = pdvComandaAtual ? nomeComandaPDV(pdvComandaAtual) : '';
 }
 
-async function abrirComandaPDV(numero) {
+/** "Comanda 7" ou "Comanda 7 · João". */
+function nomeComandaPDV(comanda) {
+  return `Comanda ${comanda.numero}${comanda.cliente ? ' · ' + comanda.cliente : ''}`;
+}
+
+async function abrirComandaPDV(numero, cliente = '') {
   limparAlert('alert-pdv');
   if (operacaoPendentePDV()) return false;
+  const nome = String(cliente || '').trim();
   if (pdvComandaAtual && pdvComandaAtual.numero === numero) {
-    mostrarAlert('alert-pdv', `A comanda ${numero} já está aberta aqui.`, 'info');
+    if (!nome) {
+      mostrarAlert('alert-pdv', `A comanda ${numero} já está aberta aqui.`, 'info');
+      return true;
+    }
+    const respNome = await fetch(`/api/comandas/${numero}/cliente`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cliente: nome })
+    });
+    if (!respNome.ok) {
+      mostrarAlert('alert-pdv', await safeReadErrorMessage(respNome, 'Não foi possível anotar o nome.'), 'error');
+      return false;
+    }
+    pdvComandaAtual.cliente = (await respNome.json()).cliente || null;
+    atualizarComandaPDV();
+    mostrarAlert('alert-pdv', `${nomeComandaPDV(pdvComandaAtual)}: nome anotado.`, 'success');
     return true;
   }
   if (!document.getElementById('pdv-pagamento').hidden) {
@@ -2443,7 +2465,11 @@ async function abrirComandaPDV(numero) {
   }
   // Trocando de comanda: a anterior manda para a cozinha o que ainda não foi.
   if (pdvComandaAtual) enviarCozinhaPDV(pdvComandaAtual.numero);
-  const resp = await fetch(`/api/comandas/${numero}/abrir`, { method: 'POST' });
+  const resp = await fetch(`/api/comandas/${numero}/abrir`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cliente: nome })
+  });
   if (!resp.ok) {
     mostrarAlert('alert-pdv', await safeReadErrorMessage(resp, 'Não foi possível abrir a comanda.'), 'error');
     bipPDV(false);
@@ -2457,21 +2483,23 @@ async function abrirComandaPDV(numero) {
   }
   pdvVendaAtual = await respVenda.json();
   pdvDraftPayloadPorItemVenda = {};
-  pdvComandaAtual = { numero };
+  pdvComandaAtual = { numero, cliente: comanda.cliente || null };
   atualizarComandaPDV();
   renderCarrinho();
   renderCardapio();
   bipPDV(true);
   const quantidade = pdvCarrinho.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
+  const titulo = nomeComandaPDV(pdvComandaAtual);
   mostrarAlert('alert-pdv', quantidade > 0
-    ? `Comanda ${numero}: ${quantidade} ${quantidade === 1 ? 'item' : 'itens'}, ${formatarMoedaPDV(calcularTotalCarrinho())}. Bipe o que o cliente pedir, F10 fecha a conta e Esc guarda a comanda.`
-    : `Comanda ${numero} aberta. Bipe o que o cliente pedir. Esc guarda a comanda.`, 'success');
+    ? `${titulo}: ${quantidade} ${quantidade === 1 ? 'item' : 'itens'}, ${formatarMoedaPDV(calcularTotalCarrinho())}. Bipe o que o cliente pedir, F10 fecha a conta e Esc guarda a comanda.`
+    : `${titulo} aberta. Bipe o que o cliente pedir. Esc guarda a comanda.${pdvComandaAtual.cliente ? '' : ' Para anotar o nome do cliente, use o F7.'}`, 'success');
   return true;
 }
 
 function guardarComandaPDV() {
   if (!pdvComandaAtual) return;
   const { numero } = pdvComandaAtual;
+  const titulo = nomeComandaPDV(pdvComandaAtual);
   enviarCozinhaPDV(numero);
   const total = calcularTotalCarrinho();
   pdvComandaAtual = null;
@@ -2481,13 +2509,60 @@ function guardarComandaPDV() {
   atualizarComandaPDV();
   renderCarrinho();
   renderCardapio();
-  mostrarAlert('alert-pdv', `Comanda ${numero} guardada com ${formatarMoedaPDV(total)}. O caixa voltou ao balcão.`, 'info');
+  mostrarAlert('alert-pdv', `${titulo} guardada com ${formatarMoedaPDV(total)}. O caixa voltou ao balcão.`, 'info');
   focarLeituraPDV();
+}
+
+let pdvComandasAbertas = [];
+
+/** Texto digitado no F7 que é nome (não é número nem cartão): procura pelo nome do cliente. */
+function buscaPorNomePDV(texto) {
+  const limpo = String(texto || '').trim();
+  return limpo && !/^\d{1,4}$/.test(limpo) && !numeroComandaPDV(limpo) ? semAcentoPDV(limpo) : '';
+}
+
+function semAcentoPDV(texto) {
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function renderComandasPDV() {
+  const lista = document.getElementById('pdv-comandas-lista');
+  const termo = buscaPorNomePDV(document.getElementById('pdv-comanda-numero').value);
+  const visiveis = termo ? pdvComandasAbertas.filter(c => semAcentoPDV(c.cliente).includes(termo)) : pdvComandasAbertas;
+  if (pdvComandasAbertas.length === 0) {
+    lista.innerHTML = '<p class="inline-note">Nenhuma comanda aberta.</p>';
+    return;
+  }
+  if (visiveis.length === 0) {
+    lista.innerHTML = '<p class="inline-note">Nenhuma comanda aberta com esse nome.</p>';
+    return;
+  }
+  lista.innerHTML = visiveis.map(c => {
+    const itens = Number(c.itens || 0);
+    return `<div class="pdv-comanda-linha">
+        <button type="button" class="pdv-venda-linha" data-comanda-pdv="${c.numero}">
+          <span class="pdv-venda-linha__hora">${escapeHtml(horaPDV(c.abertaEm))}</span>
+          <span>Comanda ${c.numero} · ${itens} ${itens === 1 ? 'item' : 'itens'}${c.cliente ? `<span class="pdv-comanda-cliente">${escapeHtml(c.cliente)}</span>` : ''}</span>
+          <strong>${formatarMoedaPDV(c.total)}</strong>
+        </button>
+        ${itens === 0 ? `<button type="button" class="pdv-pag-link" data-excluir-comanda="${c.numero}">Excluir vazia</button>` : ''}
+      </div>`;
+  }).join('');
+  lista.querySelectorAll('[data-comanda-pdv]').forEach(botao => botao.addEventListener('click', async () => {
+    const cliente = document.getElementById('pdv-comanda-cliente').value;
+    if (await abrirComandaPDV(Number(botao.dataset.comandaPdv), cliente)) fecharComandasPDV();
+  }));
+  lista.querySelectorAll('[data-excluir-comanda]').forEach(botao => botao.addEventListener('click', async () => {
+    const resp = await fetch(`/api/comandas/${botao.dataset.excluirComanda}`, { method: 'DELETE' });
+    if (!resp.ok) mostrarAlert('alert-pdv-comandas', await safeReadErrorMessage(resp, 'Não foi possível excluir.'), 'error');
+    else abrirComandasPDV();
+  }));
 }
 
 async function abrirComandasPDV() {
   limparAlert('alert-pdv-comandas');
   document.getElementById('pdv-comanda-numero').value = '';
+  document.getElementById('pdv-comanda-cliente').value = '';
   const guardar = document.getElementById('btn-pdv-guardar-comanda');
   guardar.hidden = !pdvComandaAtual;
   if (pdvComandaAtual) guardar.textContent = `Guardar a comanda ${pdvComandaAtual.numero} e voltar ao balcão`;
@@ -2498,30 +2573,8 @@ async function abrirComandasPDV() {
   try {
     const resp = await fetch('/api/comandas');
     if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível listar as comandas.'));
-    const comandas = await resp.json();
-    if (comandas.length === 0) {
-      lista.innerHTML = '<p class="inline-note">Nenhuma comanda aberta.</p>';
-      return;
-    }
-    lista.innerHTML = comandas.map(c => {
-      const itens = Number(c.itens || 0);
-      return `<div class="pdv-comanda-linha">
-          <button type="button" class="pdv-venda-linha" data-comanda-pdv="${c.numero}">
-            <span class="pdv-venda-linha__hora">${escapeHtml(horaPDV(c.abertaEm))}</span>
-            <span>Comanda ${c.numero} · ${itens} ${itens === 1 ? 'item' : 'itens'}</span>
-            <strong>${formatarMoedaPDV(c.total)}</strong>
-          </button>
-          ${itens === 0 ? `<button type="button" class="pdv-pag-link" data-excluir-comanda="${c.numero}">Excluir vazia</button>` : ''}
-        </div>`;
-    }).join('');
-    lista.querySelectorAll('[data-comanda-pdv]').forEach(botao => botao.addEventListener('click', async () => {
-      if (await abrirComandaPDV(Number(botao.dataset.comandaPdv))) fecharComandasPDV();
-    }));
-    lista.querySelectorAll('[data-excluir-comanda]').forEach(botao => botao.addEventListener('click', async () => {
-      const resp = await fetch(`/api/comandas/${botao.dataset.excluirComanda}`, { method: 'DELETE' });
-      if (!resp.ok) mostrarAlert('alert-pdv-comandas', await safeReadErrorMessage(resp, 'Não foi possível excluir.'), 'error');
-      else abrirComandasPDV();
-    }));
+    pdvComandasAbertas = await resp.json();
+    renderComandasPDV();
   } catch (error) {
     lista.innerHTML = '';
     mostrarAlert('alert-pdv-comandas', error.message, 'error');
@@ -2530,12 +2583,24 @@ async function abrirComandasPDV() {
 
 async function abrirComandaDigitadaPDV() {
   const texto = document.getElementById('pdv-comanda-numero').value.trim();
-  const numero = /^\d{1,4}$/.test(texto) ? Number(texto) : numeroComandaPDV(texto);
+  const cliente = document.getElementById('pdv-comanda-cliente').value;
+  let numero = /^\d{1,4}$/.test(texto) ? Number(texto) : numeroComandaPDV(texto);
+  const termo = buscaPorNomePDV(texto);
+  if (!numero && termo) {
+    const achadas = pdvComandasAbertas.filter(c => semAcentoPDV(c.cliente).includes(termo));
+    if (achadas.length !== 1) {
+      mostrarAlert('alert-pdv-comandas', achadas.length
+        ? 'Mais de uma comanda com esse nome: escolha na lista.'
+        : 'Nenhuma comanda aberta com esse nome. Para abrir uma nova, digite o número.', 'error');
+      return;
+    }
+    numero = achadas[0].numero;
+  }
   if (!numero) {
-    mostrarAlert('alert-pdv-comandas', 'Digite o número da comanda, de 1 a 9999.', 'error');
+    mostrarAlert('alert-pdv-comandas', 'Digite o número da comanda (1 a 9999) ou o nome do cliente.', 'error');
     return;
   }
-  if (await abrirComandaPDV(numero)) fecharComandasPDV();
+  if (await abrirComandaPDV(numero, cliente)) fecharComandasPDV();
   else mostrarAlert('alert-pdv-comandas', document.getElementById('alert-pdv').textContent, 'error');
 }
 
@@ -2547,7 +2612,7 @@ function fecharComandasPDV() {
 function atalhosComandasPDV(event) {
   if (event.key === 'Escape') { event.preventDefault(); fecharComandasPDV(); return; }
   if (/^F\d+$/.test(event.key)) { event.preventDefault(); return; }
-  if (event.key === 'Enter' && event.target && event.target.id === 'pdv-comanda-numero') {
+  if (event.key === 'Enter' && event.target && ['pdv-comanda-numero', 'pdv-comanda-cliente'].includes(event.target.id)) {
     event.preventDefault();
     abrirComandaDigitadaPDV();
   }
@@ -3132,6 +3197,10 @@ function atalhosPDV(event) {
   }
 }
 document.addEventListener('keydown', atalhosPDV);
+// F7: digitando um nome, a lista mostra só as comandas daquele cliente.
+document.addEventListener('input', event => {
+  if (event.target && event.target.id === 'pdv-comanda-numero') renderComandasPDV();
+});
 
 window.StockOSPDV = {
   activate() {

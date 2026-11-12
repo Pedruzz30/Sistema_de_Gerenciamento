@@ -54,7 +54,7 @@ public class ComandaController {
                 : request.itens().stream()
                 .filter(i -> i != null && i.variacaoId() != null)
                 .map(i -> new ComandaService.ItemLancado(i.variacaoId(), i.quantidade())).toList();
-        return ResponseEntity.ok(comandaService.lancar(usuario, numero, itens));
+        return ResponseEntity.ok(comandaService.lancar(usuario, numero, itens, request == null ? null : request.cliente()));
     }
 
     /** O caixa guardou a comanda: o que é da cozinha e ainda não foi, vai agora. */
@@ -66,14 +66,27 @@ public class ComandaController {
 
     public record ItemLancarRequest(Long variacaoId, java.math.BigDecimal quantidade) {}
 
-    public record LancarRequest(List<ItemLancarRequest> itens) {}
+    public record LancarRequest(List<ItemLancarRequest> itens, String cliente) {}
 
+    /** Abre (ou retoma) pelo número. O nome do cliente é opcional; em branco, fica o que já estava. */
     @PostMapping("/{numero}/abrir")
     public ResponseEntity<ComandaResponse> abrir(@PathVariable int numero,
+                                                 @org.springframework.web.bind.annotation.RequestBody(required = false) ClienteRequest request,
                                                  @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
-        Comanda comanda = comandaService.abrirOuRetomar(operador(ruHeader), numero);
+        Comanda comanda = comandaService.abrirOuRetomar(operador(ruHeader), numero, request == null ? null : request.cliente());
         return ResponseEntity.ok(ComandaResponse.from(comanda));
     }
+
+    /** Anota, corrige ou apaga (em branco) o nome do cliente da comanda aberta. */
+    @org.springframework.web.bind.annotation.PutMapping("/{numero}/cliente")
+    public ResponseEntity<ComandaResponse> cliente(@PathVariable int numero,
+                                                   @org.springframework.web.bind.annotation.RequestBody(required = false) ClienteRequest request,
+                                                   @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
+        Comanda comanda = comandaService.definirCliente(operador(ruHeader), numero, request == null ? null : request.cliente());
+        return ResponseEntity.ok(ComandaResponse.from(comanda));
+    }
+
+    public record ClienteRequest(String cliente) {}
 
     /** Passa itens de outra comanda (ou do balcão) para esta. Sem itens na origem, ela fecha. */
     @PostMapping("/{numero}/transferir")
@@ -148,9 +161,9 @@ public class ComandaController {
                 "Voce nao tem permissao para usar comandas.");
     }
 
-    public record ComandaResponse(int numero, long vendaId, String status, String abertaEm) {
+    public record ComandaResponse(int numero, long vendaId, String status, String abertaEm, String cliente) {
         static ComandaResponse from(Comanda c) {
-            return new ComandaResponse(c.getNumero(), c.getVendaId(), c.getStatus().name(), c.getAbertaEm().toString());
+            return new ComandaResponse(c.getNumero(), c.getVendaId(), c.getStatus().name(), c.getAbertaEm().toString(), c.getCliente());
         }
     }
 }

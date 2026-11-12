@@ -193,9 +193,14 @@ public class CozinhaService {
     }
 
     private long gravarPedido(String tipo, long vendaId, Usuario usuario, List<Linha> linhas, int colunas) {
-        Integer comanda = jdbc.query("select numero from comandas where venda_id = ? order by id desc limit 1",
-                rs -> rs.next() ? rs.getInt(1) : null, vendaId);
-        String texto = montarTexto(tipo, comanda, vendaId, LocalDateTime.now(clock), nomeDe(usuario), linhas, colunas);
+        String[] cliente = {null};
+        Integer comanda = jdbc.query("select numero, cliente from comandas where venda_id = ? order by id desc limit 1",
+                rs -> {
+                    if (!rs.next()) return null;
+                    cliente[0] = rs.getString(2);
+                    return rs.getInt(1);
+                }, vendaId);
+        String texto = montarTexto(tipo, comanda, cliente[0], vendaId, LocalDateTime.now(clock), nomeDe(usuario), linhas, colunas);
         long id = inserirPedido(tipo, vendaId, comanda, texto, usuario);
         for (Linha linha : linhas) {
             jdbc.update("insert into pedidos_cozinha_itens (pedido_id, venda_item_id, descricao, quantidade) values (?, ?, ?, ?)",
@@ -336,10 +341,17 @@ public class CozinhaService {
     /** O papel da cozinha: tipo e comanda em letra grande, hora, quem pediu e os itens. */
     static String montarTexto(String tipo, Integer comanda, long vendaId, LocalDateTime quando, String quem,
                               List<Linha> linhas, int colunas) {
+        return montarTexto(tipo, comanda, null, vendaId, quando, quem, linhas, colunas);
+    }
+
+    /** Com o nome do cliente da comanda logo abaixo do número, para a cozinha levar à pessoa certa. */
+    static String montarTexto(String tipo, Integer comanda, String cliente, long vendaId, LocalDateTime quando, String quem,
+                              List<Linha> linhas, int colunas) {
         String traco = "-".repeat(Math.max(16, colunas));
         StringBuilder texto = new StringBuilder();
         texto.append("## ").append("CANCELAMENTO".equals(tipo) ? "*** CANCELAR ***" : "COZINHA").append('\n');
         texto.append("## ").append(comanda != null ? "COMANDA " + comanda : "BALCAO - VENDA " + vendaId).append('\n');
+        if (comanda != null && cliente != null && !cliente.isBlank()) texto.append("Cliente: ").append(cliente).append('\n');
         texto.append(quando.format(HORA)).append(" - ").append(quem).append('\n');
         texto.append(traco).append('\n');
         for (Linha linha : linhas) {
