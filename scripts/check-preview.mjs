@@ -15,7 +15,7 @@ assert.equal(await readFile('src/main/resources/static/js/dashboard.js','utf8'),
   await readFile('dist-preview/js/dashboard.js','utf8'),
   'Dashboard JS must come from canonical frontend');
 assert.equal(original.slice(original.indexOf('<body')),
-  html.slice(html.indexOf('<body')).replace(/<div class="comandas-demo-entry"[\s\S]*?<\/div>/, ''),
+  html.slice(html.indexOf('<body')).replace(/<div class="comandas-demo-entry"[\s\S]*?<\/div>/, '').replace(/<div class="caixa-completo-entry"[\s\S]*?<\/div>/, ''),
   'Dashboard body must remain canonical, except the mock-only shortcut');
 assert.ok(html.includes('/js/preview-scale.js'),'Scale fixture injection absent');
 assert.ok(html.includes('/js/preview-beverages.js'),'Beverage fixture injection absent');
@@ -58,6 +58,16 @@ assert.match(routes,/^\/comandas-demo \/comandas-demo.html 200$/m);
 // O "Comandas" do menu (página do sistema real) leva às comandas demonstrativas.
 assert.match(await readFile('dist-preview/comandas.html','utf8'),/comandas-demo\.html/);
 assert.match(routes,/^\/comandas \/comandas-demo.html 200$/m);
+// Caixa completo: as telas reais com o servidor simulado, numa pasta à parte.
+for (const pagina of ['caixas.html','comandas.html']) {
+  const completo = await readFile(join('dist-preview','caixa-completo',pagina),'utf8');
+  assert.match(completo,/<head>\n<script src="\/js\/preview-caixa-completo.js"><\/script>/,'Simulador antes de tudo em '+pagina);
+  assert.match(completo,/href="\/app.css"/);
+  assert.doesNotMatch(completo,/preview-mock.js|preview-pdv.js/,'Sem a simulação antiga em '+pagina);
+}
+assert.match(html,/caixa-completo-entry/,'Atalho para o caixa completo no Dashboard da demonstração');
+assert.match(routes,/^\/caixa-completo \/caixa-completo\/caixas.html 200$/m);
+assert.doesNotMatch(await readFile('src/main/resources/static/caixas.html','utf8'),/preview-caixa-completo/,'Simulador nunca no sistema Java');
 for(const f of ['saas-admin.html','saas-comandas.html','application.properties']) {
   await assert.rejects(access(join('dist-preview',f)));
 }

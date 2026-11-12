@@ -1315,6 +1315,29 @@ O papel tem em letra grande "COZINHA" e o número da comanda (ou "BALCÃO - VEND
 
 ---
 
+## 35. Caixa completo na demonstração da Netlify (11/11/2026, branch feat/caixas-pdv-20261111-demo)
+
+**O que é.** Uma área separada da demonstração, em `/caixa-completo/`, com as telas de verdade do PDV e das comandas (os mesmos `caixas.html` e `comandas.html` do sistema). A demonstração que já existia continua igual. No Dashboard e em Caixas dela aparece o botão **Ver o caixa completo**.
+
+**Como funciona sem servidor.** O arquivo `preview-source/js/preview-caixa-completo.js` responde no próprio navegador às mesmas rotas `/api/...` que o sistema Java responde, no mesmo formato. Os dados de exemplo são produtos com código de barras, gelada e natural, gelo, porção, caldo, as teclas Alt+1 a Alt+4, o Caixa 1 aberto e as comandas 7 e 12. O que a pessoa faz fica guardado só naquele navegador. O botão **Recomeçar** na faixa azul volta tudo ao começo. O PIN e a senha de gerente da demonstração aparecem na própria faixa. São valores públicos só da demonstração.
+
+**O que dá para testar ali.**
+- Bipar ou digitar o código, inclusive `6*` para seis unidades.
+- Pagamento com troco, Pix, cartão e mais de uma forma no mesmo pagamento.
+- Desconto e cancelamento com autorização do gerente.
+- Comandas por número (`c7`), guardar, transferir, retirar item com motivo e Nova comanda.
+- Cobrar uma comanda pela tela Comandas.
+- Sangria, suprimento e encerrar o caixa, que avisa quando há comandas abertas.
+
+**O que só existe na loja instalada.** Celular do atendente, impressão da cozinha, banco de dados de verdade e cadastro de produtos novos pelo PDV.
+
+**Como se mantém atualizado.** A montagem (`scripts/build-preview.mjs`) copia as telas reais a cada atualização da main, então qualquer mudança no PDV aparece sozinha na Netlify. Se a página mudar de um jeito que a montagem não reconheça, ela para com um aviso em vez de publicar algo quebrado.
+
+**Testes.**
+- `scripts/check-preview.mjs` confere que o simulador entra só na área separada e nunca no sistema Java.
+- `scripts/test-caixa-completo-demo.mjs` (workflow *StockOS demonstração do caixa completo*) usa a área num navegador de verdade: venda com troco, comanda pelo número, tecla rápida, Nova comanda, cobrança da comanda no Pix e Recomeçar.
+- Na tela Comandas, os botões passaram a usar endereço relativo (`caixas.html?comanda=N`). Assim funcionam igual no sistema e na demonstração.
+
 ## Fontes
 
 - [Guia Completo da NFC-e 2026 (Contmatic)](https://simplifique.contmatic.com.br/blogs/guia-completo-nfc-e-2026)
