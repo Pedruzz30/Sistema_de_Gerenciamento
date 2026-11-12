@@ -25,7 +25,7 @@ try {
   // A demonstração de sempre continua, com o atalho para o caixa completo.
   await pagina.goto(`${BASE}/dashboard.html`, { waitUntil: 'domcontentloaded' });
   await pagina.click('.caixa-completo-entry a');
-  await pagina.waitForURL('**/caixa-completo/caixas.html');
+  await pagina.waitForURL('**/caixa-completo/caixas.html', { waitUntil: 'domcontentloaded' });
   await pagina.waitForSelector('#caixa-completo-faixa');
   assert.deepEqual(await pagina.locator('#nav-items a').allTextContents().then(l => l.map(t => t.replace(/\s+/g, ' ').trim())),
     ['Caixas PDV', 'Comandas', '←Voltar à demonstração']);
@@ -64,7 +64,7 @@ try {
   await pagina.waitForSelector('#modal-nova-comanda.open');
   await pagina.fill('#nova-comanda-numero', '30');
   await pagina.press('#nova-comanda-numero', 'Enter');
-  await pagina.waitForURL(/\/caixa-completo\/caixas\.html/);
+  await pagina.waitForURL(/\/caixa-completo\/caixas\.html/, { waitUntil: 'domcontentloaded' });
   await esperarTexto('#pdv-comanda-label', 'Comanda 30');
   await pagina.keyboard.press('Escape');
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
@@ -80,12 +80,16 @@ try {
   await esperarTexto('#alert-pdv', 'Comanda 12 paga');
 
   // Recomeçar (na faixa do topo) volta aos dados de exemplo.
+  // Na tela Comandas, que se atualiza sozinha: uma atualização no meio não pode desfazer o Recomeçar.
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
+  await pagina.locator('.comanda-cartao', { hasText: 'Comanda 30' }).waitFor();
+  await pagina.evaluate(() => { for (let i = 0; i < 5; i++) fetch('/api/comandas'); });
   await pagina.click('#caixa-completo-recomecar');
-  await pagina.waitForURL('**/caixa-completo/caixas.html');
+  await pagina.waitForURL('**/caixa-completo/caixas.html', { waitUntil: 'domcontentloaded' });
   await pagina.goto(`${BASE}/caixa-completo/comandas.html`, { waitUntil: 'domcontentloaded' });
   await pagina.locator('.comanda-cartao', { hasText: 'Comanda 12' }).waitFor();
   assert.ok((await texto('.comanda-cartao:has-text("Comanda 7")')).includes('R$ 34,00'), 'Recomeçar restaura as comandas de exemplo');
+  assert.equal(await pagina.locator('.comanda-cartao', { hasText: 'Comanda 30' }).count(), 0, 'Recomeçar tira a comanda criada no teste');
 
   // A demonstração antiga não foi trocada.
   await pagina.goto(`${BASE}/caixas.html`, { waitUntil: 'domcontentloaded' });
