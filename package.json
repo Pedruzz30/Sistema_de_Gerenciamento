@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:preview": "node scripts/build-preview.mjs",
-    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs && npm run test:comandas-demo && npm run test:quick-actions && npm run test:mobile-shell && npm run test:operational-dashboard && npm run test:vite && npm run test:stock-mobile-ux && npm run test:mobile-pdv && npm run test:mobile-preview && npm run test:pdv-transaction-retries && npm run test:mobile-navigation && npm run test:readonly-local-audit && npm run test:shell-redesign && npm run test:preview-pdv-terminal && npm run test:category-management && npm run test:supplier-linking && npm run test:note-supplier-selection && npm run test:quote-workspace && npm run test:employee-registration && npm run test:audit-workspace && npm run test:product-registration && npm run test:inventory-workspace",
+    "test:preview": "node scripts/check-preview.mjs && node scripts/test-atomic-pdv-preview.mjs && node scripts/test-scale-preview.mjs && npm run test:comandas-demo && npm run test:quick-actions && npm run test:mobile-shell && npm run test:operational-dashboard && npm run test:vite && npm run test:stock-mobile-ux && npm run test:mobile-pdv && npm run test:mobile-preview && npm run test:pdv-transaction-retries && npm run test:mobile-navigation && npm run test:readonly-local-audit && npm run test:shell-redesign && npm run test:preview-pdv-terminal && npm run test:category-management && npm run test:supplier-linking && npm run test:note-supplier-selection && npm run test:quote-workspace && npm run test:employee-registration && npm run test:audit-workspace && npm run test:product-registration && npm run test:inventory-workspace && npm run test:login-layout",
     "test:cardapio": "node scripts/test-cardapio-preview.mjs",
     "dev": "node scripts/dev-preview.mjs",
     "dev:live-server": "node scripts/dev-preview.mjs --watch-only",
@@ -36,7 +36,8 @@
     "test:employee-registration": "node scripts/test-employee-registration.mjs",
     "test:audit-workspace": "node scripts/test-audit-workspace.mjs",
     "test:product-registration": "node scripts/test-product-registration.mjs",
-    "test:inventory-workspace": "node scripts/test-inventory-workspace.mjs"
+    "test:inventory-workspace": "node scripts/test-inventory-workspace.mjs",
+    "test:login-layout": "node scripts/test-login-layout.mjs"
   },
   "devDependencies": {
     "vite": "8.3.5"

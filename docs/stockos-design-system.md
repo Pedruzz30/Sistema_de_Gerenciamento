@@ -214,3 +214,7 @@ Modal com identificação, estoque inicial/mínimo e preço unitário. Previsão
 ## Central de estoque
 
 Indicadores globais de catálogo, zerados, atenção (crítico/baixo/moderado) e adequados. Distribuição por categoria expansível sobre resultados filtrados, incluindo sem categoria. Busca por nome ou ID, ordenação e tamanho de página local; cobertura da barra limitada a 100% do mínimo. CSV mantém escopo dos resultados filtrados. Bebida rápida em duas colunas, com código, preço/custo, estoque, fardo e margem bruta estimada; preserva Enter e Ctrl+Enter e endpoint. Edição e movimentação exibem contexto e projeções, validam inteiros e preço, bloqueiam repetição no cliente e orientam consulta em resultado incerto. Não altera regras do servidor, nem fornece garantia de concorrência ou idempotência. Quantidade prevista depende do saldo carregado; servidor é autoridade.
+
+## Tela de login
+
+Composição equilibrada em duas colunas no desktop e acesso prioritário em telas pequenas. Cabeçalho vertical, campos com rótulos claros, ajuda de senha expansível, recursos do produto em vez de números fixos não verificados. Demonstração inserida apenas no build estático, após o formulário, oculta durante troca de senha. Nenhuma alteração nos fluxos de autenticação, descoberta, senha provisória ou PIN.
