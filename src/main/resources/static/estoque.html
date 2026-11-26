@@ -127,40 +127,34 @@
 </div>
 
 <div class="modal-overlay" id="modal-cadastro" onclick="fecharModalSeClicouFora(event, 'modal-cadastro')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="product-create-title">
     <div class="modal-header">
-      <h3 class="modal-title">Novo Produto</h3>
-      <button class="modal-close" onclick="fecharModal('modal-cadastro')">×</button>
+      <div class="product-create-heading"><span class="product-create-icon" data-icon="box" aria-hidden="true"></span><div><h3 class="modal-title" id="product-create-title">Novo produto</h3><p>Cadastre um item e configure seu estoque inicial.</p></div></div>
+      <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-cadastro')">×</button>
     </div>
     <div class="modal-body">
-      <div class="field form-group">
-        <label>Nome do produto</label>
-        <input class="input" type="text" id="c-nome" placeholder="Ex: Laranja">
-      </div>
-      <div class="field form-group">
-        <label>Categoria de estoque</label>
-        <select class="select" id="c-categoria"></select>
-      </div>
-      <div class="form-row-2">
-        <div class="field form-group">
-          <label>Quantidade inicial</label>
-          <input class="input" type="number" id="c-qtd-inicial" placeholder="0" min="0">
+      <section class="product-create-section" aria-labelledby="product-identity-title">
+        <div class="product-section-title"><strong id="product-identity-title">Identificação</strong><span>Catálogo de estoque</span></div>
+        <div class="field form-group"><label for="c-nome">Nome do produto</label><input class="input" type="text" id="c-nome" maxlength="120" autocomplete="off" placeholder="Ex.: Água mineral 600 ml" required><small id="product-name-help">Informe um nome que diferencie o item de outras versões.</small></div>
+        <div class="field form-group"><label for="c-categoria">Categoria de estoque <span class="product-optional">(opcional)</span></label><select class="select" id="c-categoria"></select></div>
+      </section>
+      <section class="product-create-section" aria-labelledby="product-stock-title">
+        <div class="product-section-title"><strong id="product-stock-title">Configuração do estoque</strong><span>Unidades inteiras</span></div>
+        <div class="product-create-grid">
+          <div class="field form-group"><label for="c-qtd-inicial">Quantidade inicial</label><input class="input" type="number" id="c-qtd-inicial" value="0" min="0" max="2147483647" step="1" inputmode="numeric" required aria-describedby="product-initial-help"><small id="product-initial-help">Saldo físico disponível agora.</small></div>
+          <div class="field form-group"><label for="c-qtd-minima">Quantidade mínima</label><input class="input" type="number" id="c-qtd-minima" value="0" min="0" max="2147483647" step="1" inputmode="numeric" required aria-describedby="product-min-help"><small id="product-min-help">Referência para os níveis de estoque.</small></div>
         </div>
-        <div class="field form-group">
-          <label>Quantidade mínima</label>
-          <input class="input" type="number" id="c-qtd-minima" placeholder="0" min="0">
-        </div>
-      </div>
-      <div class="field form-group">
-        <label>Preço unitário (R$)</label>
-        <input class="input" type="number" id="c-preco" placeholder="0,00" step="0.01" min="0">
-      </div>
-      <div class="alert-modal" id="alert-cadastro"></div>
+        <div class="product-stock-preview" aria-live="polite"><div><span>Nível inicial previsto</span><strong id="product-preview-level">—</strong></div><div><span>Unidades até o mínimo</span><strong id="product-preview-deficit">—</strong></div></div>
+      </section>
+      <section class="product-create-section" aria-labelledby="product-price-title">
+        <div class="product-section-title"><strong id="product-price-title">Preço de cadastro</strong></div>
+        <div class="field form-group"><label for="c-preco">Preço unitário (R$)</label><input class="input" type="number" id="c-preco" placeholder="0,00" step="0.01" min="0" inputmode="decimal" required aria-describedby="product-price-help"><small id="product-price-help">Preço unitário do produto. Não representa necessariamente o custo de aquisição.</small></div>
+        <div class="product-price-preview" aria-live="polite"><span>Preço unitário informado</span><strong id="product-preview-price">—</strong></div>
+      </section>
+      <div class="alert-modal" id="alert-cadastro" role="alert"></div>
+      <button class="btn btn-secondary" type="button" id="product-check-stock" hidden>Voltar e consultar estoque</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn btn-primary" onclick="cadastrarProduto()">Cadastrar</button>
-    </div>
+    <div class="modal-footer"><span class="product-create-footer-note">O saldo inicial será registrado no cadastro.</span><div class="product-create-actions"><button class="btn btn-secondary" type="button" onclick="fecharModal('modal-cadastro')">Cancelar</button><button class="btn btn-primary" type="button" id="product-create-submit" onclick="cadastrarProduto()" disabled>Cadastrar produto</button></div></div>
   </div>
 </div>
 

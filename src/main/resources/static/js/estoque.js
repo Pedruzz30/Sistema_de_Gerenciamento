@@ -101,43 +101,78 @@ async function carregarProdutos() {
   }
 }
 
-async function cadastrarProduto() {
-  const nome = document.getElementById('c-nome').value.trim();
-  const qtdInicial = parseInt(document.getElementById('c-qtd-inicial').value, 10);
-  const qtdMinima = parseInt(document.getElementById('c-qtd-minima').value, 10);
-  const preco = parseFloat(document.getElementById('c-preco').value);
-  const categoriaEstoque = document.getElementById('c-categoria').value || null;
-  const alertEl = document.getElementById('alert-cadastro');
-
-  if (!nome) return mostrarAlertaModal(alertEl, 'error', 'Nome do produto é obrigatório.');
-  if (isNaN(qtdInicial) || qtdInicial < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade inicial inválida.');
-  if (isNaN(qtdMinima) || qtdMinima < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade mínima inválida.');
-  if (isNaN(preco) || preco < 0) return mostrarAlertaModal(alertEl, 'error', 'Preço inválido.');
-
-  try {
-    const res = await fetch('/api/produtos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nome,
-        quantidadeInicial: qtdInicial,
-        quantidadeMinima: qtdMinima,
-        precoUnitario: preco,
-        categoriaEstoque
-      })
-    });
-
-    if (!res.ok) {
-      const err = await safeReadErrorMessage(res, 'Erro ao cadastrar produto.');
-      throw new Error(err);
+// Registration uses exact decimal text for the BigDecimal API and integer stock.
+function productCreateQuantity(value){
+  const s=String(value??'').trim();
+  if(!/^\d+$/.test(s))return null;
+  const n=Number(s);return Number.isSafeInteger(n)&&n<=2147483647?n:null;
+}
+function productCreatePrice(value){
+  const s=String(value??'').trim().replace(',','.');
+  if(!/^\d{1,13}(?:\.\d{1,2})?$/.test(s))return null;
+  return s;
+}
+function productCreateStock(initial,minimum){
+  if(initial==null||minimum==null)return null;
+  const pct=minimum===0?(initial>0?100:0):initial*100/minimum;
+  return {level:pct===0?'SEM_ESTOQUE':pct<=25?'CRITICO':pct<=50?'BAIXO':pct<=75?'MODERADO':'ADEQUADO',deficit:Math.max(0,minimum-initial)};
+}
+function productCreateInput(fields){
+  const nome=String(fields.nome??'').trim(),quantidadeInicial=productCreateQuantity(fields.initial),quantidadeMinima=productCreateQuantity(fields.minimum),precoUnitario=productCreatePrice(fields.price),category=String(fields.category??'');
+  if(!nome||nome.length>120||quantidadeInicial==null||quantidadeMinima==null||precoUnitario==null||!CATEGORIAS_ESTOQUE.some(c=>c.value===category))return null;
+  return {nome,quantidadeInicial,quantidadeMinima,precoUnitario,categoriaEstoque:category||null};
+}
+let productCreatePending=false,productCreateUncertain=false;
+const productCreateGet=id=>document.getElementById(id);
+function productCreateFields(){
+  const get=productCreateGet;return {nome:get('c-nome').value,initial:get('c-qtd-inicial').value,minimum:get('c-qtd-minima').value,price:get('c-preco').value,category:get('c-categoria').value};
+}
+function updateProductCreate(){
+  const get=productCreateGet;if(!get('product-create-submit'))return;
+  const fields=productCreateFields(),initial=productCreateQuantity(fields.initial),minimum=productCreateQuantity(fields.minimum),price=productCreatePrice(fields.price),stock=productCreateStock(initial,minimum);
+  const levels={SEM_ESTOQUE:'Sem estoque',CRITICO:'Crítico',BAIXO:'Baixo',MODERADO:'Moderado',ADEQUADO:'Adequado'};
+  get('product-preview-level').textContent=stock?levels[stock.level]:'—';
+  get('product-preview-level').dataset.level=stock?.level||'';
+  get('product-preview-deficit').textContent=stock?stock.deficit.toLocaleString('pt-BR')+' un.':'—';
+  get('product-preview-price').textContent=price==null?'—':Number(price).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  get('product-initial-help').textContent=initial==null&&fields.initial!==''?'Informe uma quantidade inteira entre 0 e 2.147.483.647.':'Saldo físico disponível agora.';
+  get('product-min-help').textContent=minimum==null&&fields.minimum!==''?'Informe uma quantidade inteira entre 0 e 2.147.483.647.':minimum===0?'Com mínimo zero, um saldo positivo é considerado adequado.':'Referência para os níveis de estoque.';
+  get('product-price-help').textContent=price==null&&fields.price!==''?'Informe um preço não negativo, com até duas casas decimais.':'Preço unitário do produto. Não representa necessariamente o custo de aquisição.';
+  for(const [id,invalid] of [['c-qtd-inicial',initial==null&&fields.initial!==''],['c-qtd-minima',minimum==null&&fields.minimum!==''],['c-preco',price==null&&fields.price!=='']])get(id).setAttribute('aria-invalid',String(invalid));
+  get('product-create-submit').disabled=productCreatePending||productCreateUncertain||!productCreateInput(fields)||!temPermissao(PERMISSOES.EDITAR_ESTOQUE);
+  get('product-check-stock').hidden=!productCreateUncertain;
+  get('product-check-stock').disabled=productCreatePending;
+}
+function bindProductCreate(){
+  const get=productCreateGet;
+  ['c-nome','c-qtd-inicial','c-qtd-minima','c-preco'].forEach(id=>get(id).oninput=updateProductCreate);
+  get('c-categoria').onchange=updateProductCreate;
+  get('product-check-stock').onclick=()=>fecharModal('modal-cadastro');
+}
+async function cadastrarProduto(){
+  if(productCreatePending||productCreateUncertain||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  const get=productCreateGet,payload=productCreateInput(productCreateFields()),alertEl=get('alert-cadastro'),modal=get('modal-cadastro');
+  if(!payload){mostrarAlertaModal(alertEl,'error','Confira o nome, as quantidades inteiras, a categoria e o preço.');return;}
+  const current=()=>get('modal-cadastro')===modal&&modal.classList.contains('open');
+  const controls=[...modal.querySelectorAll('input,select,button')].map(el=>[el,el.disabled]);
+  productCreatePending=true;alertEl.className='alert-modal';controls.forEach(([el])=>el.disabled=true);
+  try{
+    const res=await fetch('/api/produtos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!current())return;
+    if(!res.ok){
+      if(res.status>=500||res.status===409)throw Error('Resultado incerto');
+      const message=await safeReadErrorMessage(res,'Erro ao cadastrar produto.');
+      if(current())mostrarAlertaModal(alertEl,'error',message);return;
     }
-
-    mostrarAlertaModal(alertEl, 'success', `"${nome}" cadastrado com sucesso!`);
-    limparFormCadastro();
-    await carregarProdutos();
-    setTimeout(() => fecharModal('modal-cadastro'), 1200);
-  } catch (e) {
-    mostrarAlertaModal(alertEl, 'error', e.message);
+    const result=await res.json();
+    if(!current())return;
+    if(!result||!Number.isSafeInteger(Number(result.id))||Number(result.id)<=0||typeof result.nome!=='string'||result.nome.trim()!==payload.nome||Number(result.quantidadeAtual)!==payload.quantidadeInicial)throw Error('Resposta inesperada');
+    modal.classList.remove('open');limparFormCadastro();showToast('Produto cadastrado com sucesso.','success');await carregarProdutos();
+  }catch{
+    if(current()){productCreateUncertain=true;mostrarAlertaModal(alertEl,'error','Não foi possível confirmar o cadastro. Volte ao estoque e verifique se o produto já existe antes de cadastrar novamente.');}
+  }finally{
+    productCreatePending=false;controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
+    if(current())updateProductCreate();
   }
 }
 
@@ -500,8 +535,10 @@ function resetarFiltrosEstoque() {
 }
 
 function abrirModalCadastro() {
-  limparFormCadastro();
+  if(productCreatePending||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  productCreateUncertain=false;limparFormCadastro();bindProductCreate();updateProductCreate();
   document.getElementById('modal-cadastro').classList.add('open');
+  document.getElementById('c-nome').focus();
 }
 
 function abrirModalEdicao(idProduto) {
@@ -532,8 +569,10 @@ function abrirModalMov(idProduto, tipo) {
 }
 
 function fecharModal(id) {
+  if(id==='modal-cadastro'&&productCreatePending)return;
   const modal = document.getElementById(id);
   if (modal) modal.classList.remove('open');
+  if(id==='modal-cadastro'&&productCreateUncertain){productCreateUncertain=false;void carregarProdutos();}
 }
 
 function fecharModalSeClicouFora(event, id) {
@@ -547,9 +586,8 @@ function setTipo(tipo) {
 }
 
 function limparFormCadastro() {
-  ['c-nome', 'c-qtd-inicial', 'c-qtd-minima', 'c-preco'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['c-nome','c-preco'].forEach(id=>document.getElementById(id).value='');
+  ['c-qtd-inicial','c-qtd-minima'].forEach(id=>document.getElementById(id).value='0');
   document.getElementById('c-categoria').value = '';
   document.getElementById('alert-cadastro').className = 'alert-modal';
 }

@@ -206,3 +206,7 @@ Consulta somente leitura limitada aos 2.000 registros mais recentes, conforme li
 ## Ações rápidas
 
 Paleta compacta com grupos operacionais, busca sem acentos, priorização do nome pesquisado e todos os atalhos autorizados (sem corte de dez). Seleção por teclado com rolagem, combobox/listbox e foco restaurado ao fechar. Mantém rotas, efeitos e permissões existentes; revalida autorização antes e depois da navegação, bloqueia execução concorrente e preserva isolamento Supabase. Sem persistir histórico de busca.
+
+## Cadastro de produto
+
+Modal com identificação, estoque inicial/mínimo e preço unitário. Previsão de nível conforme Produto.calcularPercentualEstoque e NivelEstoque.fromPercentage; déficit até o mínimo não é equivalente ao nível. Quantidades inteiras de 0 a Integer.MAX_VALUE; preço decimal não negativo com até duas casas e 13 dígitos inteiros para preservar precisão no cliente; nome até 120 caracteres para evitar truncamento no preview. Mantém categorias e POST existentes, preço decimal em texto para BigDecimal; não confunde preço com custo. Bloqueia envios simultâneos e orienta consulta do estoque quando o resultado é incerto. Sem nova garantia de idempotência no servidor; cadastro de bebida rápida, edição e movimentações permanecem separados.
