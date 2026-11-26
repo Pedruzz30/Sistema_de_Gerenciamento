@@ -45,7 +45,7 @@
           <span class="cur">Cardápio</span>
         </div>
         <h1 class="page-title header-title" id="header-title">Gestão de Cardápio</h1>
-        <p class="page-sub header-sub" id="header-sub">Categorias e itens vendidos no PDV sem depender apenas do seed.</p>
+        <p class="page-sub header-sub" id="header-sub">Organize categorias, itens, disponibilidade e modificadores do PDV.</p>
       </div>
       <div class="topbar-right header-right header-right--cardapio">
         <button class="btn btn-secondary" type="button" onclick="abrirModalCategoria()">
@@ -68,7 +68,7 @@
         <div class="table-header">
           <div>
             <span class="table-title">Categorias</span>
-            <div class="inline-note inline-note--spaced">Ative, edite e ordene grupos exibidos no cardapio.</div>
+            <div class="inline-note inline-note--spaced">Organize a exibição dos grupos no cardápio e no PDV.</div>
           </div>
           <span class="table-count" id="categorias-count">-</span>
         </div>
@@ -76,10 +76,11 @@
           <table class="table cardapio-category-table">
             <thead>
             <tr>
-              <th>Ordem</th>
-              <th>Categoria</th>
-              <th>Status</th>
-              <th>Acoes</th>
+              <th scope="col">Ordem</th>
+              <th scope="col">Categoria</th>
+              <th scope="col" id="categoria-itens-heading" hidden>Itens cadastrados</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
             </tr>
             </thead>
             <tbody id="tabela-categorias">
@@ -93,17 +94,26 @@
         <div class="table-header table-header--stack">
           <div class="table-header-row">
             <div>
-              <span class="table-title">Itens de Cardapio</span>
-              <div class="inline-note inline-note--spaced">Filtre por categoria, busque por nome e ajuste disponibilidade sem impactar o dominio de produtos.</div>
+              <span class="table-title">Itens de cardápio</span>
+              <div class="inline-note inline-note--spaced">Gerencie preços, categorias e disponibilidade de venda.</div>
             </div>
             <span class="table-count" id="itens-count">-</span>
           </div>
           <div class="toolbar toolbar--cardapio">
             <div class="search-wrap">
-              <input class="input input-search" type="text" id="item-search" placeholder="Buscar por nome, codigo ou texto..." oninput="aplicarFiltrosItens()">
+              <input class="input input-search" type="text" id="item-search" aria-label="Buscar itens do cardápio" placeholder="Buscar por nome, código ou texto..." oninput="aplicarFiltrosItens()">
             </div>
-            <select class="compact-control compact-control--select" id="item-category-filter" onchange="aplicarFiltrosItens()">
+            <select class="compact-control compact-control--select" id="item-category-filter" aria-label="Filtrar itens por categoria" onchange="aplicarFiltrosItens()">
               <option value="">Todas as categorias</option>
+            </select>
+            <select class="compact-control compact-control--select" id="item-status-filter" aria-label="Filtrar disponibilidade" onchange="aplicarFiltrosItens()" hidden>
+              <option value="">Todos os estados</option>
+              <option value="available">Disponíveis</option>
+              <option value="unverified">Liberados sem confirmação</option>
+              <option value="attention">Com alerta</option>
+              <option value="paused">Pausa manual</option>
+              <option value="blocked">Bloqueados / sem estoque</option>
+              <option value="inactive">Inativos</option>
             </select>
           </div>
           <details class="cardapio-help">
@@ -128,12 +138,12 @@
           <table class="table cardapio-items-table">
             <thead>
             <tr>
-              <th>Item</th>
-              <th>Categoria</th>
-              <th>Tipo</th>
-              <th>Disponibilidade</th>
-              <th>Ordem</th>
-              <th>Acoes</th>
+              <th scope="col">Item</th>
+              <th scope="col" id="item-second-heading">Categoria</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Disponibilidade</th>
+              <th scope="col">Ordem</th>
+              <th scope="col">Ações</th>
             </tr>
             </thead>
             <tbody id="tabela-itens">
@@ -199,26 +209,42 @@
 </div>
 
 <div class="modal-overlay" id="modal-categoria" onclick="fecharModalSeClicouFora(event, 'modal-categoria')">
-  <div class="modal modal--narrow">
+  <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="modal-categoria-titulo">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-categoria-titulo">Nova Categoria</h3>
+      <div class="stockos-category-modal-heading">
+        <span class="stockos-category-modal-icon" data-icon="clipboard" aria-hidden="true"></span>
+        <div><h3 class="modal-title" id="modal-categoria-titulo">Nova Categoria</h3><p id="categoria-modal-subtitle" class="stockos-category-modal-subtitle"></p></div>
+      </div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-categoria')">×</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="categoria-id">
-      <div class="form-group">
-        <label>Nome exibido</label>
-        <input type="text" id="categoria-nome" placeholder="Ex: Sobremesas especiais">
+      <div class="stockos-category-modal-context" id="categoria-context" hidden>
+        <span id="categoria-context-items"></span><span id="categoria-context-state" class="stockos-category-status"><span aria-hidden="true"></span><span id="categoria-context-state-text"></span></span>
       </div>
       <div class="form-group">
-        <label>Codigo tecnico</label>
-        <input type="text" id="categoria-codigo" placeholder="Opcional. Se vazio, sera gerado pelo nome.">
+        <label for="categoria-nome">Nome exibido</label>
+        <input type="text" id="categoria-nome" maxlength="120" placeholder="Ex: Sobremesas especiais" aria-describedby="categoria-nome-help" required>
+        <small id="categoria-nome-help" class="stockos-category-modal-help">Nome apresentado no cardápio e no PDV.</small>
       </div>
-      <div class="form-group">
-        <label>Ordem de exibicao</label>
-        <input type="number" id="categoria-ordem" min="0" step="1" placeholder="0">
+      <div class="stockos-category-modal-fields">
+        <div class="form-group">
+          <label for="categoria-codigo">Código técnico <span class="stockos-category-optional">Opcional</span></label>
+          <input type="text" id="categoria-codigo" placeholder="Gerado pelo nome" aria-describedby="categoria-codigo-help" autocomplete="off" spellcheck="false">
+          <small id="categoria-codigo-help" class="stockos-category-modal-help">Identificador interno. Em branco, será gerado pelo nome.</small>
+        </div>
+        <div class="form-group">
+          <label for="categoria-ordem">Ordem de exibição</label>
+          <input type="number" id="categoria-ordem" min="0" max="2147483647" step="1" inputmode="numeric" placeholder="0" aria-describedby="categoria-ordem-help" required>
+          <small id="categoria-ordem-help" class="stockos-category-modal-help">Menores valores aparecem primeiro.</small>
+        </div>
       </div>
-      <div class="alert-modal alert-modal--spaced-top" id="alert-categoria"></div>
+      <div class="stockos-category-modal-preview" aria-label="Prévia da categoria">
+        <span class="stockos-category-preview-label">Prévia no cardápio</span>
+        <div class="stockos-category-preview-row"><span class="stockos-category-preview-icon" aria-hidden="true" data-icon="clipboard"></span><div><strong id="categoria-preview-name">Nome da categoria</strong><small id="categoria-preview-code">Código automático</small></div><span id="categoria-preview-order" class="stockos-category-preview-order">Ordem —</span></div>
+        <small id="categoria-preview-warning" class="stockos-category-modal-warning" hidden></small>
+      </div>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-categoria" role="alert"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" type="button" onclick="fecharModal('modal-categoria')">Cancelar</button>

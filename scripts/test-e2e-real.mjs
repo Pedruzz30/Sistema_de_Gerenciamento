@@ -328,14 +328,57 @@ try {
     assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 48);
   });
 
+  await passo(admin, 'Redesign: estoque responsivo e filtros preservados', async () => {
+    await admin.locator('#busca').fill('Skol');
+    await esperarTexto(admin, '#tabela-produtos', 'Skol lata 350ml');
+    await admin.setViewportSize({width:390,height:844});
+    try {
+      await admin.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await admin.locator('#busca').scrollIntoViewIfNeeded();
+      await naTela(admin, '#busca');
+      assert.equal(await admin.locator('[data-filter-group="nivel"] button').count(), 4);
+      const categorias = admin.locator('[data-filter-group="categoria"] button');
+      assert.equal(await categorias.count(), 6);
+      assert.deepEqual((await categorias.allTextContents()).map(t => t.trim()), ['Todas','Bebidas','Estoque seco','Estoque frio','Estoque congelado','Não definida']);
+      await categorias.filter({hasText:'Não definida'}).click();
+      await admin.waitForFunction(() => document.querySelector('#table-count')?.textContent.startsWith('0 de '));
+      await categorias.filter({hasText:/^Todas$/}).click();
+      await esperarTexto(admin, '#tabela-produtos', 'Skol lata 350ml');
+      await print(admin, 'redesign-estoque-mobile');
+    } finally {
+      await admin.setViewportSize({width:1366,height:650});
+      await admin.locator('#busca').fill('');
+    }
+  });
+
   await passo(admin, 'Abrir o caixa', async () => {
     await admin.goto(`${BASE}/caixas.html`);
     await admin.click('button:has-text("Abrir Caixa")');
     await admin.fill('#abrir-numero', '1');
-    await admin.fill('#abrir-saldo', '100');
+    await admin.click('#modal-abrir .btn-primary');
+    await esperarTexto(admin,'#alert-abrir','Informe o fundo de troco');
+    await admin.locator('#abrir-counter summary').click();
+    await admin.locator('#abrir-denoms input').nth(1).fill('1');
+    await admin.click('#abrir-usar-contagem');
+    assert.equal(Number(await admin.inputValue('#abrir-saldo')),100);
     await admin.click('#modal-abrir .btn-primary');
     await cardDoCaixa(admin, 1).waitFor();
     assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 100,00');
+    await naTela(admin, '#caixas-grid .stockos-pdv-entry');
+    assert.equal(await cardDoCaixa(admin,1).locator('.stockos-cash-card-metrics .caixa-detail-row').count(),2);
+    assert.ok(await cardDoCaixa(admin,1).locator('.stockos-cash-card-session').isVisible());
+    assert.equal(await cardDoCaixa(admin,1).locator('button:has-text("Movimentações")').count(),1);
+    await cardDoCaixa(admin,1).locator('button:has-text("Movimentações")').click();
+    await admin.waitForSelector('#stockos-extract-summary:not([hidden])');
+    assert.equal(await admin.locator('.stockos-extract-metric').count(),4);
+    if(await admin.locator('#stockos-extract-tools').isVisible()){
+      await admin.locator('#extract-search').fill('__stockos_sem_resultado__');
+      await esperarTexto(admin,'#movs-lista','Nenhuma movimentação corresponde aos filtros.');
+      await admin.locator('#extract-search').fill('');
+      assert.ok(await admin.locator('.stockos-extract-table tbody tr').count()<=8);
+    }
+    await admin.evaluate(()=>fecharModal('modal-movs-lista'));
+    assert.ok(await admin.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Caixas sem rolagem horizontal do documento');
   });
 
   await passo(admin, 'Dono faz sangria sem pedir autorizacao', async () => {
@@ -726,6 +769,8 @@ try {
     await admin.waitForSelector('#modal-mov.open');
     assert.equal(await admin.locator('#mov-autorizacao').isVisible(), true, 'A Ana precisa da autorização do gerente');
     await admin.fill('#mov-valor', '50');
+    assert.equal(limpar(await admin.locator('#mov-preview-total').textContent()),'R$ 110,40');
+    assert.equal(await admin.locator('#mov-preview').getAttribute('data-state'),'normal');
     await admin.fill('#mov-gerente-nome', 'Admin');
     await admin.fill('#mov-gerente-sobrenome', 'Superior');
     await admin.fill('#mov-gerente-senha', 'errada');
@@ -747,7 +792,10 @@ try {
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'encerrar-valor-contado');
     assert.equal(await admin.inputValue('#encerrar-valor-contado'), '', 'O campo começa vazio');
     assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('110,40'), 'Não pode mostrar o valor esperado');
-    await admin.fill('#encerrar-valor-contado', '100');
+    await admin.locator('#encerrar-counter summary').click();
+    await admin.locator('#encerrar-denoms input').nth(1).fill('1');
+    await admin.click('#encerrar-usar-contagem');
+    assert.equal(Number(await admin.inputValue('#encerrar-valor-contado')),100);
     await admin.fill('#encerrar-gerente-nome', 'Admin');
     await admin.fill('#encerrar-gerente-sobrenome', 'Superior');
     await admin.fill('#encerrar-gerente-senha', SENHA_ADMIN);
@@ -1230,7 +1278,13 @@ try {
       await dono.goto(`${BASE}/dashboard.html`);
       await dono.waitForSelector('#celular-painel:not([hidden]) #celular-qr svg');
       await esperarTexto(dono, '#celular-url', `:${new URL(CELULAR).port}/`);
+      await dono.waitForSelector('#btn-celular-painel');
+      await dono.locator('#btn-celular-painel').scrollIntoViewIfNeeded();
+      await naTela(dono, '#btn-celular-painel');
+      await dono.click('#btn-celular-painel');
+      await dono.waitForFunction(() => document.activeElement?.id === 'celular-painel');
       await naTela(dono, '#celular-painel');
+      await dono.evaluate(() => window.scrollTo(0, 0));
     });
 
     await passo(cel, 'Celular: pela rede so abre a tela de comanda', async () => {
@@ -1488,7 +1542,77 @@ try {
     const diferenca = Math.abs(segundos(await dono.textContent('#relogio-hora')) - segundos(brasilia));
     assert.ok(diferenca <= 5 || diferenca >= 86395, `Relógio fora da hora de Brasília: ${await dono.textContent('#relogio-hora')} x ${brasilia}`);
     await esperarTexto(dono, '#relogio-data', 'Horário de Brasília');
+    await dono.locator('#relogio-loja').scrollIntoViewIfNeeded();
     await naTela(dono, '#relogio-loja');
+    assert.equal(await dono.locator('.topbar #relogio-loja').count(), 0);
+    await dono.evaluate(() => window.scrollTo(0, 0));
+  });
+
+  await passo(dono, 'Redesign: ranking real, pesquisa e menu recolhível', async () => {
+    await dono.waitForSelector('#stockos-daily-ranking tbody tr');
+    await esperarTexto(dono, '#stockos-daily-ranking', 'Skol lata 350ml');
+    await dono.locator('[data-stockos-rank-order="revenue"]').click();
+    assert.equal(await dono.locator('[data-stockos-rank-order="revenue"]').getAttribute('aria-pressed'),'true');
+    await dono.waitForSelector('#stockos-daily-ranking th[aria-sort="descending"]');
+    assert.equal(await dono.locator('#stockos-daily-ranking th[aria-sort="descending"]').textContent(),'Receita');
+    await dono.locator('[data-stockos-rank-order="quantity"]').click();
+    assert.equal(await dono.locator('#stockos-daily-ranking th[aria-sort="descending"]').textContent(),'Qtd.');
+    await dono.waitForSelector('#stockos-daily-payments .stockos-payment-row');
+    await dono.waitForSelector('#stockos-daily-payments .stockos-donut-percent');
+    await dono.waitForSelector('#stockos-stock-distribution .stockos-donut-row');
+    const alertTools=dono.locator('#stockos-alert-tools');
+    if(await alertTools.isVisible()){
+      await dono.locator('[data-stockos-alert-filter="critical"]').click();
+      assert.equal(await dono.locator('[data-stockos-alert-filter="critical"]').getAttribute('aria-pressed'),'true');
+      assert.ok((await dono.locator('#stockos-alert-destination').getAttribute('href')).includes('filtro=critico'));
+      await dono.locator('.stockos-alert-search').fill('___sem_resultado_stockos___');
+      await esperarTexto(dono,'#alerta-list','Nenhum produto corresponde aos filtros.');
+      await dono.locator('.stockos-alert-search').fill('');
+      await dono.locator('[data-stockos-alert-filter="all"]').click();
+      assert.ok(await dono.locator('.stockos-alert-row').count()<=6);
+      if(await dono.locator('[data-alert-page="next"]').isEnabled()){
+        await dono.locator('[data-alert-page="next"]').click();
+        assert.equal(await dono.locator('#stockos-alert-footer').getAttribute('data-page'),'2');
+        await dono.locator('[data-alert-page="previous"]').click();
+      }
+    }
+    assert.ok(await dono.locator('#stockos-stock-distribution .stockos-donut-label').allTextContents().then(labels=>labels.includes('Adequado')&&labels.includes('Crítico / sem estoque')));
+    assert.equal(await dono.locator('#stockos-stock-distribution a[href="/estoque.html?filtro=critico"]').count(),1);
+    for(const days of [7,30,1]){
+      await dono.locator('[data-stockos-period="'+days+'"]').click();
+      await dono.waitForSelector('#stockos-period-chart .stockos-reference-canvas');
+      await dono.waitForSelector('#stockos-period-chart .stockos-chart-details tbody tr',{state:'attached'});
+      assert.equal(await dono.locator('[data-stockos-period="'+days+'"]').getAttribute('aria-pressed'),'true');
+      assert.ok(await dono.locator('#stockos-period-chart .stockos-reference-canvas').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Gráfico sem overflow');
+    }
+    await dono.locator('[data-stockos-period="7"]').click();
+    await dono.locator('.stockos-module-input').fill('cotacao');
+    await dono.waitForSelector('#stockos-module-results a');
+    assert.equal(await dono.locator('#stockos-module-results a').count(), 1);
+    assert.match(await dono.locator('#stockos-module-results a').textContent(), /Cotações/);
+    await dono.keyboard.press('Escape');
+    assert.equal(await dono.locator('#stockos-module-results').isVisible(), false);
+    await dono.locator('.stockos-collapse').click();
+    assert.equal(await dono.locator('.app.is-collapsed').count(), 1);
+    await dono.waitForFunction(() => document.querySelector('.sidebar').getBoundingClientRect().width <= 74);
+    await dono.locator('.stockos-collapse').click();
+    await dono.waitForFunction(() => document.querySelector('.sidebar').getBoundingClientRect().width >= 230);
+    assert.ok(await dono.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Desktop shell overflow');
+    await dono.evaluate(() => window.scrollTo(0,0));
+  });
+  await passo(dono, 'Redesign: dashboard mobile e menu acessível', async () => {
+    await dono.setViewportSize({width:390,height:844});
+    try {
+      await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await dono.locator('.sidebar-toggle').click();
+      await dono.waitForSelector('.sidebar.open');
+      await dono.locator('.sidebar-close').click();
+      await dono.waitForFunction(() => !document.querySelector('.sidebar').classList.contains('open'));
+      await dono.evaluate(() => window.scrollTo(0,0));
+      await print(dono,'redesign-dashboard-mobile');
+    } finally {
+      await dono.setViewportSize({width:1366,height:650});
+    }
   });
 
   await passo(dono, 'Comandas: o menu mostra as abertas e cobra no caixa', async () => {
@@ -1502,7 +1626,23 @@ try {
     await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Skol lata 350ml');
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Gelo 5kg');
+    assert.equal(await cartao.getAttribute('aria-pressed'), 'true');
     await naTela(dono, '#btn-cobrar-comanda');
+    assert.equal(await dono.locator('#btn-cobrar-comanda').isEnabled(), true);
+    assert.ok(await dono.evaluate(() => document.querySelector('#btn-cobrar-comanda').getBoundingClientRect().bottom <= document.querySelector('#comandas-detalhe-linhas').getBoundingClientRect().top), 'Cobrança antes da lista de itens');
+    await print(dono,'redesign-comandas-desktop');
+    await dono.setViewportSize({width:390,height:844});
+    try {
+      await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await cartao.click();
+      await dono.waitForFunction(() => document.activeElement?.id === 'comandas-detalhe');
+      await dono.locator('#btn-cobrar-comanda').scrollIntoViewIfNeeded();
+      await naTela(dono, '#btn-cobrar-comanda');
+      await print(dono,'redesign-comandas-mobile');
+    } finally {
+      await dono.setViewportSize({width:1366,height:650});
+      await dono.evaluate(() => window.scrollTo(0,0));
+    }
     // Nova comanda sem caixa aberto: abre vazia aqui mesmo.
     await dono.click('#btn-nova-comanda');
     await dono.waitForSelector('#modal-nova-comanda.open');
@@ -1573,6 +1713,9 @@ try {
     await dono.waitForURL('**/relatorios.html');
     await botoesLigados(dono);
     await dono.waitForSelector('.relatorio-card');
+    assert.equal(await dono.locator('#rel-cards').getAttribute('aria-busy'), 'false');
+    assert.equal(await dono.locator('#btn-imprimir-relatorio').isEnabled(), true);
+    assert.equal(await dono.locator('#rel-modo-dia').getAttribute('aria-pressed'), 'true');
     const cards = limpar(await dono.textContent('#rel-cards'));
     for (const valor of ['FaturamentoR$ 91,39', 'já sem R$ 4,50 cancelados', 'Vendas5', '1 cancelada', 'Ticket médioR$ 18,28', 'DescontosR$ 1,00', 'Comandas pagas2']) {
       assert.ok(cards.includes(valor), `${valor} nos cartões: ${cards}`);
@@ -1589,6 +1732,14 @@ try {
   await passo(dono, 'Relatorio do mes mostra o dia e imprime sem botoes', async () => {
     await dono.click('#rel-modo-mes');
     await dono.waitForSelector('#rel-dias tbody tr');
+    assert.equal(await dono.locator('#rel-modo-mes').getAttribute('aria-pressed'), 'true');
+    await dono.setViewportSize({width:390,height:844});
+    try {
+      await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await print(dono,'redesign-relatorios-mobile');
+    } finally {
+      await dono.setViewportSize({width:1366,height:650});
+    }
     assert.ok(limpar(await dono.textContent('#rel-dias')).includes('R$ 91,39'));
     await dono.emulateMedia({ media: 'print' });
     assert.equal(await dono.locator('#btn-imprimir-relatorio').isVisible(), false);
@@ -1610,6 +1761,37 @@ try {
     await esperarTexto(dono, '#rel-titulo', 'por margem');
     await naTela(dono, '#rel-abc-tabela');
   });
+
+  // Use the existing authenticated owner and real data; no mutations or
+  // screenshot-only checks. Exercise every management module at three sizes.
+  for (const rota of ['estoque','cardapio','fornecedores','notas','cotacoes','funcionarios','logs','caixas','comandas','dashboard']) {
+    await passo(dono, 'Redesign responsivo: ' + rota, async () => {
+      await dono.setViewportSize({width:1366,height:650});
+      await dono.goto(`${BASE}/${rota}.html`);
+      await dono.waitForSelector('.app.stockos-shell-v2');
+      await dono.waitForSelector('#nav-items a[aria-current="page"]');
+      assert.equal(await dono.locator('#nav-items a[aria-current="page"]').getAttribute('href'), '/'+rota+'.html');
+      for (const [width,height] of [[1366,650],[768,1024],[390,844]]) {
+        await dono.setViewportSize({width,height});
+        await dono.evaluate(() => window.scrollTo(0,0));
+        await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+        const size = await dono.locator('.main-body.content').boundingBox();
+        assert.ok(size && size.width > 0 && size.x >= -1 && size.x + size.width <= width + 1, 'Conteúdo fora da área útil: '+rota+' '+width);
+        if (width <= 980) {
+          const toggle=dono.locator('.sidebar-toggle');
+          await toggle.waitFor({state:'visible'});
+          await toggle.click();
+          await dono.waitForSelector('.sidebar.open');
+          assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+          await dono.locator('.sidebar-close').click();
+          await dono.waitForFunction(() => !document.querySelector('.sidebar').classList.contains('open'));
+          assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+        }
+        await print(dono,'redesign-'+rota+'-'+width);
+      }
+    });
+  }
+  await dono.setViewportSize({width:1366,height:650});
 
   await passo(dono, 'Sair encerra a sessao', async () => {
     await dono.goto(`${BASE}/estoque.html`);

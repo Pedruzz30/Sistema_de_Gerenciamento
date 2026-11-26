@@ -35,8 +35,24 @@
     });
   }
 
+  const groups=[
+    ['Visão geral',['dashboard']],
+    ['Estoque e produtos',['estoque','buscar-produto','novo-produto','cardapio']],
+    ['Vendas e caixa',['caixas','abrir-caixa','registrar-venda']],
+    ['Compras e custos',['fornecedores','notas','cotacoes']],
+    ['Administração',['funcionarios','logs']]
+  ];
+  function grouped(query){
+    const found=search(query),q=normalize(query);
+    if(q){
+      const rank=a=>{const label=normalize(a.label);return label===q?0:label.startsWith(q)?1:label.includes(q)?2:3;};
+      return found.length?[{label:'Resultados da busca',items:found.slice().sort((a,b)=>rank(a)-rank(b))}]:[];
+    }
+    return groups.map(([label,ids])=>({label,items:ids.map(id=>found.find(a=>a.id===id)).filter(Boolean)})).filter(g=>g.items.length);
+  }
+  function nextIndex(index,length,direction){return length>0?(index+direction+length)%length:0;}
   // Exposto para testes e para futuras extensões; não concede autorização.
-  window.StockOSQuickActions = { search, permitted };
+  window.StockOSQuickActions = { search, permitted, grouped, nextIndex };
 
   function init() {
     const nav = document.querySelector('.sidebar #nav-items');
@@ -45,6 +61,7 @@
     trigger.type = 'button';
     trigger.id = 'stockos-quick-trigger';
     trigger.className = 'stockos-quick-trigger';
+    trigger.setAttribute('aria-label', 'Abrir ações rápidas');
     trigger.setAttribute('aria-haspopup', 'dialog');
     trigger.setAttribute('aria-keyshortcuts', 'Control+K Meta+K');
     trigger.innerHTML = '<span aria-hidden="true">' + window.iconMarkup('search') + '</span><span>Ações rápidas</span><kbd>Ctrl K</kbd>';
@@ -70,13 +87,15 @@
     top.className = 'stockos-quick-top';
     const heading = document.createElement('h2');
     heading.id = 'stockos-quick-title';
-    heading.textContent = 'O que você precisa fazer?';
+    heading.textContent = 'Ações rápidas';
     const dismiss = document.createElement('button');
     dismiss.type = 'button';
     dismiss.className = 'stockos-quick-close';
     dismiss.setAttribute('aria-label', 'Fechar ações rápidas');
     dismiss.textContent = '×';
-    top.append(heading, dismiss);
+    const headerCopy=document.createElement('div');
+    const subtitle=document.createElement('p');subtitle.textContent='Encontre páginas e atalhos da operação.';
+    headerCopy.append(heading,subtitle);top.append(headerCopy,dismiss);
 
     const input = document.createElement('input');
     input.type = 'search';
@@ -84,66 +103,80 @@
     input.className = 'stockos-quick-search';
     input.placeholder = 'Buscar ações ou páginas...';
     input.setAttribute('aria-label', 'Buscar ações do StockOS');
-    input.autocomplete = 'off';
+    input.autocomplete='off';input.spellcheck=false;
+    input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');
+    input.setAttribute('aria-controls','stockos-quick-list');input.setAttribute('aria-expanded','false');
+    const searchWrap=document.createElement('div');searchWrap.className='stockos-quick-search-wrap';
+    const searchIcon=document.createElement('span');searchIcon.setAttribute('aria-hidden','true');searchIcon.innerHTML=window.iconMarkup('search');
+    searchWrap.append(searchIcon,input);
     const results = document.createElement('div');
     results.className = 'stockos-quick-results';
-    results.setAttribute('aria-label', 'Ações disponíveis');
-    const footer = document.createElement('p');
-    footer.className = 'stockos-quick-footer';
-    footer.textContent = '↑ ↓ para escolher · Enter para abrir · Esc para fechar';
-    dialog.append(top, input, results, footer);
+    results.id='stockos-quick-list';results.setAttribute('role','listbox');
+    results.setAttribute('aria-label','Ações disponíveis');
+    const count=document.createElement('div');count.className='stockos-quick-count';count.setAttribute('role','status');
+    const footer=document.createElement('div');footer.className='stockos-quick-footer';
+    footer.innerHTML='<span><kbd>↑</kbd><kbd>↓</kbd> Navegar</span><span><kbd>Enter</kbd> Abrir</span><span><kbd>Esc</kbd> Fechar</span>';
+    dialog.append(top,searchWrap,count,results,footer);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
     let shown = [];
     let selected = 0;
     let previousFocus = null;
-    function paint() {
-      shown = search(input.value).slice(0, 10);
-      selected = Math.min(selected, Math.max(0, shown.length - 1));
-      results.replaceChildren();
-      if (!shown.length) {
-        const empty = document.createElement('p');
-        empty.className = 'stockos-quick-empty';
-        empty.textContent = 'Nenhuma ação disponível para essa busca.';
-        results.appendChild(empty);
-        return;
+    let executing=false,buttons=[];
+    function selectIndex(index,scroll=false){
+      selected=index;
+      buttons.forEach((btn,i)=>{btn.classList.toggle('is-selected',i===selected);btn.setAttribute('aria-selected',String(i===selected));});
+      const active=buttons[selected];
+      if(active){input.setAttribute('aria-activedescendant',active.id);if(scroll)active.scrollIntoView({block:'nearest'});}
+      else input.removeAttribute('aria-activedescendant');
+    }
+    function paint(){
+      const sections=grouped(input.value);
+      shown=sections.flatMap(g=>g.items);selected=Math.min(selected,Math.max(0,shown.length-1));
+      results.replaceChildren();buttons=[];
+      count.textContent=shown.length+' '+(shown.length===1?'atalho disponível':'atalhos disponíveis');
+      if(!shown.length){
+        input.removeAttribute('aria-activedescendant');
+        const empty=document.createElement('div');empty.className='stockos-quick-empty';empty.setAttribute('role','presentation');
+        const title=document.createElement('strong');title.textContent='Nenhum atalho encontrado';
+        const copy=document.createElement('p');copy.textContent='Tente pesquisar por outro nome ou ação.';
+        empty.append(title,copy);results.appendChild(empty);return;
       }
-      shown.forEach((action, index) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'stockos-quick-result' + (index === selected ? ' is-selected' : '');
-        const icon = document.createElement('span');
-        icon.className = 'stockos-quick-result-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = window.iconMarkup(action.icon);
-        const copy = document.createElement('span');
-        const label = document.createElement('strong');
-        label.textContent = action.label;
-        const detail = document.createElement('small');
-        detail.textContent = action.detail;
-        copy.append(label, detail);
-        btn.append(icon, copy);
-        btn.addEventListener('click', () => { void execute(action); });
-        results.appendChild(btn);
+      sections.forEach((section,groupIndex)=>{
+        const group=document.createElement('div');group.className='stockos-quick-group';group.setAttribute('role','group');
+        const label=document.createElement('div');label.className='stockos-quick-group-label';label.id='stockos-quick-group-'+groupIndex;
+        label.textContent=section.label;group.setAttribute('aria-labelledby',label.id);group.appendChild(label);
+        section.items.forEach(action=>{
+          const index=buttons.length,btn=document.createElement('button');
+          btn.type='button';btn.id='stockos-quick-option-'+action.id;btn.className='stockos-quick-result';btn.tabIndex=-1;btn.setAttribute('role','option');
+          const icon=document.createElement('span');icon.className='stockos-quick-result-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML=window.iconMarkup(action.icon);
+          const copy=document.createElement('span');copy.className='stockos-quick-result-copy';
+          const title=document.createElement('strong');title.textContent=action.label;
+          const detail=document.createElement('small');detail.textContent=action.detail;copy.append(title,detail);
+          const type=document.createElement('span');type.className='stockos-quick-type';type.textContent=action.effect?'Atalho':'Página';type.setAttribute('aria-hidden','true');
+          const arrow=document.createElement('span');arrow.className='stockos-quick-result-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='↵';
+          btn.append(icon,copy,type,arrow);
+          btn.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')selectIndex(index);});
+          btn.addEventListener('mousedown',e=>e.preventDefault());
+          btn.addEventListener('click',()=>{void execute(action);});
+          group.appendChild(btn);buttons.push(btn);
+        });
+        results.appendChild(group);
       });
+      selectIndex(selected);results.scrollTop=0;
     }
-    function open() {
-      if (document.querySelector('.modal-overlay.open') ||
-          (window.StockosAuth && window.StockosAuth.isSupabase())) return;
-      previousFocus = document.activeElement;
-      input.value = '';
-      selected = 0;
-      paint();
-      overlay.hidden = false;
-      document.body.classList.add('stockos-quick-active');
-      input.focus();
+    function open(){
+      if(!overlay.hidden||executing||document.querySelector('.modal-overlay.open')||(window.StockosAuth&&window.StockosAuth.isSupabase()))return;
+      previousFocus=document.activeElement;input.value='';selected=0;paint();
+      overlay.hidden=false;input.setAttribute('aria-expanded','true');document.body.classList.add('stockos-quick-active');input.focus();
     }
-    function close() {
-      if (overlay.hidden) return;
-      overlay.hidden = true;
+    function close(){
+      if(overlay.hidden)return;
+      overlay.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');
       document.body.classList.remove('stockos-quick-active');
-      if (previousFocus && previousFocus.isConnected && typeof previousFocus.focus === 'function') previousFocus.focus();
+      if(previousFocus?.isConnected&&typeof previousFocus.focus==='function')previousFocus.focus();
+      previousFocus=null;
     }
     function current() {
       return window.StockOSSPA && typeof window.StockOSSPA.current === 'function'
@@ -151,7 +184,9 @@
         : (typeof window.paginaAtual === 'function' ? window.paginaAtual() : '');
     }
     async function execute(action) {
-      if (!permitted(action)) return;
+      if (executing || !permitted(action) || (window.StockosAuth && window.StockosAuth.isSupabase())) return;
+      executing=true;
+      try {
       close();
       const href = '/' + action.route + '.html';
       if (current() !== action.route) {
@@ -162,7 +197,7 @@
           return;
         }
       }
-      if (current() !== action.route || !action.effect) return;
+      if (current() !== action.route || !action.effect || !permitted(action) || (window.StockosAuth && window.StockosAuth.isSupabase())) return;
       if (action.effect === 'focus-search') {
         document.getElementById('busca')?.focus();
       } else if (action.effect === 'new-product' && typeof window.abrirModalCadastro === 'function') {
@@ -172,6 +207,9 @@
         window.abrirModalAbrirCaixa();
         document.getElementById('abrir-numero')?.focus();
       }
+      } catch {
+        if(typeof window.showToast==='function')window.showToast('Não foi possível abrir o atalho.','error');
+      } finally {executing=false;}
     }
 
     trigger.addEventListener('click', open);
@@ -181,9 +219,11 @@
     input.addEventListener('input', () => { selected = 0; paint(); });
     // Capture Escape before the shell listener: don't close an unrelated modal.
     document.addEventListener('keydown', e => {
+      if(e.isComposing)return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         if (!e.altKey && !e.shiftKey) {
           e.preventDefault();
+          if(e.repeat)return;
           if (overlay.hidden) open(); else close();
         }
         return;
@@ -194,7 +234,7 @@
         e.stopPropagation();
         close();
       } else if (e.key === 'Tab') {
-        const focusables = [dismiss, input, ...results.querySelectorAll('button')];
+        const focusables = [dismiss, input];
         if (e.shiftKey && document.activeElement === focusables[0]) {
           e.preventDefault(); focusables[focusables.length - 1].focus();
         } else if (!e.shiftKey && document.activeElement === focusables[focusables.length - 1]) {
@@ -203,8 +243,7 @@
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         if (!shown.length) return;
         e.preventDefault();
-        selected = (selected + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length;
-        paint();
+        selectIndex(nextIndex(selected,shown.length,e.key==='ArrowDown'?1:-1),true);
         input.focus();
       } else if (e.key === 'Enter' && document.activeElement === input && shown[selected]) {
         e.preventDefault();

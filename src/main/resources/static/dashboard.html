@@ -52,6 +52,7 @@
             </div>
             <div class="topbar-right header-right">
                 <a class="btn btn-secondary btn-sm" href="/relatorios.html" id="btn-relatorio-dia" hidden>Relatório do dia</a>
+                <button type="button" class="btn btn-secondary btn-sm stockos-device-shortcut" id="btn-celular-painel" aria-controls="celular-painel" hidden>Celular do atendente</button>
                 <div class="relogio-loja" id="relogio-loja" title="Hora da loja, pelo relógio do sistema">
                     <span class="relogio-loja__hora" id="relogio-hora">--:--:--</span>
                     <span class="relogio-loja__data" id="relogio-data"></span>
@@ -66,16 +67,41 @@
         <div class="main-body content">
 
         <div class="backup-painel" id="backup-painel" hidden></div>
-        <div class="celular-painel" id="celular-painel" hidden></div>
+        <div class="celular-painel" id="celular-painel" tabindex="-1" hidden></div>
 
         <!-- Cards de resumo (sempre visíveis acima das abas) -->
-        <div class="summary-grid" id="summary-grid"></div>
+        <section class="stockos-reference-grid" aria-label="Visão geral do negócio">
+          <section class="stockos-reference-panel stockos-reference-sales" id="stockos-reference-sales" hidden>
+            <div class="stockos-reference-heading">
+              <div><h2>Desempenho de vendas</h2><p id="stockos-period-label">Últimos 7 dias</p></div>
+              <div class="stockos-period-switch" role="group" aria-label="Período das vendas">
+                <button type="button" data-stockos-period="7" aria-pressed="true">7 dias</button>
+                <button type="button" data-stockos-period="30" aria-pressed="false">30 dias</button>
+                <button type="button" data-stockos-period="1" aria-pressed="false">Hoje</button>
+              </div>
+            </div>
+            <div class="stockos-period-summary"><strong class="stockos-reference-total" id="stockos-period-total">—</strong><span id="stockos-period-trend" class="stockos-period-trend" hidden></span></div>
+            <div id="stockos-period-chart" class="stockos-period-chart" aria-live="polite">Carregando vendas…</div>
+          </section>
+          <div class="summary-grid" id="summary-grid"></div>
+          <section class="stockos-reference-panel stockos-reference-ranking" id="stockos-daily-ranking" hidden>
+            <div class="stockos-reference-heading stockos-ranking-heading"><div><h2>Produtos mais vendidos</h2><p id="stockos-ranking-subtitle">Hoje · por quantidade</p></div><div class="stockos-ranking-actions"><div class="stockos-period-switch" role="group" aria-label="Ordenar ranking de produtos"><button type="button" data-stockos-rank-order="quantity" aria-pressed="true">Quantidade</button><button type="button" data-stockos-rank-order="revenue" aria-pressed="false">Receita</button></div><span id="stockos-report-slot"></span></div></div>
+            <div id="stockos-ranking-content">Carregando produtos…</div>
+          </section>
+          <section class="stockos-reference-panel stockos-reference-distributions" id="stockos-distributions" hidden>
+            <div class="stockos-reference-heading"><h2>Distribuição da operação</h2></div>
+            <section class="stockos-distribution" id="stockos-daily-payments" hidden><div class="stockos-distribution-heading"><h3>Formas de pagamento</h3><span>Hoje</span></div><div id="stockos-payment-content">Carregando…</div></section>
+            <section class="stockos-distribution" id="stockos-stock-distribution" hidden><div class="stockos-distribution-heading"><h3>Situação do estoque</h3><span id="stockos-stock-meta"></span><a class="stockos-report-link" href="/estoque.html">Ver estoque</a></div><div id="stockos-stock-content">Carregando…</div></section>
+          </section>
+        </section>
+        <div class="stockos-dashboard-utilities" id="stockos-dashboard-utilities" aria-label="Ferramentas da operação" hidden></div>
         <section class="operations-panel fade-up" id="daily-actions" aria-labelledby="daily-actions-title" hidden>
           <div class="operations-heading">
             <div>
               <p class="operations-kicker">Seu turno</p>
               <h2 id="daily-actions-title">Próximas ações</h2>
               <p class="operations-description">Resolva pendências com acesso direto à tarefa.</p>
+              <p class="stockos-priority-description-heading">Prioridades e atalhos da operação atual.</p>
             </div>
             <span id="daily-actions-count" class="operations-count" aria-live="polite"></span>
           </div>
@@ -96,15 +122,15 @@
                     <div class="perm-section card fade-up" id="section-movimentacoes">
                         <div class="card-header">
                             <span class="card-title">Movimentações Recentes</span>
-                            <span class="card-badge">Hoje</span>
+                            <div class="stockos-secondary-actions"><span class="card-badge" id="stockos-movement-count">Hoje</span><a class="stockos-secondary-link" href="/estoque.html">Ver estoque</a></div>
                         </div>
                         <div class="mov-list" id="mov-list"></div>
                     </div>
 
                     <div class="perm-section card fade-up" id="section-financeiro">
                         <div class="card-header">
-                            <span class="card-title">Resumo Financeiro</span>
-                            <span class="card-badge">Dia atual</span>
+                            <span class="card-title stockos-legacy-fin-title">Resumo Financeiro</span><span class="card-title stockos-cash-title">Sessões de caixa</span>
+                            <div class="stockos-secondary-actions"><span class="card-badge stockos-legacy-fin-title">Dia atual</span><span class="stockos-secondary-meta" id="stockos-cash-meta"></span><a class="stockos-secondary-link" href="/caixas.html">Ver caixas</a></div>
                         </div>
                         <div class="financial-grid">
                             <div class="fin-card">
@@ -123,6 +149,7 @@
                         <div class="card-header card-header--subtle">
                             <span class="card-title card-title--muted">Status dos Caixas</span>
                         </div>
+                        <p class="stockos-cash-caption">Caixas abertos e sessões registradas hoje.</p>
                         <div class="caixa-list" id="caixa-list"></div>
                     </div>
                 </div>
@@ -133,7 +160,24 @@
                             <span class="card-title">Alertas de Estoque</span>
                             <span class="card-badge" id="alerta-count">—</span>
                         </div>
+                        <div id="stockos-alert-tools" class="stockos-alert-tools" hidden>
+                            <div class="stockos-alert-filters" role="group" aria-label="Gravidade dos alertas">
+                                <button type="button" data-stockos-alert-filter="all" aria-pressed="true">Todos <strong>0</strong></button>
+                                <button type="button" data-stockos-alert-filter="critical" aria-pressed="false">Críticos <strong>0</strong></button>
+                                <button type="button" data-stockos-alert-filter="attention" aria-pressed="false">Atenção <strong>0</strong></button>
+                            </div>
+                            <input type="search" placeholder="Buscar produto..." aria-label="Buscar produto nos alertas" autocomplete="off" class="stockos-alert-search">
+                            <div class="stockos-alert-head"><span>Produto / situação</span><span>Atual / mínimo</span></div>
+                            <a id="stockos-alert-destination" href="/estoque.html" class="stockos-secondary-link">Abrir estoque</a>
+                        </div>
                         <div class="alert-list" id="alerta-list"></div>
+                        <div class="stockos-alert-footer" id="stockos-alert-footer" hidden>
+                            <span id="stockos-alert-range" role="status"></span>
+                            <div class="stockos-alert-pagination">
+                                <button type="button" data-alert-page="previous" aria-label="Página anterior de alertas">Anterior</button>
+                                <button type="button" data-alert-page="next" aria-label="Próxima página de alertas">Próxima</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -269,6 +313,7 @@
 
         </div>
 
+        <section class="stockos-demo-tools" id="stockos-demo-tools" hidden aria-label="Ferramentas da demonstração"></section>
         </div>
     </div>
 

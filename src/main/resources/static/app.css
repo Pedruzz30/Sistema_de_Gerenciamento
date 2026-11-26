@@ -3922,3 +3922,1069 @@ body.bridge-page .bridge-actions a {
 .comandas-ajuda summary { cursor: pointer; font-weight: 600; }
 .comandas-ajuda li { margin: 6px 0; }
 @media (max-width: 900px) { .comandas-layout { grid-template-columns: 1fr; } .comandas-detalhe { position: static; } }
+
+
+/* App shell v2 — reference-inspired layout. Scoped to opt-in shell; existing palette stays intact. */
+body .app.stockos-shell-v2 {grid-template-columns:240px minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"sidebar main";}
+body .app.stockos-shell-v2.is-collapsed {grid-template-columns:72px minmax(0,1fr);}
+body .app.stockos-shell-v2 > .sidebar {grid-area:sidebar;grid-column:1;grid-row:1;position:sticky;top:0;height:100dvh;min-height:0;overflow-y:auto;overflow-x:hidden;gap:0;padding:18px 12px 12px;background:var(--paper-raised);border-right:1px solid var(--rule);box-shadow:none;}
+body .app.stockos-shell-v2 > .main.page {grid-area:main;grid-column:2;grid-row:1;min-width:0;width:100%;padding:0;}
+body .app.stockos-shell-v2 .sidebar .sidebar-brand {border-bottom:0;margin:0 0 24px;padding:6px 4px 8px;gap:8px;min-width:0;flex-shrink:0;}
+body .app.stockos-shell-v2 .sidebar .brand-text {min-width:0;}
+body .app.stockos-shell-v2 .sidebar .brand-text .name {font-family:var(--font-ui,inherit);font-size:20px;font-weight:750;letter-spacing:-.045em;}
+body .app.stockos-shell-v2 .sidebar .brand-text .sub {font-size:9px;letter-spacing:.07em;}
+body .app.stockos-shell-v2 .sidebar .nav-label {display:none;}
+body .app.stockos-shell-v2 .sidebar .nav {display:flex;flex-direction:column;flex:0 0 auto;gap:4px;min-width:0;}
+body .app.stockos-shell-v2 .sidebar .nav-item {display:flex;align-items:center;gap:11px;min-height:44px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;border:1px solid transparent;box-shadow:none;transform:none;color:var(--ink-2);background:transparent;}
+body .app.stockos-shell-v2 .sidebar .nav-item:hover {background:var(--paper-sunk);color:var(--ink);}
+body .app.stockos-shell-v2 .sidebar .nav-item.active {background:var(--paper-sunk);color:var(--ink);font-weight:650;border-color:transparent;box-shadow:none;}
+body .app.stockos-shell-v2 .sidebar .nav-item.active::before {left:0;width:3px;top:13px;bottom:13px;background:var(--accent);}
+body .app.stockos-shell-v2 .sidebar .nav-icon {width:23px;height:23px;flex:0 0 23px;display:grid;place-items:center;}
+body .app.stockos-shell-v2 .sidebar .nav-item:focus-visible,
+body .app.stockos-shell-v2 .stockos-collapse:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+.stockos-nav-group {min-width:0;}
+.stockos-nav-summary {list-style:none;cursor:pointer;}
+.stockos-nav-summary::-webkit-details-marker {display:none;}
+.stockos-nav-chevron {margin-left:auto;width:7px;height:7px;border-right:1.5px solid currentColor;border-top:1.5px solid currentColor;transform:rotate(45deg);flex:0 0 7px;transition:transform 180ms ease;}
+.stockos-nav-group[open] .stockos-nav-chevron {transform:rotate(135deg);}
+.stockos-nav-children {padding:3px 0 4px 13px;margin-left:17px;border-left:1px solid var(--rule);}
+body .app.stockos-shell-v2 .sidebar .stockos-nav-children .nav-item {min-height:39px;padding:8px 7px;font-size:12px;gap:8px;}
+body .app.stockos-shell-v2 .stockos-collapse {display:inline-grid;place-items:center;flex:0 0 32px;width:32px;height:34px;padding:0;margin-left:auto;background:var(--paper-sunk);border:1px solid var(--rule);border-radius:7px;color:var(--ink);cursor:pointer;}
+body .app.stockos-shell-v2 .stockos-collapse svg {width:18px;height:18px;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .sidebar-brand {justify-content:center;padding:4px 0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .brand-mark,
+body .app.stockos-shell-v2.is-collapsed .sidebar .brand-text {display:none;}
+body .app.stockos-shell-v2.is-collapsed .stockos-collapse {margin:0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .nav-item {justify-content:center;padding:10px 0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .nav-item .label,
+body .app.stockos-shell-v2.is-collapsed .stockos-logout-label {display:none;}
+body .app.stockos-shell-v2 .sidebar .sidebar-foot {margin-top:auto;padding-top:14px;border-top:1px solid var(--rule);}
+body .app.stockos-shell-v2 .sidebar .user-chip {padding:0;border:0;box-shadow:none;background:transparent;}
+body .app.stockos-shell-v2 .sidebar .btn-logout {display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:44px;padding:10px 12px;margin:0;border:0;background:transparent;color:var(--ink-2);font-size:13px;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .btn-logout {justify-content:center;padding:10px 0;}
+body .app.stockos-shell-v2 .sidebar .btn-logout:hover {background:var(--paper-sunk);}
+body .app.stockos-shell-v2 .stockos-header-profile {display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0;padding-left:12px;border-left:1px solid var(--rule);}
+body .app.stockos-shell-v2 .stockos-header-profile .user-meta {display:flex;max-width:135px;}
+body .app.stockos-shell-v2 .stockos-header-profile .avatar {width:34px;height:34px;}
+body .app.stockos-shell-v2 .main.page > .topbar.header {gap:12px;background:var(--paper-raised);min-height:78px;padding:14px clamp(16px,2vw,28px);border-bottom:1px solid var(--rule);border-radius:0;box-shadow:none;}
+body .app.stockos-shell-v2 .topbar .header-main {flex:1 1 auto;min-width:0;order:0;}
+body .app.stockos-shell-v2 .topbar .page-title {font-family:var(--font-ui,inherit);font-weight:700;letter-spacing:-.04em;}
+body .app.stockos-shell-v2 .topbar .topbar-right {min-width:0;flex-wrap:wrap;}
+@media(max-width:1200px) {body .app.stockos-shell-v2 .stockos-header-profile .user-meta {display:none;}}
+@media(max-width:980px) {
+  body .app.stockos-shell-v2,body .app.stockos-shell-v2.is-collapsed {grid-template-columns:minmax(0,1fr);grid-template-areas:"main";}
+  body .app.stockos-shell-v2 > .main.page {grid-column:1;grid-row:1;}
+  body .app.stockos-shell-v2 > .sidebar {grid-area:auto;position:fixed;inset:0 auto 0 0;width:min(280px,calc(100vw - 36px));height:100dvh;z-index:50;transform:translateX(-100%);visibility:hidden;transition:transform 180ms ease,visibility 180ms;}
+  body .app.stockos-shell-v2 > .sidebar.open {display:flex;transform:translateX(0);visibility:visible;}
+  body .app.stockos-shell-v2 .stockos-collapse {display:none;}
+  body .app.stockos-shell-v2 .sidebar-toggle {display:inline-flex;}
+  body .app.stockos-shell-v2 .stockos-header-profile {border:0;padding:0;}
+  body .app.stockos-shell-v2 .topbar.header {flex-wrap:wrap;}
+}
+@media(prefers-reduced-motion:reduce) {.stockos-nav-chevron,body .app.stockos-shell-v2 > .sidebar {transition:none;}}
+
+/* Dashboard first fold: grouped KPIs beside actual sales-by-register data. */
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid {display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;align-items:stretch;margin-bottom:18px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid > * {min-width:0;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:1px;margin:0;background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-grid:empty {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card {border:0;border-radius:0;background:var(--paper-raised);min-height:128px;padding:15px;box-shadow:none !important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card:hover {background:var(--paper-sunk);box-shadow:none !important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card:focus-visible {outline-offset:-3px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-value {font-size:clamp(18px,2vw,27px);overflow-wrap:anywhere;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-label {font-size:11px;letter-spacing:0;text-transform:none;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card-top {flex-direction:column-reverse;align-items:flex-start;gap:8px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid:not(:has(.stockos-sales-panel)) {grid-template-columns:minmax(0,1fr);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-sales-panel {display:flex;flex-direction:column;padding:18px;border:1px solid var(--rule);border-radius:10px;background:var(--paper-raised);min-width:0;box-shadow:none;}
+.stockos-sales-title {margin:0;color:var(--ink);font-size:15px;font-weight:650;}
+.stockos-sales-sub {margin:5px 0;color:var(--ink-3);font-size:12px;}
+.stockos-sales-total {font-size:clamp(22px,2.7vw,32px);font-weight:700;letter-spacing:-.045em;color:var(--ink);font-variant-numeric:tabular-nums;margin:8px 0 10px;overflow-wrap:anywhere;}
+.stockos-sales-chart {display:flex;align-items:stretch;gap:14px;min-height:160px;overflow-x:auto;padding:5px 1px 4px;}
+.stockos-sales-column {display:grid;grid-template-rows:minmax(20px,auto) minmax(90px,1fr) minmax(24px,auto);gap:5px;align-items:end;justify-items:center;flex:1 0 94px;min-width:0;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.stockos-sales-track {display:flex;align-items:flex-end;height:100%;width:min(32px,75%);background:var(--paper-sunk);border-radius:5px;overflow:hidden;}
+.stockos-sales-bar {width:100%;height:var(--bar-height,0%);background:var(--accent);border-radius:5px 5px 0 0;}
+.stockos-sales-empty {color:var(--ink-3);font-size:13px;margin:auto 0;}
+body.dashboard-page .app.stockos-shell-v2 .main-grid {grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;}
+body.dashboard-page .app.stockos-shell-v2 .main-grid .card {border-radius:10px;box-shadow:none;}
+@media(max-width:1150px) {body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid,body.dashboard-page .app.stockos-shell-v2 .main-grid {grid-template-columns:minmax(0,1fr);}}
+@media(max-width:480px) {body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card {min-height:118px;padding:12px;}body.dashboard-page .app.stockos-shell-v2 .stockos-sales-panel {padding:14px;}body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-value {font-size:19px;}}
+
+/* Distinguish daily metrics from the accumulated per-register totals. */
+.stockos-sales-caption {margin:0 0 8px;color:var(--ink-3);font-size:11px;line-height:1.45;}
+.stockos-sales-value {max-width:100%;overflow-wrap:anywhere;text-align:center;line-height:1.25;}
+.stockos-sales-chart--signed .stockos-sales-track {position:relative;}
+.stockos-sales-chart--signed .stockos-sales-track::after {content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--rule-strong);}
+.stockos-sales-chart--signed .stockos-sales-bar {position:absolute;bottom:50%;left:0;}
+.stockos-sales-chart--signed .stockos-sales-bar--negative {bottom:auto;top:50%;background:var(--bad);border-radius:0 0 5px 5px;}
+
+
+/* Shell search and operational shortcuts, shared by the existing SPA routes. */
+body .app.stockos-shell-v2 .stockos-module-search {position:relative;flex:0 1 245px;min-width:140px;max-width:280px;order:1;}
+body .app.stockos-shell-v2 .topbar .topbar-right {order:2;}
+body .app.stockos-shell-v2 .stockos-alert-shortcut {order:3;}
+body .app.stockos-shell-v2 .stockos-header-profile {order:4;}
+.stockos-module-input {width:100%;min-height:40px;padding:8px 12px 8px 36px;background:var(--paper-sunk);border:1px solid var(--rule);border-radius:22px;font:inherit;font-size:13px;color:var(--ink);}
+.stockos-module-input::placeholder {color:var(--ink-3);}
+.stockos-module-input:focus {outline:2px solid var(--accent);outline-offset:1px;}
+.stockos-search-icon {position:absolute;top:11px;left:12px;color:var(--ink-3);pointer-events:none;display:flex;}
+.stockos-search-icon svg,.stockos-search-result svg,.stockos-alert-shortcut svg {width:18px;height:18px;}
+.stockos-module-results {position:absolute;top:calc(100% + 7px);left:0;right:0;min-width:210px;max-height:min(330px,55vh);overflow-y:auto;z-index:15;border:1px solid var(--rule);background:var(--paper-raised);border-radius:10px;padding:6px;box-shadow:0 10px 30px rgb(0 0 0 / .12);}
+.stockos-module-results[hidden] {display:none;}
+.stockos-search-status {margin:5px 8px 7px;font-size:11px;color:var(--ink-3);}
+.stockos-search-result {display:flex;align-items:center;gap:10px;min-height:40px;padding:8px;border-radius:6px;color:var(--ink);font-size:13px;text-decoration:none;}
+.stockos-search-result > span:first-child {display:flex;color:var(--ink-3);}
+.stockos-search-result:hover {background:var(--paper-sunk);}
+.stockos-search-result:focus-visible,.stockos-alert-shortcut:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+body .app.stockos-shell-v2 .stockos-alert-shortcut {display:inline-grid;place-items:center;width:40px;height:40px;flex:0 0 40px;color:var(--ink-2);background:var(--paper-sunk);border:1px solid var(--rule);border-radius:50%;text-decoration:none;}
+body .app.stockos-shell-v2 .stockos-alert-shortcut:hover {color:var(--accent-ink);}
+@media(max-width:1250px) {
+  body .app.stockos-shell-v2 .topbar.header {flex-wrap:wrap;}
+  body .app.stockos-shell-v2 .stockos-module-search {order:5;flex:1 1 100%;max-width:none;}
+}
+@media(max-width:720px) {
+  body .app.stockos-shell-v2 .topbar .header-main {flex:1 1 45%;}
+  body .app.stockos-shell-v2 .topbar .topbar-right {order:6;flex:1 1 100%;}
+  body .app.stockos-shell-v2 .stockos-alert-shortcut {width:36px;height:36px;flex-basis:36px;}
+  body .app.stockos-shell-v2 .stockos-header-profile {padding:0;}
+  .stockos-module-results {min-width:0;}
+}
+
+/* Keep the lower dashboard row closer to the reference: table + actionable alerts. */
+body.dashboard-page .app.stockos-shell-v2 .stockos-movements-wrap {overflow:auto;min-width:0;}
+.stockos-movements-table {width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;}
+.stockos-movements-table th {padding:10px 9px;background:var(--paper-sunk);color:var(--ink-3);font-weight:550;text-align:left;white-space:nowrap;}
+.stockos-movements-table td {padding:15px 9px;border-bottom:1px solid var(--rule);color:var(--ink);vertical-align:middle;}
+.stockos-movements-table td:first-child {font-weight:550;overflow-wrap:anywhere;min-width:100px;}
+.stockos-movements-table td:not(:first-child) {white-space:nowrap;}
+.stockos-movements-table td:last-child,.stockos-movements-table th:last-child {text-align:right;}
+.stockos-movements-table tr:last-child td {border-bottom:0;}
+body.dashboard-page .app.stockos-shell-v2 .operations-list {grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));}
+body.dashboard-page .app.stockos-shell-v2 .operations-item {align-items:flex-start;min-width:0;flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 .operations-item__action {white-space:normal;}
+@media(max-width:480px) {.stockos-movements-table th,.stockos-movements-table td {padding:10px 6px;font-size:11px;} .stockos-movements-table .mov-badge {font-size:9px;}}
+
+/* Final alignment after reviewing the actual browser capture. */
+@media(min-width:981px) {
+  body .app.stockos-shell-v2:not(.is-collapsed) {grid-template-columns:240px minmax(0,1fr);}
+}
+@media(max-width:980px) {
+  body .app.stockos-shell-v2:not(.is-collapsed) {grid-template-columns:minmax(0,1fr);grid-template-areas:"main";}
+}
+body .app.stockos-shell-v2 .sidebar .nav-icon svg {width:23px;height:23px;stroke-width:1.85;}
+body .app.stockos-shell-v2 .sidebar .btn-logout svg {width:21px;height:21px;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger {justify-content:center;padding:10px 0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger > span:nth-child(2),
+body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger kbd {display:none;}
+body .app.stockos-shell-v2 > .main.page > .topbar.header {flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {order:6;flex:1 1 100%;width:100%;justify-content:flex-end;gap:10px;padding-top:4px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:1;flex:0 1 245px;max-width:280px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-daily-report-panel {padding:18px;min-width:0;border-radius:10px;background:var(--paper-raised);border:1px solid var(--rule);}
+.stockos-report-link {display:inline-flex;align-items:center;min-height:32px;margin-top:8px;color:var(--accent-ink);font-size:12px;font-weight:650;text-decoration:none;}
+.stockos-report-link:hover {text-decoration:underline;}
+.stockos-payment-list {display:grid;gap:12px;margin-top:14px;}
+.stockos-payment-label {display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--ink-2);font-size:12px;}
+.stockos-payment-label strong {font-variant-numeric:tabular-nums;color:var(--ink);}
+.stockos-payment-track {height:7px;border-radius:5px;background:var(--paper-sunk);margin-top:5px;overflow:hidden;}
+.stockos-payment-bar {height:100%;border-radius:5px;background:var(--accent);}
+.stockos-payment-bar.negative {background:var(--bad);}
+body.dashboard-page .app.stockos-shell-v2 .celular-painel {margin-top:18px;margin-bottom:0;}
+@media(max-width:980px) {
+ body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:5;flex:1 1 100%;max-width:none;}
+}
+@media(max-width:600px) {
+ body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+ body.dashboard-page .app.stockos-shell-v2 .celular-painel {flex-direction:column;align-items:flex-start;}
+}
+
+
+/* StockOS design system — shared primitives for management views.
+   Existing color tokens remain the source of truth; shell v2 only.
+   Keep operational sizing, responsive table/card switching and modal mechanics intact. */
+body:has(> .app.stockos-shell-v2),body.relatorio-page {
+  --stockos-panel-radius: 10px;
+  --stockos-control-radius: 8px;
+  --stockos-dialog-radius: 14px;
+  --stockos-panel-gap: 14px;
+  --stockos-panel-padding: 18px;
+  --stockos-control-height: 40px;
+  --stockos-section-title-size: 15px;
+  --stockos-table-heading-size: 11px;
+  --stockos-table-text-size: 13px;
+}
+body .app.stockos-shell-v2 .stockos-device-shortcut[hidden] {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 #celular-painel {scroll-margin:16px;}
+body.dashboard-page .app.stockos-shell-v2 #celular-painel:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+/* Apply the same surface hierarchy to standard management tables, not the PDV. */
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body.content {
+  padding:20px clamp(16px,2vw,28px) 32px;
+  max-width:1680px;margin-inline:auto;min-width:0;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 :is(.table-card,.categoria-summary-card,.cardapio-summary-card,.toolbar:not(.toolbar--cardapio)) {
+  border-radius:var(--stockos-panel-radius);
+  box-shadow:none!important;
+  border:1px solid var(--rule);
+  background:var(--paper-raised);
+  min-width:0;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table-header {
+  background:var(--paper-raised);
+  padding:var(--stockos-panel-padding);
+  gap:12px;
+  flex-wrap:wrap;
+  min-width:0;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table-title {
+  font-family:var(--font-ui,inherit);font-size:var(--stockos-section-title-size);
+  font-weight:650;letter-spacing:-.025em;line-height:1.35;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table thead th {
+  font-size:var(--stockos-table-heading-size);
+  text-transform:none;letter-spacing:0;font-weight:600;
+  color:var(--ink-3);background:var(--paper-sunk);
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table tbody td {
+  font-size:var(--stockos-table-text-size);font-variant-numeric:tabular-nums;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body :is(.input,.select,.compact-control--select),
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .topbar .btn {
+  min-height:var(--stockos-control-height);border-radius:var(--stockos-control-radius);
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .topbar .topbar-right {
+  order:6;flex:1 1 100%;width:100%;flex-direction:row;flex-wrap:wrap;
+  align-items:center;justify-content:flex-end;
+}
+body:is(.estoque-page,.cardapio-page):has(> .app.stockos-shell-v2) .modal-overlay > .modal {
+  border-radius:var(--stockos-dialog-radius);
+}
+body:is(.estoque-page,.cardapio-page):has(> .app.stockos-shell-v2) .modal-title {
+  font-size:17px;font-weight:650;letter-spacing:-.025em;
+}
+body:is(.estoque-page,.cardapio-page):has(> .app.stockos-shell-v2) .modal :is(button,input,select,textarea):focus-visible,
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body :is(button,a,input,select,summary):focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+/* Stock: filter groups remain operational and can wrap independently. */
+body.estoque-page .app.stockos-shell-v2 .toolbar.stockos-stock-filters {
+  display:grid;grid-template-columns:minmax(0,1fr);
+  padding:14px;gap:12px;
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-filter-row {
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-width:0;
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-filter-row .seg {
+  min-width:0;max-width:100%;width:auto;flex:0 1 auto;
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-filter-label {
+  flex:0 0 auto;font-size:11px;font-weight:650;color:var(--ink-3);
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-stock-filters .input-search {
+  background-color:var(--paper-sunk);border-color:var(--rule);
+  padding-left:14px;
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-summary-grid {
+  gap:var(--stockos-panel-gap);margin-bottom:var(--stockos-panel-gap);
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-summary-card,
+body.cardapio-page .app.stockos-shell-v2 .cardapio-summary-card {
+  min-height:104px;padding:14px 16px;
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-summary-label,
+body.cardapio-page .app.stockos-shell-v2 .cardapio-summary-card .page-summary-label {
+  text-transform:none;letter-spacing:0;font-size:12px;font-weight:550;
+}
+body.estoque-page .app.stockos-shell-v2 .table-card > .chart-card {
+  padding:14px 18px;
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-chart {gap:8px;}
+/* Cardápio: preserve full-width tables on ordinary notebooks, give both panels
+   space on wide workstations without cutting action columns. */
+body.cardapio-page .app.stockos-shell-v2 .cardapio-layout {gap:var(--stockos-panel-gap);}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio {
+  background:transparent;border:0;padding:0;box-shadow:none;min-width:0;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-help {
+  border-radius:var(--stockos-control-radius);
+}
+@media (min-width:1880px) {
+  body.cardapio-page .app.stockos-shell-v2 .cardapio-layout {
+    grid-template-columns:minmax(610px, .8fr) minmax(800px, 1.2fr);
+  }
+}
+@media (max-width:740px) {
+  body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body.content {padding:16px 14px 28px;}
+  body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+  body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table-header {padding:14px;}
+  body.estoque-page .app.stockos-shell-v2 .stockos-filter-row {display:grid;grid-template-columns:minmax(0,1fr);gap:6px;}
+  body.estoque-page .app.stockos-shell-v2 .stockos-filter-row .seg {width:100%;}
+  body.estoque-page .app.stockos-shell-v2 .stockos-stock-filters .filter-btn {min-height:44px;}
+  body.estoque-page .app.stockos-shell-v2 .table-card > .chart-card {padding:14px;}
+}
+/* Original design comparison: wrappers are transparent to legacy layout. */
+body.estoque-page .app:not(.stockos-shell-v2) .stockos-filter-row {display:contents;}
+body.estoque-page .app:not(.stockos-shell-v2) .stockos-filter-label {display:none;}
+
+
+/* Design system — cash registers and tabs. Preserve all payment and scan geometry. */
+body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .main-body.content {
+  padding:20px clamp(16px,2vw,28px) 32px;max-width:1680px;margin-inline:auto;min-width:0;
+}
+body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .topbar .topbar-right {
+  order:6;flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;align-items:center;
+}
+body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .topbar .btn {
+  min-height:var(--stockos-control-height);border-radius:var(--stockos-control-radius);
+}
+body.caixas-page .app.stockos-shell-v2 :is(#resumo-dia .info-card,#caixas-grid .caixa-card,#consolidado-card,.fechamento-card),
+body.comandas-page .app.stockos-shell-v2 :is(.page-summary-card,.table-card) {
+  border:1px solid var(--rule);border-radius:var(--stockos-panel-radius);
+  box-shadow:none!important;background:var(--paper-raised);min-width:0;
+}
+body.caixas-page .app.stockos-shell-v2 #resumo-dia .info-label,
+body.comandas-page .app.stockos-shell-v2 .page-summary-label {
+  text-transform:none;letter-spacing:0;font-size:12px;font-weight:550;
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card.aberto {border-color:var(--rule-strong);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card.encerrado {opacity:1;}
+body.caixas-page .app.stockos-shell-v2 .caixa-num {font-size:19px;font-weight:650;}
+body.caixas-page .app.stockos-shell-v2 .caixa-details {gap:0;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row {padding:7px 0;border-bottom:1px solid var(--rule);}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row:last-child {border-bottom:0;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-value {font-size:13px;font-weight:650;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row--cash {background:var(--paper-sunk);border-radius:7px;padding:10px;margin:3px 0;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row--cash .caixa-detail-value {font-size:18px;font-weight:750;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm {
+  min-height:40px;border-radius:var(--stockos-control-radius);font-size:12px;
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header {flex-wrap:wrap;gap:8px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry {
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  flex:0 0 auto;min-height:44px;padding:8px 15px;margin-left:auto;
+  border:1px solid var(--ink);border-radius:var(--stockos-control-radius);
+  background:var(--ink);color:var(--paper);font-size:13px;font-weight:650;
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry:hover {opacity:.9;background:var(--ink);color:var(--paper);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+@media(max-width:420px) {
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry {flex:1 1 100%;margin-left:0;}
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+/* Real PDV: only typography, color, border radius, focus. No height, grid or overflow changes. */
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell {border-radius:var(--stockos-dialog-radius);}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell .pdv-shell__header {background:var(--paper-raised);}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell :is(.pdv-shell__title,.pdv-cart-title,.pdv-summary-label--total,.pdv-summary-value--total) {font-family:var(--font-ui,inherit);font-weight:700;letter-spacing:-.02em;}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell .pdv-summary-value--total {font-variant-numeric:tabular-nums;}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell :is(.pdv-scan__input,.pdv-search-input,.pdv-submit,.pdv-forma) {border-radius:var(--stockos-control-radius);}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell :is(button,input,select):focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell .pdv-scan__label {text-transform:none;letter-spacing:0;}
+/* Comandas: compact live overview + readable selectable cards. */
+body.comandas-page .app.stockos-shell-v2 #comandas-resumo {gap:var(--stockos-panel-gap);margin-bottom:var(--stockos-panel-gap);}
+body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-card {padding:14px 16px;min-height:104px;}
+body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-value {font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-weight:700;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comandas-layout {grid-template-columns:minmax(0,1fr) minmax(300px, .55fr);gap:var(--stockos-panel-gap);margin-top:0;}
+body.comandas-page .app.stockos-shell-v2 .comandas-lista-card .table-header {background:var(--paper-raised);padding:var(--stockos-panel-padding);flex-wrap:wrap;gap:10px;min-width:0;}
+body.comandas-page .app.stockos-shell-v2 .table-title {font-family:var(--font-ui);font-size:var(--stockos-section-title-size);font-weight:650;letter-spacing:-.025em;}
+body.comandas-page .app.stockos-shell-v2 .comandas-busca {flex:1 1 180px;min-width:0;max-width:100%;margin:0;min-height:40px;border-radius:var(--stockos-control-radius);background:var(--paper-sunk);}
+body.comandas-page .app.stockos-shell-v2 .comandas-grade {grid-template-columns:repeat(auto-fill,minmax(min(165px,100%),1fr));gap:10px;padding:14px;}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao {min-width:0;min-height:112px;gap:5px;padding:12px;border:1px solid var(--rule);border-radius:var(--stockos-control-radius);color:var(--ink);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao__numero {font-size:12px;font-weight:650;color:var(--ink-2);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao__total {font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao__info {font-size:11px;line-height:1.45;color:var(--ink-3);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao--ativa {background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 3px 0 var(--accent);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {padding:18px;scroll-margin:16px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__topo {flex-wrap:wrap;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__topo h2 {font-size:17px;font-weight:650;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__total {font-size:23px;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__linhas li {padding:9px 0;line-height:1.4;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__cobrar {min-height:44px;border-radius:var(--stockos-control-radius);}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__nome-linha {flex-wrap:wrap;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__nome-linha .input {min-width:120px;min-height:40px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__nome-linha .btn {min-height:40px;}
+@media(max-width:1150px) {body.comandas-page .app.stockos-shell-v2 .comandas-layout {grid-template-columns:minmax(0,1fr);}body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {position:static;}}
+@media(max-width:740px) {
+  body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .main-body.content {padding:16px 14px 28px;}
+  body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid.caixas-grid {grid-template-columns:minmax(0,1fr);}
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm {min-height:44px;white-space:normal;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-grade {grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));padding:10px;gap:8px;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-busca {order:3;flex-basis:100%;}
+}
+@media(max-width:480px) {
+  body.comandas-page .app.stockos-shell-v2 #comandas-resumo {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+  body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-card {padding:12px;min-height:100px;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {padding:14px;}
+}
+
+
+/* Design system — purchasing, personnel and audit. Preserve page-specific
+   table sizing, responsive rows, wizard geometry and permission-controlled actions. */
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .main-body.content {
+  padding:20px clamp(16px,2vw,28px) 32px;max-width:1680px;margin-inline:auto;min-width:0;
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .topbar .topbar-right {
+  order:6;flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;align-items:center;
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 :is(.table-card,.page-summary-card,.toolbar) {
+  border:1px solid var(--rule);border-radius:var(--stockos-panel-radius);box-shadow:none!important;background:var(--paper-raised);min-width:0;
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .table-card .table-header {
+  background:var(--paper-raised);padding:var(--stockos-panel-padding);gap:12px;flex-wrap:wrap;min-width:0;
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 :is(.table-title,.card-title,.nota-panel-title) {
+  font-family:var(--font-ui,inherit);font-size:var(--stockos-section-title-size);font-weight:650;letter-spacing:-.025em;line-height:1.35;
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .table thead th {
+  font-size:var(--stockos-table-heading-size);text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink-3);background:var(--paper-sunk);
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .table tbody td {
+  font-size:var(--stockos-table-text-size);font-variant-numeric:tabular-nums;
+}
+body:is(.fornecedores-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .page-summary-grid {gap:var(--stockos-panel-gap);margin-bottom:var(--stockos-panel-gap);}
+body:is(.fornecedores-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .page-summary-card {min-height:104px;padding:14px 16px;}
+body:is(.fornecedores-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .page-summary-label {text-transform:none;letter-spacing:0;font-size:12px;font-weight:550;}
+body:is(.fornecedores-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .page-summary-value {font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 :is(.topbar .btn,.main-body .input-search,.main-body .compact-control,.main-body .filter-btn,.main-body .btn-acao) {
+  border-radius:var(--stockos-control-radius);min-height:var(--stockos-control-height);
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .main-body :is(button,a,input,select,textarea,summary):focus-visible,
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page):has(> .app.stockos-shell-v2) .modal :is(button,input,select,textarea):focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page):has(> .app.stockos-shell-v2) .modal-overlay > .modal {border-radius:var(--stockos-dialog-radius);}
+body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page):has(> .app.stockos-shell-v2) .modal-title {font-size:17px;font-weight:650;letter-spacing:-.025em;}
+body:is(.notas-page,.cotacoes-page) .app.stockos-shell-v2 .main-body.content > .tabs {border-radius:var(--stockos-control-radius);gap:4px;}
+body:is(.notas-page,.cotacoes-page) .app.stockos-shell-v2 .main-body.content > .tabs > .tab-btn {border-radius:6px;min-height:40px;}
+body.notas-page .app.stockos-shell-v2 #aba-nova :is(.nota-panel,.nota-inline-card) {border-radius:var(--stockos-panel-radius);box-shadow:none!important;}
+body.cotacoes-page .app.stockos-shell-v2 :is(#aba-relatorio,#aba-historico) > .card {border-radius:var(--stockos-panel-radius);box-shadow:none!important;}
+body.cotacoes-page .app.stockos-shell-v2 .card-tools {flex-wrap:wrap;min-width:0;}
+body.logs-page .app.stockos-shell-v2 .logs-history-search {min-width:0;max-width:100%;}
+body.logs-page .app.stockos-shell-v2 .logs-history-search .input-search {background:var(--paper-sunk);}
+@media(max-width:740px) {
+  body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .main-body.content {padding:16px 14px 28px;}
+  body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+  body:is(.fornecedores-page,.notas-page,.cotacoes-page,.funcionarios-page,.logs-page) .app.stockos-shell-v2 .table-card .table-header {padding:14px;}
+  body:is(.fornecedores-page,.funcionarios-page) .app.stockos-shell-v2 .main-body :is(.filter-btn,.btn-acao) {min-height:44px;}
+}
+
+/* Reports: deliberately standalone (printable), with the same tokens and a
+   screen-only layout. Do not style the existing print layout here. */
+@media screen {
+  body.relatorio-page {padding:clamp(14px,2.5vw,32px);color:var(--ink);background:var(--paper);}
+  body.relatorio-page .stockos-report-screen {max-width:1440px;margin-inline:auto;min-width:0;}
+  body.relatorio-page .folha-cabecalho {display:grid;gap:16px;padding:var(--stockos-panel-padding);border:1px solid var(--rule);border-radius:var(--stockos-panel-radius);background:var(--paper-raised);}
+  body.relatorio-page .folha-cabecalho h1 {font-family:var(--font-ui);font-weight:700;letter-spacing:-.035em;font-size:clamp(22px,2.4vw,28px);}
+  body.relatorio-page .folha-acoes {gap:8px;min-width:0;}
+  body.relatorio-page .folha-acoes :is(.input,.btn,.pdv-novo-aba) {min-height:40px;border-radius:var(--stockos-control-radius);}
+  body.relatorio-page .relatorio-modos {margin:0;flex-wrap:wrap;gap:4px;background:var(--paper-sunk);padding:4px;border:1px solid var(--rule);border-radius:var(--stockos-control-radius);}
+  body.relatorio-page .relatorio-modos .pdv-novo-aba {border:1px solid transparent;color:var(--ink-2);}
+  body.relatorio-page .relatorio-modos .pdv-novo-aba--ativa {background:var(--paper-raised);border-color:var(--rule-strong);color:var(--ink);}
+  body.relatorio-page .relatorio-abc-filtros {flex-wrap:wrap;min-width:0;}
+  body.relatorio-page .relatorio-titulo {font-size:17px;font-weight:650;margin:18px 0 12px;}
+  body.relatorio-page .relatorio-cards {grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:var(--stockos-panel-gap);}
+  body.relatorio-page :is(.relatorio-card,.relatorio-bloco,.relatorio-abc) {padding:var(--stockos-panel-padding);border-radius:var(--stockos-panel-radius);background:var(--paper-raised);min-width:0;box-shadow:none;}
+  body.relatorio-page .relatorio-card span {font-size:12px;font-weight:550;text-transform:none;letter-spacing:0;color:var(--ink-3);}
+  body.relatorio-page .relatorio-card strong {font-family:var(--font-ui);font-size:clamp(20px,2vw,26px);font-weight:700;letter-spacing:-.035em;overflow-wrap:anywhere;}
+  body.relatorio-page .relatorio-card small {color:var(--ink-3);line-height:1.5;}
+  body.relatorio-page .relatorio-grade {grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:var(--stockos-panel-gap);}
+  body.relatorio-page .relatorio-bloco h3 {font-size:var(--stockos-section-title-size);font-weight:650;margin-bottom:12px;}
+  body.relatorio-page .resumo-operadores-rolagem {max-width:100%;overflow-x:auto;}
+  body.relatorio-page .resumo-operadores th {background:var(--paper-sunk);font-size:11px;letter-spacing:0;text-transform:none;color:var(--ink-3);}
+  body.relatorio-page .resumo-operadores :is(th,td) {padding:10px 8px;}
+  body.relatorio-page .relatorio-hora {grid-template-columns:34px minmax(0,1fr) auto;}
+  body.relatorio-page .relatorio-barra {background:var(--paper-sunk);}
+  body.relatorio-page :is(button,a,input,select):focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+  @media(max-width:600px) {
+    body.relatorio-page .relatorio-cards {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    body.relatorio-page :is(.relatorio-card,.relatorio-bloco,.relatorio-abc,.folha-cabecalho) {padding:12px;}
+    body.relatorio-page .relatorio-card strong {font-size:19px;}
+    body.relatorio-page .relatorio-modos {flex:1 1 100%;}
+    body.relatorio-page .relatorio-abc-filtros {flex:1 1 100%;}
+  }
+}
+body.relatorio-page [hidden] {display:none!important;}
+
+
+/* Short desktop viewports: make the selected tab's primary action reachable
+   before its item list; the list remains scrollable without moving the action. */
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__cobrar {margin:10px 0 8px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__linhas {max-height:min(320px,40vh);}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+@media(min-width:1151px) and (max-height:760px) {
+  body.comandas-page .app.stockos-shell-v2 .main-body.content {padding-top:14px;}
+  body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-card {min-height:90px;padding:10px 14px;}
+  body.comandas-page .app.stockos-shell-v2 #comandas-resumo {gap:10px;margin-bottom:10px;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {padding:14px;}
+}
+
+
+/* Reference reconstruction: explicit four-panel grid, operational details below.
+   Screen design only; the original comparison remains unchanged. */
+.stockos-reference-grid {display:contents;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid {
+ display:grid;grid-template-columns:minmax(0,1.42fr) minmax(0,1fr);gap:12px;align-items:stretch;margin:0 0 16px;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid > [hidden] {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid:not(:has(.stockos-reference-sales:not([hidden]))) {grid-template-columns:1fr;}
+body.dashboard-page .app.stockos-shell-v2 .main-body.content {padding:16px clamp(14px,1.5vw,24px) 24px;max-width:none;min-width:0;}
+body.dashboard-page .app.stockos-shell-v2 .main.page > .topbar.header {min-height:70px;padding:10px clamp(14px,1.5vw,24px);gap:10px;flex-wrap:nowrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .crumbs {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .page-title {font-size:22px;line-height:1.15;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .page-sub {font-size:11px;line-height:1.35;margin-top:4px;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .header-main {flex:1 1 180px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:1;flex:0 1 250px;min-width:125px;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {order:2;flex:0 1 auto;width:auto;gap:6px;padding:0;flex-wrap:nowrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right .btn {font-size:11px;min-height:32px;padding:6px 9px;white-space:nowrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .live-pill {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja {min-width:0;padding:0;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja__hora {font-size:15px;line-height:1.1;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja__data {font-size:9px;max-width:120px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-header-profile {order:4;padding-left:8px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-panel {min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--paper-raised);padding:16px;box-shadow:none;}
+.stockos-reference-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.stockos-reference-heading h2 {font-size:15px;line-height:1.4;font-weight:650;margin:0;color:var(--ink);}
+.stockos-reference-heading p {font-size:11px;margin:3px 0 0;color:var(--ink-3);}
+.stockos-reference-total {display:block;font-size:clamp(23px,2.25vw,31px);font-weight:700;line-height:1.15;letter-spacing:-.035em;font-variant-numeric:tabular-nums;margin-bottom:12px;}
+.stockos-period-switch {display:flex;align-items:center;border:1px solid var(--rule);border-radius:6px;overflow:hidden;}
+.stockos-period-switch button {border:0;border-right:1px solid var(--rule);background:transparent;color:var(--ink-3);font:inherit;font-size:11px;padding:6px 9px;cursor:pointer;white-space:nowrap;}
+.stockos-period-switch button:last-child {border-right:0;}
+.stockos-period-switch button[aria-pressed=true] {background:var(--accent-soft);color:var(--accent-ink);font-weight:650;}
+.stockos-period-switch button:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+.stockos-period-chart {min-height:175px;}
+.stockos-reference-legend {display:flex;gap:15px;font-size:10px;color:var(--ink-3);margin-top:7px;}
+.stockos-reference-legend span::before {content:'';display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:5px;}
+ .stockos-reference-legend .previous::before {background:var(--accent);opacity:.28;}
+
+/* Compact 2x2 KPI panel: one scan line, one number, one factual detail. */
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(118px,1fr);
+  gap:1px;margin:0;min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--rule);overflow:hidden;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid:empty {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi {
+  min-height:0;min-width:0;padding:clamp(14px,1.4vw,20px);
+  border:0;border-radius:0;box-shadow:none!important;background:var(--paper-raised);
+  display:flex;flex-direction:column;justify-content:center;gap:12px;text-decoration:none;
+  transform:none;transition:background 150ms ease;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi:hover {background:var(--paper-sunk);box-shadow:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi:focus-visible {outline:2px solid var(--accent);outline-offset:-3px;z-index:1;}
+.stockos-kpi-heading {display:flex;align-items:center;gap:9px;min-width:0;}
+.stockos-kpi-icon {display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:var(--paper-sunk);color:var(--ink-2);}
+.stockos-kpi-icon svg {width:17px;height:17px;}
+.stockos-kpi-arrow {display:grid;place-items:center;flex:0 0 16px;margin-left:auto;color:var(--ink-4);}
+.stockos-kpi-arrow svg {width:14px;height:14px;}
+.stockos-kpi--sales .stockos-kpi-icon {background:var(--accent-soft);color:var(--accent-ink);}
+.stockos-kpi[data-state="success"] .stockos-kpi-icon {background:var(--ok-soft);color:var(--ok);}
+.stockos-kpi[data-state="warning"] .stockos-kpi-icon {background:var(--warn-soft);color:var(--warn);}
+.stockos-kpi[data-state="danger"] .stockos-kpi-icon {background:var(--bad-soft);color:var(--bad);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-label {
+  font-size:12px;font-weight:600;line-height:1.3;text-transform:none;letter-spacing:0;overflow-wrap:anywhere;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-value {
+  font-family:var(--font-ui);font-size:clamp(23px,2.1vw,30px);font-weight:700;line-height:1.1;
+  letter-spacing:-.035em;overflow-wrap:anywhere;margin:0;color:var(--ink);font-variant-numeric:tabular-nums;
+}
+.stockos-kpi-suffix {font-size:.57em;font-weight:550;color:var(--ink-3);letter-spacing:0;}
+.stockos-kpi-detail {display:flex;align-items:baseline;gap:6px;color:var(--ink-3);font-size:11px;line-height:1.4;min-width:0;overflow-wrap:anywhere;}
+.stockos-kpi-dot {flex:0 0 6px;width:6px;height:6px;border-radius:50%;align-self:center;background:currentColor;}
+.stockos-kpi[data-state="success"] .stockos-kpi-detail {color:var(--ok);}
+.stockos-kpi[data-state="warning"] .stockos-kpi-detail {color:var(--warn);}
+.stockos-kpi[data-state="danger"] .stockos-kpi-detail {color:var(--bad);}
+@media(max-width:1250px) {
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi {gap:10px;padding:14px 12px;}
+  .stockos-kpi-heading {gap:6px;}
+  .stockos-kpi-icon {width:28px;height:28px;flex-basis:28px;}
+}
+@media(max-width:480px) {
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi {padding:12px 10px;gap:9px;}
+  .stockos-kpi-arrow {display:none;}
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-label {font-size:11px;}
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-value {font-size:clamp(19px,5.2vw,24px);}
+  .stockos-kpi-detail {font-size:10px;}
+}
+.stockos-reference-ranking .stockos-report-link {margin:0;min-height:24px;font-size:11px;}
+.stockos-reference-table {width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;}
+.stockos-reference-table th {background:var(--paper-sunk);font-size:10px;font-weight:550;text-align:left;color:var(--ink-3);padding:8px 7px;white-space:nowrap;}
+.stockos-reference-table td {padding:9px 7px;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums;vertical-align:middle;}
+.stockos-reference-table tr:last-child td {border:0;}
+.stockos-reference-table :is(th,td):not(:first-child) {text-align:right;white-space:nowrap;}
+.stockos-product-cell {display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere;}
+.stockos-product-mark {width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border-radius:50%;background:var(--paper-sunk);color:var(--ink-3);}
+.stockos-product-mark svg {width:15px;height:15px;}
+
+.stockos-distribution-heading {display:flex;align-items:baseline;gap:6px 10px;flex-wrap:wrap;margin:0 0 10px;}
+.stockos-distribution-heading h3 {font-size:12px;font-weight:650;margin:0;color:var(--ink);}
+.stockos-distribution-heading > span {font-size:10px;color:var(--ink-3);margin-left:auto;}
+.stockos-distribution-heading .stockos-report-link {font-size:10px;min-height:0;margin:0;}
+.stockos-distribution + .stockos-distribution:not([hidden]) {border-top:1px solid var(--rule);margin-top:12px;padding-top:12px;}
+.stockos-donut-layout {display:flex;align-items:center;gap:16px;min-width:0;}
+.stockos-donut {width:clamp(96px,8vw,128px);aspect-ratio:1;flex:0 0 clamp(96px,8vw,128px);border-radius:50%;display:grid;place-items:center;}
+.stockos-donut-inner {width:78%;aspect-ratio:1;border-radius:50%;background:var(--paper-raised);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:3px;}
+.stockos-donut-inner span {font-size:10px;color:var(--ink-3);}
+.stockos-donut-inner strong {font-size:clamp(11px,1vw,15px);font-weight:700;letter-spacing:-.025em;max-width:92%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+#stockos-stock-content .stockos-donut-inner strong {font-size:clamp(18px,1.6vw,24px);}
+.stockos-donut-legend {flex:1;min-width:0;display:grid;gap:3px;}
+.stockos-donut-row {display:grid;grid-template-columns:8px minmax(0,1fr) auto minmax(34px,auto);align-items:center;gap:7px;padding:6px 0;font-size:11px;color:var(--ink-2);border-bottom:1px solid var(--rule);text-decoration:none;min-width:0;}
+.stockos-donut-row:last-child {border-bottom:0;}
+.stockos-donut-row .stockos-donut-label {line-height:1.3;overflow-wrap:anywhere;}
+.stockos-donut-row strong {font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;color:var(--ink);}
+.stockos-donut-percent {font-size:10px;font-variant-numeric:tabular-nums;color:var(--ink-3);text-align:right;white-space:nowrap;}
+.stockos-donut-dot {height:8px;width:8px;border-radius:3px;}
+.stockos-donut-row--link:hover .stockos-donut-label {text-decoration:underline;color:var(--ink);}
+.stockos-donut-row--link:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+.stockos-donut-footer {font-size:10px;color:var(--ink-3);margin:10px 0 0;line-height:1.4;}
+@media(max-width:1250px) and (min-width:981px) {
+ .stockos-donut-layout {gap:10px;}
+ .stockos-donut-row {grid-template-columns:7px minmax(0,1fr) auto;gap:5px;}
+ .stockos-donut-percent {grid-column:3;}
+}
+@media(max-width:420px) {
+ .stockos-donut-row {grid-template-columns:7px minmax(0,1fr) auto;gap:5px;}
+ .stockos-donut-percent {grid-column:3;}
+}
+.stockos-reference-empty {font-size:12px;color:var(--ink-3);padding:18px 4px;margin:0;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions {box-shadow:none;padding:14px;margin:0 0 14px;}
+body.dashboard-page .app.stockos-shell-v2 .operations-heading {margin-bottom:10px;}
+body.dashboard-page .app.stockos-shell-v2 .operations-heading h2 {font-size:16px;}
+body.dashboard-page .app.stockos-shell-v2 .operations-item {padding:10px;}
+body.dashboard-page .app.stockos-shell-v2 .alert-item {padding:9px 10px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-demo-tools {margin-top:14px;padding:12px;border:1px solid var(--rule);border-radius:8px;}
+@media(max-width:1250px) {
+ body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja__data {display:none;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid {grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);}
+}
+@media(max-width:980px) {
+ body.dashboard-page .app.stockos-shell-v2 .main.page > .topbar.header {flex-wrap:wrap;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:5;flex:1 1 100%;max-width:none;}
+ body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {order:6;flex:1 1 100%;justify-content:flex-start;flex-wrap:wrap;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid {grid-template-columns:minmax(0,1fr);}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid {grid-template-rows:auto;}
+}
+@media(max-width:480px) {
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-panel {padding:12px;}
+ .stockos-donut {width:94px;flex-basis:94px;}
+ .stockos-donut-layout {gap:10px;}
+}
+
+.stockos-reference-note {font-size:11px;color:var(--ink-3);margin:8px 0 0;line-height:1.4;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid [hidden] {display:none!important;}
+
+/* Clean dashboard header: secondary tools live with the operational content. */
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {margin-left:auto;flex:0 1 240px;max-width:260px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-header-profile {padding-left:10px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-dashboard-utilities:not([hidden]) {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:8px 0 12px;color:var(--ink-3);}
+.stockos-dashboard-utilities .relogio-loja {display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;padding:0;border:0;background:transparent;}
+.stockos-dashboard-utilities .relogio-loja__hora {font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums;}
+.stockos-dashboard-utilities .relogio-loja__data {font-size:11px;color:var(--ink-3);}
+.stockos-dashboard-utilities .stockos-device-shortcut {min-height:32px;font-size:11px;}
+@media(max-width:980px){body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {flex:1 1 100%;max-width:none;margin-left:0;}}
+
+/* Sales chart: one stable plot, proper tick alignment, accessible exact values. */
+.stockos-period-summary {display:flex;align-items:baseline;gap:8px 12px;flex-wrap:wrap;margin-bottom:9px;}
+.stockos-period-summary .stockos-reference-total {margin:0;}
+.stockos-period-trend {font-size:10px;color:var(--ink-3);line-height:1.4;}
+.stockos-period-trend.positive {color:var(--good);}
+.stockos-period-trend.negative {color:var(--bad);}
+.stockos-period-trend[hidden] {display:none!important;}
+.stockos-reference-canvas {position:relative;width:100%;height:190px;min-width:0;}
+.stockos-reference-canvas > svg {display:block;width:100%;height:100%;}
+.stockos-reference-canvas > canvas {display:block;max-width:100%;max-height:100%;}
+.stockos-reference-legend {margin-top:5px;justify-content:center;flex-wrap:wrap;}
+.stockos-chart-details {margin-top:6px;color:var(--ink-3);font-size:10px;}
+.stockos-chart-details > summary {cursor:pointer;width:max-content;max-width:100%;padding:3px 0;}
+.stockos-chart-details > summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+.stockos-chart-data-wrap {overflow:auto;max-height:200px;margin-top:6px;}
+@media(max-width:480px){.stockos-reference-canvas {height:172px;}.stockos-period-trend {flex-basis:100%;}}
+
+
+/* Ranked items: clear hierarchy and revenue concentration without extra panels. */
+.stockos-ranking-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.stockos-ranking-actions button:disabled {opacity:.55;cursor:default;}
+.stockos-ranking-table th:first-child {width:30px;text-align:center;}
+.stockos-ranking-table :is(th,td):nth-child(2) {text-align:left;white-space:normal;}
+.stockos-ranking-table .stockos-rank-position {font-size:11px;color:var(--ink-3);text-align:center;font-weight:600;}
+.stockos-ranking-table .stockos-rank-revenue {font-weight:650;}
+.stockos-ranking-table .stockos-product-cell {font-weight:550;}
+.stockos-ranking-table .stockos-rank-share {min-width:92px;width:22%;}
+.stockos-rank-meter {display:inline-block;vertical-align:middle;width:clamp(28px,5vw,66px);height:5px;border-radius:4px;background:var(--paper-sunk);overflow:hidden;margin-right:6px;}
+.stockos-rank-meter > span {display:block;height:100%;background:var(--accent);border-radius:inherit;}
+.stockos-rank-percent {font-size:11px;color:var(--ink-2);display:inline-block;min-width:35px;text-align:right;}
+.stockos-rank-footer {display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 14px;border-top:1px solid var(--rule);padding:12px 0 0;margin-top:5px;}
+.stockos-rank-footer-context {display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--ink-3);}
+.stockos-rank-footer-context strong {font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-rank-concentration {font-size:11px;color:var(--ink-3);}
+@media(max-width:1250px) and (min-width:981px) {.stockos-rank-meter {display:none;}.stockos-ranking-table .stockos-rank-share {min-width:58px;width:auto;}}
+@media(max-width:600px) {.stockos-rank-meter {display:none;}.stockos-ranking-table .stockos-rank-share {min-width:58px;width:auto;}.stockos-ranking-table .stockos-product-mark {display:none;}.stockos-ranking-table :is(th,td) {padding-inline:5px;}.stockos-ranking-table .stockos-rank-position {font-size:10px;}}
+
+
+/* Operational priorities: actionable cards, not duplicate KPI counters. */
+.stockos-priority-description-heading {display:none;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions {
+  border-radius:10px;padding:16px;margin-bottom:14px;
+}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .operations-heading {align-items:center;margin:0 0 12px;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions :is(.operations-kicker,.operations-description) {display:none;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-description-heading {display:block;font-size:11px;line-height:1.4;color:var(--ink-3);margin:4px 0 0;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .operations-count {background:transparent;color:var(--ink-3);font-size:11px;font-weight:550;padding:0;min-height:0;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .operations-list {grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:10px;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item {
+ display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:5px;
+ min-height:0;padding:12px 14px;background:var(--paper-raised);border:1px solid var(--rule);border-radius:8px;
+ transition:background 150ms ease,border-color 150ms ease;
+}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item:hover {background:var(--paper-sunk);border-color:var(--rule-strong);}
+.stockos-priority-top {display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:3px;}
+.stockos-priority-icon {display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:7px;color:var(--ok);background:var(--ok-soft);}
+.stockos-priority-icon svg {width:16px;height:16px;}
+.stockos-priority-status {display:flex;align-items:center;gap:5px;color:var(--ink-3);font-size:10px;font-weight:600;}
+.stockos-priority-status > span {width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 6px;}
+.stockos-priority-item.operations-item--critical .stockos-priority-icon {color:var(--bad);background:var(--bad-soft);}
+.stockos-priority-item.operations-item--critical .stockos-priority-status {color:var(--bad);}
+.stockos-priority-item.operations-item--warning .stockos-priority-icon {color:var(--warn);background:var(--warn-soft);}
+.stockos-priority-item.operations-item--warning .stockos-priority-status {color:var(--warn);}
+.stockos-priority-item[data-operation="cash-open"] .stockos-priority-status,.stockos-priority-item[data-operation="stock-ok"] .stockos-priority-status {color:var(--ok);}
+.stockos-priority-item[data-operation="cash-closed"] .stockos-priority-icon {color:var(--ink-3);background:var(--paper-sunk);}
+.stockos-priority-title {font-size:12px;font-weight:650;color:var(--ink-2);}
+.stockos-priority-number {font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.035em;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-priority-number small {font-size:11px;font-weight:500;letter-spacing:0;color:var(--ink-3);}
+.stockos-priority-description {font-size:11px;line-height:1.4;color:var(--ink-3);overflow-wrap:anywhere;}
+.stockos-priority-action {display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:9px;margin-top:5px;border-top:1px solid var(--rule);font-size:11px;font-weight:650;color:var(--accent-ink);}
+.stockos-priority-action svg {width:14px;height:14px;}
+@media(max-width:600px) {
+ body.dashboard-page .app.stockos-shell-v2 #daily-actions {padding:12px;}
+ body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item {padding:12px;}
+}
+@media(prefers-reduced-motion:reduce) {.stockos-priority-item {transition:none!important;}}
+
+/* Secondary dashboard detail: compact activity and cash session table. */
+.stockos-secondary-link,.stockos-secondary-meta,.stockos-cash-title,.stockos-cash-caption {display:none;}
+body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) {padding:16px;box-shadow:none!important;border-radius:10px;}
+body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) .card-header {margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) .card-title {font-size:15px;font-weight:650;}
+.stockos-secondary-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-secondary-actions .card-badge {background:var(--paper-sunk);border:0;color:var(--ink-3);font-size:10px;font-weight:550;text-transform:none;letter-spacing:0;padding:4px 8px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-secondary-link {display:inline-block;color:var(--accent-ink);font-size:11px;font-weight:650;text-decoration:none;}
+.stockos-secondary-link:hover {text-decoration:underline!important;}
+.stockos-secondary-link:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-secondary-meta {display:inline-block;font-size:11px;color:var(--ink-3);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-cash-title {display:inline;}
+body.dashboard-page .app.stockos-shell-v2 #section-financeiro :is(.stockos-legacy-fin-title,.financial-grid,.card-header--subtle) {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-cash-caption {display:block;font-size:11px;color:var(--ink-3);margin:0 0 10px;}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state {min-height:0;padding:12px 10px;gap:4px;border:0;border-radius:6px;background:var(--paper-sunk);}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state__icon {width:27px;height:27px;background:transparent;border:0;}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state__title {font-size:12px;font-weight:600;}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state__copy {font-size:11px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-movements-table td {padding-block:10px;}
+.stockos-cash-table .stockos-cash-identity {text-align:left;min-width:115px;white-space:normal;}
+.stockos-cash-identity > :is(strong,span,small) {display:block;line-height:1.4;}
+.stockos-cash-identity > strong {font-size:12px;font-weight:650;}
+.stockos-cash-identity > span {font-size:11px;color:var(--ink-2);overflow-wrap:anywhere;}
+.stockos-cash-identity > small {font-size:9px;color:var(--ink-3);}
+.stockos-cash-state {display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border-radius:5px;background:var(--paper-sunk);color:var(--ink-3);font-size:10px;font-weight:550;}
+.stockos-cash-state.is-open {color:var(--ok);background:var(--ok-soft);}
+.stockos-cash-state.is-open::before {content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.stockos-cash-total {font-weight:650;}
+@media(max-width:600px) {
+ body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) {padding:12px;}
+ .stockos-cash-table :is(th,td) {padding-inline:5px;font-size:11px;}
+ .stockos-cash-table .stockos-cash-identity {min-width:96px;}
+}
+
+
+/* Inventory exception center: quiet surface, explicit urgency, real deficit. */
+#stockos-alert-tools[hidden],#stockos-alert-footer[hidden] {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 #section-alertas {padding:16px;border-radius:10px;box-shadow:none!important;min-width:0;}
+body.dashboard-page .app.stockos-shell-v2 #section-alertas .card-header {margin-bottom:12px;gap:8px;flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 #section-alertas .card-title {font-size:15px;font-weight:650;}
+body.dashboard-page .app.stockos-shell-v2 #alerta-count {font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;background:var(--paper-sunk);border:0;color:var(--ink-2);}
+.stockos-alert-tools {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;}
+.stockos-alert-filters {grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--paper-sunk);border-radius:8px;padding:4px;}
+.stockos-alert-filters button {display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:34px;padding:5px 3px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink-3);font:inherit;font-size:11px;cursor:pointer;}
+.stockos-alert-filters button[aria-pressed=true] {background:var(--paper-raised);border-color:var(--rule);color:var(--ink);font-weight:650;}
+.stockos-alert-filters strong {font-size:10px;font-variant-numeric:tabular-nums;}
+.stockos-alert-filters [data-stockos-alert-filter="critical"] strong {color:var(--bad);}
+.stockos-alert-filters [data-stockos-alert-filter="attention"] strong {color:var(--warn);}
+.stockos-alert-search {grid-column:1/-1;width:100%;min-width:0;min-height:36px;border:1px solid var(--rule);border-radius:7px;background:var(--paper-raised);color:var(--ink);padding:8px 10px;font:inherit;font-size:12px;}
+#stockos-alert-destination {grid-column:1/-1;grid-row:3;justify-self:end;}
+.stockos-alert-head {grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;padding:7px 0 4px;border-bottom:1px solid var(--rule);font-size:10px;color:var(--ink-3);}
+.stockos-alert-rows {padding:0;margin:0;list-style:none;}
+.stockos-alert-row {--stock-alert-color:var(--warn);display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,auto);align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);min-width:0;}
+.stockos-alert-row[data-level="SEM_ESTOQUE"],.stockos-alert-row[data-level="CRITICO"] {--stock-alert-color:var(--bad);}
+.stockos-alert-identity,.stockos-alert-numbers {display:flex;flex-direction:column;gap:4px;min-width:0;}
+.stockos-alert-product {font-size:12px;font-weight:650;line-height:1.4;color:var(--ink);overflow-wrap:anywhere;}
+.stockos-alert-status {display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--stock-alert-color);}
+.stockos-alert-dot {width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 6px;}
+.stockos-alert-numbers {text-align:right;align-items:flex-end;font-variant-numeric:tabular-nums;}
+.stockos-alert-balance {font-size:11px;color:var(--ink-3);}
+.stockos-alert-balance strong {font-size:13px;color:var(--ink);font-weight:700;}
+.stockos-alert-track {width:76px;height:4px;background:var(--paper-sunk);border-radius:3px;overflow:hidden;}
+.stockos-alert-track span {display:block;height:100%;background:var(--stock-alert-color);border-radius:3px;}
+.stockos-alert-deficit {font-size:10px;color:var(--stock-alert-color);line-height:1.3;}
+.stockos-alert-footer {display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;font-size:10px;color:var(--ink-3);}
+.stockos-alert-pagination {display:flex;gap:5px;}
+.stockos-alert-pagination button {min-height:32px;padding:5px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);font:inherit;cursor:pointer;}
+.stockos-alert-pagination button:disabled {opacity:.45;cursor:default;}
+.stockos-alert-filters button:focus-visible,.stockos-alert-pagination button:focus-visible,.stockos-alert-search:focus-visible {outline:2px solid var(--accent);outline-offset:1px;}
+@media(max-width:600px) {body.dashboard-page .app.stockos-shell-v2 #section-alertas {padding:12px;}.stockos-alert-pagination button {min-height:40px;}}
+
+
+/* Cash session cards: focus on the physical balance and sales, not repeated rows. */
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card {padding:16px;min-height:0;border-radius:10px;box-shadow:none!important;gap:0;container-type:inline-size;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+.stockos-cash-card-identity {display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-num {font-size:19px;font-weight:700;letter-spacing:-.03em;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header .badge {padding:5px 8px;font-size:10px;text-transform:none;letter-spacing:0;background:var(--paper-sunk);color:var(--ink-3);border:0;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card.aberto .caixa-card-header .badge {background:var(--ok-soft);color:var(--ok);}
+.stockos-cash-card.aberto .caixa-card-header .badge::before {content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header .stockos-pdv-entry {background:var(--accent);border-color:var(--accent);color:#fff;min-height:42px;padding:8px 14px;flex:0 0 auto;box-shadow:none;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header .stockos-pdv-entry:hover {background:var(--accent);color:#fff;opacity:.9;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-details {display:grid;gap:10px;margin:0 0 12px;}
+.stockos-cash-card-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .stockos-cash-metric {display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;padding:11px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-raised);min-width:0;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .stockos-cash-metric--physical {background:var(--paper-sunk);}
+.stockos-cash-metric .caixa-detail-label {font-size:11px;font-weight:600;line-height:1.25;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-metric .caixa-detail-value {font-size:clamp(19px,2vw,26px);font-weight:700;line-height:1.15;letter-spacing:-.035em;text-align:left;font-family:var(--font-ui);color:var(--ink);}
+.stockos-cash-metric small {font-size:10px;color:var(--ink-3);line-height:1.3;}
+.stockos-cash-card-breakdown,.stockos-cash-card-session {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card :is(.stockos-cash-card-breakdown,.stockos-cash-card-session) .caixa-detail-row {display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:0;border:0;min-width:0;}
+.stockos-cash-card-breakdown .caixa-detail-label,.stockos-cash-card-session .caixa-detail-label {font-size:10px;line-height:1.3;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card :is(.stockos-cash-card-breakdown,.stockos-cash-card-session) .caixa-detail-value {font-size:13px;line-height:1.3;text-align:left;font-family:var(--font-ui);overflow-wrap:anywhere;}
+.stockos-cash-card-session {border-top:1px solid var(--rule);padding-top:9px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:10px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm {min-width:0;min-height:36px;padding:7px 8px;font-size:11px;white-space:normal;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm.danger {color:var(--bad);border-color:var(--bad-soft);background:var(--paper-raised);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm.danger:hover {background:var(--bad-soft);}
+@container (min-width:470px) {
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions {grid-template-columns:repeat(4,minmax(0,1fr));}
+  .stockos-cash-card-breakdown {grid-template-columns:repeat(4,minmax(0,1fr));}
+}
+@media(max-width:600px) {
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card {padding:12px;}
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm {min-height:44px;}
+}
+
+
+/* Shared manual cash movement form — visual preview only, server remains authoritative. */
+body.caixas-page #modal-mov .stockos-mov-symbol,body.caixas-page #modal-mov .stockos-mov-subtitle,
+body.caixas-page #modal-mov .stockos-mov-currency,body.caixas-page #modal-mov .stockos-mov-preview {display:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov > .modal {width:min(100%,520px);border-radius:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-header {background:var(--paper-raised);padding:16px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-heading {display:flex;align-items:center;gap:12px;min-width:0;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-symbol {display:grid;place-items:center;width:40px;height:40px;flex:0 0 40px;border-radius:9px;background:var(--ok-soft);color:var(--ok);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov[data-operation="sangria"] .stockos-mov-symbol {background:var(--bad-soft);color:var(--bad);}
+.stockos-mov-symbol svg {width:20px;height:20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-subtitle {display:block;font-size:11px;line-height:1.4;color:var(--ink-3);margin:3px 0 0;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .produto-info-card {display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;box-shadow:none!important;padding:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .produto-info-qtd {display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:11px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .produto-info-qtd strong {font-size:19px;letter-spacing:-.025em;font-weight:700;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .field label {font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-2);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-amount {position:relative;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-currency {display:block;position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:14px;pointer-events:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov #mov-valor {height:49px;padding-left:40px;font-size:20px;font-weight:650;font-variant-numeric:tabular-nums;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-preview {display:grid;gap:9px;border:1px solid var(--rule);border-radius:8px;padding:12px;}
+.stockos-mov-preview-row {display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-3);}
+.stockos-mov-preview-row strong {font-weight:650;color:var(--ok);font-variant-numeric:tabular-nums;}
+#modal-mov[data-operation="sangria"] #mov-preview-delta {color:var(--bad);}
+.stockos-mov-preview-total {border-top:1px solid var(--rule);padding-top:9px;font-weight:600;color:var(--ink-2);}
+.stockos-mov-preview-total strong {font-size:19px;color:var(--ink);}
+#mov-preview-note {font-size:10px;line-height:1.4;color:var(--ink-3);margin:0;}
+#mov-preview[data-state="error"] :is(#mov-preview-note,#mov-preview-total) {color:var(--bad);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-footer {background:var(--paper-raised);padding:12px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-footer .btn {min-height:42px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov[data-operation="sangria"] #btn-confirmar-mov {background:var(--bad);color:white;border-color:var(--bad);box-shadow:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov[data-operation="suprimento"] #btn-confirmar-mov {background:var(--ok);color:white;border-color:var(--ok);box-shadow:none;}
+body.caixas-page #modal-mov #btn-confirmar-mov:disabled {opacity:.55;cursor:wait;}
+@media(max-width:480px) {
+ body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-header,
+ body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-footer {padding:12px 14px;}
+ body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-body {padding:14px;gap:12px;}
+}
+
+/* Cash statement: session totals, filters and a neutral ledger. */
+body.caixas-page:has(.app.stockos-shell-v2) #modal-movs-lista > .modal {width:min(1080px,100%);max-width:min(1080px,100%)!important;flex-basis:1080px;border-radius:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-movs-lista :is(.modal-header,.modal-footer) {background:var(--paper-raised);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-movs-lista .modal-body {gap:12px;}
+.stockos-extract-summary {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.stockos-extract-metric {display:flex;flex-direction:column;gap:5px;min-width:0;border:1px solid var(--rule);border-radius:8px;padding:12px;}
+.stockos-extract-metric > span {font-size:11px;font-weight:600;color:var(--ink-2);}
+.stockos-extract-metric strong {font-size:clamp(16px,1.8vw,23px);letter-spacing:-.035em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.stockos-extract-metric small {font-size:10px;color:var(--ink-3);}
+.stockos-extract-metric[data-state="in"] strong,.stockos-extract-value[data-state="in"] {color:var(--ok);}
+.stockos-extract-metric[data-state="out"] strong,.stockos-extract-value[data-state="out"] {color:var(--bad);}
+.stockos-extract-tools {display:grid;gap:9px;}
+.stockos-extract-tabs {display:flex;gap:5px;flex-wrap:wrap;}
+.stockos-extract-tabs button,.stockos-extract-pages button {min-height:36px;padding:7px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);font:inherit;font-size:11px;cursor:pointer;}
+.stockos-extract-tabs button[aria-pressed="true"] {background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-soft);font-weight:650;}
+.stockos-extract-pages button:disabled {opacity:.4;cursor:default;}
+.stockos-extract-search {display:grid;grid-template-columns:minmax(0,1fr) minmax(135px,auto);gap:8px;}
+.stockos-extract-search select {min-width:0;}
+.stockos-extract-table-wrap {overflow:auto;max-width:100%;border:1px solid var(--rule);border-radius:8px;}
+.stockos-extract-table {width:100%;border-collapse:collapse;font-size:12px;min-width:630px;}
+.stockos-extract-caption {text-align:left;padding:8px 10px;font-size:10px;color:var(--ink-3);}
+.stockos-extract-table th {font-size:10px;color:var(--ink-3);font-weight:600;text-align:left;background:var(--paper-sunk);padding:9px 10px;}
+.stockos-extract-table td {padding:10px;border-bottom:1px solid var(--rule);vertical-align:middle;}
+.stockos-extract-table tr:last-child td {border-bottom:0;}
+.stockos-extract-table :is(th,td):last-child {text-align:right;white-space:nowrap;}
+.stockos-extract-table td small {display:block;font-size:10px;color:var(--ink-3);margin-top:3px;}
+.stockos-extract-kind {font-size:10px;font-weight:650;color:var(--ink-3);}
+.stockos-extract-kind[data-state="in"] {color:var(--ok);}
+.stockos-extract-kind[data-state="out"] {color:var(--bad);}
+.stockos-extract-desc {display:block;font-weight:600;line-height:1.4;overflow-wrap:anywhere;}
+.stockos-extract-value {font-weight:650;font-variant-numeric:tabular-nums;}
+.stockos-extract-pages {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--ink-3);}
+.stockos-extract-pages > div {display:flex;gap:5px;}
+.stockos-extract-operators {border:1px solid var(--rule);border-radius:8px;padding:10px 12px;}
+.stockos-extract-operators summary {font-size:12px;font-weight:650;cursor:pointer;}
+.stockos-extract-operators[open] summary {margin-bottom:12px;}
+.stockos-extract-empty {padding:20px;text-align:center;color:var(--ink-3);font-size:12px;}
+#modal-movs-lista [hidden] {display:none!important;}
+.stockos-extract-tabs button:focus-visible,.stockos-extract-pages button:focus-visible,.stockos-extract-operators summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+@media(max-width:600px){.stockos-extract-summary {grid-template-columns:repeat(2,minmax(0,1fr));}.stockos-extract-search {grid-template-columns:1fr;}.stockos-extract-tabs button,.stockos-extract-pages button {min-height:44px;}.stockos-extract-table {min-width:580px;}}
+
+/* Blind close: physical count only, optional denomination calculator. */
+.stockos-close-icon,.stockos-close-subtitle,.stockos-close-blind,.stockos-close-amount>span,.stockos-close-count-note {display:none;}
+#encerrar-counter[hidden] {display:none!important;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar > .modal {width:min(100%,560px);border-radius:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar :is(.modal-header,.modal-footer) {background:var(--paper-raised);padding:14px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-heading {display:flex;align-items:center;gap:10px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-icon {display:grid;place-items:center;width:38px;height:38px;border-radius:9px;background:var(--paper-sunk);color:var(--ink-2);}
+.stockos-close-icon svg {width:18px;height:18px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-subtitle {display:block;font-size:11px;color:var(--ink-3);margin:3px 0 0;}
+body.caixas-page:has(.app.stockos-shell-v2) #alert-encerrar-warn {font-size:11px;line-height:1.45;padding:9px 12px;border-radius:7px;background:var(--warn-soft);color:var(--warn);border-color:var(--rule);margin:0;}
+.stockos-close-session {display:flex;justify-content:space-between;align-items:center;gap:8px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-session {padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-sunk);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-blind {display:inline;font-size:10px;color:var(--ink-3);}
+.stockos-close-instructions {font-size:12px;color:var(--ink-2);line-height:1.45;}
+.stockos-close-instructions strong {font-size:12px;color:var(--ink);}
+.stockos-close-instructions p {margin:4px 0;}
+.stockos-close-instructions small {font-size:11px;color:var(--ink-3);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .field label {font-size:12px;letter-spacing:0;text-transform:none;}
+.stockos-close-amount {position:relative;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-amount>span {display:block;position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #encerrar-valor-contado {padding-left:40px;font-size:22px;font-weight:650;min-height:48px;font-variant-numeric:tabular-nums;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-count-note {display:block;font-size:10px;color:var(--ink-3);}
+.stockos-close-counter {border:1px solid var(--rule);border-radius:8px;padding:10px 12px;}
+.stockos-close-counter summary {font-size:12px;font-weight:600;cursor:pointer;color:var(--ink);}
+.stockos-close-counter summary span {float:right;font-size:10px;font-weight:400;color:var(--ink-3);}
+.stockos-close-counter p {font-size:11px;color:var(--ink-3);margin:10px 0;}
+.stockos-close-denoms {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.stockos-close-denoms label {display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;font-size:10px;white-space:nowrap;}
+#modal-encerrar .stockos-close-denoms .input {width:58px;min-width:0;min-height:34px;padding:5px;font-size:12px;}
+.stockos-close-counter-total {display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:12px;}
+.stockos-close-counter-total strong {font-size:16px;font-variant-numeric:tabular-nums;}
+#encerrar-usar-contagem {width:100%;min-height:36px;font-size:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #btn-confirmar-encerrar {background:var(--bad);border-color:var(--bad);color:white;box-shadow:none;}
+#btn-confirmar-encerrar:disabled {opacity:.55;cursor:default;}
+@media(max-width:480px){.stockos-close-denoms {grid-template-columns:repeat(2,minmax(0,1fr));}body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar :is(.modal-header,.modal-footer) {padding:12px 14px;}}
+
+/* Opening a register: shared counting tool and concise session confirmation. */
+.stockos-open-icon,.stockos-open-subtitle,.stockos-open-operator,.stockos-open-suggestions,.stockos-open-hint,.stockos-open-summary {display:none;}
+#abrir-counter[hidden]{display:none!important;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir > .modal {width:min(100%,540px);border-radius:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir :is(.modal-header,.modal-footer){background:var(--paper-raised);padding:14px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-heading{display:flex;align-items:center;gap:10px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:9px;background:var(--ok-soft);color:var(--ok);}
+.stockos-open-icon svg{width:18px;height:18px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-subtitle{display:block;color:var(--ink-3);font-size:11px;margin:3px 0 0;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-operator{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--paper-sunk);border:1px solid var(--rule);border-radius:8px;padding:11px 12px;font-size:11px;color:var(--ink-3);}
+.stockos-open-operator strong{font-size:13px;color:var(--ink);overflow-wrap:anywhere;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .field label{font-size:12px;text-transform:none;letter-spacing:0;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-hint{display:block;font-size:11px;line-height:1.4;color:var(--ink-3);}
+#modal-abrir #abrir-status[data-state="warning"]{color:var(--warn);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-suggestions{display:flex;gap:6px;flex-wrap:wrap;}
+.stockos-open-suggestions button{border:1px solid var(--rule);border-radius:6px;padding:6px 10px;min-height:34px;background:var(--paper-raised);color:var(--ink-2);font:inherit;font-size:11px;cursor:pointer;}
+.stockos-open-suggestions button:hover{border-color:var(--accent);color:var(--accent-ink);}
+.stockos-open-suggestions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-amount>span{display:block;position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #abrir-saldo{min-height:48px;padding-left:40px;font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;}
+#modal-abrir .stockos-close-denoms .input{width:58px;min-width:0;min-height:34px;padding:5px;font-size:12px;}
+#abrir-usar-contagem{width:100%;min-height:36px;font-size:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;border:1px solid var(--rule);border-radius:8px;}
+.stockos-open-summary>div{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.stockos-open-summary span{font-size:11px;color:var(--ink-3);}
+.stockos-open-summary strong{font-size:17px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+body.caixas-page:has(.app.stockos-shell-v2) #btn-confirmar-abrir{background:var(--ok);border-color:var(--ok);color:white;box-shadow:none;}
+#btn-confirmar-abrir:disabled{opacity:.55;cursor:default;}
+@media(max-width:480px){body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir :is(.modal-header,.modal-footer){padding:12px 14px;}}
+
+/* Menu categories: explicit controls, item counts, compact operational status. */
+#categoria-itens-heading[hidden]{display:none!important;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--categories .table-header{background:var(--paper-raised);gap:12px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table{min-width:660px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):first-child{width:150px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(3){width:150px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(4){width:100px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):last-child{width:175px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table tbody td{padding:12px 14px;vertical-align:middle;}
+.stockos-category-order,.stockos-category-actions,.stockos-category-identity{display:flex;align-items:center;gap:7px;min-width:0;}
+.stockos-category-order .compact-control--order{width:52px;min-width:0;text-align:center;}
+.stockos-category-order button,.stockos-category-actions button{font:inherit;font-size:11px;min-height:34px;padding:6px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);cursor:pointer;white-space:nowrap;}
+.stockos-category-order button:not(:disabled){color:var(--accent-ink);border-color:var(--accent);}
+.stockos-category-order button:disabled,.stockos-category-actions button:disabled,.stockos-category-items:disabled{opacity:.45;cursor:default;}
+.stockos-category-identity .table-cell-stack{min-width:0;overflow-wrap:anywhere;}
+.stockos-category-icon{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;background:var(--paper-sunk);border-radius:7px;color:var(--ink-3);}
+.stockos-category-icon svg{width:16px;height:16px;}
+.stockos-category-items{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;border:0;background:none;color:var(--ink-3);font:inherit;padding:3px 0;text-align:left;cursor:pointer;font-size:10px;}
+.stockos-category-items strong{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-category-items:hover span{text-decoration:underline;}
+.stockos-category-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink-3);}
+.stockos-category-status>span[aria-hidden="true"]{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:currentColor;}
+.stockos-category-status[data-active="true"]{color:var(--ok);}
+.stockos-category-actions button[data-category-action="toggle"][data-active="true"]{color:var(--bad);}
+.stockos-category-actions button[data-category-action="toggle"][data-active="false"]{color:var(--ok);}
+.stockos-category-actions button:not(:disabled):hover,.stockos-category-order button:not(:disabled):hover{background:var(--paper-sunk);}
+.stockos-category-order input[aria-invalid="true"]{border-color:var(--bad);}
+@media(max-width:600px){body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table tbody td{padding:9px 10px;}.stockos-category-order button,.stockos-category-actions button{min-height:44px;}}
+
+/* Login workspace — scoped to the canonical access page, including the isolated preview. */
+body.login-page .page{grid-template-columns:minmax(0,1.2fr) minmax(440px,1fr);min-height:100vh;min-height:100dvh;}
+body.login-page .panel-left{padding:clamp(28px,4.5vw,76px);gap:32px;min-width:0;}
+body.login-page .logo{font-family:var(--font-ui);font-size:20px;letter-spacing:-.035em;}
+body.login-page .logo-icon{border-radius:10px;box-shadow:none;}
+body.login-page .hero{max-width:600px;}
+body.login-page .hero h1{font-family:var(--font-ui);font-weight:600;font-size:clamp(42px,4.6vw,76px);line-height:1.06;letter-spacing:-.055em;margin-bottom:18px;}
+body.login-page .hero p{font-size:clamp(14px,1.15vw,17px);max-width:480px;line-height:1.65;}
+body.login-page .hero-eyebrow{margin-bottom:20px;letter-spacing:.03em;text-transform:none;}
+body.login-page .hero-eyebrow-dot{animation:none;}
+body.login-page .login-features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;max-width:620px;border-top:1px solid var(--rule);padding-top:16px;}
+body.login-page .login-features>div{display:grid;align-content:start;gap:5px;min-width:0;padding:0 12px;}
+body.login-page .login-features>div:first-child{padding-left:0;}
+body.login-page .login-features>div+div{border-left:1px solid var(--rule);}
+body.login-page .login-feature-icon{display:flex;align-items:center;color:var(--accent-ink);margin-bottom:4px;}
+body.login-page .login-feature-icon svg{width:20px;height:20px;}
+body.login-page .login-features strong{font-size:13px;color:var(--ink);}
+body.login-page .login-features small{font-size:11px;color:var(--ink-3);line-height:1.4;}
+body.login-page .panel-right{min-width:0;padding:clamp(24px,4vw,64px);border-left:1px solid var(--rule);background:var(--paper-raised);backdrop-filter:none;}
+body.login-page .login-card{width:100%;max-width:460px;padding:clamp(20px,2.4vw,36px);border-radius:16px;background:var(--paper-raised);border:1px solid var(--rule);box-shadow:var(--shadow-md);animation:none;}
+body.login-page .card-head{display:block;margin:0 0 24px;}
+body.login-page .card-head h2{font-family:var(--font-ui);font-size:clamp(24px,2.4vw,32px);font-weight:650;line-height:1.15;letter-spacing:-.035em;margin:9px 0 6px;}
+body.login-page .card-head p{font-size:13px;line-height:1.5;}
+body.login-page .login-access-label,body.login-page .login-access-footer{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);}
+body.login-page :is(.login-access-label,.login-access-footer)>span{display:flex;}
+body.login-page :is(.login-access-label,.login-access-footer) svg{width:15px;height:15px;}
+body.login-page #loginForm:not([hidden]){display:grid;gap:14px;}
+body.login-page #loginForm[hidden],body.login-page #senhaForm[hidden],body.login-page #pinCampo[hidden]{display:none!important;}
+body.login-page #senhaForm:not([hidden])~#loginForm,body.login-page #senhaForm:not([hidden])~.stockos-demo-entry{display:none!important;}
+body.login-page :is(#loginForm,#senhaForm) .f-group{margin:0;min-width:0;gap:6px;}
+body.login-page #loginForm .f-row{margin:0;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr));}
+body.login-page :is(#loginForm,#senhaForm) label{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink-2);}
+body.login-page :is(#loginForm,#senhaForm) .input{width:100%;min-width:0;height:44px;min-height:44px;border-radius:8px;font-size:14px;background:var(--paper);}
+body.login-page #authEmail{padding-left:12px;}
+body.login-page #loginForm .btn-submit,body.login-page #senhaForm button[type="submit"]{margin:0;min-height:44px;border-radius:8px;color:#fff;background:var(--accent-ink);border-color:var(--accent-ink);font-weight:650;box-shadow:none;transform:none;}
+body.login-page #loginForm .btn-submit:hover,body.login-page #senhaForm button[type="submit"]:hover{filter:brightness(1.08);box-shadow:none;transform:none;}
+body.login-page #loginForm .btn-submit:disabled{opacity:.55;cursor:not-allowed;}
+body.login-page #loginForm .btn-submit:disabled .btn-text{visibility:visible;}
+body.login-page #loginForm .alert{margin:0;border-radius:8px;}
+body.login-page .login-ajuda{margin:0;font-size:12px;color:var(--ink-3);}
+body.login-page .login-ajuda summary{cursor:pointer;color:var(--accent-ink);font-weight:600;padding:3px 0;}
+body.login-page .login-ajuda p{margin:8px 0 0;line-height:1.5;overflow-wrap:anywhere;}
+body.login-page .stockos-demo-entry{margin-top:20px;padding-top:16px;border-top:1px solid var(--rule);display:grid;gap:7px;}
+body.login-page .stockos-demo-entry a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:8px 12px;border:1px solid var(--rule-strong);border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;color:var(--ink);background:var(--paper-raised);}
+body.login-page .stockos-demo-entry a:hover{background:var(--paper-sunk);}
+body.login-page .stockos-demo-entry p{margin:0;font-size:11px;color:var(--ink-3);text-align:center;line-height:1.4;}
+body.login-page .card-foot{margin-top:18px;padding-top:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+body.login-page :is(a,button,summary,input):focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media(max-width:1000px){body.login-page .page{grid-template-columns:minmax(0,1fr) minmax(390px,1fr);}body.login-page .panel-left{padding:30px;gap:24px;}body.login-page .panel-right{padding:24px;}body.login-page .hero h1{font-size:44px;}body.login-page .login-features{grid-template-columns:1fr;gap:10px;}body.login-page .login-features>div{padding:0;border:0!important;grid-template-columns:26px 1fr;column-gap:8px;}body.login-page .login-feature-icon{grid-row:span 2;align-self:center;margin:0;}}
+@media(max-width:760px){body.login-page .page{grid-template-columns:1fr;min-height:100dvh;align-content:start;}body.login-page .panel-left{padding:22px 20px 16px;gap:16px;}body.login-page .hero h1{font-size:clamp(28px,7vw,40px);margin:0 0 8px;}body.login-page .hero h1 br{display:none;}body.login-page .hero-eyebrow,body.login-page .login-features{display:none;}body.login-page .hero p{font-size:13px;line-height:1.45;}body.login-page .panel-right{padding:12px 16px 24px;border:0;background:transparent;align-items:flex-start;}body.login-page .login-card{max-width:480px;padding:20px;}body.login-page .card-head{margin-bottom:18px;}body.login-page :is(#loginForm,#senhaForm) .input{font-size:16px;}body.login-page .bg-grid{opacity:.35;}}
+@media(max-width:340px){body.login-page #loginForm .f-row{grid-template-columns:1fr;}}

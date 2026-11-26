@@ -178,6 +178,9 @@
     }
 
     clearOpenOverlays();
+    // Dispose route-local visualizations before caching/detaching their DOM.
+    const previousLifecycle=window.StockOSPages && window.StockOSPages[active];
+    if(typeof previousLifecycle?.deactivate==='function')previousLifecycle.deactivate();
 
     // Keep the original header element and its mobile sidebar toggle alive.
     visible.left.replaceWith(entry.left);

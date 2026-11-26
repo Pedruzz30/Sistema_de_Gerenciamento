@@ -743,3 +743,129 @@ body.cardapio-page .action-icon:focus-visible {
   body.cardapio-page .cardapio-summary-card,
   body.cardapio-page .action-icon { transition: none; }
 }
+
+
+/* Categories — proportional columns on desktop; preserve native table semantics
+   and use a bounded horizontal scroll only when the panel is too narrow. */
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--categories .table-header {
+  background:var(--paper-raised);padding:14px 18px;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--categories .table-count {
+  border:0;background:var(--paper-sunk);border-radius:6px;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--categories .table-wrap {
+  border:0;overflow-x:auto;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table {
+  table-layout:fixed;width:100%;min-width:760px;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(1) {width:17%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(2) {width:26%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(3) {width:26%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(4) {width:12%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(5) {width:19%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(thead th,tbody td) {
+  padding:10px 12px;text-align:left;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table thead th {
+  text-transform:none;letter-spacing:0;font-size:11px;font-weight:600;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-order {
+  gap:6px;flex-wrap:wrap;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-order .compact-control--order {
+  flex:0 0 48px;width:48px;min-width:48px;height:34px;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-actions {
+  flex-wrap:wrap;gap:6px;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(.stockos-category-order,.stockos-category-actions) button {
+  padding:6px 8px;min-height:34px;font-size:11px;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-items {
+  display:flex;flex-direction:row;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:5px 12px;width:100%;padding:3px 0;text-align:left;
+}
+.stockos-category-item-count {display:flex;flex-direction:column;gap:4px;min-width:0;}
+.stockos-category-item-count > span {font-size:11px;color:var(--ink-3);overflow-wrap:anywhere;}
+.stockos-category-item-link {display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent-ink);white-space:nowrap;}
+.stockos-category-item-link svg {width:13px;height:13px;}
+.stockos-category-items:hover .stockos-category-item-link {text-decoration:underline;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-items:hover .stockos-category-item-count span {text-decoration:none;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-status {white-space:nowrap;}
+@media(max-width:600px){
+  body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(.stockos-category-order,.stockos-category-actions) button {min-height:44px;}
+  body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table .stockos-category-items {min-height:44px;}
+}
+
+/* Category editor: identity, technical settings and preview; no wasted full-width fields. */
+.stockos-category-modal-icon,.stockos-category-modal-subtitle,.stockos-category-modal-context,.stockos-category-modal-preview,.stockos-category-modal-help,.stockos-category-optional {display:none;}
+.stockos-category-modal-fields {display:grid;gap:14px;}
+body.cardapio-page:has(.app.stockos-shell-v2) #modal-categoria > .modal {
+ flex-basis:540px;max-width:min(540px,100%)!important;border-radius:12px;
+}
+body.cardapio-page:has(.app.stockos-shell-v2) #modal-categoria :is(.modal-header,.modal-footer) {background:var(--paper-raised);padding:14px 18px;}
+body.cardapio-page:has(.app.stockos-shell-v2) #modal-categoria .modal-body {padding:18px;gap:16px;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-heading {display:flex;align-items:center;gap:10px;min-width:0;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-icon,
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-preview-icon {display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);}
+.stockos-category-modal-icon svg,.stockos-category-preview-icon svg {width:18px;height:18px;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-subtitle {display:block;font-size:11px;color:var(--ink-3);margin:3px 0 0;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-context:not([hidden]) {display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--paper-sunk);padding:10px 12px;border-radius:7px;font-size:11px;color:var(--ink-2);}
+#categoria-context[hidden],#categoria-preview-warning[hidden] {display:none!important;}
+body.cardapio-page:has(.app.stockos-shell-v2) #modal-categoria .form-group label {font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-2);font-weight:600;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-fields {grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-optional {display:inline;font-size:10px;color:var(--ink-3);font-weight:400;margin-left:4px;}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-help {display:block;font-size:10px;line-height:1.4;color:var(--ink-3);}
+body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-preview {display:grid;gap:9px;border:1px solid var(--rule);border-radius:8px;padding:12px;}
+.stockos-category-preview-label {font-size:11px;color:var(--ink-3);}
+.stockos-category-preview-row {display:flex;align-items:center;gap:10px;min-width:0;}
+.stockos-category-preview-row>div {flex:1;min-width:0;display:grid;gap:3px;overflow-wrap:anywhere;}
+.stockos-category-preview-row strong {font-size:14px;font-weight:650;color:var(--ink);}
+.stockos-category-preview-row small {font-size:10px;color:var(--ink-3);}
+.stockos-category-preview-order {font-size:11px;color:var(--ink-3);white-space:nowrap;}
+.stockos-category-modal-warning {font-size:11px;color:var(--warn);line-height:1.4;}
+#modal-categoria #btn-salvar-categoria:disabled {opacity:.55;cursor:wait;}
+@media(max-width:420px) {body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-fields {grid-template-columns:minmax(0,1fr);}}
+
+/* The status label is text, not a second indicator dot. */
+#categoria-context-state {flex:0 0 auto;white-space:nowrap;}
+#categoria-context-items {min-width:0;overflow-wrap:anywhere;}
+#categoria-context-state-text {display:inline;width:auto;height:auto;background:none;line-height:normal;}
+
+/* Menu items: price and availability have dedicated columns; category travels with item. */
+#item-status-filter[hidden]{display:none!important;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .table-header--stack {background:var(--paper-raised);padding:14px 18px;gap:10px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio {grid-template-columns:minmax(180px,1fr) minmax(140px,190px) minmax(165px,220px);}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .table-wrap {overflow-x:auto;min-width:0;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table {table-layout:fixed;width:100%;min-width:1000px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(1){width:24%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(2){width:10%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(3){width:18%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(4){width:19%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(5){width:12%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(6){width:17%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td){padding:11px 12px;text-align:left;white-space:normal;overflow-wrap:anywhere;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table th{font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;}
+.stockos-menu-item-identity,.stockos-menu-item-type,.stockos-menu-item-availability{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.stockos-menu-item-identity strong{font-size:13px;color:var(--ink);font-weight:650;}
+.stockos-menu-item-type strong{font-size:12px;color:var(--ink-2);font-weight:600;}
+.stockos-menu-item-identity small,.stockos-menu-item-identity>span,.stockos-menu-item-type small,.stockos-menu-item-availability small{font-size:11px;line-height:1.4;color:var(--ink-3);overflow-wrap:anywhere;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table .stockos-menu-item-price{font-size:14px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-menu-item-status{display:inline-flex;align-items:center;gap:5px;font-weight:650;font-size:11px;color:var(--ink-3);}
+.stockos-menu-item-status>span[aria-hidden="true"]{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:currentColor;}
+.stockos-menu-item-status[data-state="available"]{color:var(--ok);}
+.stockos-menu-item-status:is([data-state="attention"],[data-state="paused"]){color:var(--warn);}
+.stockos-menu-item-status[data-state="blocked"]{color:var(--bad);}
+.stockos-menu-item-order,.stockos-menu-item-actions{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table .stockos-menu-item-order input{width:46px;min-width:46px;height:34px;text-align:center;}
+.stockos-menu-item-order button,.stockos-menu-item-actions button{font:inherit;font-size:11px;min-height:34px;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);cursor:pointer;white-space:nowrap;}
+.stockos-menu-item-order button:not(:disabled){color:var(--accent-ink);border-color:var(--accent);}
+.stockos-menu-item-actions button[data-tone="warning"]{color:var(--warn);}
+.stockos-menu-item-actions button[data-tone="danger"]{color:var(--bad);}
+.stockos-menu-item-actions button[data-tone="success"]{color:var(--ok);}
+.stockos-menu-item-actions button:disabled,.stockos-menu-item-order button:disabled{opacity:.45;cursor:default;}
+.stockos-menu-item-order input[aria-invalid="true"]{border-color:var(--bad);}
+.stockos-menu-item-order button:focus-visible,.stockos-menu-item-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+@media(max-width:850px){body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio{grid-template-columns:repeat(2,minmax(0,1fr));}body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio .search-wrap{grid-column:1/-1;}}
+@media(max-width:480px){body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio{grid-template-columns:minmax(0,1fr);}.stockos-menu-item-order button,.stockos-menu-item-actions button{min-height:44px;}}

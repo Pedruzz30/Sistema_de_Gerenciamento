@@ -1,0 +1,220 @@
+# StockOS — Design system (incremento 1)
+
+Objetivo: aproximar a experiência de gestão da referência aprovada, mantendo os fluxos operacionais, paleta, permissões e dados atuais.
+
+## Tokens
+
+A camada nova usa os tokens de cor existentes (`--paper-raised`, `--paper-sunk`, `--ink`, `--rule`, `--accent`). Não introduz uma nova paleta.
+
+| Token | Valor | Uso |
+| --- | --- | --- |
+| --stockos-panel-radius | 10px | Painéis, tabelas e cartões |
+| --stockos-control-radius | 8px | Botões e campos |
+| --stockos-dialog-radius | 14px | Modais de gestão |
+| --stockos-panel-gap | 14px | Separação de painéis |
+| --stockos-panel-padding | 18px | Espaçamento interno |
+| --stockos-control-height | 40px | Controles; 44px para filtros móveis |
+| --stockos-section-title-size | 15px | Títulos de seção |
+| --stockos-table-heading-size | 11px | Cabeçalhos de tabela |
+| --stockos-table-text-size | 13px | Corpo de tabela |
+
+## Regras
+
+- O seletor `.app.stockos-shell-v2` delimita a experiência nova. Modais externos são delimitados com `body:has(> .app.stockos-shell-v2)`.
+- Preservar IDs, classes de comportamento, handlers, filtros e permissões.
+- Tabelas devem ter rolagem própria ou cartões móveis; nunca forçar rolagem horizontal do documento.
+- Usar bordas discretas, títulos em sentence case, valores tabulares e foco perceptível.
+- Não alterar dimensões operacionais do PDV nem os fluxos de leitor de código de barras.
+- Sem indicadores inventados, sem ocultar erros como zero e sem simular notificações reais.
+- Manter a comparação original funcional.
+
+## Aplicação inicial
+
+Dashboard, Estoque e Cardápio. Estoque mantém cartões móveis existentes, busca e dois grupos de filtros identificados. Cardápio mantém tabelas inteiras em notebooks e usa duas colunas apenas em workstations largas. A configuração do celular tem acesso direto no cabeçalho quando disponível; o QR Code continua no painel original.
+
+## Validação
+
+Executar `npm run test:shell-redesign`, `npm run test:preview`, `npm run test:design`, `npm run test:spa` e o E2E real. Conferir capturas de desktop e mobile. A aprovação visual humana continua necessária antes do merge.
+
+
+## Incremento 2 — Caixas, PDV e Comandas
+
+- Caixas: ação PDV em destaque, distinção de dinheiro em espécie e pagamentos eletrônicos, dados de sessões e ações originais preservados.
+- PDV real: somente apresentação (tipografia, bordas, foco e superfície do cabeçalho); manter dimensões, painéis, atalhos e fluxo de cobrança.
+- Comandas: seleção anunciada via aria-pressed, foco preservado em atualizações e acesso direto ao detalhe no mobile. Ignorar respostas atrasadas de outra comanda.
+- Validar no E2E: abrir caixa, visibilidade do PDV, scanner e atalhos existentes, seleção da comanda no celular, cobrança, divisão, desconto e estorno.
+
+
+## Incremento 3 — Relatórios e administração
+
+- Fornecedores, notas, cotações, funcionários e logs: mesma hierarquia de painéis, tabelas, controles, abas e títulos. Mantidos os layouts específicos, inclusive tabelas responsivas e etapas de importação/entrada de nota.
+- Relatórios: página independente para impressão, com a mesma linguagem visual em tela; filtros acessíveis, indicadores e tabelas em painéis. A impressão não recebe a camada de estilo de tela.
+- Relatórios: bloquear a impressão enquanto a consulta não termina, remover números antigos durante uma nova consulta e ignorar respostas de consultas anteriores.
+- Nenhuma modificação de contrato da API, permissões, cálculo financeiro, persistência ou geração de documentos.
+
+## Refinamento de homologação
+
+- Comandas: ação de cobrança antes da lista de itens; compactação para notebooks de baixa altura. Não cobrar com dados de outra comanda ou antes de confirmar o detalhe selecionado. Respostas atrasadas de requisições concorrentes são ignoradas.
+- O E2E mantém a exigência de visibilidade da ação principal em 1366 × 650, além dos testes em 390 × 844.
+
+### Matriz visual real
+
+O E2E autenticado verifica os 10 módulos com App Shell em 1366 × 650, 768 × 1024 e 390 × 844. Cada combinação exige conteúdo dentro da área útil, ausência de rolagem horizontal do documento, rota ativa correta e abertura/fechamento acessíveis do menu no mobile/tablet. Capturas ficam nos artefatos de CI; não substituem inspeção visual humana.
+
+### Consistência de atualização e CSS
+
+O dashboard distingue falha de consulta de estoque/movimentações de listas vazias e ignora respostas de atualizações anteriores. Consolidadas regras sobrescritas do próprio redesign (ícones, colunas de gráfico e ordem do cabeçalho); mantida a especificidade necessária contra CSS legado. Evitar uma refatoração ampla antes da matriz de navegador passar.
+
+## Reconstrução fiel à referência
+
+Quatro painéis explícitos no HTML: evolução de vendas (7/30 dias ou hoje), quatro KPIs, ranking diário, distribuição de pagamentos e estoque. Ações operacionais e ferramentas de demonstração abaixo dos painéis. Comparativo somente quando o período anterior existe; sem inventar séries ausentes. O backend usa os relatórios existentes; a demonstração agrega os registros fictícios já gravados.
+
+## Gráfico principal de vendas
+
+Chart.js existente, carregado após a primeira renderização local SVG. Eixos monetários arredondados, barras agrupadas e centralizadas, rótulos automáticos, tooltip com data exata de ambos os períodos, tabela acessível e fallback sem dependência de rede. Mostrar variação percentual somente quando os períodos têm registros completos e a base anterior é positiva; o dia atual está em andamento. Descartar renderizações atrasadas e destruir a instância ao sair da rota ou alternar período.
+
+## Painel de indicadores
+
+Grade 2×2 com título e ícone na mesma linha, número central e contexto factual. Cores semânticas apenas para alertas e caixas em operação; não usar setas de tendência sem comparação real. Ticket médio usa o valor da API. Erros de consulta não equivalem a zero.
+
+## Ranking diário de produtos
+
+Top 5 com posição, ordenação por quantidade ou receita, participação na receita de todos os produtos informados e total do Top 5. Não confundir receita de itens com recebimentos líquidos do caixa. Ranking parcial identificado; sem percentual quando a base é não positiva ou possui valores negativos. Sem consultas adicionais.
+
+## Distribuição da operação
+
+Pagamentos por valor líquido, ordenados, com percentual, cores fixas por forma e indicação de maior concentração. Estoque ativo separado em adequado, baixo/moderado, crítico/sem estoque e sem classificação quando necessário; verde/âmbar/vermelho semântico e links para filtros existentes. Sem percentual ou anel para valores líquidos negativos ou total não positivo; preservar valores exatos e estados indisponíveis. Sem novos endpoints.
+
+## Próximas ações
+
+Fila compacta ordenada por urgência. A contagem representa grupos de prioridades pendentes (alertas e consultas indisponíveis), não o número de produtos nem os caixas abertos. Caixas em operação e estoque sem alertas são atalhos informativos. Preservar filtros e permissões existentes.
+
+## Detalhes operacionais secundários
+
+Movimentações de hoje com estado vazio compacto e acesso ao estoque; limite de 10 registros recentes. Resumo repetido substituído na experiência nova por sessões de caixa abertas ou com abertura/encerramento hoje. Até oito sessões, operador, estado, contagem de vendas e total líquido acumulado por sessão, não vendas de hoje. Dados ausentes permanecem indisponíveis. Preservar modo original e permissões.
+
+## Central de alertas de estoque
+
+Contagens por grupo, filtros de gravidade, pesquisa sem distinção de acentos, páginas de seis produtos e acesso aos filtros existentes de estoque. Prioridade: sem estoque, crítico, baixo, moderado; dentro do nível, menor cobertura do mínimo primeiro. Déficit = máximo de zero e mínimo menos quantidade atual; valores desconhecidos não viram zero. Percentual representa cobertura do mínimo, não previsão de compra. Superfície neutra, cor restrita à situação. Sem consultas ou permissões novas.
+
+## PDV de demonstração — terminal de vendas
+
+Novo terminal em duas colunas inspirado na referência: busca por nome ou código, categorias reais, cartões de produtos, saldo disponível, carrinho, quantidade, subtotal, pagamento fictício e troco. No celular, painéis Produtos/Pedido. Transação permanece no endpoint atômico da demonstração; retentativas ambíguas preservam o payload. Não altera o PDV real, nem simula desconto, autorização, TEF ou emissão fiscal. O modo original mantém o modal antigo; o caixa completo continua disponível separadamente.
+
+## Cartões de caixa
+
+Saldo físico e vendas acumuladas por sessão em destaque. Fundo inicial, pagamentos eletrônicos (incluindo voucher quando existente), quantidade de vendas e ticket médio separados. Operador, abertura e ações existentes preservados. Dados ausentes não viram zero; sem alteração do fluxo financeiro.
+
+## Movimentação manual de caixa
+
+Sangria e suprimento compartilham o formulário, com identidade semântica por operação, motivo contextual e previsão do saldo físico em centavos. O saldo é uma fotografia da abertura, não uma garantia; a autorização e validação atuais do servidor permanecem obrigatórias. Bloqueio de envio simultâneo no cliente; resposta perdida exige conferência antes de repetir, sem promessa de idempotência no backend.
+
+## Extrato de caixa
+
+Movimentações da sessão em ordem cronológica decrescente, data e hora, operador, forma de pagamento, tipo e valor. Resumo de vendas brutas registradas, suprimentos, sangrias e estornos em centavos; não confundir com saldo físico. Filtros locais, pesquisa sem acentos e paginação de oito registros. Resumo por operador recolhível; no mock calculado pelos registros da sessão, sem inventar descontos. Ignorar respostas de sessões antigas.
+
+## Encerramento de caixa
+
+Preservar contagem cega no formulário: valor esperado não é mostrado nem usado no contador de denominações. Total manual ou calculado exclusivamente pelas quantidades informadas. Zero explícito é válido. Autorização, confirmação de comandas abertas e resposta de fechamento permanecem do servidor. Bloqueio de envio concorrente no cliente; falha ambígua pede verificação da sessão e não é repetida automaticamente. Não representa idempotência do backend nem impede acesso ao saldo em outras áreas autorizadas.
+
+## Abertura de caixa
+
+Identificação do usuário autenticado, número inteiro positivo e sugestões baseadas na última consulta (não reserva de caixa). Fundo de troco físico explícito, inclusive zero; contador de denominações compartilhado com o fechamento e resumo antes do envio. Validação em centavos, proteção contra envio simultâneo e orientação para consultar a sessão em caso de resultado incerto. Servidor continua responsável por autorização e disponibilidade.
+
+## Categorias do cardápio
+
+Ordem explícita com salvamento somente quando alterada, contagem de itens cadastrados e ativos (não equivale à disponibilidade operacional), acesso ao filtro de itens, status textual e ações rotuladas. Desativação exige confirmação na interface nova. Reutilizar endpoints existentes e bloquear mutações simultâneas de ordem/status no cliente. Ordem inteira não negativa dentro do limite de int Java.
+
+### Distribuição espacial da tabela de categorias
+
+Colunas proporcionais (17% ordem, 26% categoria, 26% itens, 12% status, 19% ações), cabeçalho compacto e link explícito de itens. A contagem distingue ativos e inativos, sem implicar disponibilidade de venda. Tabela nativa com rolagem interna em painéis estreitos; sem alteração das operações de persistência.
+
+## Editor de categoria
+
+Modal compartilhado de criação e edição com identificação, código técnico opcional, ordem, contexto de itens/status somente na edição e prévia textual. Código normalizado apenas na prévia; payload preserva o valor informado e backend continua responsável pela normalização e unicidade. Ordem sugerida para novos grupos, sem renumerar existentes. Limites alinhados ao modelo Java; bloqueio de submissão concorrente do modal. Layout de dois campos em telas largas e empilhado em telas estreitas.
+
+## Itens de cardápio
+
+Identificação e categoria agrupadas; preço, tipo, disponibilidade, ordem e ações em colunas proporcionais. Filtro de estado usa a resolução existente, distingue liberação cadastral sem confirmação operacional e não redefine as regras de venda. Ações explícitas de edição, pausa/liberação e ativação/inativação; confirmação na inativação e salvamento de ordem somente quando alterada. Preservar endpoints e modo original.
+
+## Vínculos de fornecedor
+
+Modal amplo com catálogo e vínculos em abas, busca por nome/código de barras/ID, categoria, paginação de sete itens e seleção única explícita. Preço apresentado é o preço cadastrado, não custo negociado. Consulta atualizada antes de selecionar e após confirmar. Falha ambígua exige nova consulta. Não inclui remoção nem operação em lote; mantém endpoint, autorização e semântica existentes. Produtos inativos identificados sem introduzir restrição não definida pelo servidor.
+
+## Visão de fornecedores
+
+Cabeçalho compacto, ação de cadastro dentro da lista, quatro métricas em superfície única, filtros integrados ao painel de tabela, contadores globais independentes da pesquisa. Busca por nome, CNPJ ou telefone, inclusive números sem formatação. Filtro sem vínculos considera apenas listas de produtos conhecidas e vazias. Sem alteração nos endpoints.
+
+## Cadastro de fornecedor
+
+Identificação e contato em formulário compacto. Validação de CNPJ numérico espelha o modelo Java, sem consulta à Receita e sem aceitar letras removendo-as silenciosamente; suporte alfanumérico depende de mudança futura do contrato/modelo. Nome e telefone limitados ao tamanho das colunas atuais. Duplicidade é aviso baseado no cache, servidor continua autoridade. Envio único em curso, falha ambígua requer conferência da listagem. Nenhum campo ou endpoint novo.
+
+## Produtos vinculados ao fornecedor
+
+Consulta de vínculos atualizada ao abrir ou solicitar atualização, tabela compacta com nome, ID/código de barras, categoria quando disponível e preço cadastrado em BRL. Busca sem acentos, filtro por categoria e paginação de oito registros. Vínculos e preço informado pelo endpoint de fornecedores prevalecem sobre metadados opcionais do catálogo. Falha de consulta não vira lista vazia; respostas de modais antigos são ignoradas. Atalho para o fluxo existente de vinculação apenas para fornecedor ativo; nenhuma desvinculação ou alteração de backend.
+
+## Nova nota — seleção de fornecedor
+
+Lista pesquisável de fornecedores ativos com CNPJ, contagem de produtos vinculados e paginação de cinco registros. Resumo da seleção em coluna lateral e empilhamento em telas menores. O seletor original mantém o contrato de ID; abertura continua em POST /api/notas. Estados de erro e carregamento distintos, respostas antigas ignoradas, bloqueio de envio concorrente e orientação de conferência da lista em caso de resposta incerta. Nenhuma garantia de idempotência no servidor foi adicionada.
+
+## Detalhes da nota de compra
+
+Modal somente de consulta com fornecedor, emissão, status real, número/chave NF-e quando presentes, quantidade de linhas e unidades, total registrado pelo servidor. Tabela paginada de oito itens com pesquisa sem acentos e formatação BRL. Total não muda ao filtrar. Divergência entre subtotais e total é informativa quando os valores são representáveis em centavos, sem substituir o total oficial. Respostas atrasadas são ignoradas. Sem ações de pagamento, confirmação ou alteração novas.
+
+## Listagem de notas fiscais
+
+Resumo global de registros, pendentes, valores confirmados não pagos e pagos; canceladas excluídas dos valores. Busca por fornecedor, ID e NF-e, situação, intervalo de emissão local, paginação local 10/25/50. Valores inválidos não viram zero. Confirmação de pagamento já realizado, bloqueio de mutações concorrentes e releitura. Endpoints e assistente de entrada preservados.
+
+### Refinamento da seleção de fornecedor
+
+Listagem compacta de cinco registros, paginação explícita e resumo de abertura com ações e mensagem de erro no mesmo painel. Os mesmos nós de ação são movidos entre o resumo no shell novo e a posição original no shell legado. Nenhum novo endpoint ou alteração na abertura da nota.
+
+## Nova nota — lançamento de itens
+
+Formulário compacto, sugestões de catálogo priorizando vínculos, subtotal previsto, tabela de itens e resumo com total do servidor. Validação inteira e monetária no cliente, prevenção de envio simultâneo e bloqueio de repetição quando a resposta é incerta. Mantidos endpoint e payload, inclusive criação inline e vínculos automáticos; sem alteração nas regras de estoque ou nova exclusão individual de itens.
+
+O modo de novo produto apresenta identificação antes dos dados de compra e oculta a busca de produto existente. Em caso de resultado incerto, consultar o rascunho faz somente GET, confere o ID/status e atualiza os itens; o formulário é limpo para evitar repetição automática.
+
+### Cadastro inline compacto
+
+Cabeçalho próprio, sem estilos herdados do preview; identificação do produto separada da compra. Nome em largura total e três campos de cadastro em uma linha quando houver espaço, com quebra responsiva. Preço base permanece opcional, usando o valor da compra se omitido. Validação dos campos opcionais antes de habilitar o lançamento. IDs e payload preservados.
+
+## Recebimento, pagamento e conclusão da nota
+
+Conferência tabular com totais em BRL, resumo lateral e declaração explícita de conferência. Pagamento separado do recebimento, declaração de pagamento já realizado e opção de voltar à listagem. Conclusão mostra identificação, itens e total, com acesso ao detalhe. Operações existentes POST confirmar/pagamento protegidas contra repetição simultânea no cliente; respostas incertas bloqueiam reenvio até consulta GET do status. Nenhuma transferência bancária, alteração de API ou garantia de idempotência no servidor foi adicionada.
+
+## Cotações mensais
+
+Barra de ações compacta, indicadores do relatório consultado (sem estimar dados ausentes), tabela com variações em BRL, filtros, ordenação e paginação local de 15 itens. Consulta mensal explícita para evitar chamadas automáticas ao relatório que percorre o catálogo. Histórico com último preço, variação apenas quando há mês consecutivo e último gasto. Catálogo pesquisável; valores decimais em string do backend e números do preview tratados. Cadastro preserva endpoint e semântica de substituição produto+mês, com confirmação e validação de quantidade inteira/preço até centavos no cliente. Falha incerta bloqueia repetição na janela e orienta consulta do histórico. Sem mudanças no backend.
+
+## Cadastro de funcionário
+
+Modal compacto com dados pessoais, credenciais e permissões da classe conforme FuncionarioController. CPF formatado e validado por dígitos verificadores (não verifica titularidade), senha inicial validada no cliente com mínimo de seis caracteres, rejeição de 123456/repetições e máximo de 72 bytes, visualização opcional e limpeza ao fechar. Classe Superior exige confirmação explícita na interface. Envio único enquanto pendente e orientação de conferência da lista quando o resultado for incerto. Mesmo endpoint e payload; nenhuma alteração de autorização do servidor.
+
+### Diretório de funcionários
+
+Indicadores globais de cadastros, ativos, inativos e contas ativas com a permissão GERENCIAR_FUNCIONARIOS. Permissões ausentes são sinalizadas, sem inferência a partir do nome da classe. Classes são extraídas da API, incluindo variantes do preview. Busca por nome/RU, filtros combinados, ordenação por situação e nome e paginação local 10/15/25/50. Ações e endpoints existentes preservados; não altera autorização no servidor.
+
+### Alteração de classe de acesso
+
+Modal com identificação e RU, comparação entre classe atual e pretendida e diferenças de permissões. A origem é o conjunto retornado pela API; o destino é a previsão das classes de FuncionarioController. Não presume equivalência entre nomes legados. Bloqueia a mesma classe, contas inativas e dados de permissão ausentes; confirma concessão administrativa/financeira e alteração da própria conta. Consulta prévia do estado antes de enviar o PUT existente, bloqueio de repetição no cliente e consulta após resultado incerto. A consulta prévia não é controle de concorrência atômico nem substitui autorização no backend. Nenhuma alteração de servidor.
+
+## Trilha de auditoria
+
+Consulta somente leitura limitada aos 2.000 registros mais recentes, conforme limite existente da API. Indicadores descrevem apenas dados carregados; última consulta distinta do evento mais recente. Datas brasileiras sem fuso preservam horário informado; ISO com offset é exibido no fuso do navegador. Filtros locais combinados por ação, RU, período e texto, ordenação, paginação e detalhe completo com dados escapados. Sem exportação, exclusão ou mudanças na autorização.
+
+## Ações rápidas
+
+Paleta compacta com grupos operacionais, busca sem acentos, priorização do nome pesquisado e todos os atalhos autorizados (sem corte de dez). Seleção por teclado com rolagem, combobox/listbox e foco restaurado ao fechar. Mantém rotas, efeitos e permissões existentes; revalida autorização antes e depois da navegação, bloqueia execução concorrente e preserva isolamento Supabase. Sem persistir histórico de busca.
+
+## Cadastro de produto
+
+Modal com identificação, estoque inicial/mínimo e preço unitário. Previsão de nível conforme Produto.calcularPercentualEstoque e NivelEstoque.fromPercentage; déficit até o mínimo não é equivalente ao nível. Quantidades inteiras de 0 a Integer.MAX_VALUE; preço decimal não negativo com até duas casas e 13 dígitos inteiros para preservar precisão no cliente; nome até 120 caracteres para evitar truncamento no preview. Mantém categorias e POST existentes, preço decimal em texto para BigDecimal; não confunde preço com custo. Bloqueia envios simultâneos e orienta consulta do estoque quando o resultado é incerto. Sem nova garantia de idempotência no servidor; cadastro de bebida rápida, edição e movimentações permanecem separados.
+
+## Central de estoque
+
+Indicadores globais de catálogo, zerados, atenção (crítico/baixo/moderado) e adequados. Distribuição por categoria expansível sobre resultados filtrados, incluindo sem categoria. Busca por nome ou ID, ordenação e tamanho de página local; cobertura da barra limitada a 100% do mínimo. CSV mantém escopo dos resultados filtrados. Bebida rápida em duas colunas, com código, preço/custo, estoque, fardo e margem bruta estimada; preserva Enter e Ctrl+Enter e endpoint. Edição e movimentação exibem contexto e projeções, validam inteiros e preço, bloqueiam repetição no cliente e orientam consulta em resultado incerto. Não altera regras do servidor, nem fornece garantia de concorrência ou idempotência. Quantidade prevista depende do saldo carregado; servidor é autoridade.
+
+## Tela de login
+
+Composição equilibrada em duas colunas no desktop e acesso prioritário em telas pequenas. Cabeçalho vertical, campos com rótulos claros, ajuda de senha expansível, recursos do produto em vez de números fixos não verificados. Demonstração inserida apenas no build estático, após o formulário, oculta durante troca de senha. Nenhuma alteração nos fluxos de autenticação, descoberta, senha provisória ou PIN.

@@ -404,17 +404,151 @@ const NAV_ITENS = [
   { icon: 'clipboard', label: 'Logs', permsAny: [PERMISSOES.VER_LOGS], href: '/logs.html', id: 'logs' },
 ];
 
+// The legacy comparison stays unchanged. The new shell uses exactly the same permission allowlist.
+function stockosNewShellEnabled() {
+  return !(window.StockOsDesignReview && window.StockOsDesignReview.mode === 'original');
+}
+
+const STOCKOS_NAV_GROUPS = [
+  { label: 'Estoque e produtos', icon: 'box', ids: ['estoque', 'cardapio'] },
+  { label: 'Compras', icon: 'truck', ids: ['fornecedores', 'notas', 'cotacoes'] },
+  { label: 'Administração', icon: 'users', ids: ['funcionarios', 'logs'] },
+];
+const stockosOpenNavGroups = new Set();
+
+function renderStockosNavigation(nav, items, atual) {
+  // Preserve disclosure state across SPA navigation, and always reveal the active page.
+  nav.querySelectorAll('details[data-nav-group]').forEach(group => {
+    if (group.open) stockosOpenNavGroups.add(group.dataset.navGroup);
+    else stockosOpenNavGroups.delete(group.dataset.navGroup);
+  });
+  const link = item => '<a href="' + item.href + '" class="nav-item ' +
+    (item.id === atual ? 'active' : '') + '" aria-label="' + item.label +
+    '" title="' + item.label + '"' + (item.id === atual ? ' aria-current="page"' : '') + '>' +
+    '<span class="nav-icon" aria-hidden="true">' + iconMarkup(item.icon) + '</span>' +
+    '<span class="label">' + item.label + '</span></a>';
+  const direct = ['dashboard', 'caixas', 'comandas'].map(id => items.find(item => item.id === id)).filter(Boolean);
+  const groups = STOCKOS_NAV_GROUPS.map(group => ({
+    ...group, items: group.ids.map(id => items.find(item => item.id === id)).filter(Boolean)
+  })).filter(group => group.items.length);
+  const known = new Set([...direct, ...groups.flatMap(group => group.items)].map(item => item.id));
+  const remaining = items.filter(item => !known.has(item.id));
+  const collapsed = document.querySelector('.app')?.classList.contains('is-collapsed');
+  nav.innerHTML = direct.map(link).join('') + groups.map(group => {
+    if (collapsed || group.items.length === 1) return group.items.map(link).join('');
+    const open = stockosOpenNavGroups.has(group.label) || group.items.some(item => item.id === atual);
+    return '<details class="stockos-nav-group" data-nav-group="' + group.label + '"' + (open ? ' open' : '') + '>' +
+      '<summary class="nav-item stockos-nav-summary"><span class="nav-icon" aria-hidden="true">' +
+      iconMarkup(group.icon) + '</span><span class="label">' + group.label +
+      '</span><span class="stockos-nav-chevron" aria-hidden="true"></span></summary>' +
+      '<div class="stockos-nav-children">' + group.items.map(link).join('') + '</div></details>';
+  }).join('') + remaining.map(link).join('');
+}
+
+function stockosAllowedNavigation() {
+  return NAV_ITENS.filter(function (item) {
+    if (usuario.viaPin) return item.id === 'caixas' || item.id === 'comandas';
+    return !item.permsAny || temAlgumaPermissao(item.permsAny);
+  });
+}
+
+function stockosFindModules(query) {
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const aliases = {
+    dashboard: 'visão geral início painel', estoque: 'produtos inventário estoque baixo',
+    cardapio: 'catálogo preço produtos', fornecedores: 'compras fornecedor',
+    notas: 'compras nota fiscal nf', caixas: 'pdv vendas caixa financeiro',
+    comandas: 'pedidos consumo atendimento', cotacoes: 'compras preço cotação',
+    funcionarios: 'equipe usuários colaboradores', logs: 'auditoria histórico'
+  };
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  return stockosAllowedNavigation().filter(item => {
+    const haystack = normalize(item.label + ' ' + (aliases[item.id] || ''));
+    return words.every(word => haystack.includes(word));
+  });
+}
+
+function setupStockosModuleSearch(header) {
+  const form = document.createElement('form');
+  form.className = 'stockos-module-search';
+  form.setAttribute('role', 'search');
+  form.setAttribute('aria-label', 'Pesquisar módulos');
+  form.innerHTML = '<span class="stockos-search-icon" aria-hidden="true">' + iconMarkup('search') +
+    '</span><input type="search" class="stockos-module-input" placeholder="Pesquisar módulos..." ' +
+    'aria-label="Pesquisar módulos do StockOS" aria-controls="stockos-module-results" autocomplete="off">' +
+    '<div class="stockos-module-results" id="stockos-module-results" hidden></div>';
+  const input = form.querySelector('input');
+  const results = form.querySelector('.stockos-module-results');
+  const close = () => { results.hidden = true; };
+  function update() {
+    const matches = stockosFindModules(input.value);
+    results.replaceChildren();
+    const status = document.createElement('p');
+    status.className = 'stockos-search-status';
+    status.setAttribute('role', 'status');
+    status.textContent = matches.length ? matches.length + (matches.length === 1 ? ' módulo disponível' : ' módulos disponíveis') : 'Nenhum módulo encontrado.';
+    results.appendChild(status);
+    matches.forEach(item => {
+      const link = document.createElement('a');
+      link.href = item.href;
+      link.className = 'stockos-search-result';
+      link.innerHTML = '<span aria-hidden="true">' + iconMarkup(item.icon) + '</span>';
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      link.appendChild(label);
+      results.appendChild(link);
+    });
+    results.hidden = false;
+  }
+  input.addEventListener('focus', update);
+  input.addEventListener('input', update);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const first = results.querySelector('a');
+    if (first && !results.hidden) first.click();
+  });
+  form.addEventListener('click', event => {
+    if (event.target.closest('a')) { close(); input.value = ''; input.blur(); }
+  });
+  form.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !results.hidden) {
+      event.stopPropagation();
+      event.preventDefault();
+      close();
+      input.focus();
+      close();
+    }
+  });
+  form.addEventListener('focusout', event => {
+    if (!form.contains(event.relatedTarget)) close();
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!form.contains(event.target)) close();
+  });
+  header.appendChild(form);
+  // Shortcut, not a fake notification feed; route follows the same permission list.
+  if (stockosAllowedNavigation().some(item => item.id === 'estoque')) {
+    const alerts = document.createElement('a');
+    alerts.className = 'stockos-alert-shortcut';
+    alerts.href = '/estoque.html?filtro=critico';
+    alerts.title = 'Ver estoque crítico';
+    alerts.setAttribute('aria-label', 'Ver estoque crítico');
+    alerts.innerHTML = iconMarkup('alertTriangle');
+    header.appendChild(alerts);
+  }
+}
+
 function renderSidebar() {
   const nav = document.getElementById('nav-items');
   if (!nav) return;
   const atual = paginaAtual();
 
-  nav.innerHTML = NAV_ITENS
-    .filter(function (item) {
-      if (usuario.viaPin) return item.id === 'caixas' || item.id === 'comandas';
-      return !item.permsAny || temAlgumaPermissao(item.permsAny);
-    })
-    .map(function (item) {
+  const permitidos = stockosAllowedNavigation();
+  if (stockosNewShellEnabled()) {
+    renderStockosNavigation(nav, permitidos, atual);
+    return;
+  }
+  nav.innerHTML = permitidos.map(function (item) {
       return '<a href="' + item.href + '" class="nav-item ' + (item.id === atual ? 'active' : '') + '">' +
         '<span class="nav-icon" aria-hidden="true">' + iconMarkup(item.icon) + '</span>' +
         '<span class="label">' + item.label + '</span>' +
@@ -519,6 +653,55 @@ function setupShell() {
       headerMain.insertBefore(toggle, headerMain.firstChild);
     } else {
       header.insertBefore(toggle, header.firstChild);
+    }
+  }
+
+  // Desktop disclosure is independent of the mobile drawer and its overlay.
+  if (stockosNewShellEnabled() && app.querySelector('#nav-items')) {
+    app.classList.add('stockos-shell-v2');
+    const brand = sidebar.querySelector('.sidebar-brand');
+    const collapse = document.createElement('button');
+    collapse.type = 'button';
+    collapse.className = 'stockos-collapse';
+    collapse.setAttribute('aria-controls', sidebar.id || 'app-sidebar');
+    collapse.innerHTML = iconMarkup('menu');
+    if (brand) brand.appendChild(collapse);
+    let preferCollapsed = false;
+    try { preferCollapsed = localStorage.getItem('stockos-shell-collapsed-v2') === 'true'; } catch {}
+    function syncDesktopSidebar() {
+      const collapsed = !isShellMobile() && preferCollapsed;
+      const changed = app.classList.contains('is-collapsed') !== collapsed;
+      app.classList.toggle('is-collapsed', collapsed);
+      const label = collapsed ? 'Expandir menu' : 'Recolher menu';
+      collapse.setAttribute('aria-label', label);
+      collapse.setAttribute('aria-expanded', String(!collapsed));
+      collapse.title = label;
+      if (changed) renderSidebar();
+    }
+    collapse.addEventListener('click', function () {
+      if (isShellMobile()) return;
+      preferCollapsed = !preferCollapsed;
+      try { localStorage.setItem('stockos-shell-collapsed-v2', String(preferCollapsed)); } catch {}
+      syncDesktopSidebar();
+    });
+    window.addEventListener('resize', syncDesktopSidebar);
+    syncDesktopSidebar();
+
+    setupStockosModuleSearch(header);
+
+    // The header survives route changes; keep the existing profile nodes and IDs.
+    const avatar = document.getElementById('user-avatar');
+    const meta = sidebar.querySelector('.user-meta');
+    const logoutButton = sidebar.querySelector('.btn-logout');
+    if (avatar && meta && logoutButton) {
+      const profile = document.createElement('div');
+      profile.className = 'stockos-header-profile';
+      profile.append(avatar, meta);
+      header.appendChild(profile);
+      const text = document.createElement('span');
+      text.className = 'stockos-logout-label';
+      text.textContent = 'Sair';
+      logoutButton.appendChild(text);
     }
   }
 

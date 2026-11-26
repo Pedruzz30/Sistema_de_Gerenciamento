@@ -15,42 +15,145 @@ async function stockOSMount_notas() {
     ]);
 }
 
-async function carregarNotas() {
-  try {
-    const resp = await fetch('/api/notas');
-    const notas = await resp.json();
-    renderTabelaNotas(notas);
-  } catch {
-    document.getElementById('tabela-notas').innerHTML =
-      '<tr><td colspan="7" class="empty">Erro ao carregar notas.</td></tr>';
-  }
+const NOTE_LIST_STATUS=['PENDENTE','CONFIRMADA','PAGA','CANCELADA'];
+function noteListModel(records,filters={},page=1,pageSize=10){
+  if(!Array.isArray(records))return null;
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const cents=v=>{
+    if(v==null||!['number','string'].includes(typeof v)||String(v).trim()==='')return null;
+    const n=Number(v),c=Math.round(n*100);
+    return Number.isFinite(n)&&n>=0&&Number.isSafeInteger(c)&&Math.abs(n*100-c)<1e-6?c:null;
+  };
+  const dateKey=v=>{
+    if(typeof v!=='string'||!v)return '';
+    const d=new Date(v);if(!Number.isFinite(d.getTime()))return '';
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  };
+  const all=records.map(n=>({id:String(n.id),supplier:String(n.fornecedorNome||'—'),status:NOTE_LIST_STATUS.includes(n.status)?n.status:'UNKNOWN',items:Array.isArray(n.itens)?n.itens.length:null,cents:cents(n.total),date:n.dataEmissao,dateKey:dateKey(n.dataEmissao),nfe:String(n.numeroNfe||''),key:String(n.chaveAcesso||'')}));
+  const groups=Object.fromEntries([...NOTE_LIST_STATUS,'UNKNOWN'].map(s=>[s,{count:0,cents:0}]));
+  for(const n of all){const g=groups[n.status];g.count++;g.cents=g.cents==null||n.cents==null||!Number.isSafeInteger(g.cents+n.cents)?null:g.cents+n.cents;}
+  const {query='',status='',from='',to=''}=filters,invalid=!!(from&&to&&from>to),term=norm(query);
+  const filtered=invalid?[]:all.filter(n=>(!status||n.status===status)&&(!from||n.dateKey&&n.dateKey>=from)&&(!to||n.dateKey&&n.dateKey<=to)&&norm([n.id,'#'+n.id,n.supplier,n.nfe,n.key].join(' ')).includes(term))
+    .sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||b.id.localeCompare(a.id,'pt-BR',{numeric:true}));
+  const size=[10,25,50].includes(Number(pageSize))?Number(pageSize):10,pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {total:all.length,groups,invalid,count:filtered.length,page:current,pages,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+let noteListRecords=null,noteListVersion=0,noteListPage=1,noteListLoading=false,noteListFailed=false,noteListMutation=false,noteListUncertain=false;
+function bindNoteListControls(){
+  const get=id=>document.getElementById(id);
+  get('note-list-search').oninput=()=>{noteListPage=1;drawNoteList();};
+  ['note-list-status','note-list-from','note-list-to','note-list-size'].forEach(id=>get(id).onchange=()=>{noteListPage=1;drawNoteList();});
+  get('note-list-prev').onclick=()=>{noteListPage--;drawNoteList();};
+  get('note-list-next').onclick=()=>{noteListPage++;drawNoteList();};
+  get('note-list-clear').onclick=()=>{['note-list-search','note-list-status','note-list-from','note-list-to'].forEach(id=>get(id).value='');noteListPage=1;drawNoteList();};
+  get('note-list-refresh').onclick=()=>void carregarNotas();
+}
+async function carregarNotas(){
+  const tbody=document.getElementById('tabela-notas');if(!tbody)return false;
+  const version=++noteListVersion,current=()=>version===noteListVersion&&document.getElementById('tabela-notas')===tbody;
+  noteListLoading=true;noteListFailed=false;bindNoteListControls();drawNoteList();
+  try{
+    const resp=await fetch('/api/notas');if(!resp.ok)throw Error('Falha na consulta');
+    const notas=await resp.json();if(!Array.isArray(notas)||notas.some(n=>!n||!(/^\d+$/.test(String(n.id)))))throw Error('Resposta inválida');
+    if(!current())return false;noteListRecords=notas;noteListUncertain=false;return true;
+  }catch{if(current()){noteListRecords=null;noteListFailed=true;}return false;}
+  finally{if(current()){noteListLoading=false;drawNoteList();}}
 }
 
+function noteSupplierModel(records,query='',page=1,pageSize=5){
+  if(!Array.isArray(records))return null;
+  const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const unique=new Map();
+  for(const f of records){
+    const id=Number(f?.id);
+    if(Number.isSafeInteger(id)&&id>0&&f.ativo!==false)unique.set(id,{id,name:String(f.nome||'Fornecedor sem nome'),cnpj:String(f.cnpj||''),phone:String(f.telefone||''),count:Array.isArray(f.produtos)?new Set(f.produtos.filter(p=>p?.id!=null).map(p=>String(p.id))).size:null});
+  }
+  const all=[...unique.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')||a.id-b.id);
+  const term=norm(query),digits=term.replace(/\D/g,'');
+  const numeric=/^[0-9.\s\/-]+$/.test(term)&&digits.length>0;
+  const filtered=all.filter(f=>!term||norm([f.name,f.cnpj,f.id].join(' ')).includes(term)||(numeric&&f.cnpj.replace(/\D/g,'').includes(digits)));
+  const size=Math.max(1,Math.floor(Number(pageSize)||5)),pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {all,total:all.length,count:filtered.length,page:current,pages,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+let noteSupplierPage=1,noteSupplierLoadVersion=0,noteSupplierLoading=false,noteSupplierFailed=false,noteOpening=false,noteOpeningUncertain=false;
+function noteSupplierCnpj(raw){
+  return /^\d{14}$/.test(raw)?raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):raw||'—';
+}
+// Reuse the same action nodes, IDs and handlers in either shell.
+function placeNoteSupplierActions(managed, get){
+  const block=get('note-supplier-action-block');
+  const target=get(managed?'note-supplier-action-slot':'note-supplier-legacy-slot');
+  if(block&&target&&block.parentElement!==target)target.appendChild(block);
+}
+function drawNoteSuppliers(){
+  const get=id=>document.getElementById(id),workspace=get('note-supplier-workspace'),select=get('s1-fornecedor');
+  if(!workspace||!select)return;
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  workspace.hidden=!managed;get('note-supplier-native').hidden=managed;
+  placeNoteSupplierActions(managed,get);
+  const ready=!noteSupplierLoading&&!noteSupplierFailed;
+  const model=noteSupplierModel(fornecedoresAtivos,get('note-supplier-search').value,noteSupplierPage);
+  const selected=model?.all.find(f=>String(f.id)===select.value);
+  const locked=noteOpening||noteOpeningUncertain;
+  get('btn-step1-avancar').disabled=!ready||!selected||locked;
+  select.disabled=!ready||locked;
+  if(!managed)return;
+  get('note-supplier-count').textContent=ready?model.total+' cadastrados':'—';
+  get('note-supplier-search').disabled=!ready||locked;
+  get('note-supplier-refresh').disabled=noteSupplierLoading||noteOpening;
+  get('note-supplier-prev').disabled=!ready||locked||model.page<=1;
+  get('note-supplier-next').disabled=!ready||locked||model.page>=model.pages;
+  get('note-supplier-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' · página '+model.page+' de '+model.pages:'0 resultados'):'';
+  const results=get('note-supplier-results'),summary=get('note-supplier-selected'),esc=escapeHtml;
+  if(!ready){results.textContent=noteSupplierLoading?'Consultando fornecedores ativos…':'Não foi possível carregar os fornecedores. Use Atualizar.';summary.textContent='Seleção indisponível.';return;}
+  noteSupplierPage=model.page;
+  summary.innerHTML=selected?'<div class="note-supplier-selection-state"><span aria-hidden="true">✓</span> Fornecedor selecionado</div><div class="note-supplier-selected-name">'+esc(selected.name)+'</div><div class="note-supplier-summary-meta"><span>CNPJ</span><strong>'+esc(noteSupplierCnpj(selected.cnpj))+'</strong><span>Telefone comercial</span><strong>'+esc(selected.phone||'—')+'</strong><span>Produtos vinculados</span><strong>'+(selected.count??'—')+'</strong></div>':'<div class="note-supplier-empty-selection"><strong>Escolha um fornecedor</strong><span>Selecione uma empresa na lista para conferir seus dados e abrir a nota.</span></div>';
+  if(!model.rows.length){results.textContent=model.total?'Nenhum fornecedor corresponde à pesquisa.':'Nenhum fornecedor ativo cadastrado.';return;}
+  results.innerHTML='<table class="note-supplier-table"><thead><tr><th scope="col">Fornecedor</th><th scope="col">Vínculos</th><th scope="col">Seleção</th></tr></thead><tbody>'+model.rows.map(f=>{
+    const active=selected?.id===f.id;
+    return '<tr'+(active?' class="is-selected"':'')+'><td><strong>'+esc(f.name)+'</strong><small>'+esc(noteSupplierCnpj(f.cnpj))+' · #'+f.id+'</small></td><td>'+(f.count??'—')+'</td><td><button type="button" data-note-supplier="'+f.id+'" aria-pressed="'+active+'" aria-label="Selecionar '+esc(f.name)+'"'+(locked?' disabled':'')+'>'+(active?'✓ Selecionado':'Selecionar')+'</button></td></tr>';
+  }).join('')+'</tbody></table>';
+  results.querySelectorAll('[data-note-supplier]').forEach(b=>b.onclick=()=>{
+    if(noteOpening||noteOpeningUncertain)return;
+    select.value=b.dataset.noteSupplier;drawNoteSuppliers();
+    results.querySelector('[data-note-supplier="'+b.dataset.noteSupplier+'"]')?.focus({preventScroll:true});
+  });
+}
+function bindNoteSupplierControls(){
+  const get=id=>document.getElementById(id);
+  get('note-supplier-search').oninput=()=>{noteSupplierPage=1;drawNoteSuppliers();};
+  get('s1-fornecedor').onchange=drawNoteSuppliers;
+  get('note-supplier-prev').onclick=()=>{noteSupplierPage--;drawNoteSuppliers();};
+  get('note-supplier-next').onclick=()=>{noteSupplierPage++;drawNoteSuppliers();};
+  get('note-supplier-refresh').onclick=()=>void carregarFornecedores();
+}
 async function carregarFornecedores() {
+  const select=document.getElementById('s1-fornecedor');
+  if(!select)return;
+  const version=++noteSupplierLoadVersion;
+  const current=()=>version===noteSupplierLoadVersion&&document.getElementById('s1-fornecedor')===select;
+  noteSupplierLoading=true;noteSupplierFailed=false;
+  bindNoteSupplierControls();drawNoteSuppliers();
   try {
-    const resp = await fetch('/api/fornecedores/ativos');
-    fornecedoresAtivos = await resp.json();
-
-    const select = document.getElementById('s1-fornecedor');
-    const valorSelecionado = notaAtual ? String(notaAtual.fornecedorId) : (select.value || '');
-
-    if (fornecedoresAtivos.length === 0) {
-      select.innerHTML = '<option value="">Nenhum fornecedor ativo cadastrado</option>';
-      return;
-    }
-
-    select.innerHTML =
-      '<option value="">— Selecione um fornecedor —</option>' +
-      fornecedoresAtivos.map((fornecedor) =>
-        `<option value="${fornecedor.id}">${escapeHtml(fornecedor.nome)} (${fornecedor.produtos.length} produto(s))</option>`
-      ).join('');
-
-    if (valorSelecionado) {
-      select.value = valorSelecionado;
-    }
-  } catch {
-    document.getElementById('s1-fornecedor').innerHTML =
-      '<option value="">Erro ao carregar fornecedores</option>';
+    const resp=await fetch('/api/fornecedores/ativos');
+    if(!resp.ok)throw Error('Falha na consulta');
+    const data=await resp.json();
+    if(!Array.isArray(data))throw Error('Resposta inválida');
+    if(!current())return;
+    const selected=notaAtual?String(notaAtual.fornecedorId):select.value;
+    fornecedoresAtivos=data;
+    const model=noteSupplierModel(data);
+    select.replaceChildren();
+    const add=(value,label)=>{const opt=document.createElement('option');opt.value=value;opt.textContent=label;select.appendChild(opt);};
+    add('',model.total?'Selecione um fornecedor':'Nenhum fornecedor ativo cadastrado');
+    model.all.forEach(f=>add(String(f.id),f.name+' ('+(f.count??'—')+' produtos)'));
+    select.value=selected;
+  }catch{
+    if(!current())return;
+    fornecedoresAtivos=[];noteSupplierFailed=true;
+    select.innerHTML='<option value="">Erro ao carregar fornecedores</option>';
+  }finally{
+    if(current()){noteSupplierLoading=false;drawNoteSuppliers();}
   }
 }
 
@@ -68,103 +171,151 @@ async function carregarTodosProdutos() {
   }
 }
 
-function renderTabelaNotas(notas) {
-  document.getElementById('notas-count').textContent = `${notas.length} nota(s)`;
-  const tbody = document.getElementById('tabela-notas');
-
-  if (notas.length === 0) {
-    tbody.innerHTML = `
-      <tr><td colspan="7" class="table-empty-cell">
-        ${emptyStateMarkup({
-          icon: 'receipt',
-          title: 'Nenhuma nota fiscal registrada',
-          copy: 'Crie uma nova nota para registrar compras de fornecedores e entrada de estoque.',
-          actions: '<button class="btn-primary" onclick="iniciarNovaNota(); abrirAba(\'aba-nova\')">' +
-            '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>' +
-            'Nova Nota</button>'
-        })}
-      </td></tr>`;
-    return;
-  }
-
-  const statusBadge = {
-    PENDENTE: 'badge-amber',
-    CONFIRMADA: 'badge-cyan',
-    PAGA: 'badge-green',
-    CANCELADA: 'badge-gray'
-  };
-
-  const statusLabel = {
-    PENDENTE: 'Pendente',
-    CONFIRMADA: 'Confirmada',
-    PAGA: 'Paga',
-    CANCELADA: 'Cancelada'
-  };
-
-  tbody.innerHTML = notas.map((nota) => {
-    const data = new Date(nota.dataEmissao).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    return `
-      <tr>
-        <td><strong>#${nota.id}</strong></td>
-        <td>${escapeHtml(nota.fornecedorNome)}</td>
-        <td><span class="badge ${statusBadge[nota.status] || 'badge-gray'}">${statusLabel[nota.status] || nota.status}</span></td>
-        <td>${nota.itens.length} item(ns)</td>
-        <td class="table-cell-success">R$${Number(nota.total).toFixed(2)}</td>
-        <td class="table-cell-subtle">${data}</td>
-        <td>
-          <div class="acoes">
-            <button class="btn-acao" onclick="verDetalhe(${nota.id})">Ver</button>
-            ${nota.status === 'CONFIRMADA'
-              ? `<button class="btn-acao entrada" onclick="pagarNota(${nota.id})">Pagar</button>`
-              : ''}
-            ${nota.status === 'PENDENTE'
-              ? `<button class="btn-acao saida" onclick="confirmarCancelarNota(${nota.id})">Cancelar</button>`
-              : ''}
-          </div>
-        </td>
-      </tr>`;
+function renderTabelaNotas(notas){noteListRecords=Array.isArray(notas)?notas:null;noteListFailed=!noteListRecords;drawNoteList();}
+function drawNoteList(){
+  const get=id=>document.getElementById(id),tbody=get('tabela-notas');if(!tbody)return;
+  const model=noteListModel(noteListRecords,{query:get('note-list-search').value,status:get('note-list-status').value,from:get('note-list-from').value,to:get('note-list-to').value},noteListPage,get('note-list-size').value);
+  const ready=!!model&&!noteListLoading&&!noteListFailed,money=c=>c==null?'—':noteDetailMoney(c/100);
+  const metrics=ready?[
+    ['Notas cadastradas',model.total,'Toda a base · '+model.groups.CANCELADA.count+' canceladas','neutral'],
+    ['Aguardando confirmação',model.groups.PENDENTE.count,'Rascunhos pendentes','warning'],
+    ['Confirmadas, não pagas',money(model.groups.CONFIRMADA.cents),model.groups.CONFIRMADA.count+' notas','warning'],
+    ['Pagamentos registrados',money(model.groups.PAGA.cents),model.groups.PAGA.count+' notas pagas','success']
+  ]:[['Notas cadastradas','—','Toda a base','neutral'],['Aguardando confirmação','—','Rascunhos pendentes','warning'],['Confirmadas, não pagas','—','Valor registrado','warning'],['Pagamentos registrados','—','Valor registrado','success']];
+  get('note-list-summary').innerHTML=metrics.map(([label,value,note,tone])=>'<div data-tone="'+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+note+'</small></div>').join('');
+  get('notas-count').textContent=ready?model.count+' de '+model.total+' notas':'—';
+  get('note-list-refresh').disabled=noteListLoading||noteListMutation;
+  get('note-list-prev').disabled=!ready||model.page<=1;get('note-list-next').disabled=!ready||model.page>=model.pages;
+  get('note-list-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' notas':'0 resultados'):'';
+  const err=get('note-list-filter-error');err.hidden=!(ready&&model.invalid);err.textContent=err.hidden?'':'A data inicial não pode ser posterior à data final.';
+  if(!ready){tbody.innerHTML='<tr><td colspan="7" class="empty">'+(noteListLoading?'Carregando notas…':'Não foi possível carregar as notas. Use Atualizar.')+'</td></tr>';return;}
+  noteListPage=model.page;
+  if(!model.rows.length){tbody.innerHTML='<tr><td colspan="7" class="empty">'+(model.total?'Nenhuma nota corresponde aos filtros.':'Nenhuma nota fiscal registrada.')+'</td></tr>';return;}
+  const esc=escapeHtml,disabled=noteListMutation||noteListUncertain?' disabled':'';
+  tbody.innerHTML=model.rows.map(n=>{
+    const state=NOTE_DETAIL_STATES[n.status]||{label:'Não informado',tone:'neutral'};
+    return '<tr><td><strong class="note-list-id">#'+esc(n.id)+'</strong>'+(n.nfe?'<small>NF-e '+esc(n.nfe)+'</small>':'')+'</td><td><strong class="note-list-supplier">'+esc(n.supplier)+'</strong></td><td><span class="note-list-state" data-tone="'+state.tone+'"><span aria-hidden="true"></span>'+state.label+'</span></td><td>'+(n.items??'—')+'</td><td class="note-list-money">'+money(n.cents)+'</td><td class="note-list-date">'+esc(noteDetailDate(n.date))+'</td><td><div class="acoes note-list-row-actions"><button type="button" class="btn-acao" data-note-view="'+esc(n.id)+'">Detalhes</button>'+
+    (n.status==='CONFIRMADA'?'<button type="button" class="btn-acao entrada" data-note-pay="'+esc(n.id)+'"'+disabled+'>Registrar pagamento</button>':'')+
+    (n.status==='PENDENTE'?'<button type="button" class="btn-acao saida" data-note-cancel="'+esc(n.id)+'"'+disabled+'>Cancelar</button>':'')+'</div></td></tr>';
   }).join('');
+  tbody.querySelectorAll('[data-note-view]').forEach(b=>b.onclick=()=>void verDetalhe(b.dataset.noteView));
+  tbody.querySelectorAll('[data-note-pay]').forEach(b=>b.onclick=()=>void pagarNota(b.dataset.notePay));
+  tbody.querySelectorAll('[data-note-cancel]').forEach(b=>b.onclick=()=>void confirmarCancelarNota(b.dataset.noteCancel));
 }
 
 async function avancarStep1() {
-  const btn = document.getElementById('btn-step1-avancar');
-  const fornecedorId = parseInt(document.getElementById('s1-fornecedor').value, 10);
-
-  if (!fornecedorId) {
-    mostrarAlert('alert-s1', 'Selecione um fornecedor ativo.', 'error');
-    return;
+  if(noteOpening||noteOpeningUncertain||stepAtual!==1||notaAtual)return;
+  const btn=document.getElementById('btn-step1-avancar'),select=document.getElementById('s1-fornecedor');
+  const fornecedorId=Number(select.value);
+  if(noteSupplierLoading||noteSupplierFailed||!noteSupplierModel(fornecedoresAtivos).all.some(f=>f.id===fornecedorId)){
+    mostrarAlert('alert-s1','Selecione um fornecedor ativo.', 'error');return;
   }
-
-  setLoading(btn, true);
-  try {
-    const resp = await fetch('/api/notas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fornecedorId })
-    });
-
-    if (!resp.ok) {
-      mostrarAlert('alert-s1', await safeReadErrorMessage(resp, 'Erro ao abrir nota.'), 'error');
-      return;
+  const current=()=>document.getElementById('s1-fornecedor')===select;
+  noteOpening=true;limparAlert('alert-s1');setLoading(btn,true);drawNoteSuppliers();
+  try{
+    const resp=await fetch('/api/notas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fornecedorId})});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      mostrarAlert('alert-s1',await safeReadErrorMessage(resp,'Erro ao abrir nota.'),'error');return;
     }
-
-    notaAtual = await resp.json();
-    limparAlert('alert-s1');
-    irParaStep(2);
-    prepararStep2();
-  } finally {
-    setLoading(btn, false);
+    const result=await resp.json();
+    if(!current())return;
+    if(!result||!result.id)throw Error('Resposta inválida');
+    notaAtual=result;
+    limparAlert('alert-s1');irParaStep(2);prepararStep2();
+  }catch{
+    if(current()){
+      noteOpeningUncertain=true;
+      mostrarAlert('alert-s1','Não foi possível confirmar a abertura. Confira Todas as Notas antes de iniciar outra nota.', 'error');
+    }
+  }finally{
+    noteOpening=false;setLoading(btn,false);
+    if(current())drawNoteSuppliers();
   }
 }
 
+function noteItemNumber(value,integer=false){
+  if(value==null||String(value).trim()==='')return null;
+  const n=Number(value);
+  if(!Number.isFinite(n)||n<0)return null;
+  if(integer)return Number.isInteger(n)&&n<=2147483647?n:null;
+  const cents=Math.round(n*100);
+  return Number.isSafeInteger(cents)&&Math.abs(n*100-cents)<1e-6?cents/100:null;
+}
+function noteItemMatches(products,linked,query,limit=6){
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const term=norm(query),ids=new Set((linked||[]).map(p=>String(p.id)));
+  return (Array.isArray(products)?products:[]).filter(p=>Number.isSafeInteger(Number(p.id))&&Number(p.id)>0&&(!term||norm([p.nome,p.id,p.codigoBarras].join(' ')).includes(term)))
+    .sort((a,b)=>Number(ids.has(String(b.id)))-Number(ids.has(String(a.id)))||String(a.nome).localeCompare(String(b.nome),'pt-BR')||Number(a.id)-Number(b.id)).slice(0,limit);
+}
+function noteNewProductFieldsValid(name,minimum,basePrice){
+  return !!String(name??'').trim()&&(String(minimum??'').trim()===''||noteItemNumber(minimum,true)!=null)&&(String(basePrice??'').trim()===''||noteItemNumber(basePrice)!=null);
+}
+let noteItemPending=false,noteItemUncertain=false;
+function updateNoteItemComposer(){
+  const get=id=>document.getElementById(id),input=get('s2-produto-busca'),matches=get('note-item-matches');
+  if(!input||!matches)return;
+  const managed=!!document.querySelector('.app.stockos-shell-v2'),creating=!get('painel-novo-produto').hidden;
+  const selected=creating?null:resolveProdutoSelecionado();
+  get('note-item-existing').hidden=creating;
+  get('note-item-mode-title').textContent=creating?'Cadastrar e lançar produto':'Lançar produto';
+  get('note-item-mode-description').textContent=creating?'Preencha o cadastro e os dados da compra em um único lançamento.':'Selecione um produto do catálogo e informe os dados da compra.';
+  input.disabled=creating||noteItemPending||noteItemUncertain;
+  get('note-item-reconcile').hidden=!noteItemUncertain;
+  get('note-item-reconcile').disabled=noteItemPending;
+  if(managed)input.removeAttribute('list');else input.setAttribute('list','s2-produtos-list');
+  const qty=noteItemNumber(get('s2-qtd').value,true),price=noteItemNumber(get('s2-preco').value);
+  const subtotal=qty>0&&price!=null?noteItemNumber(qty*price):null;
+  get('note-item-estimate').textContent=noteDetailMoney(subtotal);
+  get('note-item-selection').textContent=creating?'':selected?(produtoVinculadoAoFornecedor(selected.id)?'Produto selecionado · já vinculado':'Produto selecionado · vínculo automático ao salvar'):'Escolha um produto do catálogo.';
+  const newFieldsValid=!creating||noteNewProductFieldsValid(get('s2-novo-nome').value,get('s2-novo-minimo').value,get('s2-novo-preco-base').value);
+  get('btn-adicionar-item').disabled=noteItemPending||noteItemUncertain||!notaAtual||!(qty>0)||price==null||(creating?!newFieldsValid:!selected);
+  get('btn-step2-avancar').disabled=noteItemPending||noteItemUncertain||!notaAtual?.itens?.length;
+  get('note-item-discard').disabled=noteItemPending;
+  matches.hidden=!managed||creating||!!selected||noteItemPending||noteItemUncertain||!input.value.trim();
+  if(matches.hidden){matches.replaceChildren();return;}
+  const rows=noteItemMatches(todosOsProdutos,fornecedorAtual()?.produtos,input.value);
+  matches.replaceChildren();
+  if(!rows.length){matches.textContent='Nenhum produto encontrado. Refine a busca ou cadastre um novo.';return;}
+  for(const p of rows){
+    const button=document.createElement('button');button.type='button';
+    const name=document.createElement('strong');name.textContent=p.nome;
+    const meta=document.createElement('small');meta.textContent='#'+p.id+(produtoVinculadoAoFornecedor(p.id)?' · Vinculado':' · Vínculo ao salvar');
+    button.append(name,meta);button.onclick=()=>{input.value=formatarProdutoBusca(p);atualizarAvisoVinculo();get('s2-qtd').focus();};
+    matches.appendChild(button);
+  }
+}
+function bindNoteItemComposer(){
+  ['s2-qtd','s2-preco','s2-novo-minimo','s2-novo-preco-base'].forEach(id=>document.getElementById(id).oninput=updateNoteItemComposer);
+  document.getElementById('note-item-reconcile').onclick=()=>void reconcileNoteItem();
+}
+
+async function reconcileNoteItem(){
+  if(noteItemPending||!noteItemUncertain||!notaAtual||stepAtual!==2)return;
+  const id=String(notaAtual.id),button=document.getElementById('note-item-reconcile');
+  const current=()=>document.getElementById('note-item-reconcile')===button&&String(notaAtual?.id)===id;
+  noteItemPending=true;updateNoteItemComposer();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(id));
+    if(!resp.ok)throw Error('Falha na consulta');
+    const note=await resp.json();
+    if(!current())return;
+    if(!note||String(note.id)!==id||!Array.isArray(note.itens)||note.status!=='PENDENTE')throw Error('Rascunho indisponível');
+    notaAtual=note;
+    await Promise.all([carregarFornecedores(),carregarTodosProdutos()]);
+    if(!current())return;
+    noteItemUncertain=false;
+    limparFormularioItem();renderItensStep2();
+    mostrarAlert('alert-s2','Rascunho atualizado. Confira os itens antes de fazer outro lançamento.','info');
+  }catch{
+    if(current())mostrarAlert('alert-s2','Não foi possível conferir o rascunho pendente. Consulte Todas as notas.','error');
+  }finally{
+    noteItemPending=false;if(current())updateNoteItemComposer();
+  }
+}
 function prepararStep2() {
+  bindNoteItemComposer();
   document.getElementById('s2-fornecedor-badge').textContent = notaAtual.fornecedorNome;
   atualizarAutocompleteProdutos();
   atualizarAvisoVinculo();
@@ -213,7 +364,7 @@ function resolveProdutoSelecionado() {
   const valor = document.getElementById('s2-produto-busca').value.trim();
   if (!valor) return null;
 
-  const matchId = valor.match(/\(ID\s*(\d+)\)/i) || valor.match(/^(\d+)\s*[-:]/);
+  const matchId = valor.match(/\(ID\s*(\d+)\)$/i) || valor.match(/^(\d+)\s*[-:]/) || valor.match(/^(\d+)$/);
   if (matchId) {
     const id = parseInt(matchId[1], 10);
     return todosOsProdutos.find((produto) => produto.id === id) || null;
@@ -235,8 +386,9 @@ function toggleNovoProduto(forceOpen) {
     : painel.hidden;
 
   painel.hidden = !abrir;
+  botao.setAttribute('aria-expanded',String(abrir));
   botao.innerHTML = abrir
-    ? 'Usar Produto Existente'
+    ? 'Buscar produto existente'
     : '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>Novo Produto';
 
   if (abrir) {
@@ -247,9 +399,13 @@ function toggleNovoProduto(forceOpen) {
   }
 
   atualizarAvisoVinculo();
+  if(typeof forceOpen!=='boolean'){
+    document.getElementById(abrir?'s2-novo-nome':'s2-produto-busca').focus();
+  }
 }
 
 function atualizarAvisoVinculo() {
+  updateNoteItemComposer();
   limparAlert('alert-s2-link');
 
   if (!notaAtual) return;
@@ -276,25 +432,17 @@ function atualizarAvisoVinculo() {
   }
 }
 
-function renderItensStep2() {
-  const lista = document.getElementById('itens-lista');
-  if (!notaAtual || notaAtual.itens.length === 0) {
-    lista.innerHTML = '<div class="empty">Nenhum item adicionado.</div>';
-    document.getElementById('s2-total').textContent = 'R$0,00';
-    document.getElementById('btn-step2-avancar').disabled = true;
-    return;
-  }
-
-  lista.innerHTML = notaAtual.itens.map((item) => `
-    <div class="item-nota-row">
-      <span class="item-nota-nome">${escapeHtml(item.produtoNome)}</span>
-      <span class="item-nota-qty">${item.quantidade} un.</span>
-      <span class="item-nota-preco">× R$${Number(item.precoUnitario).toFixed(2)}</span>
-      <span class="item-nota-subtotal">R$${Number(item.subtotal).toFixed(2)}</span>
-    </div>`).join('');
-
-  document.getElementById('s2-total').textContent = `R$${Number(notaAtual.total).toFixed(2)}`;
-  document.getElementById('btn-step2-avancar').disabled = false;
+function renderItensStep2(){
+  const lista=document.getElementById('itens-lista'),get=id=>document.getElementById(id),esc=escapeHtml;
+  const model=noteDetailModel(notaAtual);
+  const items=Array.isArray(notaAtual?.itens)?notaAtual.itens:[];
+  get('note-item-count').textContent=items.length+' '+(items.length===1?'item':'itens');
+  get('note-item-lines').textContent=items.length;
+  get('note-item-units').textContent=model?noteDetailQuantity(model.units):'0';
+  get('note-item-draft-id').textContent=notaAtual?'#'+notaAtual.id:'—';
+  get('s2-total').textContent=noteDetailMoney(model?model.total:0);
+  lista.innerHTML=items.length?'<table class="note-detail-table note-item-table"><thead><tr><th scope="col">Produto</th><th scope="col">Qtd.</th><th scope="col">Preço unitário</th><th scope="col">Subtotal</th></tr></thead><tbody>'+items.map(item=>'<tr><td><strong>'+esc(item.produtoNome||'—')+'</strong></td><td>'+noteDetailQuantity(noteDetailNumber(item.quantidade))+'</td><td>'+noteDetailMoney(noteDetailNumber(item.precoUnitario))+'</td><td>'+noteDetailMoney(noteDetailNumber(item.subtotal))+'</td></tr>').join('')+'</tbody></table>':'<div class="empty"><strong>Nenhum item lançado</strong><span>Selecione um produto acima, informe a quantidade e o preço de compra.</span></div>';
+  updateNoteItemComposer();
 }
 
 function limparFormularioNovoProduto() {
@@ -325,26 +473,26 @@ function construirNovoProdutoPayload() {
 
   return {
     nome,
-    quantidadeMinima: minimoBruto === '' ? 0 : parseInt(minimoBruto, 10),
-    precoUnitarioBase: precoBaseBruto === '' ? null : parseFloat(precoBaseBruto),
+    quantidadeMinima: minimoBruto === '' ? 0 : (noteItemNumber(minimoBruto,true)??-1),
+    precoUnitarioBase: precoBaseBruto === '' ? null : (noteItemNumber(precoBaseBruto)??-1),
     categoriaEstoque: categoria || null
   };
 }
 
 async function adicionarItem() {
   const btn = document.getElementById('btn-adicionar-item');
-  const quantidade = parseInt(document.getElementById('s2-qtd').value, 10);
-  const preco = parseFloat(document.getElementById('s2-preco').value);
-  const usandoNovoProduto = !document.getElementById('painel-novo-produto').hidden
-    && document.getElementById('s2-novo-nome').value.trim() !== '';
-  const produtoExistente = resolveProdutoSelecionado();
+  if(noteItemPending||noteItemUncertain||!notaAtual||stepAtual!==2)return;
+  const quantidade = noteItemNumber(document.getElementById('s2-qtd').value,true);
+  const preco = noteItemNumber(document.getElementById('s2-preco').value);
+  const usandoNovoProduto = !document.getElementById('painel-novo-produto').hidden;
+  const produtoExistente = usandoNovoProduto?null:resolveProdutoSelecionado();
 
   if (!quantidade || quantidade <= 0) {
-    mostrarAlert('alert-s2', 'Quantidade deve ser maior que zero.', 'error');
+    mostrarAlert('alert-s2', 'Informe uma quantidade inteira maior que zero.', 'error');
     return;
   }
 
-  if (Number.isNaN(preco) || preco < 0) {
+  if (preco == null) {
     mostrarAlert('alert-s2', 'Informe um preço unitário válido.', 'error');
     return;
   }
@@ -365,9 +513,14 @@ async function adicionarItem() {
     return;
   }
 
+  if(novoProduto&&(noteItemNumber(novoProduto.quantidadeMinima,true)==null||(novoProduto.precoUnitarioBase!=null&&noteItemNumber(novoProduto.precoUnitarioBase)==null))){
+    mostrarAlert('alert-s2-novo','Confira o estoque mínimo e o preço base.','error');return;
+  }
   const produtoPrecisavaVinculo = produtoExistente && !produtoVinculadoAoFornecedor(produtoExistente.id);
-
-  setLoading(btn, true);
+  const originalNote=notaAtual, current=()=>document.getElementById('btn-adicionar-item')===btn&&notaAtual?.id===originalNote.id;
+  const controls=[...document.querySelectorAll('#painel-step2 .nota-inline-card input,#painel-step2 .nota-inline-card select,#btn-toggle-novo-produto')].map(el=>[el,el.disabled]);
+  noteItemPending=true;controls.forEach(([el])=>el.disabled=true);
+  setLoading(btn, true);updateNoteItemComposer();
   try {
     const payload = {
       produtoId: usandoNovoProduto ? null : produtoExistente.id,
@@ -382,7 +535,9 @@ async function adicionarItem() {
       body: JSON.stringify(payload)
     });
 
+    if(!current())return;
     if (!resp.ok) {
+      if(resp.status>=500)throw Error('Resultado incerto');
       const mensagem = await safeReadErrorMessage(resp, 'Erro ao adicionar item.');
       if (usandoNovoProduto) {
         mostrarAlert('alert-s2-novo', mensagem, 'error');
@@ -392,8 +547,12 @@ async function adicionarItem() {
       return;
     }
 
-    notaAtual = await resp.json();
+    const result=await resp.json();
+    if(!current())return;
+    if(!result||String(result.id)!==String(originalNote.id)||!Array.isArray(result.itens))throw Error('Resposta inválida');
+    notaAtual=result;
     await Promise.all([carregarFornecedores(), carregarTodosProdutos()]);
+    if(!current())return;
     renderItensStep2();
     limparFormularioItem();
 
@@ -402,12 +561,21 @@ async function adicionarItem() {
     } else if (produtoPrecisavaVinculo) {
       showToast('Item adicionado. O vínculo com o fornecedor foi criado automaticamente.', 'success');
     }
+  } catch {
+    if(current()){
+      noteItemUncertain=true;
+      mostrarAlert('alert-s2','Não foi possível confirmar o lançamento. Use Consultar rascunho e confira os itens antes de repetir.','error');
+    }
   } finally {
+    noteItemPending=false;
+    controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
     setLoading(btn, false);
+    if(current())updateNoteItemComposer();
   }
 }
 
 async function avancarStep2() {
+  if(noteItemPending||noteItemUncertain)return;
   if (!notaAtual || notaAtual.itens.length === 0) {
     mostrarAlert('alert-s2', 'Adicione pelo menos um item antes de continuar.', 'error');
     return;
@@ -417,6 +585,7 @@ async function avancarStep2() {
 }
 
 async function descartarRascunho() {
+  if(noteItemPending)return;
   if (!notaAtual) {
     resetWizard();
     return;
@@ -440,75 +609,143 @@ async function descartarRascunho() {
 }
 
 function resetWizard() {
+  if(noteItemPending||noteFinalPending)return;
+  noteFinalUncertain=false;
+  noteItemUncertain=false;
   notaAtual = null;
   irParaStep(1);
   document.getElementById('s1-fornecedor').value = '';
+  document.getElementById('note-supplier-search').value='';
+  noteSupplierPage=1;noteOpeningUncertain=false;drawNoteSuppliers();
   limparFormularioItem();
   limparAlert('alert-s1');
 }
 
-function renderItensStep3() {
-  document.getElementById('s3-itens-lista').innerHTML = notaAtual.itens.map((item) => `
-    <div class="item-nota-row">
-      <span class="item-nota-nome">${escapeHtml(item.produtoNome)}</span>
-      <span class="item-nota-qty">${item.quantidade} un.</span>
-      <span class="item-nota-preco">× R$${Number(item.precoUnitario).toFixed(2)}</span>
-      <span class="item-nota-subtotal">R$${Number(item.subtotal).toFixed(2)}</span>
-    </div>`).join('');
-
-  document.getElementById('s3-total').textContent = `R$${Number(notaAtual.total).toFixed(2)}`;
+// Receipt and payment are separate server-side state transitions.
+let noteFinalPending=false,noteFinalUncertain=false;
+function noteFinalTarget(status){
+  return status==='PENDENTE'?3:status==='CONFIRMADA'?4:status==='PAGA'?5:null;
 }
-
-async function avancarStep3() {
-  const btn = document.getElementById('btn-step3-avancar');
-  setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${notaAtual.id}/confirmar`, { method: 'POST' });
-    if (!resp.ok) {
-      mostrarAlert('alert-s3', await safeReadErrorMessage(resp, 'Erro ao confirmar nota.'), 'error');
-      return;
-    }
-    notaAtual = await resp.json();
-    limparAlert('alert-s3');
-    irParaStep(4);
-    renderStep4();
-  } finally {
-    setLoading(btn, false);
+function noteFinalResponse(note,id){
+  return !!note&&String(note.id)===String(id)&&Array.isArray(note.itens)&&noteFinalTarget(note.status)!=null;
+}
+function noteFinalValid(note,step){
+  const model=noteDetailModel(note);
+  if(!model||noteFinalTarget(note.status)!==step||model.total==null)return false;
+  if(step===4)return noteItemNumber(model.total)!=null;
+  return model.totalItems>0&&model.units!=null&&model.units>0&&model.difference===0&&note.itens.every(i=>noteItemNumber(i.quantidade,true)>0&&noteItemNumber(i.precoUnitario)!=null&&noteItemNumber(i.subtotal)!=null);
+}
+function noteFinalSummary(note){
+  const model=noteDetailModel(note),esc=escapeHtml;
+  return '<div class="note-final-identity"><div><span>Fornecedor</span><strong>'+esc(note.fornecedorNome||'—')+'</strong></div><div><span>Nota</span><strong>#'+esc(note.id)+'</strong></div><div><span>Emissão</span><strong>'+esc(noteDetailDate(note.dataEmissao))+'</strong></div></div>'+
+    '<div class="note-final-metrics"><div><span>Itens registrados</span><strong>'+model.totalItems+'</strong></div><div><span>Unidades</span><strong>'+noteDetailQuantity(model.units)+'</strong></div></div>'+
+    '<div class="note-final-total"><span>Valor total registrado</span><strong>'+noteDetailMoney(model.total)+'</strong></div>';
+}
+function syncNoteFinalControls(){
+  const get=id=>document.getElementById(id);
+  for(const step of [3,4]){
+    const check=get(step===3?'s3-conferido':'s4-pago'),button=get('btn-step'+step+'-avancar'),refresh=get('s'+step+'-consultar');
+    if(!check||!button||!refresh)continue;
+    check.disabled=noteFinalPending||noteFinalUncertain||!noteFinalValid(notaAtual,step);
+    button.disabled=check.disabled||!check.checked||stepAtual!==step;
+    refresh.hidden=!noteFinalUncertain;refresh.disabled=noteFinalPending;
   }
+  get('s3-voltar').disabled=noteFinalPending||noteFinalUncertain;
+  get('s4-depois').disabled=noteFinalPending;
 }
-
-function renderStep4() {
-  document.getElementById('s4-resumo').innerHTML = `
-    <div class="info-card">
-      <div class="info-label">Fornecedor</div>
-      <div class="table-cell-strong">${escapeHtml(notaAtual.fornecedorNome)}</div>
-    </div>
-    <div class="info-card">
-      <div class="info-label">Itens na Nota</div>
-      <div class="info-value">${notaAtual.itens.length}</div>
-    </div>
-    <div class="info-card">
-      <div class="info-label">Valor Total</div>
-      <div class="info-value green">R$${Number(notaAtual.total).toFixed(2)}</div>
-    </div>`;
+function renderItensStep3(){
+  const get=id=>document.getElementById(id),model=noteDetailModel(notaAtual),esc=escapeHtml;
+  if(!model)return;
+  get('s3-identidade').innerHTML='<div><span>Fornecedor</span><strong>'+esc(notaAtual.fornecedorNome||'—')+'</strong></div><div><span>Nota</span><strong>#'+esc(notaAtual.id)+'</strong></div>';
+  get('s3-contagem').textContent=model.totalItems+' '+(model.totalItems===1?'item':'itens');
+  get('s3-itens-lista').innerHTML='<table class="note-detail-table"><thead><tr><th scope="col">Produto</th><th scope="col">Qtd.</th><th scope="col">Preço unitário</th><th scope="col">Subtotal</th></tr></thead><tbody>'+notaAtual.itens.map(i=>'<tr><td><strong>'+esc(i.produtoNome||'—')+'</strong></td><td>'+noteDetailQuantity(noteDetailNumber(i.quantidade))+'</td><td>'+noteDetailMoney(noteDetailNumber(i.precoUnitario))+'</td><td>'+noteDetailMoney(noteDetailNumber(i.subtotal))+'</td></tr>').join('')+'</tbody></table>';
+  get('s3-metricas').innerHTML='<div><span>Itens</span><strong>'+model.totalItems+'</strong></div><div><span>Unidades</span><strong>'+noteDetailQuantity(model.units)+'</strong></div>';
+  get('s3-total').textContent=noteDetailMoney(model.total);
+  get('s3-conferido').checked=false;
+  get('s3-conferido').onchange=syncNoteFinalControls;
+  get('s3-consultar').onclick=()=>void reconcileNoteFinal();
+  get('s3-voltar').onclick=()=>{if(noteFinalPending||noteFinalUncertain)return;irParaStep(2);renderItensStep2();};
+  limparAlert('alert-s3');
+  if(!noteFinalValid(notaAtual,3))mostrarAlert('alert-s3','Os itens ou valores da nota precisam ser conferidos antes da confirmação.','error');
+  syncNoteFinalControls();
 }
-
-async function avancarStep4() {
-  const btn = document.getElementById('btn-step4-avancar');
-  setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${notaAtual.id}/pagamento`, { method: 'POST' });
-    if (!resp.ok) {
-      mostrarAlert('alert-s4', await safeReadErrorMessage(resp, 'Erro ao registrar pagamento.'), 'error');
-      return;
+function renderStep4(){
+  const get=id=>document.getElementById(id);
+  get('s4-resumo').innerHTML=noteFinalSummary(notaAtual);
+  get('s4-total').textContent=noteDetailMoney(noteDetailNumber(notaAtual.total));
+  get('s4-pago').checked=false;get('s4-pago').onchange=syncNoteFinalControls;
+  get('s4-consultar').onclick=()=>void reconcileNoteFinal();
+  get('s4-depois').onclick=()=>{if(noteFinalPending)return;abrirAba('aba-lista');void carregarNotas();};
+  limparAlert('alert-s4');
+  if(!noteFinalValid(notaAtual,4))mostrarAlert('alert-s4','Valor ou situação indisponível. Confira a nota antes de registrar o pagamento.','error');
+  syncNoteFinalControls();
+}
+function renderNoteDone(){
+  document.getElementById('s5-resumo').innerHTML=noteFinalSummary(notaAtual);
+  document.getElementById('s5-detalhes').onclick=()=>void verDetalhe(notaAtual.id);
+}
+function applyNoteFinal(note){
+  notaAtual=note;noteFinalUncertain=false;
+  const target=noteFinalTarget(note.status);
+  irParaStep(target);
+  if(target===3)renderItensStep3();
+  else if(target===4)renderStep4();
+  else renderNoteDone();
+}
+async function mutateNoteFinal(step){
+  if(noteFinalPending||noteFinalUncertain||noteListMutation||stepAtual!==step||!noteFinalValid(notaAtual,step))return;
+  const check=document.getElementById(step===3?'s3-conferido':'s4-pago');
+  if(!check?.checked)return;
+  const btn=document.getElementById('btn-step'+step+'-avancar'),id=String(notaAtual.id),alert='alert-s'+step;
+  const current=()=>document.getElementById(btn.id)===btn&&String(notaAtual?.id)===id;
+  const action=step===3?'confirmar':'pagamento';
+  noteFinalPending=true;limparAlert(alert);setLoading(btn,true);syncNoteFinalControls();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+    if(!current())return;
+    if(!resp.ok){
+      // A conflict or server error may mean another request already changed the note.
+      if(resp.status>=500||resp.status===409)throw Error('Resultado incerto');
+      mostrarAlert(alert,await safeReadErrorMessage(resp,'Não foi possível registrar a operação.'),'error');
+      check.checked=false;return;
     }
-    notaAtual = await resp.json();
-    irParaStep(5);
+    const result=await resp.json();
+    if(!current())return;
+    if(!noteFinalResponse(result,id)||noteFinalTarget(result.status)!==step+1)throw Error('Resposta inesperada');
+    applyNoteFinal(result);
     await carregarNotas();
-  } finally {
-    setLoading(btn, false);
+  }catch{
+    if(current()){
+      noteFinalUncertain=true;check.checked=false;
+      mostrarAlert(alert,'Não foi possível confirmar o resultado. Consulte a situação da nota antes de tentar novamente.','error');
+    }
+  }finally{
+    noteFinalPending=false;setLoading(btn,false);
+    if(current())syncNoteFinalControls();
   }
 }
+async function reconcileNoteFinal(){
+  if(noteFinalPending||!noteFinalUncertain||!notaAtual||![3,4].includes(stepAtual))return;
+  const step=stepAtual,id=String(notaAtual.id),btn=document.getElementById('s'+step+'-consultar'),alert='alert-s'+step;
+  const current=()=>document.getElementById(btn.id)===btn&&String(notaAtual?.id)===id;
+  noteFinalPending=true;syncNoteFinalControls();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(id));
+    if(!resp.ok)throw Error('Falha na consulta');
+    const result=await resp.json();
+    if(!current())return;
+    if(!noteFinalResponse(result,id)||noteFinalTarget(result.status)<step)throw Error('Situação inesperada');
+    applyNoteFinal(result);
+    if(stepAtual===step)mostrarAlert(alert,'Situação atualizada. Confira os dados e confirme novamente apenas se necessário.','info');
+    await carregarNotas();
+  }catch{
+    if(current())mostrarAlert(alert,'Não foi possível conferir a situação. Consulte Todas as notas antes de continuar.','error');
+  }finally{
+    noteFinalPending=false;if(current())syncNoteFinalControls();
+  }
+}
+async function avancarStep3(){return mutateNoteFinal(3);}
+async function avancarStep4(){return mutateNoteFinal(4);}
 
 function irParaStep(step) {
   stepAtual = step;
@@ -517,6 +754,7 @@ function irParaStep(step) {
     const el = document.getElementById(`step-${i}`);
     const conn = document.getElementById(`conn-${i}`);
     el.className = 'wizard-step' + (i < step ? ' done' : i === step ? ' active' : '');
+    if(i===step)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');
     if (conn) conn.className = 'wizard-connector' + (i < step ? ' done' : '');
   }
 
@@ -528,6 +766,8 @@ function irParaStep(step) {
 }
 
 function abrirAba(abaId) {
+  if(noteOpening||noteItemPending||noteFinalPending)return;
+  if(abaId==='aba-lista'&&noteOpeningUncertain)void carregarNotas();
   document.querySelectorAll('.tab-panel').forEach((painel) => painel.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach((botao) => botao.classList.remove('active'));
 
@@ -537,99 +777,135 @@ function abrirAba(abaId) {
 }
 
 function iniciarNovaNota() {
+  if(noteOpening||noteItemPending||noteFinalPending)return;
+  if(noteFinalUncertain&&document.getElementById('aba-nova').classList.contains('active')){
+    mostrarAlert('alert-s'+stepAtual,'Consulte a situação da nota antes de iniciar outra.','error');return;
+  }
+  if(noteOpeningUncertain&&document.getElementById('aba-nova').classList.contains('active')){
+    mostrarAlert('alert-s1','Confira Todas as Notas antes de reiniciar a abertura.','error');return;
+  }
   resetWizard();
   carregarFornecedores();
   carregarTodosProdutos();
   carregarNotas();
 }
 
-async function confirmarCancelarNota(id) {
-  if (!confirm('Cancelar esta nota fiscal? Esta ação não pode ser desfeita.')) return;
-  try {
-    const resp = await fetch(`/api/notas/${id}/cancelar`, { method: 'POST' });
-    if (!resp.ok) {
-      showToast(await safeReadErrorMessage(resp, 'Erro ao cancelar nota.'), 'error');
-      return;
+async function mutateListedNote(id,action){
+  if(noteListMutation||noteListUncertain||noteListLoading||noteListFailed)return;
+  if(noteFinalPending)return;
+  const note=noteListRecords?.find(n=>String(n.id)===String(id)),payment=action==='pagamento';
+  if(!note||note.status!==(payment?'CONFIRMADA':'PENDENTE')){showToast('Atualize a listagem antes de continuar.','error');return;}
+  const value=noteDetailNumber(note.total);
+  if(payment&&value==null){showToast('Valor da nota indisponível. Confira os detalhes.','error');return;}
+  const message=payment?'Registrar o pagamento da nota #'+note.id+' ('+noteDetailMoney(value)+') de '+note.fornecedorNome+'? Confirme apenas se o pagamento já foi realizado. O StockOS não efetua transferências.':'Cancelar a nota #'+note.id+'? Esta ação não pode ser desfeita.';
+  if(!confirm(message))return;
+  const tbody=document.getElementById('tabela-notas'),current=()=>document.getElementById('tabela-notas')===tbody;
+  noteListMutation=true;drawNoteList();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(String(id))+'/'+action,{method:'POST'});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      showToast(await safeReadErrorMessage(resp,payment?'Erro ao registrar pagamento.':'Erro ao cancelar nota.'),'error');await carregarNotas();return;
     }
-    showToast('Nota cancelada com sucesso.', 'success');
-    await carregarNotas();
-  } catch {
-    showToast('Erro ao cancelar nota.', 'error');
-  }
+    showToast(payment?'Pagamento registrado com sucesso.':'Nota cancelada com sucesso.','success');await carregarNotas();
+    if(current()&&noteDetailState?.id===String(id))fecharModal('modal-detalhe');
+  }catch{if(current()){noteListUncertain=true;showToast('Resultado não confirmado. Confira a situação da nota após atualizar a lista.','error');await carregarNotas();}}
+  finally{noteListMutation=false;if(document.getElementById('tabela-notas'))drawNoteList();}
 }
+async function confirmarCancelarNota(id){return mutateListedNote(id,'cancelar');}
 
+const NOTE_DETAIL_STATES={
+  PENDENTE:{label:'Pendente',note:'Aguardando confirmação da compra.',tone:'warning'},
+  CONFIRMADA:{label:'Confirmada',note:'Compra confirmada; pagamento ainda não registrado.',tone:'info'},
+  PAGA:{label:'Paga',note:'Pagamento registrado no StockOS.',tone:'success'},
+  CANCELADA:{label:'Cancelada',note:'Nota cancelada.',tone:'neutral'}
+};
+function noteDetailNumber(raw){
+  if(raw==null||!['number','string'].includes(typeof raw)||String(raw).trim()==='')return null;
+  const n=Number(raw);
+  return Number.isFinite(n)&&n>=0?n:null;
+}
+function noteDetailModel(note,query='',page=1,pageSize=8){
+  if(!note||!Array.isArray(note.itens))return null;
+  const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const items=note.itens.map((item,index)=>({index,id:item?.produtoId??null,name:String(item?.produtoNome||'Produto não informado'),qty:noteDetailNumber(item?.quantidade),price:noteDetailNumber(item?.precoUnitario),subtotal:noteDetailNumber(item?.subtotal)}));
+  const sumQty=items.every(i=>Number.isSafeInteger(i.qty))?items.reduce((s,i)=>s+i.qty,0):null;
+  const exactCents=n=>n!=null&&Number.isSafeInteger(Math.round(n*100))&&Math.abs(n*100-Math.round(n*100))<1e-6?Math.round(n*100):null;
+  const cents=items.map(i=>exactCents(i.subtotal)),sum=cents.every(n=>n!=null)?cents.reduce((s,n)=>s+n,0):null;
+  const total=noteDetailNumber(note.total),totalCents=exactCents(total);
+  const subtotalSum=Number.isSafeInteger(sum)?sum/100:null;
+  const difference=Number.isSafeInteger(sum)&&totalCents!=null&&Number.isSafeInteger(totalCents-sum)?(totalCents-sum)/100:null;
+  const filtered=items.filter(i=>norm([i.name,i.id??''].join(' ')).includes(norm(query)));
+  const size=Math.max(1,Math.floor(Number(pageSize)||8)),pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  const status=Object.prototype.hasOwnProperty.call(NOTE_DETAIL_STATES,note.status)?NOTE_DETAIL_STATES[note.status]:{label:'Não informado',note:'Situação não reconhecida.',tone:'neutral'};
+  return {status,total,subtotalSum,difference,units:Number.isSafeInteger(sumQty)?sumQty:null,totalItems:items.length,count:filtered.length,page:current,pages,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+const noteDetailMoney=n=>n==null?'—':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const noteDetailQuantity=n=>n==null?'—':n.toLocaleString('pt-BR');
+function noteDetailDate(raw){
+  if(!raw)return '—';
+  const d=new Date(raw);
+  return Number.isFinite(d.getTime())?d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+}
+let noteDetailState=null;
+function noteDetailCurrent(state){
+  return noteDetailState===state&&document.getElementById('modal-detalhe')===state.modal&&state.modal.classList.contains('open');
+}
+function drawNoteDetail(state){
+  if(!noteDetailCurrent(state))return;
+  const get=id=>document.getElementById(id),esc=escapeHtml,model=noteDetailModel(state.note,state.query,state.page);
+  const info=get('detalhe-info'),items=get('note-detail-items'),total=get('note-detail-total');
+  items.hidden=total.hidden=!model;
+  if(!model){info.textContent=state.loading?'Consultando detalhes da nota…':'Detalhes indisponíveis.';return;}
+  const note=state.note;
+  state.page=model.page;
+  get('modal-detalhe-titulo').textContent='Nota #'+note.id;
+  info.innerHTML='<div class="note-detail-identity"><div><span>Fornecedor</span><strong>'+esc(note.fornecedorNome||'—')+'</strong><small>Emissão: '+esc(noteDetailDate(note.dataEmissao))+'</small></div><div class="note-detail-status" data-tone="'+model.status.tone+'"><span class="note-detail-status-label"><span aria-hidden="true"></span>'+model.status.label+'</span><small>'+model.status.note+'</small></div></div>'+
+    (note.numeroNfe||note.chaveAcesso?'<div class="note-detail-fiscal">'+(note.numeroNfe?'<div><span>Número NF-e</span><strong>'+esc(note.numeroNfe)+'</strong></div>':'')+(note.chaveAcesso?'<div><span>Chave de acesso</span><strong>'+esc(note.chaveAcesso)+'</strong></div>':'')+'</div>':'')+
+    '<div class="note-detail-metrics"><div><span>Itens registrados</span><strong>'+model.totalItems+'</strong></div><div><span>Unidades</span><strong>'+noteDetailQuantity(model.units)+'</strong></div><div><span>Valor total da nota</span><strong>'+noteDetailMoney(model.total)+'</strong></div></div>';
+  get('note-detail-count').textContent=model.totalItems+' '+(model.totalItems===1?'registro':'registros');
+  const results=get('detalhe-itens');
+  results.innerHTML=model.rows.length?'<table class="note-detail-table"><thead><tr><th scope="col">Produto</th><th scope="col">Qtd.</th><th scope="col">Preço unitário</th><th scope="col">Subtotal</th></tr></thead><tbody>'+model.rows.map(i=>'<tr><td><strong>'+esc(i.name)+'</strong>'+(i.id!=null?'<small>#'+esc(i.id)+'</small>':'')+'</td><td>'+noteDetailQuantity(i.qty)+'</td><td>'+noteDetailMoney(i.price)+'</td><td>'+noteDetailMoney(i.subtotal)+'</td></tr>').join('')+'</tbody></table>':'<div class="note-detail-empty">'+(model.totalItems?'Nenhum item corresponde à pesquisa.':'Nenhum item registrado nesta nota.')+'</div>';
+  get('note-detail-range').textContent=model.count?model.from+'–'+model.to+' de '+model.count+' itens':'0 resultados';
+  get('note-detail-prev').disabled=model.page<=1;get('note-detail-next').disabled=model.page>=model.pages;
+  total.innerHTML='<div><span>Total registrado da nota</span><small>Valor informado pelo sistema, incluindo todos os itens.</small></div><strong>'+noteDetailMoney(model.total)+'</strong>'+
+    (model.difference!=null&&model.difference!==0?'<p class="note-detail-difference">A soma dos subtotais ('+noteDetailMoney(model.subtotalSum)+') difere do total registrado. Confira a nota na origem.</p>':'');
+}
 async function verDetalhe(id) {
-  try {
-    const resp = await fetch(`/api/notas/${id}`);
-    const nota = await resp.json();
-    const statusLabel = {
-      PENDENTE: 'Pendente',
-      CONFIRMADA: 'Confirmada',
-      PAGA: 'Paga',
-      CANCELADA: 'Cancelada'
-    };
-    const statusBadge = {
-      PENDENTE: 'badge-amber',
-      CONFIRMADA: 'badge-cyan',
-      PAGA: 'badge-green',
-      CANCELADA: 'badge-gray'
-    };
-
-    document.getElementById('modal-detalhe-titulo').textContent = `Nota #${nota.id}`;
-    document.getElementById('detalhe-info').innerHTML = `
-      <div class="detail-meta">
-        <div class="detail-meta-item">
-          <span class="detail-meta-label">Fornecedor</span>
-          <strong class="detail-meta-value">${escapeHtml(nota.fornecedorNome)}</strong>
-        </div>
-        <div class="detail-meta-item">
-          <span class="detail-meta-label">Status</span>
-          <span class="badge ${statusBadge[nota.status]}">${statusLabel[nota.status]}</span></div>
-        <div class="detail-meta-item">
-          <span class="detail-meta-label">Total</span>
-          <strong class="detail-meta-value detail-meta-value--success">R$${Number(nota.total).toFixed(2)}</strong>
-        </div>
-      </div>`;
-
-    document.getElementById('detalhe-itens').innerHTML = nota.itens.length === 0
-      ? '<div class="empty">Sem itens.</div>'
-      : '<div class="itens-nota-list">' + nota.itens.map((item) => `
-          <div class="item-nota-row">
-            <span class="item-nota-nome">${escapeHtml(item.produtoNome)}</span>
-            <span class="item-nota-qty">${item.quantidade} un.</span>
-            <span class="item-nota-preco">× R$${Number(item.precoUnitario).toFixed(2)}</span>
-            <span class="item-nota-subtotal">R$${Number(item.subtotal).toFixed(2)}</span>
-          </div>`).join('') + '</div>';
-
-    limparAlert('alert-detalhe');
-    abrirModal('modal-detalhe');
-  } catch {
-    showToast('Erro ao carregar detalhes da nota.', 'error');
+  const modal=document.getElementById('modal-detalhe');
+  if(!modal)return;
+  const state={modal,id:String(id),note:null,query:'',page:1,loading:true};
+  noteDetailState=state;
+  const get=id=>document.getElementById(id);
+  get('modal-detalhe-titulo').textContent='Detalhes da nota';
+  get('note-detail-search').value='';
+  get('note-detail-search').oninput=()=>{state.query=get('note-detail-search').value;state.page=1;drawNoteDetail(state);};
+  get('note-detail-prev').onclick=()=>{state.page--;drawNoteDetail(state);};
+  get('note-detail-next').onclick=()=>{state.page++;drawNoteDetail(state);};
+  limparAlert('alert-detalhe');abrirModal('modal-detalhe');drawNoteDetail(state);
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(state.id));
+    if(!resp.ok)throw Error('Falha na consulta');
+    const note=await resp.json();
+    if(!noteDetailModel(note)||String(note.id)!==state.id)throw Error('Resposta inválida');
+    if(!noteDetailCurrent(state))return;
+    state.note=note;
+  }catch{
+    if(noteDetailCurrent(state))mostrarAlert('alert-detalhe','Não foi possível carregar os detalhes da nota. Feche e tente novamente.','error');
+  }finally{
+    state.loading=false;drawNoteDetail(state);
   }
 }
 
-async function pagarNota(id) {
-  const btn = event?.target ?? null;
-  setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${id}/pagamento`, { method: 'POST' });
-    if (!resp.ok) {
-      showToast(await safeReadErrorMessage(resp, 'Erro ao registrar pagamento.'), 'error');
-      return;
-    }
-    showToast('Pagamento registrado com sucesso.', 'success');
-    await carregarNotas();
-    fecharModal('modal-detalhe');
-  } finally {
-    setLoading(btn, false);
-  }
-}
+async function pagarNota(id){return mutateListedNote(id,'pagamento');}
 
 function abrirModal(id) {
   document.getElementById(id).classList.add('open');
 }
 
 function fecharModal(id) {
+  if(id==='modal-detalhe')noteDetailState=null;
   document.getElementById(id).classList.remove('open');
 }
 

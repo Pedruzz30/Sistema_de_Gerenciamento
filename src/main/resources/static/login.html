@@ -26,28 +26,17 @@
 
     <div class="hero">
       <div class="hero-eyebrow">
-        <span class="hero-eyebrow-dot"></span>
-        Sistema de Gerenciamento
+        <span class="hero-eyebrow-dot" aria-hidden="true"></span>
+        Gestão de estoque e vendas
       </div>
-      <h1>Controle total do seu <em>estoque</em></h1>
-      <p>Gerencie produtos, fornecedores, caixas e cotações em um único lugar. Acesso por perfil, logs de auditoria e relatórios em tempo real.</p>
+      <h1>Sua operação,<br><em>sob controle.</em></h1>
+      <p>Gerencie estoque, vendas, compras e equipe em um único lugar. Mais clareza para acompanhar sua operação e tomar decisões.</p>
     </div>
 
-    <div class="stats">
-      <div class="stat">
-        <span class="stat-value">4</span>
-        <span class="stat-label">Perfis</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
-        <span class="stat-value">3</span>
-        <span class="stat-label">Caixas PDV</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
-        <span class="stat-value">100%</span>
-        <span class="stat-label">Auditado</span>
-      </div>
+    <div class="login-features" aria-label="Recursos do StockOS">
+      <div><span class="login-feature-icon" data-login-icon="box" aria-hidden="true"></span><strong>Estoque</strong><small>Produtos e movimentações</small></div>
+      <div><span class="login-feature-icon" data-login-icon="wallet" aria-hidden="true"></span><strong>Vendas e PDV</strong><small>Caixas e comandas</small></div>
+      <div><span class="login-feature-icon" data-login-icon="shield" aria-hidden="true"></span><strong>Gestão de acessos</strong><small>Perfis e auditoria</small></div>
     </div>
   </div>
 
@@ -55,8 +44,9 @@
   <div class="panel-right">
     <div class="sheet login-card">
       <div class="card-head">
-        <h2>Bem-vindo de volta</h2>
-        <p>Entre com suas credenciais para acessar o sistema.</p>
+        <span class="login-access-label"><span data-login-icon="lock" aria-hidden="true"></span> Área de acesso</span>
+        <h2>Bem-vindo de volta.</h2>
+        <p>Informe suas credenciais para entrar no StockOS.</p>
       </div>
 
       <form id="senhaForm" class="senha-form" onsubmit="handleCriarSenha(event)" hidden>
@@ -83,14 +73,14 @@
             <label for="nome">Nome</label>
             <div class="input-wrap">
               <span class="input-icon" data-login-icon="user" aria-hidden="true"></span>
-              <input class="input" type="text" id="nome" placeholder="Admin" autocomplete="given-name" required>
+              <input class="input" type="text" id="nome" placeholder="Seu nome" autocomplete="given-name" required>
             </div>
           </div>
           <div class="f-group field">
             <label for="sobrenome">Sobrenome</label>
             <div class="input-wrap">
               <span class="input-icon" data-login-icon="user" aria-hidden="true"></span>
-              <input class="input" type="text" id="sobrenome" placeholder="Superior" autocomplete="family-name" required>
+              <input class="input" type="text" id="sobrenome" placeholder="Seu sobrenome" autocomplete="family-name" required>
             </div>
           </div>
         </div>
@@ -104,7 +94,7 @@
           <label for="senha">Senha</label>
           <div class="input-wrap">
             <span class="input-icon" data-login-icon="lock" aria-hidden="true"></span>
-            <input class="input" type="password" id="senha" placeholder="••••••••" autocomplete="current-password" required>
+            <input class="input" type="password" id="senha" placeholder="Sua senha" autocomplete="current-password" required>
           </div>
         </div>
 
@@ -116,20 +106,18 @@
           <div class="btn-spinner"></div>
         </button>
 
-        <div class="alert" id="alert">
+        <div class="alert" id="alert" role="status" aria-live="polite">
           <span class="alert-icon" id="alertIcon"></span>
           <span id="alertMsg"></span>
         </div>
 
-        <p class="login-ajuda">Esqueceu a senha? Peça ao gerente: ele redefine em Funcionários. Se você é o dono, abra <strong>Redefinir senha do dono</strong> na pasta <code>C:\StockOS</code> do notebook da loja.</p>
+        <details class="login-ajuda"><summary>Esqueceu a senha?</summary><p>Peça ao gerente a redefinição em Funcionários. Se você é o dono, abra <strong>Redefinir senha do dono</strong> na pasta <code>C:\StockOS</code> do notebook da loja.</p></details>
       </form>
 
+      <!-- STOCKOS_PREVIEW_ENTRY -->
       <div class="card-foot">
-        <p>StockOS v1.0 &mdash; Gerenciamento</p>
-        <div class="secure-badge">
-          <span class="secure-dot"></span>
-          Conexão segura
-        </div>
+        <p>StockOS v1.0</p>
+        <span class="login-access-footer"><span data-login-icon="shield" aria-hidden="true"></span> Acesso restrito</span>
       </div>
     </div>
   </div>
@@ -139,6 +127,9 @@
 <script src="/js/stockos-auth.js"></script>
 <script>
   const LOGIN_ICONS = {
+    box: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/>',
+    wallet: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M7 15h4"/>',
+    shield: '<path d="m12 3 8 3v6c0 5-4 8-8 10-4-2-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/>',
     user: '<circle cx="12" cy="8" r="3"/><path d="M6 19a6 6 0 0 1 12 0"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 1 1 8 0v3"/>',
     arrowRight: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',

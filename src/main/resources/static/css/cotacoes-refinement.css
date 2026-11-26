@@ -290,3 +290,59 @@ body.cotacoes-page :is(.compact-control,.modal-close,.modal-footer button):focus
   body.cotacoes-page .sidebar,body.cotacoes-page .page-summary-card,
   body.cotacoes-page .tab-panel,body.cotacoes-page .modal {animation:none;transition:none;}
 }
+
+/* Compact purchasing intelligence workspace. */
+body.cotacoes-page .topbar .topbar-right:empty{display:none!important;}
+body.cotacoes-page .app.stockos-shell-v2 .main.page>.topbar.header{min-height:70px;padding:12px clamp(14px,2vw,28px);gap:10px;}
+body.cotacoes-page .app.stockos-shell-v2 .topbar .crumbs{display:none;}
+body.cotacoes-page .app.stockos-shell-v2 .topbar .page-title{font-size:23px;}
+body.cotacoes-page .app.stockos-shell-v2 .main-body.content{padding-top:14px;}
+body.cotacoes-page .quote-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+body.cotacoes-page .quote-toolbar .tabs{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:0;margin:0;min-height:0;border:0;background:transparent;box-shadow:none;}
+body.cotacoes-page .quote-toolbar .tab-btn{min-height:36px;height:auto;padding:8px 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink-3);font:600 12px/1.4 var(--font-ui);}
+body.cotacoes-page .quote-toolbar .tab-btn.active{background:var(--accent-soft);border-color:var(--accent-border,var(--rule));color:var(--accent-ink,var(--ink));}
+body.cotacoes-page .quote-toolbar>.btn{min-height:38px;padding:8px 13px;box-shadow:none;}
+body.cotacoes-page #cotacao-summary.page-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0 0 12px;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--paper-raised);}
+body.cotacoes-page #cotacao-summary .page-summary-card{min-height:0;padding:12px 14px;gap:5px;border:0;border-radius:0;background:transparent;box-shadow:none!important;}
+body.cotacoes-page #cotacao-summary .page-summary-card+.page-summary-card{border-left:1px solid var(--rule);}
+body.cotacoes-page #cotacao-summary .page-summary-label{font:600 11px/1.4 var(--font-ui);text-transform:none;letter-spacing:0;}
+body.cotacoes-page #cotacao-summary .page-summary-value{font-size:clamp(19px,1.7vw,26px);font-variant-numeric:tabular-nums;}
+body.cotacoes-page #cotacao-summary .page-summary-card[data-tone="success"] .page-summary-value{color:var(--ok);}
+body.cotacoes-page #cotacao-summary .page-summary-card[data-tone="warning"] .page-summary-value{color:var(--warn);}
+body.cotacoes-page :is(#aba-relatorio,#aba-historico)>.card{padding:15px;box-shadow:none!important;}
+body.cotacoes-page :is(#aba-relatorio,#aba-historico) .card-header{margin:0 0 12px;gap:8px;}
+.quote-subtitle{font-size:12px;line-height:1.45;color:var(--ink-3);margin:4px 0 0;}
+.quote-filters{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(120px,1fr) minmax(150px,1fr) auto;gap:8px;align-items:end;margin-bottom:10px;}
+.quote-filters>div{display:grid;gap:4px;min-width:0;}
+.quote-filters label{font-size:11px;color:var(--ink-3);}
+.quote-filters :is(input,select){width:100%;min-width:0;min-height:36px;border:1px solid var(--rule-strong);border-radius:7px;background:var(--paper-raised);color:var(--ink);padding:7px 9px;font:inherit;font-size:12px;}
+.quote-filters button,.quote-pagination button{min-height:36px;padding:7px 10px;font-size:12px;box-shadow:none;}
+.quote-empty{display:grid;gap:6px;justify-items:center;text-align:center;border:1px solid var(--rule);border-radius:8px;padding:26px 12px;color:var(--ink-3);font-size:12px;line-height:1.5;}
+.quote-empty strong{color:var(--ink);font-size:14px;}
+.quote-table-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;min-width:0;}
+body.cotacoes-page .quote-table{width:100%;min-width:580px;border-collapse:collapse;table-layout:fixed;}
+body.cotacoes-page .quote-table :is(th,td){text-align:right;padding:10px 12px;overflow-wrap:anywhere;white-space:normal;font-size:12px;font-variant-numeric:tabular-nums;}
+body.cotacoes-page .quote-table :is(th,td):first-child{width:36%;text-align:left;}
+body.cotacoes-page .quote-table th{background:var(--paper-sunk);color:var(--ink-3);font-weight:600;font-size:11px;letter-spacing:0;text-transform:none;}
+body.cotacoes-page .quote-table td{border-top:1px solid var(--rule);color:var(--ink-2);}
+.quote-table td strong{font-size:13px;color:var(--ink);}
+.quote-table td small{display:block;font-size:10px;color:var(--ink-3);margin-top:3px;}
+.quote-trend{font-weight:650;}
+.quote-trend[data-trend="SUBIU"]{color:var(--bad);}
+.quote-trend[data-trend="CAIU"]{color:var(--ok);}
+.quote-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:10px;font-size:11px;color:var(--ink-3);}
+.quote-pagination>div{display:flex;gap:6px;}
+body.cotacoes-page [hidden]{display:none!important;}
+body.cotacoes-page button:disabled{opacity:.5;cursor:default;}
+.quote-history-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:0 0 10px;font-size:14px;color:var(--ink);}
+.quote-history-heading span{font-size:11px;color:var(--ink-3);}
+.quote-history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--rule);border-radius:8px;margin-bottom:12px;}
+.quote-history-metrics>div{display:grid;gap:5px;padding:10px;min-width:0;}
+.quote-history-metrics>div+div{border-left:1px solid var(--rule);}
+.quote-history-metrics :is(span,small){font-size:11px;color:var(--ink-3);}
+.quote-history-metrics strong{font-size:20px;color:var(--ink);overflow-wrap:anywhere;}
+.quote-register-total{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;background:var(--paper-sunk);border-radius:7px;font-size:12px;color:var(--ink-3);}
+.quote-register-total strong{font-size:17px;color:var(--ink);}
+body.cotacoes-page #modal-cotacao .modal-body>*{flex-shrink:0;}
+@media(max-width:1000px){body.cotacoes-page #cotacao-summary.page-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}body.cotacoes-page #cotacao-summary .page-summary-card:nth-child(3){border-left:0;}body.cotacoes-page #cotacao-summary .page-summary-card:nth-child(n+3){border-top:1px solid var(--rule);}.quote-filters{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:540px){.quote-filters>div:first-child{grid-column:1/-1;}.quote-history-metrics{grid-template-columns:1fr;}.quote-history-metrics>div+div{border-left:0;border-top:1px solid var(--rule);}body.cotacoes-page .quote-toolbar>.btn{width:100%;min-height:44px;}body.cotacoes-page .quote-filters button,body.cotacoes-page .quote-pagination button{min-height:44px;}}

@@ -91,10 +91,12 @@ for (const page of pages) {
     html=html.replace('<div class="main-body content">','<div class="main-body content">'+shortcut);
   }
   if(page==='login.html'){
-    const entry='<div class="stockos-demo-entry" style="padding:14px;text-align:center">' +
-      '<a href="/dashboard.html" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 16px;border:1px solid var(--rule,#5c7087);border-radius:10px;text-decoration:none;color:var(--ink,#f4f7fa);background:var(--paper-raised,#142236);font-weight:700">Abrir demonstração sem login</a>' +
-      '<p style="font-size:12px;margin:8px 0 0">Dados fictícios. Nenhuma conta real é necessária.</p></div>';
-    html=html.replace('</form>','</form>'+entry);
+    const marker='<!-- STOCKOS_PREVIEW_ENTRY -->';
+    if(!html.includes(marker))throw Error('Login: ponto de inserção da demonstração ausente.');
+    const entry='<div class="stockos-demo-entry">' +
+      '<a href="/dashboard.html">Abrir demonstração sem login <span aria-hidden="true">→</span></a>' +
+      '<p>Ambiente demonstrativo · dados fictícios, sem conta real.</p></div>';
+    html=html.replace(marker,entry);
   }
   await writeFile(p,html);
 }

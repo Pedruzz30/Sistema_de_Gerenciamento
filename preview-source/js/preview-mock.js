@@ -265,6 +265,32 @@
       return respond({totalVendas:Math.round(t*100)/100,caixasAbertos:n,
         totalMovimentacoesVenda:count,ticketMedio:count?Math.round(t/count*100)/100:0});
     }
+    if(method==='GET' && (path==='/api/relatorios/dia'||path==='/api/relatorios/mes')){
+      const sales=Array.isArray(db.vendasPreview)?db.vendasPreview:[];
+      const date=today(), month=new URL(raw,location.href).searchParams.get('mes')||date.slice(0,7);
+      if(path.endsWith('/mes')){
+        const days=new Map();
+        if(db.demoEscala)for(const d of db.demoEscala.dias||[])if(d.data.startsWith(month))days.set(d.data,0);
+        if(date.startsWith(month))days.set(date,0);
+        for(const s of sales){const d=String(s.criadaEm||'').slice(0,10);if(d.startsWith(month))days.set(d,(days.get(d)||0)+Number(s.valor||0));}
+        if(!sales.length&&date.startsWith(month))days.set(date,db.movimentacoesCaixa.filter(m=>m.tipo==='VENDA'&&String(m.dataHora).startsWith(date)).reduce((v,m)=>v+Number(m.valor||0),0));
+        return respond({dias:[...days].map(([data,liquido])=>({data,liquido:+liquido.toFixed(2)}))});
+      }
+      const selected=sales.filter(s=>String(s.criadaEm).startsWith(date));
+      const hours=new Map(), forms=new Map(), products=new Map();
+      let produtosParcial=false;
+      const labels={DINHEIRO:'Dinheiro',PIX:'Pix',CARTAO:'Cartão',DEBITO:'Débito',CREDITO:'Crédito',VOUCHER:'Voucher'};
+      for(const s of selected){
+        const h=Number(String(s.criadaEm).slice(11,13));hours.set(h,(hours.get(h)||0)+Number(s.valor||0));
+        const payments=s.pagamentos||[{forma:s.formaPagamento,valor:s.valor}];
+        for(const p of payments)if(labels[p.forma])forms.set(p.forma,(forms.get(p.forma)||0)+Number(p.valor||0));
+        // For historical seeds the sale contains one line and its recorded total.
+        // Multi-line receipts without historical line prices do not invent a split.
+        if(s.itens?.length===1){const item=s.itens[0],prod=db.produtos.find(p=>p.id===item.idProduto);if(prod){const entry=products.get(prod.id)||{nome:prod.nome,quantidade:0,valor:0};entry.quantidade+=Number(item.quantidade||0);entry.valor+=Number(s.valor||0);products.set(prod.id,entry);}else produtosParcial=true;}else produtosParcial=true;
+      }
+      if(!selected.length)for(const m of db.movimentacoesCaixa.filter(m=>m.tipo==='VENDA'&&String(m.dataHora).startsWith(date))){const h=Number(String(m.dataHora).slice(11,13));hours.set(h,(hours.get(h)||0)+Number(m.valor||0));if(m.formaPagamento&&labels[m.formaPagamento])forms.set(m.formaPagamento,(forms.get(m.formaPagamento)||0)+Number(m.valor||0));}
+      return respond({produtosParcial:produtosParcial||(!selected.length&&hours.size>0),porHora:[...hours].sort((a,b)=>a[0]-b[0]).map(([hora,valor])=>({hora,valor:+valor.toFixed(2)})),porForma:[...forms].map(([forma,valor])=>({forma,rotulo:labels[forma],valor:+valor.toFixed(2)})),produtos:[...products.values()].map(p=>({...p,valor:+p.valor.toFixed(2)}))});
+    }
     if(path==='/api/rentabilidade/ranking')return respond(db.rentabilidadePreview||[]);
     if(path==='/api/preview/cenario' && method==='GET')return respond(db.demoEscala||{nome:'Demonstração simples',demonstracao:true});
     if(path==='/api/fornecedores' && method==='GET')return respond(db.fornecedores);
@@ -305,7 +331,9 @@
     if(path==='/api/caixas/consolidado')return respond({data:today(),resumo:'Relatório de demonstração — valores fictícios.'});
     if(path==='/api/caixas/abrir' && method==='POST'){
       const numero=Number(body.numeroCaixa);
-      if(!Number.isInteger(numero)||numero<=0)return respond({erro:'Número do caixa inválido.'},400);
+      if(!Number.isInteger(numero)||numero<=0||numero>2147483647)return respond({erro:'Número do caixa inválido.'},400);
+      const initial=Number(body.saldoInicial);
+      if(body.saldoInicial==null||String(body.saldoInicial).trim()===''||!Number.isFinite(initial)||initial<0||!Number.isSafeInteger(Math.round(initial*100))||Math.abs(initial*100-Math.round(initial*100))>1e-7)return respond({erro:'Fundo de troco inválido.'},400);
       if(db.caixas.some(c=>c.numeroCaixa===numero&&c.status==='ABERTO'))return respond({erro:'Caixa já aberto.'},409);
       const id=Math.max(0,...db.caixas.map(c=>c.id))+1;
       const c={id,caixaId:id,numeroCaixa:numero,status:'ABERTO',totalVendas:0,totalEntradas:0,totalSaidas:0,saldoInicial:Number(body.saldoInicial)||0,saldoAtual:Number(body.saldoInicial)||0,nomeOperador:'Admin Demo',dataAbertura:new Date().toISOString()};
@@ -337,6 +365,25 @@
       else c.totalSaidas=+(c.totalSaidas+valor).toFixed(2);
       db.movimentacoesCaixa.unshift({id:Date.now(),caixaId:c.id,numeroCaixa:c.numeroCaixa,tipo:tipo.toUpperCase(),valor,descricao:String(body.descricao||'Operação fictícia'),dataHora:new Date().toISOString(),operador:'Admin Demo',formaPagamento:tipo==='venda'?'DINHEIRO':null});
       save();return respond(c);
+    }
+    const operatorSummary=path.match(/^\/api\/caixas\/sessoes\/(\d+)\/resumo-operadores$/);
+    if(operatorSummary&&method==='GET'){
+      const id=Number(operatorSummary[1]);
+      if(!db.caixas.some(c=>Number(c.id)===id))return respond({erro:'Sessão não encontrada.'},404);
+      const rows=new Map();
+      db.movimentacoesCaixa.filter(m=>Number(m.caixaId)===id).forEach((m,i)=>{
+        const name=m.operador||'—',value=Math.round(Number(m.valor)*100);
+        if(!Number.isSafeInteger(value)||value<0)return;
+        if(!rows.has(name))rows.set(name,{operador:name,vendas:new Set(),cancelamentos:new Set(),vendido:0,dinheiro:0,pixECartoes:0,cancelado:0,sangrias:0,suprimentos:0});
+        const a=rows.get(name),key=m.vendaId!=null?'sale:'+m.vendaId:'movement:'+(m.id??i);
+        if(m.tipo==='VENDA'){a.vendas.add(key);a.vendido+=value;if(!m.formaPagamento||m.formaPagamento==='DINHEIRO')a.dinheiro+=value;else a.pixECartoes+=value;}
+        else if(m.tipo==='ESTORNO_VENDA'){a.cancelamentos.add(key);a.cancelado+=value;}
+        else if(m.tipo==='SANGRIA')a.sangrias+=value;
+        else if(m.tipo==='SUPRIMENTO')a.suprimentos+=value;
+      });
+      return respond([...rows.values()].map(a=>({operador:a.operador,vendas:a.vendas.size,cancelamentos:a.cancelamentos.size,
+        vendido:a.vendido/100,dinheiro:a.dinheiro/100,pixECartoes:a.pixECartoes/100,cancelado:a.cancelado/100,
+        sangrias:a.sangrias/100,suprimentos:a.suprimentos/100,descontos:null})).sort((a,b)=>b.vendido-a.vendido||a.operador.localeCompare(b.operador,'pt-BR')));
     }
     const cashMov=path.match(/^\/api\/caixas\/sessoes\/(\d+)\/movimentacoes$/);
     if(cashMov && method==='GET')return respond(db.movimentacoesCaixa.filter(m=>m.caixaId===Number(cashMov[1])));
@@ -420,6 +467,7 @@
   }
   function mountScaleSummary() {
     if(!db.demoEscala || !/\/dashboard(?:\.html)?\/?$/.test(location.pathname))return;
+    if(window.StockOsDesignReview?.mode!=='original')return;
     const anchor=document.getElementById('summary-grid');
     if(!anchor || document.getElementById('stockos-volume-summary'))return;
     const data=db.demoEscala;
@@ -477,7 +525,14 @@
   window.StockOSPreviewHooks=window.StockOSPreviewHooks||{};
   window.StockOSPreviewHooks.dashboard=mountScaleSummary;
   document.addEventListener('DOMContentLoaded',mountScaleSummary);
-  document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(banner));
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.body.appendChild(banner);
+    if(window.StockOsDesignReview?.mode!=='original'){
+      banner.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 20px;padding:8px 12px;font:12px system-ui;color:var(--ink-3);border:1px solid var(--rule);border-radius:8px;background:var(--paper-raised)';
+      const caption=banner.querySelector('span');if(caption)caption.textContent='Demonstração · dados fictícios';
+      banner.querySelectorAll('select,button').forEach(n=>n.style.cssText='font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:5px 8px');
+    }
+  });
   window.StockOsPreview={
     reset:()=>{try{localStorage.removeItem(KEY);}catch(_){}location.reload();},
     mode:'mock',scenario:mode, getSeedNotes:()=>JSON.parse(JSON.stringify(db.notas))

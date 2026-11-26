@@ -159,6 +159,7 @@
       location.reload();
     });
     document.body.appendChild(control);
+    if(active)control.style.cssText='display:block;margin:8px 20px 16px;padding:7px 12px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);font:12px system-ui;cursor:pointer';
   });
   window.StockOsDesignReview = { mode: active ? 'novo' : 'original', styles: files.slice() };
 })();

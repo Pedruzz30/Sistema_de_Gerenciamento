@@ -49,7 +49,7 @@
         <h1 class="page-title header-title" id="header-title">Fornecedores</h1>
         <p class="page-sub header-sub" id="header-sub">Gerencie cadastros e vincule produtos a fornecedores.</p>
       </div>
-      <div class="topbar-right header-right">
+      <div class="topbar-right header-right supplier-legacy-create">
         <button class="btn btn-accent btn-primary" onclick="abrirModalCadastro()">+ Novo Fornecedor</button>
       </div>
     </header>
@@ -58,23 +58,25 @@
 
     <div class="page-summary-grid fade-up" id="fornecedor-summary"></div>
 
-    <!-- Filtros -->
-    <div class="toolbar fade-up">
-      <div class="search-wrap">
-        <input class="input input-search" type="text" id="busca" placeholder="Buscar fornecedor..." oninput="filtrar()">
+    <!-- Supplier directory: filters and creation belong to the list. -->
+    <div class="table-card supplier-directory fade-up fade-up-1">
+      <div class="table-header supplier-directory-header">
+        <div class="supplier-directory-title">
+          <span class="table-title">Fornecedores cadastrados</span>
+          <span class="table-count" id="table-count">—</span>
+        </div>
+        <button class="btn btn-accent btn-primary supplier-directory-create" type="button" onclick="abrirModalCadastro()">+ Novo fornecedor</button>
       </div>
-      <div class="seg filter-group">
-        <button type="button" class="filter-btn active" onclick="setFiltro('todos', this)">Todos</button>
-        <button type="button" class="filter-btn" onclick="setFiltro('ativos', this)">Ativos</button>
-        <button type="button" class="filter-btn" onclick="setFiltro('inativos', this)">Inativos</button>
-      </div>
-    </div>
-
-    <!-- Tabela -->
-    <div class="table-card fade-up fade-up-1">
-      <div class="table-header">
-        <span class="table-title">Fornecedores Cadastrados</span>
-        <span class="table-count" id="table-count">—</span>
+      <div class="toolbar supplier-directory-toolbar">
+        <div class="search-wrap">
+          <input class="input input-search" type="search" id="busca" aria-label="Buscar fornecedor por nome, CNPJ ou telefone" placeholder="Buscar nome, CNPJ ou telefone..." oninput="filtrar()">
+        </div>
+        <div class="seg filter-group" role="group" aria-label="Status dos fornecedores">
+          <button type="button" class="filter-btn active" data-supplier-filter="todos" aria-pressed="true" onclick="setFiltro('todos', this)">Todos</button>
+          <button type="button" class="filter-btn" data-supplier-filter="ativos" aria-pressed="false" onclick="setFiltro('ativos', this)">Ativos</button>
+          <button type="button" class="filter-btn" data-supplier-filter="inativos" aria-pressed="false" onclick="setFiltro('inativos', this)">Inativos</button>
+          <button type="button" class="filter-btn supplier-unlinked-filter" data-supplier-filter="sem-produtos" aria-pressed="false" onclick="setFiltro('sem-produtos', this)">Sem vínculos</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="table">
@@ -101,72 +103,113 @@
 
 <!-- ── Modal: Cadastrar Fornecedor ── -->
 <div class="modal-overlay" id="modal-cadastro" onclick="fecharModalSeClicouFora(event,'modal-cadastro')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="supplier-create-title">
     <div class="modal-header">
-      <h3 class="modal-title">Novo Fornecedor</h3>
+      <div class="supplier-create-heading">
+        <span class="supplier-create-icon" data-icon="truck" aria-hidden="true"></span>
+        <div><h3 class="modal-title" id="supplier-create-title">Novo fornecedor</h3><p class="supplier-create-subtitle">Cadastre uma empresa para suas operações de compra.</p></div>
+      </div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-cadastro')">×</button>
     </div>
     <div class="modal-body">
+      <div class="supplier-create-section"><strong>Identificação da empresa</strong><small>Nome e CNPJ obrigatórios</small></div>
       <div class="form-group">
-        <label>Nome</label>
-        <input type="text" id="c-nome" placeholder="Ex: Hortifrúti São Paulo">
+        <label for="c-nome">Nome do fornecedor</label>
+        <input type="text" id="c-nome" maxlength="160" autocomplete="organization" placeholder="Ex: Hortifrúti São Paulo" required aria-describedby="supplier-name-help">
+        <small class="supplier-create-help" id="supplier-name-help">Nome utilizado para identificar a empresa no StockOS.</small>
       </div>
-      <div class="form-group">
-        <label>CNPJ</label>
-        <input type="text" id="c-cnpj" placeholder="Ex: 12.345.678/0001-90">
+      <div class="supplier-create-fields">
+        <div class="form-group">
+          <label for="c-cnpj">CNPJ</label>
+          <input type="text" id="c-cnpj" maxlength="40" placeholder="00.000.000/0000-00" autocomplete="off" spellcheck="false" inputmode="text" required aria-describedby="supplier-cnpj-help">
+          <small class="supplier-create-help" id="supplier-cnpj-help" aria-live="polite">Informe o CNPJ numérico com ou sem pontuação.</small>
+        </div>
+        <div class="form-group">
+          <label for="c-telefone">Telefone <span class="supplier-create-optional">Opcional</span></label>
+          <input type="tel" id="c-telefone" maxlength="40" autocomplete="tel" placeholder="(24) 99999-9999" aria-describedby="supplier-phone-help">
+          <small class="supplier-create-help" id="supplier-phone-help">Contato comercial do fornecedor.</small>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Telefone (opcional)</label>
-        <input type="text" id="c-telefone" placeholder="Ex: (11) 99999-9999">
+      <div class="supplier-create-next">
+        <span class="supplier-create-next-icon" data-icon="link" aria-hidden="true"></span>
+        <div><strong>Após o cadastro</strong><p>O fornecedor será criado como ativo. Você poderá vincular os produtos que ele fornece pela listagem.</p></div>
       </div>
-      <div class="alert-modal" id="alert-cadastro"></div>
+      <div class="alert-modal" id="alert-cadastro" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn-primary" onclick="cadastrarFornecedor()">Cadastrar</button>
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-cadastro')">Cancelar</button>
+      <button class="btn-primary" type="button" id="btn-cadastrar-fornecedor" onclick="cadastrarFornecedor()">Cadastrar fornecedor</button>
     </div>
   </div>
 </div>
 
 <!-- ── Modal: Vincular Produto ── -->
 <div class="modal-overlay" id="modal-vincular" onclick="fecharModalSeClicouFora(event,'modal-vincular')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vincular-titulo">
     <div class="modal-header">
-      <h3 class="modal-title">Vincular Produto</h3>
+      <div><h3 class="modal-title" id="vincular-titulo">Vincular produto</h3><p class="supplier-link-subtitle">Gerencie os produtos fornecidos por esta empresa.</p></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-vincular')">×</button>
     </div>
     <div class="modal-body">
-      <div class="produto-info-card">
-        <div class="produto-info-nome" id="vincular-fornecedor-nome">Fornecedor —</div>
-        <div class="produto-info-qtd" id="vincular-produtos-atuais"></div>
+      <div class="supplier-link-context">
+        <div class="supplier-link-identity">
+          <span class="supplier-link-caption">Fornecedor</span>
+          <strong class="supplier-link-name" id="vincular-fornecedor-nome">Fornecedor —</strong>
+        </div>
+        <span class="supplier-link-count" id="vincular-produtos-atuais" role="status"></span>
       </div>
-      <div class="form-group">
-        <label>Selecionar Produto</label>
-        <select id="vincular-produto-select">
-          <option value="">— carregando produtos —</option>
-        </select>
+      <section id="supplier-link-workspace" hidden>
+        <div class="supplier-link-tabs" role="group" aria-label="Visualizar produtos">
+          <button type="button" data-link-tab="available" aria-pressed="true">Para vincular <strong id="supplier-available-count">—</strong></button>
+          <button type="button" data-link-tab="linked" aria-pressed="false">Já vinculados <strong id="supplier-linked-count">—</strong></button>
+        </div>
+        <div class="supplier-link-tools">
+          <input class="input" id="supplier-link-search" type="search" aria-label="Buscar produtos" placeholder="Buscar nome ou código de barras..." autocomplete="off">
+          <select class="input" id="supplier-link-category" aria-label="Filtrar categoria"></select>
+        </div>
+        <div class="supplier-link-table-wrap" id="supplier-link-results"></div>
+        <div class="supplier-link-pagination"><span id="supplier-link-range" role="status"></span><div><button type="button" id="supplier-link-prev" aria-label="Página anterior">Anterior</button><button type="button" id="supplier-link-next" aria-label="Próxima página">Próxima</button></div></div>
+        <div class="supplier-link-selection" id="supplier-link-selection" aria-live="polite">Nenhum produto selecionado.</div>
+        <button type="button" id="supplier-link-refresh" class="supplier-link-refresh">Atualizar catálogo e vínculos</button>
+      </section>
+      <div class="form-group" id="supplier-link-legacy">
+        <label for="vincular-produto-select">Selecionar produto</label>
+        <select id="vincular-produto-select"><option value="">— carregando produtos —</option></select>
       </div>
-      <div class="alert-modal" id="alert-vincular"></div>
+      <div class="alert-modal" id="alert-vincular" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-vincular')">Cancelar</button>
-      <button class="btn-primary" onclick="confirmarVincular()">Vincular</button>
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-vincular')">Fechar</button>
+      <button class="btn-primary" type="button" id="btn-confirmar-vincular" onclick="confirmarVincular()" disabled>Vincular produto</button>
     </div>
   </div>
 </div>
 
 <!-- ── Modal: Produtos Vinculados ── -->
 <div class="modal-overlay" id="modal-produtos" onclick="fecharModalSeClicouFora(event,'modal-produtos')">
-  <div class="modal modal--narrow">
+  <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="modal-produtos-titulo">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-produtos-titulo">Produtos Vinculados</h3>
+      <div class="supplier-products-heading"><span class="supplier-products-icon" data-icon="box" aria-hidden="true"></span><div><h3 class="modal-title" id="modal-produtos-titulo">Produtos vinculados</h3><p>Consulte o catálogo associado a este fornecedor.</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-produtos')">×</button>
     </div>
     <div class="modal-body">
-      <div id="produtos-lista"></div>
+      <div class="supplier-products-context">
+        <div><span>Fornecedor</span><strong id="supplier-products-name">—</strong></div>
+        <div class="supplier-products-total"><strong id="supplier-products-count">—</strong><span>Produtos vinculados</span></div>
+      </div>
+      <div class="supplier-products-tools">
+        <input class="input" type="search" id="supplier-products-search" placeholder="Buscar nome, código de barras ou ID..." aria-label="Buscar produtos vinculados">
+        <select class="input" id="supplier-products-category" aria-label="Filtrar categoria"><option value="">Todas as categorias</option></select>
+      </div>
+      <div id="produtos-lista" class="supplier-products-results"></div>
+      <div class="supplier-products-pagination"><span id="supplier-products-range" role="status"></span><div><button type="button" id="supplier-products-prev">Anterior</button><button type="button" id="supplier-products-next">Próxima</button></div></div>
+      <p class="supplier-products-note">Os valores são preços cadastrados no StockOS, não custos negociados com o fornecedor.</p>
+      <div id="alert-produtos" class="alert-modal" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-produtos')">Fechar</button>
+      <button type="button" class="btn-secondary" id="supplier-products-refresh">Atualizar lista</button>
+      <button type="button" class="btn-secondary" onclick="fecharModal('modal-produtos')">Fechar</button>
+      <button type="button" class="btn-primary" id="supplier-products-link">Vincular produto</button>
     </div>
   </div>
 </div>

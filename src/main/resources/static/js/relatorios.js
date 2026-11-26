@@ -1,5 +1,6 @@
 /* Relatório do dia e do mês. Os números vêm prontos do servidor; aqui só se monta a página. */
 let modoRelatorio = 'dia';
+let versaoRelatorio = 0;
 
 const moedaRel = valor => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0));
 const numeroRel = valor => String(Number(valor || 0)).replace('.', ',');
@@ -12,9 +13,11 @@ function hojeLocal() {
 
 function escolherModoRelatorio(modo) {
   modoRelatorio = modo;
-  document.getElementById('rel-modo-dia').classList.toggle('pdv-novo-aba--ativa', modo === 'dia');
-  document.getElementById('rel-modo-mes').classList.toggle('pdv-novo-aba--ativa', modo === 'mes');
-  document.getElementById('rel-modo-abc').classList.toggle('pdv-novo-aba--ativa', modo === 'abc');
+  ['dia','mes','abc'].forEach(tipo => {
+    const botao = document.getElementById('rel-modo-' + tipo);
+    botao.classList.toggle('pdv-novo-aba--ativa', tipo === modo);
+    botao.setAttribute('aria-pressed', String(tipo === modo));
+  });
   document.getElementById('rel-data').hidden = modo !== 'dia';
   document.getElementById('rel-mes').hidden = modo !== 'mes';
   document.getElementById('rel-abc-filtros').hidden = modo !== 'abc';
@@ -43,12 +46,22 @@ function andarRelatorio(passo) {
 }
 
 async function carregarRelatorio() {
+  const versao = ++versaoRelatorio;
+  const modo = modoRelatorio;
   const alerta = document.getElementById('alert-relatorio');
+  const cards = document.getElementById('rel-cards');
+  const imprimir = document.getElementById('btn-imprimir-relatorio');
   alerta.className = 'alert-modal';
-  alerta.textContent = '';
-  const url = modoRelatorio === 'dia'
+  alerta.textContent = 'Carregando relatório…';
+  imprimir.disabled = true;
+  cards.setAttribute('aria-busy', 'true');
+  cards.replaceChildren();
+  document.getElementById('rel-titulo').textContent = '';
+  document.getElementById('rel-grade').hidden = true;
+  document.getElementById('rel-abc').hidden = true;
+  const url = modo === 'dia'
     ? `/api/relatorios/dia?data=${encodeURIComponent(document.getElementById('rel-data').value)}`
-    : modoRelatorio === 'mes'
+    : modo === 'mes'
       ? `/api/relatorios/mes?mes=${encodeURIComponent(document.getElementById('rel-mes').value)}`
       : `/api/relatorios/abc?inicio=${encodeURIComponent(document.getElementById('rel-abc-inicio').value)}`
         + `&fim=${encodeURIComponent(document.getElementById('rel-abc-fim').value)}`
@@ -56,11 +69,22 @@ async function carregarRelatorio() {
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Não foi possível montar o relatório.'));
-    if (modoRelatorio === 'abc') renderAbc(await resp.json());
-    else renderRelatorio(await resp.json());
+    const dados = await resp.json();
+    if (versao !== versaoRelatorio) return;
+    if (modo === 'abc') renderAbc(dados);
+    else renderRelatorio(dados);
+    document.getElementById('rel-grade').hidden = modo === 'abc';
+    document.getElementById('rel-abc').hidden = modo !== 'abc';
+    imprimir.disabled = false;
+    alerta.textContent = '';
   } catch (error) {
+    if (versao !== versaoRelatorio) return;
+    cards.replaceChildren();
+    document.getElementById('rel-titulo').textContent = '';
     alerta.textContent = error.message;
     alerta.className = 'alert-modal error';
+  } finally {
+    if (versao === versaoRelatorio) cards.setAttribute('aria-busy', 'false');
   }
 }
 
