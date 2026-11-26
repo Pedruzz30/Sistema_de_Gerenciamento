@@ -140,3 +140,7 @@ Identificação e categoria agrupadas; preço, tipo, disponibilidade, ordem e a�
 ## Vínculos de fornecedor
 
 Modal amplo com catálogo e vínculos em abas, busca por nome/código de barras/ID, categoria, paginação de sete itens e seleção única explícita. Preço apresentado é o preço cadastrado, não custo negociado. Consulta atualizada antes de selecionar e após confirmar. Falha ambígua exige nova consulta. Não inclui remoção nem operação em lote; mantém endpoint, autorização e semântica existentes. Produtos inativos identificados sem introduzir restrição não definida pelo servidor.
+
+## Visão de fornecedores
+
+Cabeçalho compacto, ação de cadastro dentro da lista, quatro métricas em superfície única, filtros integrados ao painel de tabela, contadores globais independentes da pesquisa. Busca por nome, CNPJ ou telefone, inclusive números sem formatação. Filtro sem vínculos considera apenas listas de produtos conhecidas e vazias. Sem alteração nos endpoints.

@@ -49,7 +49,7 @@
         <h1 class="page-title header-title" id="header-title">Fornecedores</h1>
         <p class="page-sub header-sub" id="header-sub">Gerencie cadastros e vincule produtos a fornecedores.</p>
       </div>
-      <div class="topbar-right header-right">
+      <div class="topbar-right header-right supplier-legacy-create">
         <button class="btn btn-accent btn-primary" onclick="abrirModalCadastro()">+ Novo Fornecedor</button>
       </div>
     </header>
@@ -58,23 +58,25 @@
 
     <div class="page-summary-grid fade-up" id="fornecedor-summary"></div>
 
-    <!-- Filtros -->
-    <div class="toolbar fade-up">
-      <div class="search-wrap">
-        <input class="input input-search" type="text" id="busca" aria-label="Buscar fornecedor" placeholder="Buscar fornecedor..." oninput="filtrar()">
+    <!-- Supplier directory: filters and creation belong to the list. -->
+    <div class="table-card supplier-directory fade-up fade-up-1">
+      <div class="table-header supplier-directory-header">
+        <div class="supplier-directory-title">
+          <span class="table-title">Fornecedores cadastrados</span>
+          <span class="table-count" id="table-count">—</span>
+        </div>
+        <button class="btn btn-accent btn-primary supplier-directory-create" type="button" onclick="abrirModalCadastro()">+ Novo fornecedor</button>
       </div>
-      <div class="seg filter-group">
-        <button type="button" class="filter-btn active" onclick="setFiltro('todos', this)">Todos</button>
-        <button type="button" class="filter-btn" onclick="setFiltro('ativos', this)">Ativos</button>
-        <button type="button" class="filter-btn" onclick="setFiltro('inativos', this)">Inativos</button>
-      </div>
-    </div>
-
-    <!-- Tabela -->
-    <div class="table-card fade-up fade-up-1">
-      <div class="table-header">
-        <span class="table-title">Fornecedores Cadastrados</span>
-        <span class="table-count" id="table-count">—</span>
+      <div class="toolbar supplier-directory-toolbar">
+        <div class="search-wrap">
+          <input class="input input-search" type="search" id="busca" aria-label="Buscar fornecedor por nome, CNPJ ou telefone" placeholder="Buscar nome, CNPJ ou telefone..." oninput="filtrar()">
+        </div>
+        <div class="seg filter-group" role="group" aria-label="Status dos fornecedores">
+          <button type="button" class="filter-btn active" data-supplier-filter="todos" aria-pressed="true" onclick="setFiltro('todos', this)">Todos</button>
+          <button type="button" class="filter-btn" data-supplier-filter="ativos" aria-pressed="false" onclick="setFiltro('ativos', this)">Ativos</button>
+          <button type="button" class="filter-btn" data-supplier-filter="inativos" aria-pressed="false" onclick="setFiltro('inativos', this)">Inativos</button>
+          <button type="button" class="filter-btn supplier-unlinked-filter" data-supplier-filter="sem-produtos" aria-pressed="false" onclick="setFiltro('sem-produtos', this)">Sem vínculos</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="table">

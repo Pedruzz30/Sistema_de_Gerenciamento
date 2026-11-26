@@ -747,3 +747,30 @@ body.fornecedores-page #modal-vincular .supplier-link-count {
 .supplier-link-refresh{justify-self:start;}
 #modal-vincular button:disabled{opacity:.5;cursor:default;}
 @media(max-width:550px){.supplier-link-tools{grid-template-columns:minmax(0,1fr);}.supplier-link-table button,.supplier-link-pagination button{min-height:44px;}}
+
+/* Supplier directory: one compact summary surface, list controls within the list. */
+.supplier-directory-create,.supplier-unlinked-filter{display:none;}
+body.fornecedores-page .app.stockos-shell-v2 .supplier-legacy-create{display:none!important;}
+body.fornecedores-page .app.stockos-shell-v2 .supplier-directory-create{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 13px;font-size:12px;white-space:nowrap;box-shadow:none;}
+body.fornecedores-page .app.stockos-shell-v2 .supplier-unlinked-filter{display:inline-flex;}
+body.fornecedores-page .app.stockos-shell-v2 .main.page>.topbar.header{min-height:70px;padding:12px clamp(14px,2vw,28px);gap:10px;}
+body.fornecedores-page .app.stockos-shell-v2 .topbar .crumbs{display:none;}
+body.fornecedores-page .app.stockos-shell-v2 .topbar .page-title{font-size:23px;line-height:1.2;}
+body.fornecedores-page .app.stockos-shell-v2 .topbar .page-sub{font-size:11px;line-height:1.4;}
+body.fornecedores-page .app.stockos-shell-v2 .main-body.content{display:flex;flex-direction:column;gap:16px;padding-top:16px;}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;border:1px solid var(--rule);border-radius:10px;background:var(--paper-raised);overflow:hidden;}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card{padding:13px 16px;min-height:0;gap:5px;border:0;border-radius:0;background:transparent;box-shadow:none!important;}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card:not(:last-child){border-right:1px solid var(--rule);}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-label{font-size:12px;font-weight:600;letter-spacing:0;line-height:1.35;}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-value{font-size:27px;line-height:1.15;}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card[data-tone="active"] .page-summary-value{color:var(--ok);}
+body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-sub{font-size:11px;line-height:1.35;}
+body.fornecedores-page .supplier-directory .supplier-directory-header{background:var(--paper-raised);padding:12px 16px;min-height:0;border-bottom:0;flex-wrap:wrap;}
+.supplier-directory-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;}
+body.fornecedores-page .supplier-directory .supplier-directory-toolbar{border:0;border-radius:0;border-bottom:1px solid var(--rule);margin:0;padding:0 16px 12px;min-height:0;gap:8px 12px;}
+body.fornecedores-page .supplier-directory-toolbar .search-wrap{flex:1 1 270px;max-width:none;min-width:0;}
+body.fornecedores-page .supplier-directory-toolbar .seg.filter-group{margin:0;max-width:100%;flex:0 1 auto;gap:2px;}
+body.fornecedores-page .supplier-directory-toolbar .filter-btn{min-height:32px;font-size:11px;padding:5px 9px;}
+body.fornecedores-page .supplier-directory .table-count{border:0;background:var(--paper-sunk);border-radius:6px;}
+@media(max-width:850px){body.fornecedores-page #fornecedor-summary.supplier-summary-compact{grid-template-columns:repeat(2,minmax(0,1fr));}body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card:nth-child(2n){border-right:0;}body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card:nth-child(-n+2){border-bottom:1px solid var(--rule);}body.fornecedores-page .supplier-directory-toolbar .search-wrap{flex-basis:100%;}}
+@media(max-width:480px){body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card{padding:10px;}.supplier-directory-title{flex-basis:100%;}body.fornecedores-page .app.stockos-shell-v2 .supplier-directory-create{min-height:44px;}body.fornecedores-page .supplier-directory-toolbar .filter-btn{min-height:44px;}}

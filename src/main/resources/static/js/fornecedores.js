@@ -26,11 +26,15 @@ async function carregarFornecedores() {
   try {
     const resp = await fetch('/api/fornecedores');
     if (!resp.ok) throw new Error();
-    todosFornecedores = await resp.json();
+    const dados=await resp.json();
+    if(!Array.isArray(dados))throw new Error('Resposta inválida');
+    todosFornecedores=dados;
     renderTabela();
   } catch {
     document.getElementById('tabela-fornecedores').innerHTML =
       '<tr><td colspan="6" class="empty">Erro ao carregar fornecedores.</td></tr>';
+    document.getElementById('table-count').textContent='Indisponível';
+    document.getElementById('fornecedor-summary').innerHTML='<div class="page-summary-card">Resumo indisponível. Atualize a página para tentar novamente.</div>';
   }
 }
 
@@ -46,52 +50,51 @@ async function carregarProdutos() {
 
 // ── Render ────────────────────────────────────────────────────────────────
 
+function supplierDirectoryModel(records,filter='todos',query=''){
+  const all=Array.isArray(records)?records:[];
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const digits=v=>String(v??'').replace(/\D/g,'');
+  const term=norm(query),numeric=/^[\d\s().\/+-]+$/.test(term)&&digits(term);
+  const active=all.filter(f=>f.ativo===true).length;
+  const linked=all.filter(f=>Array.isArray(f.produtos)&&f.produtos.length>0).length;
+  const unlinked=all.filter(f=>Array.isArray(f.produtos)&&f.produtos.length===0).length;
+  const rows=all.filter(f=>{
+    const state=filter==='todos'||(filter==='ativos'&&f.ativo===true)||(filter==='inativos'&&f.ativo===false)||(filter==='sem-produtos'&&Array.isArray(f.produtos)&&f.produtos.length===0);
+    const search=!term||[f.nome,f.cnpj,f.telefone].some(v=>norm(v).includes(term))||(numeric&&[f.cnpj,f.telefone].some(v=>digits(v).includes(numeric)));
+    return state&&search;
+  });
+  return {rows,total:all.length,active,inactive:all.filter(f=>f.ativo===false).length,linked,unlinked};
+}
 function renderResumo(listaVisivel) {
-  const container = document.getElementById('fornecedor-summary');
-  if (!container) return;
-
-  const ativos = todosFornecedores.filter(f => f.ativo).length;
-  const vinculados = todosFornecedores.filter(f => f.produtos.length > 0).length;
-
-  container.innerHTML = [
-    {
-      label: 'Total de fornecedores',
-      value: todosFornecedores.length,
-      sub: 'Base geral cadastrada no sistema.'
-    },
-    {
-      label: 'Fornecedores ativos',
-      value: ativos,
-      sub: 'Disponíveis para novas notas e vínculos.'
-    },
-    {
-      label: 'Com produtos vinculados',
-      value: vinculados,
-      sub: `${listaVisivel.length} resultado(s) visível(is) no filtro atual.`
-    }
-  ].map(card => `
-    <div class="page-summary-card">
-      <div class="page-summary-label">${card.label}</div>
-      <div class="page-summary-value">${card.value}</div>
-      <div class="page-summary-sub">${card.sub}</div>
-    </div>
-  `).join('');
+  const container=document.getElementById('fornecedor-summary');
+  if(!container)return;
+  const m=supplierDirectoryModel(todosFornecedores);
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  const cards=managed?[
+    {label:'Total de fornecedores',value:m.total,sub:'Cadastros na base',icon:'truck'},
+    {label:'Ativos',value:m.active,sub:'Disponíveis para operação',icon:'check',tone:'active'},
+    {label:'Inativos',value:m.inactive,sub:'Fora de operação',icon:'minus'},
+    {label:'Com produtos vinculados',value:m.linked,sub:m.unlinked+' sem vínculos',icon:'package'}
+  ]:[
+    {label:'Total de fornecedores',value:m.total,sub:'Base geral cadastrada no sistema.'},
+    {label:'Fornecedores ativos',value:m.active,sub:'Disponíveis para novas notas e vínculos.'},
+    {label:'Com produtos vinculados',value:m.linked,sub:m.unlinked+' sem vínculos.'}
+  ];
+  container.classList.toggle('supplier-summary-compact',managed);
+  container.innerHTML=cards.map(c=>'<div class="page-summary-card" data-tone="'+(c.tone||'neutral')+'"><div class="page-summary-label">'+c.label+'</div><div class="page-summary-value">'+c.value+'</div><div class="page-summary-sub">'+c.sub+'</div></div>').join('');
+  const counts={todos:m.total,ativos:m.active,inativos:m.inactive,'sem-produtos':m.unlinked};
+  const labels={todos:'Todos',ativos:'Ativos',inativos:'Inativos','sem-produtos':'Sem vínculos'};
+  document.querySelectorAll('[data-supplier-filter]').forEach(b=>{
+    const key=b.dataset.supplierFilter;
+    b.textContent=labels[key]+(managed?' · '+counts[key]:'');
+    b.classList.toggle('active',key===filtroAtivo);b.setAttribute('aria-pressed',String(key===filtroAtivo));
+  });
 }
 
 function renderTabela() {
-  const busca = document.getElementById('busca').value.toLowerCase();
-  let lista = todosFornecedores.filter(f => {
-    const matchFiltro =
-      filtroAtivo === 'todos' ||
-      (filtroAtivo === 'ativos' && f.ativo) ||
-      (filtroAtivo === 'inativos' && !f.ativo);
-    const matchBusca = !busca ||
-      f.nome.toLowerCase().includes(busca) ||
-      f.cnpj.toLowerCase().includes(busca);
-    return matchFiltro && matchBusca;
-  });
-
-  document.getElementById('table-count').textContent = `${lista.length} fornecedor(es)`;
+  const model=supplierDirectoryModel(todosFornecedores,filtroAtivo,document.getElementById('busca').value);
+  const lista=model.rows;
+  document.getElementById('table-count').textContent=lista.length===model.total?model.total+' '+(model.total===1?'fornecedor':'fornecedores'):lista.length+' de '+model.total+' fornecedores';
   renderResumo(lista);
 
   const tbody = document.getElementById('tabela-fornecedores');
@@ -148,8 +151,7 @@ function renderTabela() {
 
 function setFiltro(tipo, btn) {
   filtroAtivo = tipo;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  document.querySelectorAll('[data-supplier-filter]').forEach(b => { b.classList.toggle('active',b===btn); b.setAttribute('aria-pressed',String(b===btn)); });
   renderTabela();
 }
 

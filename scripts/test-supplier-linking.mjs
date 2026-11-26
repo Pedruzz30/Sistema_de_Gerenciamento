@@ -39,3 +39,26 @@ assert.match(css,/min-height:64px;\s*height:auto;max-height:none;overflow:visibl
 assert.match(css,/#supplier-link-workspace\{display:grid;flex:0 0 auto;/);
 assert.match(css,/\.supplier-link-name\s*\{[^}]*overflow-wrap:anywhere/);
 console.log('PASS supplier identity: dedicated styles, non-shrinking header and catalog, long name wrapping.');
+
+const directoryStart=source.indexOf('function supplierDirectoryModel('),directoryEnd=source.indexOf('function renderResumo(',directoryStart);
+const directory=vm.runInNewContext(source.slice(directoryStart,directoryEnd)+'\nsupplierDirectoryModel;');
+const suppliers=[{nome:'Distribuição Água',cnpj:'12.345/0001-90',telefone:'(24) 99999-1234',ativo:true,produtos:[{id:1}]},{nome:'Café',cnpj:'98.765/0001-00',ativo:false,produtos:[]},{nome:'Sem dados',ativo:true}];
+const overview=directory(suppliers);
+assert.equal(overview.total,3);
+assert.equal(overview.active,2);
+assert.equal(overview.inactive,1);
+assert.equal(overview.linked,1);
+assert.equal(overview.unlinked,1);
+assert.equal(directory(suppliers,'todos','agua').rows.length,1);
+assert.equal(directory(suppliers,'todos','12345000190').rows.length,1);
+assert.equal(directory(suppliers,'todos','24999991234').rows.length,1);
+assert.equal(directory(suppliers,'sem-produtos').rows.length,1);
+assert.equal(directory(suppliers,'inativos','agua').rows.length,0);
+assert.equal(directory(suppliers,'ativos').linked,1);
+assert.equal(directory([], 'todos').total,0);
+assert.match(html,/class="table-card supplier-directory/);
+assert.match(html,/data-supplier-filter="sem-produtos"/);
+assert.match(css,/supplier-summary-compact\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+assert.match(css,/supplier-legacy-create\{display:none!important/);
+assert.match(css,/supplier-directory-toolbar\{border:0/);
+console.log('PASS supplier directory: truthful totals, normalized search, unlinked filter and compact layout.');
