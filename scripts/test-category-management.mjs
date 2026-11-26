@@ -63,3 +63,12 @@ const editorHtml=await readFile('src/main/resources/static/cardapio.html','utf8'
 assert.match(editorHtml,/aria-labelledby="modal-categoria-titulo"/);
 assert.match(editorHtml,/id="categoria-preview-name"/);
 console.log('PASS category editor: normalization preview, field validation, order suggestion and existing payload.');
+
+const statusCss=await readFile('src/main/resources/static/app.css','utf8');
+assert.doesNotMatch(statusCss,/\.stockos-category-status\s*>\s*span\s*\{/);
+assert.match(statusCss,/\.stockos-category-status>span\[aria-hidden="true"\]\{width:6px;height:6px;flex:0 0 6px;/);
+assert.match(editorHtml,/id="categoria-context-state"[^>]*><span aria-hidden="true"><\/span><span id="categoria-context-state-text"><\/span>/);
+assert.match(source,/class="stockos-category-status"[^<]*<span aria-hidden="true"><\/span>/);
+assert.match(layout,/#categoria-context-state-text \{display:inline;width:auto;height:auto;background:none;/);
+assert.match(layout,/#categoria-context-state \{flex:0 0 auto;white-space:nowrap;/);
+console.log('PASS category status regression: only decorative dot is sized, label remains inline.');

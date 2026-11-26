@@ -827,3 +827,8 @@ body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-preview {d
 .stockos-category-modal-warning {font-size:11px;color:var(--warn);line-height:1.4;}
 #modal-categoria #btn-salvar-categoria:disabled {opacity:.55;cursor:wait;}
 @media(max-width:420px) {body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-fields {grid-template-columns:minmax(0,1fr);}}
+
+/* The status label is text, not a second indicator dot. */
+#categoria-context-state {flex:0 0 auto;white-space:nowrap;}
+#categoria-context-items {min-width:0;overflow-wrap:anywhere;}
+#categoria-context-state-text {display:inline;width:auto;height:auto;background:none;line-height:normal;}
