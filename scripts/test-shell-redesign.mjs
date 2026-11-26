@@ -160,3 +160,37 @@ assert.match(relatoriosSource,/imprimir\.disabled = true/);
 assert.match(relatoriosSource,/imprimir\.disabled = false/);
 assert.match(relatoriosSource,/cards\.replaceChildren\(\)/);
 console.log('PASS administrative design scope and report state contracts.');
+
+assert.match(caixasSource,/shellNovo \? '' : botaoPDV/);
+assert.match(caixasSource,/\$\{shellNovo \? botaoPDV : ''\}/);
+assert.match(css,/\.caixa-card-header \.stockos-pdv-entry/);
+const reportIds = ['alert-relatorio','rel-cards','btn-imprimir-relatorio','rel-titulo','rel-grade','rel-abc','rel-data','rel-mes','rel-abc-inicio','rel-abc-fim','rel-abc-criterio'];
+const reportNodes = Object.fromEntries(reportIds.map(id => [id, {
+  textContent:'old',value:'2026-11-26',hidden:false,disabled:false,attrs:{},
+  replaceChildren(){this.textContent='';},setAttribute(k,v){this.attrs[k]=v;}
+}]));
+const reportPending=[], reportRendered=[];
+const reportLoader=relatoriosSource.slice(relatoriosSource.indexOf('async function carregarRelatorio()'),relatoriosSource.indexOf('function tabela('));
+const reportApi=vm.runInNewContext(`let modoRelatorio='dia',versaoRelatorio=0;\n${reportLoader}\n({load:carregarRelatorio,mode:m=>modoRelatorio=m})`,{
+  document:{getElementById:id=>reportNodes[id]},
+  fetch:url=>new Promise(resolve=>reportPending.push({url,resolve})),
+  renderRelatorio:d=>reportRendered.push(d.id),
+  renderAbc:d=>reportRendered.push(d.id),
+  safeReadErrorMessage:async()=>'Falha'
+});
+const reportFirst=reportApi.load();
+assert.equal(reportNodes['btn-imprimir-relatorio'].disabled,true);
+reportApi.mode('mes');
+const reportSecond=reportApi.load();
+reportPending[1].resolve({ok:true,json:async()=>({id:'new'})});
+await reportSecond;
+reportPending[0].resolve({ok:true,json:async()=>({id:'old'})});
+await reportFirst;
+assert.equal(reportRendered.join(','),'new');
+assert.equal(reportNodes['btn-imprimir-relatorio'].disabled,false);
+const reportFailed=reportApi.load();
+reportPending[2].resolve({ok:false});
+await reportFailed;
+assert.ok(reportNodes['btn-imprimir-relatorio'].disabled && reportNodes['rel-grade'].hidden && reportNodes['rel-abc'].hidden);
+assert.equal(reportNodes['alert-relatorio'].textContent,'Falha');
+console.log('PASS visible POS action placement and concurrent report requests.');

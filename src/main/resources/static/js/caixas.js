@@ -195,11 +195,12 @@ function renderCaixas() {
       .join(' · ');
     const qtdVendas   = Number(c.quantidadeVendas || 0);
 
+    const shellNovo = !!document.querySelector('.app.stockos-shell-v2');
+    const botaoPDV = PODE_OPERAR_CAIXA && c.status === 'ABERTO'
+      ? `<button class="btn-sm success stockos-pdv-entry" onclick="abrirPDV(${c.numeroCaixa})">${buttonIcon('cart')}PDV</button>`
+      : '';
     const botoesAbertos = [
-      // PDV substitui o modal simples de venda
-      PODE_OPERAR_CAIXA
-        ? `<button class="btn-sm success stockos-pdv-entry" onclick="abrirPDV(${c.numeroCaixa})">${buttonIcon('cart')}PDV</button>`
-        : '',
+      shellNovo ? '' : botaoPDV,
       PODE_OPERAR_CAIXA
         ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('minus')}Sangria</button>`
         : '',
@@ -217,6 +218,7 @@ function renderCaixas() {
         <div class="caixa-card-header">
           <span class="caixa-num">Caixa ${c.numeroCaixa}</span>
           <span class="badge ${badgeClass}">${statusLabel}</span>
+          ${shellNovo ? botaoPDV : ''}
         </div>
         <div class="caixa-details">
           <div class="caixa-detail-row">

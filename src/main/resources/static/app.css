@@ -4263,10 +4263,18 @@ body.caixas-page .app.stockos-shell-v2 .caixa-detail-row--cash .caixa-detail-val
 body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm {
   min-height:40px;border-radius:var(--stockos-control-radius);font-size:12px;
 }
-body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm.stockos-pdv-entry {
-  flex:1 1 100%;min-height:44px;background:var(--ink);color:var(--paper);border-color:var(--ink);font-size:13px;
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header {flex-wrap:wrap;gap:8px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry {
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  flex:0 0 auto;min-height:44px;padding:8px 15px;margin-left:auto;
+  border:1px solid var(--ink);border-radius:var(--stockos-control-radius);
+  background:var(--ink);color:var(--paper);font-size:13px;font-weight:650;
 }
-body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm.stockos-pdv-entry:hover {opacity:.9;background:var(--ink);color:var(--paper);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry:hover {opacity:.9;background:var(--ink);color:var(--paper);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+@media(max-width:420px) {
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card-header .stockos-pdv-entry {flex:1 1 100%;margin-left:0;}
+}
 body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
 /* Real PDV: only typography, color, border radius, focus. No height, grid or overflow changes. */
 body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell {border-radius:var(--stockos-dialog-radius);}
