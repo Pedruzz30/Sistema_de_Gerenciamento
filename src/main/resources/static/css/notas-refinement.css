@@ -390,3 +390,49 @@ body.notas-page .modal-close:focus-visible {outline:2px solid var(--accent);outl
   body.notas-page .nota-panel,
   body.notas-page .wizard-step-num {animation:none;transition:none;}
 }
+
+/* Purchase note: searchable supplier directory and compact selection summary. */
+#note-supplier-workspace[hidden],#note-supplier-native[hidden]{display:none!important;}
+.note-supplier-subtitle,.note-supplier-step{display:none;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-subtitle{display:block;margin:5px 0 0;color:var(--ink-3);font-size:12px;line-height:1.45;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-step{display:block;color:var(--ink-3);font-size:11px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1{padding:18px;box-shadow:none!important;}
+body.notas-page .app.stockos-shell-v2 #aba-nova .wizard-steps{min-height:52px;padding:10px 14px;margin-bottom:12px;}
+body.notas-page .app.stockos-shell-v2 .main-body.content>.tabs{min-height:40px;margin-bottom:12px;}
+.note-supplier-workspace{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(230px,1fr);gap:14px;align-items:start;min-width:0;}
+.note-supplier-directory,.note-supplier-summary{min-width:0;border:1px solid var(--rule);border-radius:9px;padding:13px;display:grid;gap:11px;}
+.note-supplier-directory-head,.note-supplier-pages{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.note-supplier-directory-head strong,.note-supplier-summary-title strong{font-size:13px;color:var(--ink);}
+.note-supplier-directory-head span,.note-supplier-pages{font-size:11px;color:var(--ink-3);}
+.note-supplier-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;}
+.note-supplier-search-row input{min-width:0;width:100%;min-height:38px;padding:8px 10px;border:1px solid var(--rule-strong);border-radius:7px;background:var(--paper-raised);color:var(--ink);font:inherit;font-size:12px;}
+.note-supplier-results{min-width:0;border:1px solid var(--rule);border-radius:7px;overflow-x:auto;font-size:12px;color:var(--ink-3);}
+.note-supplier-results:not(:has(table)){padding:22px;text-align:center;}
+.note-supplier-table{width:100%;min-width:350px;table-layout:fixed;border-collapse:collapse;}
+.note-supplier-table :is(th,td){padding:9px 10px;text-align:left;overflow-wrap:anywhere;}
+.note-supplier-table :is(th,td):nth-child(1){width:58%;}
+.note-supplier-table :is(th,td):nth-child(2){width:16%;text-align:center;}
+.note-supplier-table :is(th,td):nth-child(3){width:26%;text-align:right;}
+.note-supplier-table th{background:var(--paper-sunk);font-size:11px;font-weight:600;}
+.note-supplier-table td{border-bottom:1px solid var(--rule);color:var(--ink-2);}
+.note-supplier-table tr:last-child td{border-bottom:0;}
+.note-supplier-table td strong{display:block;font-size:12px;color:var(--ink);font-weight:650;}
+.note-supplier-table td small{display:block;font-size:10px;margin-top:4px;color:var(--ink-3);}
+.note-supplier-table .is-selected td{background:var(--accent-soft);}
+.note-supplier-table button{min-height:32px;max-width:100%;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);font:inherit;font-size:11px;cursor:pointer;overflow-wrap:anywhere;}
+.note-supplier-table button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-ink);font-weight:650;}
+.note-supplier-pages>div{display:flex;gap:5px;}
+.note-supplier-summary{background:var(--paper-sunk);}
+.note-supplier-summary-title{display:flex;align-items:center;gap:8px;}
+.note-supplier-summary-title svg{width:17px;height:17px;}
+.note-supplier-selected-name{font-size:15px;font-weight:700;overflow-wrap:anywhere;}
+.note-supplier-summary-meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:8px;margin-top:12px;font-size:11px;color:var(--ink-3);}
+.note-supplier-summary-meta strong{color:var(--ink);text-align:right;overflow-wrap:anywhere;}
+.note-supplier-empty-selection{color:var(--ink-3);font-size:12px;line-height:1.5;padding:8px 0;}
+.note-supplier-next{border-top:1px solid var(--rule);padding-top:11px;font-size:11px;line-height:1.5;color:var(--ink-3);}
+.note-supplier-next strong{color:var(--ink-2);font-size:12px;}
+.note-supplier-next p{margin:5px 0 0;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-actions{justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);}
+#painel-step1 button:disabled{opacity:.5;cursor:default;}
+@media(max-width:900px){.note-supplier-workspace{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:480px){.note-supplier-search-row{grid-template-columns:minmax(0,1fr);}.note-supplier-table button{min-height:44px;}body.notas-page .app.stockos-shell-v2 #painel-step1{padding:12px;}}

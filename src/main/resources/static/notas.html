@@ -114,21 +114,35 @@
 
       <div class="nota-panel fade-up fade-up-1" id="painel-step1">
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 1 - Selecionar Fornecedor</span>
+          <div><span class="nota-panel-title">Selecionar fornecedor</span><p class="note-supplier-subtitle">Escolha a empresa responsável pela compra para iniciar a nota.</p></div>
+          <span class="note-supplier-step">Etapa 1 de 4</span>
         </div>
-        <div class="form-group notes-step-field">
-          <label>Fornecedor Ativo</label>
+        <div class="form-group notes-step-field" id="note-supplier-native">
+          <label for="s1-fornecedor">Fornecedor ativo</label>
           <select id="s1-fornecedor">
             <option value="">— carregando fornecedores —</option>
           </select>
         </div>
-        <div class="alert-modal" id="alert-s1"></div>
-        <div class="actions-inline">
+        <div class="note-supplier-workspace" id="note-supplier-workspace" hidden>
+          <section class="note-supplier-directory" aria-label="Fornecedores ativos">
+            <div class="note-supplier-directory-head"><strong>Fornecedores ativos</strong><span id="note-supplier-count" role="status">—</span></div>
+            <div class="note-supplier-search-row"><input type="search" id="note-supplier-search" placeholder="Buscar nome, CNPJ ou ID..." aria-label="Buscar fornecedor" autocomplete="off"><button type="button" id="note-supplier-refresh" class="btn-secondary">Atualizar</button></div>
+            <div class="note-supplier-results" id="note-supplier-results"></div>
+            <div class="note-supplier-pages"><span id="note-supplier-range" role="status"></span><div><button class="btn-secondary" type="button" id="note-supplier-prev">Anterior</button><button class="btn-secondary" type="button" id="note-supplier-next">Próxima</button></div></div>
+          </section>
+          <aside class="note-supplier-summary" aria-label="Resumo da seleção">
+            <div class="note-supplier-summary-title"><span data-icon="truck" aria-hidden="true"></span><strong>Fornecedor selecionado</strong></div>
+            <div id="note-supplier-selected"></div>
+            <div class="note-supplier-next"><strong>O que acontece a seguir?</strong><p>A nota será aberta como pendente. Na próxima etapa, você poderá adicionar produtos existentes ou cadastrar novos produtos.</p><p>O estoque não é atualizado pela abertura da nota.</p></div>
+          </aside>
+        </div>
+        <div class="alert-modal" id="alert-s1" role="alert"></div>
+        <div class="actions-inline note-supplier-actions">
+          <button class="btn-secondary" onclick="abrirAba('aba-lista')">Cancelar</button>
           <button class="btn-primary" id="btn-step1-avancar" onclick="avancarStep1()">
-            Abrir Nota
+            Abrir nota
             <span class="btn-inline-icon" data-icon="arrowRight"></span>
           </button>
-          <button class="btn-secondary" onclick="abrirAba('aba-lista')">Cancelar</button>
         </div>
       </div>
 

@@ -26,31 +26,93 @@ async function carregarNotas() {
   }
 }
 
+function noteSupplierModel(records,query='',page=1,pageSize=5){
+  if(!Array.isArray(records))return null;
+  const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const unique=new Map();
+  for(const f of records){
+    const id=Number(f?.id);
+    if(Number.isSafeInteger(id)&&id>0&&f.ativo!==false)unique.set(id,{id,name:String(f.nome||'Fornecedor sem nome'),cnpj:String(f.cnpj||''),phone:String(f.telefone||''),count:Array.isArray(f.produtos)?new Set(f.produtos.filter(p=>p?.id!=null).map(p=>String(p.id))).size:null});
+  }
+  const all=[...unique.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')||a.id-b.id);
+  const term=norm(query),digits=term.replace(/\D/g,'');
+  const numeric=/^[0-9.\s\/-]+$/.test(term)&&digits.length>0;
+  const filtered=all.filter(f=>!term||norm([f.name,f.cnpj,f.id].join(' ')).includes(term)||(numeric&&f.cnpj.replace(/\D/g,'').includes(digits)));
+  const size=Math.max(1,Math.floor(Number(pageSize)||5)),pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {all,total:all.length,count:filtered.length,page:current,pages,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+let noteSupplierPage=1,noteSupplierLoadVersion=0,noteSupplierLoading=false,noteSupplierFailed=false,noteOpening=false,noteOpeningUncertain=false;
+function noteSupplierCnpj(raw){
+  return /^\d{14}$/.test(raw)?raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):raw||'—';
+}
+function drawNoteSuppliers(){
+  const get=id=>document.getElementById(id),workspace=get('note-supplier-workspace'),select=get('s1-fornecedor');
+  if(!workspace||!select)return;
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  workspace.hidden=!managed;get('note-supplier-native').hidden=managed;
+  const ready=!noteSupplierLoading&&!noteSupplierFailed;
+  const model=noteSupplierModel(fornecedoresAtivos,get('note-supplier-search').value,noteSupplierPage);
+  const selected=model?.all.find(f=>String(f.id)===select.value);
+  const locked=noteOpening||noteOpeningUncertain;
+  get('btn-step1-avancar').disabled=!ready||!selected||locked;
+  select.disabled=!ready||locked;
+  if(!managed)return;
+  get('note-supplier-count').textContent=ready?model.total+' cadastrados':'—';
+  get('note-supplier-search').disabled=!ready||locked;
+  get('note-supplier-refresh').disabled=noteSupplierLoading||noteOpening;
+  get('note-supplier-prev').disabled=!ready||locked||model.page<=1;
+  get('note-supplier-next').disabled=!ready||locked||model.page>=model.pages;
+  get('note-supplier-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' fornecedores':'0 resultados'):'';
+  const results=get('note-supplier-results'),summary=get('note-supplier-selected'),esc=escapeHtml;
+  if(!ready){results.textContent=noteSupplierLoading?'Consultando fornecedores ativos…':'Não foi possível carregar os fornecedores. Use Atualizar.';summary.textContent='Seleção indisponível.';return;}
+  noteSupplierPage=model.page;
+  summary.innerHTML=selected?'<div class="note-supplier-selected-name">'+esc(selected.name)+'</div><div class="note-supplier-summary-meta"><span>CNPJ</span><strong>'+esc(noteSupplierCnpj(selected.cnpj))+'</strong><span>Telefone</span><strong>'+esc(selected.phone||'—')+'</strong><span>Produtos vinculados</span><strong>'+(selected.count??'—')+'</strong></div>':'<div class="note-supplier-empty-selection">Nenhum fornecedor selecionado. Escolha uma empresa na lista.</div>';
+  if(!model.rows.length){results.textContent=model.total?'Nenhum fornecedor corresponde à pesquisa.':'Nenhum fornecedor ativo cadastrado.';return;}
+  results.innerHTML='<table class="note-supplier-table"><thead><tr><th scope="col">Fornecedor</th><th scope="col">Vínculos</th><th scope="col">Seleção</th></tr></thead><tbody>'+model.rows.map(f=>{
+    const active=selected?.id===f.id;
+    return '<tr'+(active?' class="is-selected"':'')+'><td><strong>'+esc(f.name)+'</strong><small>'+esc(noteSupplierCnpj(f.cnpj))+' · #'+f.id+'</small></td><td>'+(f.count??'—')+'</td><td><button type="button" data-note-supplier="'+f.id+'" aria-pressed="'+active+'" aria-label="Selecionar '+esc(f.name)+'"'+(locked?' disabled':'')+'>'+(active?'Selecionado':'Selecionar')+'</button></td></tr>';
+  }).join('')+'</tbody></table>';
+  results.querySelectorAll('[data-note-supplier]').forEach(b=>b.onclick=()=>{
+    if(noteOpening||noteOpeningUncertain)return;
+    select.value=b.dataset.noteSupplier;drawNoteSuppliers();
+    results.querySelector('[data-note-supplier="'+b.dataset.noteSupplier+'"]')?.focus({preventScroll:true});
+  });
+}
+function bindNoteSupplierControls(){
+  const get=id=>document.getElementById(id);
+  get('note-supplier-search').oninput=()=>{noteSupplierPage=1;drawNoteSuppliers();};
+  get('s1-fornecedor').onchange=drawNoteSuppliers;
+  get('note-supplier-prev').onclick=()=>{noteSupplierPage--;drawNoteSuppliers();};
+  get('note-supplier-next').onclick=()=>{noteSupplierPage++;drawNoteSuppliers();};
+  get('note-supplier-refresh').onclick=()=>void carregarFornecedores();
+}
 async function carregarFornecedores() {
+  const select=document.getElementById('s1-fornecedor');
+  if(!select)return;
+  const version=++noteSupplierLoadVersion;
+  const current=()=>version===noteSupplierLoadVersion&&document.getElementById('s1-fornecedor')===select;
+  noteSupplierLoading=true;noteSupplierFailed=false;
+  bindNoteSupplierControls();drawNoteSuppliers();
   try {
-    const resp = await fetch('/api/fornecedores/ativos');
-    fornecedoresAtivos = await resp.json();
-
-    const select = document.getElementById('s1-fornecedor');
-    const valorSelecionado = notaAtual ? String(notaAtual.fornecedorId) : (select.value || '');
-
-    if (fornecedoresAtivos.length === 0) {
-      select.innerHTML = '<option value="">Nenhum fornecedor ativo cadastrado</option>';
-      return;
-    }
-
-    select.innerHTML =
-      '<option value="">— Selecione um fornecedor —</option>' +
-      fornecedoresAtivos.map((fornecedor) =>
-        `<option value="${fornecedor.id}">${escapeHtml(fornecedor.nome)} (${fornecedor.produtos.length} produto(s))</option>`
-      ).join('');
-
-    if (valorSelecionado) {
-      select.value = valorSelecionado;
-    }
-  } catch {
-    document.getElementById('s1-fornecedor').innerHTML =
-      '<option value="">Erro ao carregar fornecedores</option>';
+    const resp=await fetch('/api/fornecedores/ativos');
+    if(!resp.ok)throw Error('Falha na consulta');
+    const data=await resp.json();
+    if(!Array.isArray(data))throw Error('Resposta inválida');
+    if(!current())return;
+    const selected=notaAtual?String(notaAtual.fornecedorId):select.value;
+    fornecedoresAtivos=data;
+    const model=noteSupplierModel(data);
+    select.replaceChildren();
+    const add=(value,label)=>{const opt=document.createElement('option');opt.value=value;opt.textContent=label;select.appendChild(opt);};
+    add('',model.total?'Selecione um fornecedor':'Nenhum fornecedor ativo cadastrado');
+    model.all.forEach(f=>add(String(f.id),f.name+' ('+(f.count??'—')+' produtos)'));
+    select.value=selected;
+  }catch{
+    if(!current())return;
+    fornecedoresAtivos=[];noteSupplierFailed=true;
+    select.innerHTML='<option value="">Erro ao carregar fornecedores</option>';
+  }finally{
+    if(current()){noteSupplierLoading=false;drawNoteSuppliers();}
   }
 }
 
@@ -134,33 +196,34 @@ function renderTabelaNotas(notas) {
 }
 
 async function avancarStep1() {
-  const btn = document.getElementById('btn-step1-avancar');
-  const fornecedorId = parseInt(document.getElementById('s1-fornecedor').value, 10);
-
-  if (!fornecedorId) {
-    mostrarAlert('alert-s1', 'Selecione um fornecedor ativo.', 'error');
-    return;
+  if(noteOpening||noteOpeningUncertain||stepAtual!==1||notaAtual)return;
+  const btn=document.getElementById('btn-step1-avancar'),select=document.getElementById('s1-fornecedor');
+  const fornecedorId=Number(select.value);
+  if(noteSupplierLoading||noteSupplierFailed||!noteSupplierModel(fornecedoresAtivos).all.some(f=>f.id===fornecedorId)){
+    mostrarAlert('alert-s1','Selecione um fornecedor ativo.', 'error');return;
   }
-
-  setLoading(btn, true);
-  try {
-    const resp = await fetch('/api/notas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fornecedorId })
-    });
-
-    if (!resp.ok) {
-      mostrarAlert('alert-s1', await safeReadErrorMessage(resp, 'Erro ao abrir nota.'), 'error');
-      return;
+  const current=()=>document.getElementById('s1-fornecedor')===select;
+  noteOpening=true;limparAlert('alert-s1');setLoading(btn,true);drawNoteSuppliers();
+  try{
+    const resp=await fetch('/api/notas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fornecedorId})});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      mostrarAlert('alert-s1',await safeReadErrorMessage(resp,'Erro ao abrir nota.'),'error');return;
     }
-
-    notaAtual = await resp.json();
-    limparAlert('alert-s1');
-    irParaStep(2);
-    prepararStep2();
-  } finally {
-    setLoading(btn, false);
+    const result=await resp.json();
+    if(!current())return;
+    if(!result||!result.id)throw Error('Resposta inválida');
+    notaAtual=result;
+    limparAlert('alert-s1');irParaStep(2);prepararStep2();
+  }catch{
+    if(current()){
+      noteOpeningUncertain=true;
+      mostrarAlert('alert-s1','Não foi possível confirmar a abertura. Confira Todas as Notas antes de iniciar outra nota.', 'error');
+    }
+  }finally{
+    noteOpening=false;setLoading(btn,false);
+    if(current())drawNoteSuppliers();
   }
 }
 
@@ -443,6 +506,8 @@ function resetWizard() {
   notaAtual = null;
   irParaStep(1);
   document.getElementById('s1-fornecedor').value = '';
+  document.getElementById('note-supplier-search').value='';
+  noteSupplierPage=1;noteOpeningUncertain=false;drawNoteSuppliers();
   limparFormularioItem();
   limparAlert('alert-s1');
 }
@@ -517,6 +582,7 @@ function irParaStep(step) {
     const el = document.getElementById(`step-${i}`);
     const conn = document.getElementById(`conn-${i}`);
     el.className = 'wizard-step' + (i < step ? ' done' : i === step ? ' active' : '');
+    if(i===step)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');
     if (conn) conn.className = 'wizard-connector' + (i < step ? ' done' : '');
   }
 
@@ -528,6 +594,8 @@ function irParaStep(step) {
 }
 
 function abrirAba(abaId) {
+  if(noteOpening)return;
+  if(abaId==='aba-lista'&&noteOpeningUncertain)void carregarNotas();
   document.querySelectorAll('.tab-panel').forEach((painel) => painel.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach((botao) => botao.classList.remove('active'));
 
@@ -537,6 +605,10 @@ function abrirAba(abaId) {
 }
 
 function iniciarNovaNota() {
+  if(noteOpening)return;
+  if(noteOpeningUncertain&&document.getElementById('aba-nova').classList.contains('active')){
+    mostrarAlert('alert-s1','Confira Todas as Notas antes de reiniciar a abertura.','error');return;
+  }
   resetWizard();
   carregarFornecedores();
   carregarTodosProdutos();

@@ -152,3 +152,7 @@ Identificação e contato em formulário compacto. Validação de CNPJ numérico
 ## Produtos vinculados ao fornecedor
 
 Consulta de vínculos atualizada ao abrir ou solicitar atualização, tabela compacta com nome, ID/código de barras, categoria quando disponível e preço cadastrado em BRL. Busca sem acentos, filtro por categoria e paginação de oito registros. Vínculos e preço informado pelo endpoint de fornecedores prevalecem sobre metadados opcionais do catálogo. Falha de consulta não vira lista vazia; respostas de modais antigos são ignoradas. Atalho para o fluxo existente de vinculação apenas para fornecedor ativo; nenhuma desvinculação ou alteração de backend.
+
+## Nova nota — seleção de fornecedor
+
+Lista pesquisável de fornecedores ativos com CNPJ, contagem de produtos vinculados e paginação de cinco registros. Resumo da seleção em coluna lateral e empilhamento em telas menores. O seletor original mantém o contrato de ID; abertura continua em POST /api/notas. Estados de erro e carregamento distintos, respostas antigas ignoradas, bloqueio de envio concorrente e orientação de conferência da lista em caso de resposta incerta. Nenhuma garantia de idempotência no servidor foi adicionada.
