@@ -148,3 +148,15 @@ assert.match(caixasSource,/stockos-pdv-entry/);
 assert.match(css,/stockos-pdv-entry/);
 assert.match(css,/stockos-shell-v2\) #pdv-shell/);
 console.log('PASS cash and tabs design contracts: selected state, stale response guard, accessible mobile detail and scoped PDV presentation.');
+
+const relatoriosSource = await readFile(new URL('js/relatorios.js', root), 'utf8');
+new vm.Script(relatoriosSource);
+assert.match(css,/\.fornecedores-page,\.notas-page,\.cotacoes-page,\.funcionarios-page,\.logs-page/);
+assert.match(css,/@media screen \{/);
+assert.match(css,/body\.relatorio-page \.stockos-report-screen/);
+assert.match(relatoriosSource,/const versao = \+\+versaoRelatorio/);
+assert.match(relatoriosSource,/if \(versao !== versaoRelatorio\) return;/);
+assert.match(relatoriosSource,/imprimir\.disabled = true/);
+assert.match(relatoriosSource,/imprimir\.disabled = false/);
+assert.match(relatoriosSource,/cards\.replaceChildren\(\)/);
+console.log('PASS administrative design scope and report state contracts.');

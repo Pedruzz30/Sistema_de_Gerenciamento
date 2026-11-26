@@ -43,3 +43,11 @@ Executar `npm run test:shell-redesign`, `npm run test:preview`, `npm run test:de
 - PDV real: somente apresentação (tipografia, bordas, foco e superfície do cabeçalho); manter dimensões, painéis, atalhos e fluxo de cobrança.
 - Comandas: seleção anunciada via aria-pressed, foco preservado em atualizações e acesso direto ao detalhe no mobile. Ignorar respostas atrasadas de outra comanda.
 - Validar no E2E: abrir caixa, visibilidade do PDV, scanner e atalhos existentes, seleção da comanda no celular, cobrança, divisão, desconto e estorno.
+
+
+## Incremento 3 — Relatórios e administração
+
+- Fornecedores, notas, cotações, funcionários e logs: mesma hierarquia de painéis, tabelas, controles, abas e títulos. Mantidos os layouts específicos, inclusive tabelas responsivas e etapas de importação/entrada de nota.
+- Relatórios: página independente para impressão, com a mesma linguagem visual em tela; filtros acessíveis, indicadores e tabelas em painéis. A impressão não recebe a camada de estilo de tela.
+- Relatórios: bloquear a impressão enquanto a consulta não termina, remover números antigos durante uma nova consulta e ignorar respostas de consultas anteriores.
+- Nenhuma modificação de contrato da API, permissões, cálculo financeiro, persistência ou geração de documentos.

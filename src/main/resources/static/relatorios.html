@@ -9,20 +9,21 @@
 </head>
 <body class="folha-codigos-page relatorio-page">
 
+<main class="stockos-report-screen">
 <header class="folha-cabecalho">
   <div>
-    <h1>Relatório</h1>
-    <p>O que entrou no caixa, em que forma, quem vendeu e o que mais saiu.</p>
+    <h1>Relatórios financeiros</h1>
+    <p>Acompanhe faturamento, pagamentos, operadores e desempenho dos produtos.</p>
   </div>
   <div class="folha-acoes">
-    <div class="pdv-novo-abas relatorio-modos">
-      <button type="button" class="pdv-novo-aba pdv-novo-aba--ativa" id="rel-modo-dia" onclick="escolherModoRelatorio('dia')">Dia</button>
-      <button type="button" class="pdv-novo-aba" id="rel-modo-mes" onclick="escolherModoRelatorio('mes')">Mês</button>
-      <button type="button" class="pdv-novo-aba" id="rel-modo-abc" onclick="escolherModoRelatorio('abc')">Curva ABC</button>
+    <div class="pdv-novo-abas relatorio-modos" role="group" aria-label="Período e tipo de relatório">
+      <button type="button" class="pdv-novo-aba pdv-novo-aba--ativa" id="rel-modo-dia" aria-pressed="true" onclick="escolherModoRelatorio('dia')">Dia</button>
+      <button type="button" class="pdv-novo-aba" id="rel-modo-mes" aria-pressed="false" onclick="escolherModoRelatorio('mes')">Mês</button>
+      <button type="button" class="pdv-novo-aba" id="rel-modo-abc" aria-pressed="false" onclick="escolherModoRelatorio('abc')">Curva ABC</button>
     </div>
     <button class="btn btn-secondary btn-sm" type="button" onclick="andarRelatorio(-1)" aria-label="Anterior">◀</button>
-    <input class="input" type="date" id="rel-data" onchange="carregarRelatorio()">
-    <input class="input" type="month" id="rel-mes" onchange="carregarRelatorio()" hidden>
+    <input class="input" type="date" id="rel-data" aria-label="Dia do relatório" onchange="carregarRelatorio()">
+    <input class="input" type="month" id="rel-mes" aria-label="Mês do relatório" onchange="carregarRelatorio()" hidden>
     <span class="relatorio-abc-filtros" id="rel-abc-filtros" hidden>
       <input class="input" type="date" id="rel-abc-inicio" onchange="carregarRelatorio()" aria-label="Início">
       até
@@ -33,7 +34,7 @@
       </select>
     </span>
     <button class="btn btn-secondary btn-sm" type="button" onclick="andarRelatorio(1)" aria-label="Próximo">▶</button>
-    <button class="btn btn-primary" type="button" id="btn-imprimir-relatorio" onclick="window.print()">Imprimir</button>
+    <button class="btn btn-primary" type="button" id="btn-imprimir-relatorio" disabled onclick="window.print()">Imprimir</button>
     <a class="btn btn-secondary" href="/dashboard.html">Voltar</a>
   </div>
 </header>
@@ -41,7 +42,7 @@
 <div class="alert-modal" id="alert-relatorio" role="status" aria-live="polite"></div>
 <h2 class="relatorio-titulo" id="rel-titulo"></h2>
 
-<section class="relatorio-cards" id="rel-cards"></section>
+<section class="relatorio-cards" id="rel-cards" aria-label="Indicadores do período" aria-busy="true"></section>
 
 <section class="relatorio-abc" id="rel-abc" hidden>
   <p class="inline-note" id="rel-abc-explica"></p>
@@ -56,6 +57,8 @@
   <div class="relatorio-bloco relatorio-bloco--largo" id="rel-bloco-operadores"><h3>Por operador</h3><div id="rel-operadores"></div></div>
   <div class="relatorio-bloco relatorio-bloco--largo"><h3>Produtos mais vendidos</h3><div id="rel-produtos"></div></div>
 </section>
+
+</main>
 
 <script src="/js/stockos-auth.js"></script>
 <script src="/js/shared.js"></script>

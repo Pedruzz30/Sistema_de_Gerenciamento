@@ -1643,6 +1643,9 @@ try {
     await dono.waitForURL('**/relatorios.html');
     await botoesLigados(dono);
     await dono.waitForSelector('.relatorio-card');
+    assert.equal(await dono.locator('#rel-cards').getAttribute('aria-busy'), 'false');
+    assert.equal(await dono.locator('#btn-imprimir-relatorio').isEnabled(), true);
+    assert.equal(await dono.locator('#rel-modo-dia').getAttribute('aria-pressed'), 'true');
     const cards = limpar(await dono.textContent('#rel-cards'));
     for (const valor of ['FaturamentoR$ 91,39', 'já sem R$ 4,50 cancelados', 'Vendas5', '1 cancelada', 'Ticket médioR$ 18,28', 'DescontosR$ 1,00', 'Comandas pagas2']) {
       assert.ok(cards.includes(valor), `${valor} nos cartões: ${cards}`);
@@ -1659,6 +1662,14 @@ try {
   await passo(dono, 'Relatorio do mes mostra o dia e imprime sem botoes', async () => {
     await dono.click('#rel-modo-mes');
     await dono.waitForSelector('#rel-dias tbody tr');
+    assert.equal(await dono.locator('#rel-modo-mes').getAttribute('aria-pressed'), 'true');
+    await dono.setViewportSize({width:390,height:844});
+    try {
+      await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await print(dono,'redesign-relatorios-mobile');
+    } finally {
+      await dono.setViewportSize({width:1366,height:650});
+    }
     assert.ok(limpar(await dono.textContent('#rel-dias')).includes('R$ 91,39'));
     await dono.emulateMedia({ media: 'print' });
     assert.equal(await dono.locator('#btn-imprimir-relatorio').isVisible(), false);

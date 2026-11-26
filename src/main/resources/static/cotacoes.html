@@ -70,7 +70,7 @@
         <div class="card-header">
           <span class="card-title">Comparação com Mês Anterior</span>
           <div class="card-tools">
-            <input type="month" id="relatorio-mes" class="compact-control">
+            <input type="month" id="relatorio-mes" aria-label="Mês da cotação" class="compact-control">
             <button class="btn btn-secondary btn-secondary--compact" onclick="carregarRelatorio()">Buscar</button>
           </div>
         </div>
@@ -86,7 +86,7 @@
         <div class="card-header">
           <span class="card-title">Histórico de Preços</span>
           <div class="card-tools">
-            <select id="historico-produto" class="compact-control compact-control--select">
+            <select id="historico-produto" aria-label="Produto para histórico de preços" class="compact-control compact-control--select">
               <option value="">— carregando produtos —</option>
             </select>
             <button class="btn btn-secondary btn-secondary--compact" onclick="carregarHistorico()">Buscar</button>
