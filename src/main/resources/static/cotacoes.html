@@ -50,33 +50,40 @@
         <p class="page-sub header-sub" id="header-sub">Registre e compare preços de compra mês a mês.</p>
       </div>
       <div class="topbar-right header-right">
-        <button class="btn btn-accent btn-primary" onclick="abrirModalCotacao()">+ Registrar Cotação</button>
+
       </div>
     </header>
 
     <div class="main-body content">
 
-    <div class="page-summary-grid fade-up" id="cotacao-summary"></div>
-
-    <!-- Tabs -->
+    <!-- Navigation and action on one row -->
+    <div class="quote-toolbar">
     <div class="tabs fade-up" role="tablist" aria-label="Visualização de cotações">
       <button type="button" class="tab-btn active" id="tab-relatorio" role="tab" aria-controls="aba-relatorio" aria-selected="true" onclick="abrirAba('aba-relatorio')">Relatório Mensal</button>
       <button type="button" class="tab-btn" id="tab-historico" role="tab" aria-controls="aba-historico" aria-selected="false" onclick="abrirAba('aba-historico')">Histórico por Produto</button>
     </div>
 
+    <button type="button" class="btn btn-primary btn-accent" onclick="abrirModalCotacao()">+ Registrar cotação</button>
+    </div>
+    <section class="page-summary-grid fade-up" id="cotacao-summary" aria-label="Indicadores de cotações"></section>
     <!-- Aba: Relatório -->
     <div class="tab-panel active" id="aba-relatorio" role="tabpanel" aria-labelledby="tab-relatorio">
       <div class="card fade-up">
         <div class="card-header">
-          <span class="card-title">Comparação com Mês Anterior</span>
+          <div><span class="card-title">Comparação mensal de preços</span><p class="quote-subtitle" id="quote-period">Compare os preços de compra em dois meses consecutivos.</p></div>
           <div class="card-tools">
             <input type="month" id="relatorio-mes" aria-label="Mês da cotação" class="compact-control">
-            <button class="btn btn-secondary btn-secondary--compact" onclick="carregarRelatorio()">Buscar</button>
+            <button class="btn btn-secondary btn-secondary--compact" id="quote-load-report" onclick="carregarRelatorio()">Consultar mês</button>
           </div>
         </div>
-        <div id="relatorio-container">
-          <div class="empty">Selecione um mês e clique em Buscar para ver o relatório.</div>
+        <div class="quote-filters" id="quote-filters" hidden>
+          <div><label for="quote-search">Pesquisar produto</label><input type="search" id="quote-search" placeholder="Nome ou ID do produto"></div>
+          <div><label for="quote-trend">Variação</label><select id="quote-trend"><option value="">Todas</option><option value="SUBIU">Aumentos</option><option value="CAIU">Reduções</option><option value="ESTAVEL">Estáveis</option><option value="UNKNOWN">Não informada</option></select></div>
+          <div><label for="quote-sort">Ordenar por</label><select id="quote-sort"><option value="high">Maior variação (%)</option><option value="low">Menor variação (%)</option><option value="name">Nome do produto</option></select></div>
+          <button type="button" class="btn btn-secondary" id="quote-clear">Limpar</button>
         </div>
+        <div id="relatorio-container" aria-live="polite"><div class="quote-empty"><strong>Consulte um período</strong><span>Escolha o mês e consulte a comparação com o mês anterior. Apenas produtos com cotação nos dois meses serão comparados.</span></div></div>
+        <div class="quote-pagination" id="quote-pagination" hidden><span id="quote-range" role="status"></span><div><button type="button" class="btn btn-secondary" id="quote-prev">Anterior</button><button type="button" class="btn btn-secondary" id="quote-next">Próxima</button></div></div>
       </div>
     </div>
 
@@ -84,16 +91,17 @@
     <div class="tab-panel" id="aba-historico" role="tabpanel" aria-labelledby="tab-historico">
       <div class="card fade-up">
         <div class="card-header">
-          <span class="card-title">Histórico de Preços</span>
+          <div><span class="card-title">Histórico de preços</span><p class="quote-subtitle">Acompanhe as cotações registradas por produto.</p></div>
           <div class="card-tools">
+            <input type="search" id="quote-history-search" class="compact-control" placeholder="Filtrar produtos..." aria-label="Filtrar produtos do histórico">
             <select id="historico-produto" aria-label="Produto para histórico de preços" class="compact-control compact-control--select">
               <option value="">— carregando produtos —</option>
             </select>
-            <button class="btn btn-secondary btn-secondary--compact" onclick="carregarHistorico()">Buscar</button>
+            <button class="btn btn-secondary btn-secondary--compact" id="quote-load-history" onclick="carregarHistorico()">Consultar histórico</button>
           </div>
         </div>
         <div id="historico-container">
-          <div class="empty">Selecione um produto para ver o histórico de cotações.</div>
+          <div class="quote-empty"><strong>Selecione um produto</strong><span>Pesquise no catálogo e consulte a evolução dos preços e gastos registrados.</span></div>
         </div>
       </div>
     </div>
@@ -104,37 +112,41 @@
 
 <!-- ── Modal: Registrar Cotação ── -->
 <div class="modal-overlay" id="modal-cotacao" onclick="fecharModalSeClicouFora(event,'modal-cotacao')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quote-modal-title">
     <div class="modal-header">
-      <h3 class="modal-title">Registrar Cotação</h3>
+      <h3 class="modal-title" id="quote-modal-title">Registrar cotação</h3>
       <button class="modal-close" type="button" aria-label="Fechar cotação" onclick="fecharModal('modal-cotacao')">✕</button>
     </div>
     <div class="modal-body">
       <div class="field form-group">
-        <label>Produto</label>
+        <label for="quote-register-search">Pesquisar produto</label>
+        <input class="input" type="search" id="quote-register-search" placeholder="Nome, ID ou código de barras">
+        <label for="c-produto">Produto</label>
         <select class="select" id="c-produto">
           <option value="">— carregando produtos —</option>
         </select>
       </div>
       <div class="field form-group">
-        <label>Mês de Referência (AAAA-MM)</label>
+        <label for="c-mes">Mês de referência</label>
         <input class="input" type="month" id="c-mes">
       </div>
       <div class="form-row-2">
         <div class="field form-group">
-          <label>Preço Unitário (R$)</label>
+          <label for="c-preco">Preço unitário (R$)</label>
           <input class="input" type="number" id="c-preco" placeholder="0,00" step="0.01" min="0.01">
         </div>
         <div class="field form-group">
-          <label>Quantidade Comprada</label>
-          <input class="input" type="number" id="c-qtd" placeholder="0" min="1">
+          <label for="c-qtd">Quantidade comprada</label>
+          <input class="input" type="number" id="c-qtd" placeholder="0" min="1" max="2147483647" step="1">
         </div>
       </div>
-      <div class="alert-modal" id="alert-cotacao"></div>
+      <div class="quote-register-total"><span>Gasto estimado</span><strong id="quote-estimate">—</strong></div>
+      <p class="quote-subtitle">Existe uma cotação por produto e mês. Registrar novamente substitui o registro anterior.</p>
+      <div class="alert-modal" id="alert-cotacao" role="alert"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="fecharModal('modal-cotacao')">Cancelar</button>
-      <button class="btn btn-primary" onclick="registrarCotacao()">Registrar</button>
+      <button class="btn btn-primary" id="quote-submit" onclick="registrarCotacao()">Registrar</button>
     </div>
   </div>
 </div>

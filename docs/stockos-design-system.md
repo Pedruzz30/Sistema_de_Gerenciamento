@@ -182,3 +182,7 @@ Cabeçalho próprio, sem estilos herdados do preview; identificação do produto
 ## Recebimento, pagamento e conclusão da nota
 
 Conferência tabular com totais em BRL, resumo lateral e declaração explícita de conferência. Pagamento separado do recebimento, declaração de pagamento já realizado e opção de voltar à listagem. Conclusão mostra identificação, itens e total, com acesso ao detalhe. Operações existentes POST confirmar/pagamento protegidas contra repetição simultânea no cliente; respostas incertas bloqueiam reenvio até consulta GET do status. Nenhuma transferência bancária, alteração de API ou garantia de idempotência no servidor foi adicionada.
+
+## Cotações mensais
+
+Barra de ações compacta, indicadores do relatório consultado (sem estimar dados ausentes), tabela com variações em BRL, filtros, ordenação e paginação local de 15 itens. Consulta mensal explícita para evitar chamadas automáticas ao relatório que percorre o catálogo. Histórico com último preço, variação apenas quando há mês consecutivo e último gasto. Catálogo pesquisável; valores decimais em string do backend e números do preview tratados. Cadastro preserva endpoint e semântica de substituição produto+mês, com confirmação e validação de quantidade inteira/preço até centavos no cliente. Falha incerta bloqueia repetição na janela e orienta consulta do histórico. Sem mudanças no backend.
