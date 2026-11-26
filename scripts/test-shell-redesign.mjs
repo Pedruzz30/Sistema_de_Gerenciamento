@@ -279,3 +279,36 @@ assert.match(dashboard,/destroyReferenceSalesChart\(\)/);
 assert.match(dashboard,/referenceFallback\(rows,compare,plot\)/);
 assert.match(dashboard,/if\(!isCurrent\(\)\|\|!node.isConnected/);
 console.log('PASS sales chart: rounded monetary scales, signed values, centered groups, complete comparisons, exact tooltip dates and offline fallback.');
+
+const kpiGrid={innerHTML:'',closest:()=>({})};
+const kpiContext={
+ document:{getElementById:()=>kpiGrid,querySelector:()=>({})},PERMISSOES:permissions,
+ obterAlertasEstoque:arr=>arr.filter(p=>['CRITICO','SEM_ESTOQUE','BAIXO','MODERADO'].includes(p.nivelEstoque)),
+ temPermissao:()=>true,temAlgumaPermissao:()=>true,iconMarkup:()=>'<svg></svg>',
+ formatarMoedaBR:n=>'R$ '+Number(n).toFixed(2)
+};
+const kpiRender=vm.runInNewContext(extract(dashboard,'function renderSummaryCards(','// No additional API')+'\nrenderSummaryCards;',kpiContext);
+const kpiStock=[{nivelEstoque:'SEM_ESTOQUE'},{nivelEstoque:'CRITICO'},{nivelEstoque:'BAIXO'},{nivelEstoque:'ADEQUADO'}];
+kpiRender(kpiStock,[{numeroCaixa:1,status:'ENCERRADO'},{numeroCaixa:1,status:'ABERTO'},{numeroCaixa:2,status:'ABERTO'}],{totalVendas:4053,ticketMedio:39.74});
+assert.equal((kpiGrid.innerHTML.match(/data-kpi=/g)||[]).length,4);
+assert.match(kpiGrid.innerHTML,/2 críticos · 1 outros/);
+assert.match(kpiGrid.innerHTML,/Ticket médio R\$ 39\.74/);
+assert.match(kpiGrid.innerHTML,/data-kpi="registers" data-state="success"/);
+assert.match(kpiGrid.innerHTML,/stockos-kpi-suffix"> \/ 2/);
+assert.doesNotMatch(kpiGrid.innerHTML,/↑|↓/);
+kpiRender([],[],{totalVendas:null,ticketMedio:null},{produtosDisponiveis:false,caixasDisponiveis:false});
+assert.equal((kpiGrid.innerHTML.match(/Dados indisponíveis/g)||[]).length,4);
+assert.doesNotMatch(kpiGrid.innerHTML,/R\$ 0\.00|Nenhum alerta/);
+kpiRender([{nivelEstoque:'BAIXO'}],[],null);
+assert.match(kpiGrid.innerHTML,/data-kpi="alerts" data-state="warning"/);
+assert.match(kpiGrid.innerHTML,/filtro=baixo/);
+kpiRender([],[],{totalVendas:0,ticketMedio:0});
+assert.match(kpiGrid.innerHTML,/Nenhum alerta/);
+assert.match(kpiGrid.innerHTML,/R\$ 0\.00/);
+kpiContext.temPermissao=()=>false;kpiContext.temAlgumaPermissao=()=>true;
+// Evaluate a fresh context to ensure permission filtering in the VM.
+vm.runInNewContext(extract(dashboard,'function renderSummaryCards(','// No additional API')+'\nrenderSummaryCards([],[],null);',kpiContext);
+assert.doesNotMatch(kpiGrid.innerHTML,/data-kpi="products"|data-kpi="alerts"/);
+assert.match(kpiGrid.innerHTML,/data-kpi="sales"/);
+assert.match(css,/stockos-kpi-heading/);
+console.log('PASS compact KPI panel: factual statuses, permission filtering, deduplicated registers and unavailable values.');

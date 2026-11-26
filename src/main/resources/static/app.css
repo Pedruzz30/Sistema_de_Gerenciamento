@@ -4453,15 +4453,55 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-panel {min-width:0;
 .stockos-reference-legend {display:flex;gap:15px;font-size:10px;color:var(--ink-3);margin-top:7px;}
 .stockos-reference-legend span::before {content:'';display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:5px;}
  .stockos-reference-legend .previous::before {background:var(--accent);opacity:.28;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:1px;margin:0;min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--rule);overflow:hidden;}
+
+/* Compact 2x2 KPI panel: one scan line, one number, one factual detail. */
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(118px,1fr);
+  gap:1px;margin:0;min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--rule);overflow:hidden;
+}
 body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid:empty {display:none;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .summary-card {min-height:0;padding:13px 16px;border:0;border-radius:0;box-shadow:none!important;background:var(--paper-raised);display:flex;flex-direction:column;justify-content:center;gap:5px;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-card-top {display:flex;flex-direction:column-reverse;align-items:flex-start;gap:6px;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-icon {width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-icon svg {width:16px;height:16px;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-label {font-size:12px;font-weight:550;text-transform:none;letter-spacing:0;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-value {font-size:clamp(20px,2.05vw,28px);line-height:1.15;overflow-wrap:anywhere;margin:0;}
-body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-trend {font-size:10px;margin:0;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi {
+  min-height:0;min-width:0;padding:clamp(14px,1.4vw,20px);
+  border:0;border-radius:0;box-shadow:none!important;background:var(--paper-raised);
+  display:flex;flex-direction:column;justify-content:center;gap:12px;text-decoration:none;
+  transform:none;transition:background 150ms ease;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi:hover {background:var(--paper-sunk);box-shadow:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi:focus-visible {outline:2px solid var(--accent);outline-offset:-3px;z-index:1;}
+.stockos-kpi-heading {display:flex;align-items:center;gap:9px;min-width:0;}
+.stockos-kpi-icon {display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:var(--paper-sunk);color:var(--ink-2);}
+.stockos-kpi-icon svg {width:17px;height:17px;}
+.stockos-kpi-arrow {display:grid;place-items:center;flex:0 0 16px;margin-left:auto;color:var(--ink-4);}
+.stockos-kpi-arrow svg {width:14px;height:14px;}
+.stockos-kpi--sales .stockos-kpi-icon {background:var(--accent-soft);color:var(--accent-ink);}
+.stockos-kpi[data-state="success"] .stockos-kpi-icon {background:var(--ok-soft);color:var(--ok);}
+.stockos-kpi[data-state="warning"] .stockos-kpi-icon {background:var(--warn-soft);color:var(--warn);}
+.stockos-kpi[data-state="danger"] .stockos-kpi-icon {background:var(--bad-soft);color:var(--bad);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-label {
+  font-size:12px;font-weight:600;line-height:1.3;text-transform:none;letter-spacing:0;overflow-wrap:anywhere;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-value {
+  font-family:var(--font-ui);font-size:clamp(23px,2.1vw,30px);font-weight:700;line-height:1.1;
+  letter-spacing:-.035em;overflow-wrap:anywhere;margin:0;color:var(--ink);font-variant-numeric:tabular-nums;
+}
+.stockos-kpi-suffix {font-size:.57em;font-weight:550;color:var(--ink-3);letter-spacing:0;}
+.stockos-kpi-detail {display:flex;align-items:baseline;gap:6px;color:var(--ink-3);font-size:11px;line-height:1.4;min-width:0;overflow-wrap:anywhere;}
+.stockos-kpi-dot {flex:0 0 6px;width:6px;height:6px;border-radius:50%;align-self:center;background:currentColor;}
+.stockos-kpi[data-state="success"] .stockos-kpi-detail {color:var(--ok);}
+.stockos-kpi[data-state="warning"] .stockos-kpi-detail {color:var(--warn);}
+.stockos-kpi[data-state="danger"] .stockos-kpi-detail {color:var(--bad);}
+@media(max-width:1250px) {
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi {gap:10px;padding:14px 12px;}
+  .stockos-kpi-heading {gap:6px;}
+  .stockos-kpi-icon {width:28px;height:28px;flex-basis:28px;}
+}
+@media(max-width:480px) {
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .stockos-kpi {padding:12px 10px;gap:9px;}
+  .stockos-kpi-arrow {display:none;}
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-label {font-size:11px;}
+  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .summary-value {font-size:clamp(19px,5.2vw,24px);}
+  .stockos-kpi-detail {font-size:10px;}
+}
 .stockos-reference-ranking .stockos-report-link {margin:0;min-height:24px;font-size:11px;}
 .stockos-reference-table {width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;}
 .stockos-reference-table th {background:var(--paper-sunk);font-size:10px;font-weight:550;text-align:left;color:var(--ink-3);padding:8px 7px;white-space:nowrap;}
@@ -4502,7 +4542,6 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-demo-tools {margin-top:14px;p
 }
 @media(max-width:480px) {
  body.dashboard-page .app.stockos-shell-v2 .stockos-reference-panel {padding:12px;}
- body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .summary-card {padding:12px;}
  .stockos-donut {width:94px;flex-basis:94px;}
  .stockos-donut-layout {gap:10px;}
 }

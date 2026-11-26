@@ -72,3 +72,7 @@ Quatro painéis explícitos no HTML: evolução de vendas (7/30 dias ou hoje), q
 ## Gráfico principal de vendas
 
 Chart.js existente, carregado após a primeira renderização local SVG. Eixos monetários arredondados, barras agrupadas e centralizadas, rótulos automáticos, tooltip com data exata de ambos os períodos, tabela acessível e fallback sem dependência de rede. Mostrar variação percentual somente quando os períodos têm registros completos e a base anterior é positiva; o dia atual está em andamento. Descartar renderizações atrasadas e destruir a instância ao sair da rota ou alternar período.
+
+## Painel de indicadores
+
+Grade 2×2 com título e ícone na mesma linha, número central e contexto factual. Cores semânticas apenas para alertas e caixas em operação; não usar setas de tendência sem comparação real. Ticket médio usa o valor da API. Erros de consulta não equivalem a zero.

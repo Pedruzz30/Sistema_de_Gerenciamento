@@ -344,14 +344,21 @@ function renderHeader() {
 // ── Summary cards (Improvement 5: clickable cards) ────────
 function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosDisponiveis: true, caixasDisponiveis: true }) {
   var totalProdutos = produtos.length;
-  var alertas = obterAlertasEstoque(produtos).length;
-  var vendasDia = metricasHoje ? Number(metricasHoje.totalVendas) : null;
-  var caixasAbertos = caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
+  var listaAlertas = obterAlertasEstoque(produtos);
+  var alertas = listaAlertas.length;
+  var criticos = listaAlertas.filter(p => p.nivelEstoque === 'CRITICO' || p.nivelEstoque === 'SEM_ESTOQUE').length;
+  var vendasDia = metricasHoje?.totalVendas != null ? Number(metricasHoje.totalVendas) : null;
+  var ticketMedio = metricasHoje?.ticketMedio != null ? Number(metricasHoje.ticketMedio) : null;
+  var caixasAbertos = new Set(caixas.filter(c => c.status === 'ABERTO').map(c => c.numeroCaixa)).size;
   var totalCaixas = new Set(caixas.map(function (c) { return c.numeroCaixa; })).size || '—';
 
   var cards = [
     {
+      key: 'products',
       label: 'Total de Produtos',
+      compactLabel: 'Produtos',
+      detail: status.produtosDisponiveis ? 'Cadastrados no estoque' : 'Dados indisponíveis',
+      state: status.produtosDisponiveis ? 'neutral' : 'unavailable',
       value: status.produtosDisponiveis ? totalProdutos : '—',
       icon: 'box',
       tone: 'purple',
@@ -361,17 +368,25 @@ function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosD
       href: '/estoque',
     },
     {
+      key: 'alerts',
       label: 'Alertas de Estoque',
+      compactLabel: 'Alertas de estoque',
+      detail: !status.produtosDisponiveis ? 'Dados indisponíveis' : !alertas ? 'Nenhum alerta' : criticos ? criticos + ' críticos · ' + (alertas - criticos) + ' outros' : alertas + ' precisam de atenção',
+      state: !status.produtosDisponiveis ? 'unavailable' : criticos ? 'danger' : alertas ? 'warning' : 'success',
       value: status.produtosDisponiveis ? alertas : '—',
       icon: 'alertTriangle',
       tone: 'red',
       trend: alertas > 0 ? 'down' : 'up',
       trendText: alertas > 0 ? 'precisam de atenção' : 'tudo em ordem',
       perm: PERMISSOES.VER_ESTOQUE,
-      href: alertas > 0 ? '/estoque.html?filtro=critico' : '/estoque.html',
+      href: criticos > 0 ? '/estoque.html?filtro=critico' : alertas > 0 ? '/estoque.html?filtro=baixo' : '/estoque.html',
     },
     {
+      key: 'sales',
       label: 'Vendas do Dia',
+      compactLabel: 'Vendas de hoje',
+      detail: !Number.isFinite(vendasDia) ? 'Dados indisponíveis' : Number.isFinite(ticketMedio) ? 'Ticket médio ' + formatarMoedaBR(ticketMedio) : 'Total líquido de hoje',
+      state: Number.isFinite(vendasDia) ? 'neutral' : 'unavailable',
       value: Number.isFinite(vendasDia) ? formatarMoedaBR(vendasDia) : '—',
       icon: 'wallet',
       tone: 'green',
@@ -381,7 +396,13 @@ function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosD
       href: '/caixas.html',
     },
     {
+      key: 'registers',
       label: 'Caixas Abertos',
+      compactLabel: 'Caixas abertos',
+      detail: !status.caixasDisponiveis ? 'Dados indisponíveis' : caixasAbertos === 0 ? 'Nenhum em operação' : caixasAbertos === 1 ? '1 em operação' : caixasAbertos + ' em operação',
+      state: !status.caixasDisponiveis ? 'unavailable' : caixasAbertos > 0 ? 'success' : 'neutral',
+      compactValue: status.caixasDisponiveis ? String(caixasAbertos) : '—',
+      suffix: status.caixasDisponiveis && typeof totalCaixas === 'number' ? ' / ' + totalCaixas : '',
       value: status.caixasDisponiveis ? caixasAbertos + '/' + totalCaixas : '—',
       icon: 'chart',
       tone: 'cyan',
@@ -393,9 +414,18 @@ function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosD
   ];
 
   var grid = document.getElementById('summary-grid');
+  const compact = !!(grid.closest('.stockos-reference-grid') && document.querySelector('.app.stockos-shell-v2'));
   grid.innerHTML = cards
     .filter(function (c) { return (!c.perm || temPermissao(c.perm)) && (!c.permsAny || temAlgumaPermissao(c.permsAny)); })
     .map(function (c, i) {
+      if (compact) {
+        return '<a class="summary-card summary-card--link stockos-kpi stockos-kpi--' + c.key +
+          '" data-kpi="' + c.key + '" data-state="' + c.state + '" href="' + c.href + '">' +
+          '<div class="stockos-kpi-heading"><span class="stockos-kpi-icon" aria-hidden="true">' + iconMarkup(c.icon) + '</span>' +
+          '<span class="summary-label">' + c.compactLabel + '</span><span class="stockos-kpi-arrow" aria-hidden="true">' + iconMarkup('arrowRight') + '</span></div>' +
+          '<div class="summary-value">' + (c.compactValue ?? c.value) + (c.suffix ? '<span class="stockos-kpi-suffix">' + c.suffix + '</span>' : '') + '</div>' +
+          '<div class="stockos-kpi-detail">' + (c.state === 'success' || c.state === 'danger' || c.state === 'warning' ? '<span class="stockos-kpi-dot" aria-hidden="true"></span>' : '') + c.detail + '</div></a>';
+      }
       var trendIcon = c.trend === 'up' ? '↑' : c.trend === 'down' ? '↓' : '—';
       return '<a class="summary-card summary-card--link fade-up fade-up-' + (i + 1) + '" href="' + c.href + '">' +
              '<span class="summary-card__arrow" aria-hidden="true">' + iconMarkup('arrowRight') + '</span>' +
