@@ -44,3 +44,10 @@ assert.match(html,/class="chart-card stock-category-details"/);
 assert.match(css,/\.revenda-workspace\{display:grid/);
 for(const id of ['r-ean','r-nome','r-categoria','r-preco','r-preco-gelado','r-custo','r-qtd','r-min','r-fardo-qtd','r-fardo-preco','r-fardo-ean','e-nome','e-categoria','e-qtd-minima','e-preco','mov-qtd','btn-confirmar-mov','tabela-produtos','categoria-summary','categoria-chart'])assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
 console.log('PASS inventory workspace models, stock limits, margins, selectors and submission guards.');
+
+assert.match(html,/stock-category-toggle" aria-hidden="true"><svg[^>]*width="22"/);
+assert.match(html,/stock-category-expand">· Expandir/);
+assert.match(html,/stock-category-collapse">· Recolher/);
+assert.match(css,/\.stock-category-toggle\{display:grid;place-items:center;width:36px;height:36px/);
+assert.match(css,/\[open\] \.stock-category-toggle svg\{transform:rotate\(90deg\)/);
+assert.match(css,/summary:focus-visible/);
