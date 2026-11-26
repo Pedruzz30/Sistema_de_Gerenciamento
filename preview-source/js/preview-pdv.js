@@ -195,10 +195,10 @@
       if(processing)return;
       if(pending&&!submitted&&!confirm('O resultado da venda ainda não foi confirmado. Fechar sem tentar confirmar novamente?'))return;
       if(!pending&&!submitted&&cart.size&&!confirm('Descartar o pedido fictício em andamento?'))return;
-      overlay.remove();document.removeEventListener('keydown',keyHandler);if(previousFocus?.isConnected)previousFocus.focus();
+      overlay.remove();document.removeEventListener('keydown',keyHandler,true);if(previousFocus?.isConnected)previousFocus.focus();
     }
     function keyHandler(e){
-      if(!overlay.isConnected){document.removeEventListener('keydown',keyHandler);return;}
+      if(!overlay.isConnected){document.removeEventListener('keydown',keyHandler,true);return;}
       if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();dismiss();return;}
       if(e.key==='Tab'){
         const focusables=[...dialog.querySelectorAll('button:not(:disabled),input:not(:disabled)')].filter(n=>n.getClientRects().length);
