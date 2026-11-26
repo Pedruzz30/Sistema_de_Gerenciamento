@@ -4576,3 +4576,23 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-dashboard-utilities:not([hidd
 .stockos-chart-details > summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
 .stockos-chart-data-wrap {overflow:auto;max-height:200px;margin-top:6px;}
 @media(max-width:480px){.stockos-reference-canvas {height:172px;}.stockos-period-trend {flex-basis:100%;}}
+
+
+/* Ranked items: clear hierarchy and revenue concentration without extra panels. */
+.stockos-ranking-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.stockos-ranking-actions button:disabled {opacity:.55;cursor:default;}
+.stockos-ranking-table th:first-child {width:30px;text-align:center;}
+.stockos-ranking-table :is(th,td):nth-child(2) {text-align:left;white-space:normal;}
+.stockos-ranking-table .stockos-rank-position {font-size:11px;color:var(--ink-3);text-align:center;font-weight:600;}
+.stockos-ranking-table .stockos-rank-revenue {font-weight:650;}
+.stockos-ranking-table .stockos-product-cell {font-weight:550;}
+.stockos-ranking-table .stockos-rank-share {min-width:92px;width:22%;}
+.stockos-rank-meter {display:inline-block;vertical-align:middle;width:clamp(28px,5vw,66px);height:5px;border-radius:4px;background:var(--paper-sunk);overflow:hidden;margin-right:6px;}
+.stockos-rank-meter > span {display:block;height:100%;background:var(--accent);border-radius:inherit;}
+.stockos-rank-percent {font-size:11px;color:var(--ink-2);display:inline-block;min-width:35px;text-align:right;}
+.stockos-rank-footer {display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 14px;border-top:1px solid var(--rule);padding:12px 0 0;margin-top:5px;}
+.stockos-rank-footer-context {display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--ink-3);}
+.stockos-rank-footer-context strong {font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-rank-concentration {font-size:11px;color:var(--ink-3);}
+@media(max-width:1250px) and (min-width:981px) {.stockos-rank-meter {display:none;}.stockos-ranking-table .stockos-rank-share {min-width:58px;width:auto;}}
+@media(max-width:600px) {.stockos-rank-meter {display:none;}.stockos-ranking-table .stockos-rank-share {min-width:58px;width:auto;}.stockos-ranking-table .stockos-product-mark {display:none;}.stockos-ranking-table :is(th,td) {padding-inline:5px;}.stockos-ranking-table .stockos-rank-position {font-size:10px;}}

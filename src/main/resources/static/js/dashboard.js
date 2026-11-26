@@ -810,28 +810,80 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
   void period(PODE_VER_RENTABILIDADE_DASH?7:1);
   if(PODE_VER_RENTABILIDADE_DASH)void reportPromise.then(report=>{
     if(!alive())return;
-    const rank=document.getElementById('stockos-ranking-content');
-    rank.replaceChildren();
-    const products=Array.isArray(report?.produtos)?report.produtos.filter(p=>p?.nome&&Number(p.quantidade)>0&&Number.isFinite(Number(p.valor))).sort((a,b)=>Number(b.quantidade)-Number(a.quantidade)).slice(0,5):[];
-    if(!products.length)referenceMessage(rank,report?.produtosParcial?'Vendas registradas sem detalhamento de produtos.':Array.isArray(report?.produtos)?'Nenhum produto vendido hoje.':'Ranking indisponível.');
-    else{
-      const wrap=referenceNode('div','stockos-movements-wrap');
-      const table=referenceNode('table','stockos-reference-table');
-      const head=referenceNode('thead'),hr=referenceNode('tr');
-      ['Produto','Qtd.','Receita'].forEach(t=>{const th=referenceNode('th','',t);th.scope='col';hr.appendChild(th);});head.appendChild(hr);
-      const body=referenceNode('tbody');
-      products.forEach(p=>{
-        const tr=referenceNode('tr'), name=referenceNode('td');
-        const item=referenceNode('div','stockos-product-cell');
-        const mark=referenceNode('span','stockos-product-mark');mark.innerHTML=iconMarkup('box');
-        item.append(mark,referenceNode('span','',p.nome));name.appendChild(item);
-        tr.append(name,referenceNode('td','',Number(p.quantidade).toLocaleString('pt-BR')),referenceNode('td','',formatarMoedaBR(Number(p.valor))));body.appendChild(tr);
-      });
-      table.append(head,body);wrap.appendChild(table);rank.appendChild(wrap);
-      if(report.produtosParcial)rank.appendChild(referenceNode('p','stockos-reference-note','Ranking parcial: alguns registros fictícios não têm preços por item.'));
-    }
+    renderReferenceRanking(rankPanel,report);
     referenceDonut(document.getElementById('stockos-payment-content'),Array.isArray(report?.porForma)?report.porForma.map(p=>({label:String(p.rotulo),value:Number(p.valor)})):[],formatarMoedaBR,Array.isArray(report?.porForma)?null:'Pagamentos indisponíveis.');
   });
+}
+
+
+function referenceRankingModel(report, order='quantity', limit=5) {
+  if(!Array.isArray(report?.produtos))return null;
+  const valid=report.produtos.filter(p=>p?.nome && p.quantidade!=null && p.valor!=null &&
+    Number.isFinite(Number(p.quantidade)) && Number.isFinite(Number(p.valor)) && Number(p.quantidade)>0)
+    .map(p=>({name:String(p.nome),quantity:Number(p.quantidade),revenue:Number(p.valor)}));
+  const total=valid.reduce((sum,p)=>sum+p.revenue,0);
+  const partial=!!report.produtosParcial || valid.length!==report.produtos.length;
+  // Share refers to revenue from reported products, not necessarily all cash receipts.
+  const shareAvailable=total>0 && !valid.some(p=>p.revenue<0);
+  const sorted=valid.slice().sort((a,b)=>(order==='revenue'?b.revenue-a.revenue||b.quantity-a.quantity:b.quantity-a.quantity||b.revenue-a.revenue)||a.name.localeCompare(b.name,'pt-BR'));
+  const rows=sorted.slice(0,limit).map((p,i)=>({...p,position:i+1,share:shareAvailable?p.revenue/total*100:null}));
+  const topRevenue=rows.reduce((sum,p)=>sum+p.revenue,0);
+  return {rows,total,count:valid.length,partial,topRevenue,topShare:shareAvailable?topRevenue/total*100:null};
+}
+function renderReferenceRanking(panel,report) {
+  const rank=panel.querySelector('#stockos-ranking-content');
+  const buttons=[...panel.querySelectorAll('[data-stockos-rank-order]')];
+  const subtitle=panel.querySelector('#stockos-ranking-subtitle');
+  const pct=v=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(v)+'%';
+  function render(order) {
+    buttons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.stockosRankOrder===order)));
+    subtitle.textContent='Hoje · por '+(order==='revenue'?'receita':'quantidade');
+    const model=referenceRankingModel(report,order);
+    rank.replaceChildren();
+    if(!model || !model.rows.length){
+      referenceMessage(rank,report?.produtosParcial?'Vendas registradas sem detalhamento de produtos.':model?'Nenhum produto vendido hoje.':'Ranking indisponível.');
+      buttons.forEach(b=>b.disabled=true);return;
+    }
+    buttons.forEach(b=>b.disabled=false);
+    const wrap=referenceNode('div','stockos-movements-wrap');
+    const table=referenceNode('table','stockos-reference-table stockos-ranking-table');
+    table.setAttribute('aria-label','Ranking de produtos por '+(order==='revenue'?'receita':'quantidade'));
+    const head=referenceNode('thead'),hr=referenceNode('tr');
+    ['#','Produto','Qtd.','Receita','Participação'].forEach(t=>{
+      const th=referenceNode('th','',t);th.scope='col';
+      if(t===(order==='revenue'?'Receita':'Qtd.'))th.setAttribute('aria-sort','descending');
+      if(t==='Participação')th.title='Participação na receita dos produtos informados';
+      hr.appendChild(th);
+    });head.appendChild(hr);
+    const body=referenceNode('tbody');
+    model.rows.forEach(p=>{
+      const tr=referenceNode('tr'),name=referenceNode('td');
+      const position=referenceNode('td','stockos-rank-position',String(p.position).padStart(2,'0'));
+      const item=referenceNode('div','stockos-product-cell');
+      const mark=referenceNode('span','stockos-product-mark');mark.innerHTML=iconMarkup('box');
+      item.append(mark,referenceNode('span','',p.name));name.appendChild(item);
+      const share=referenceNode('td','stockos-rank-share');
+      if(p.share!=null){
+        const meter=referenceNode('div','stockos-rank-meter');
+        meter.setAttribute('aria-hidden','true');
+        const fill=referenceNode('span','');fill.style.width=p.share+'%';meter.appendChild(fill);
+        share.append(meter,referenceNode('span','stockos-rank-percent',pct(p.share)));
+      }else share.textContent='—';
+      tr.append(position,name,referenceNode('td','',p.quantity.toLocaleString('pt-BR')),referenceNode('td','stockos-rank-revenue',formatarMoedaBR(p.revenue)),share);
+      body.appendChild(tr);
+    });
+    table.append(head,body);wrap.appendChild(table);rank.appendChild(wrap);
+    const footer=referenceNode('div','stockos-rank-footer');
+    const context=referenceNode('div','stockos-rank-footer-context');
+    context.append(referenceNode('span','','Top '+model.rows.length+' de '+model.count+' produtos'),referenceNode('strong','',formatarMoedaBR(model.topRevenue)));
+    footer.appendChild(context);
+    if(model.topShare!=null)footer.appendChild(referenceNode('span','stockos-rank-concentration',pct(model.topShare)+' da receita dos itens'+(model.partial?' informados':'')));
+    rank.appendChild(footer);
+    if(model.partial)rank.appendChild(referenceNode('p','stockos-reference-note','Ranking parcial: nem todos os registros possuem detalhamento válido. Os percentuais consideram apenas os itens informados.'));
+  }
+  buttons.forEach(b=>b.onclick=()=>render(b.dataset.stockosRankOrder));
+  const selected=buttons.find(b=>b.getAttribute('aria-pressed')==='true');
+  render(selected?.dataset.stockosRankOrder||'quantity');
 }
 
 async function carregarRelatorioDashboard(pedir, version) {

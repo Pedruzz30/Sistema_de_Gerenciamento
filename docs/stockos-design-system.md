@@ -76,3 +76,7 @@ Chart.js existente, carregado após a primeira renderização local SVG. Eixos m
 ## Painel de indicadores
 
 Grade 2×2 com título e ícone na mesma linha, número central e contexto factual. Cores semânticas apenas para alertas e caixas em operação; não usar setas de tendência sem comparação real. Ticket médio usa o valor da API. Erros de consulta não equivalem a zero.
+
+## Ranking diário de produtos
+
+Top 5 com posição, ordenação por quantidade ou receita, participação na receita de todos os produtos informados e total do Top 5. Não confundir receita de itens com recebimentos líquidos do caixa. Ranking parcial identificado; sem percentual quando a base é não positiva ou possui valores negativos. Sem consultas adicionais.

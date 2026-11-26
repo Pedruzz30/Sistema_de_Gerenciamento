@@ -1522,6 +1522,12 @@ try {
   await passo(dono, 'Redesign: ranking real, pesquisa e menu recolhível', async () => {
     await dono.waitForSelector('#stockos-daily-ranking tbody tr');
     await esperarTexto(dono, '#stockos-daily-ranking', 'Skol lata 350ml');
+    await dono.locator('[data-stockos-rank-order="revenue"]').click();
+    assert.equal(await dono.locator('[data-stockos-rank-order="revenue"]').getAttribute('aria-pressed'),'true');
+    await dono.waitForSelector('#stockos-daily-ranking th[aria-sort="descending"]');
+    assert.equal(await dono.locator('#stockos-daily-ranking th[aria-sort="descending"]').textContent(),'Receita');
+    await dono.locator('[data-stockos-rank-order="quantity"]').click();
+    assert.equal(await dono.locator('#stockos-daily-ranking th[aria-sort="descending"]').textContent(),'Qtd.');
     await dono.waitForSelector('#stockos-daily-payments .stockos-payment-row');
     for(const days of [7,30,1]){
       await dono.locator('[data-stockos-period="'+days+'"]').click();
