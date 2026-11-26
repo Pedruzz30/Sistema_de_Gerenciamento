@@ -21,3 +21,22 @@ assert.match(source,/filter\.value=String\(id\);search\.value='';aplicarFiltrosI
 assert.match(source,/if\(categoryMutationPending\)return/);
 assert.match(source,/save\.disabled=categoryMutationPending\|\|value==null\|\|value===original/);
 console.log('PASS category management: counts, ordering, validation, links and mutation guard.');
+
+const renderSource=source.slice(source.indexOf('function renderManagedCategories('),source.indexOf('function renderCategorias()'));
+const render=vm.runInNewContext(source.slice(start,end)+'\n'+renderSource+'\nrenderManagedCategories;',{
+  escapeHtml:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),
+  iconMarkup:()=>'<svg></svg>'
+});
+const tbody={innerHTML:'',querySelectorAll:()=>[]};
+render(tbody,[{id:1,nomeExibicao:'Pratos',codigo:'PRATOS',ordemExibicao:1,ativo:true}],items);
+assert.match(tbody.innerHTML,/2 itens/);
+assert.match(tbody.innerHTML,/1 ativo · 1 inativo/);
+assert.match(tbody.innerHTML,/aria-label="Ver itens de Pratos"/);
+assert.match(tbody.innerHTML,/stockos-category-item-link">Ver itens/);
+assert.match(tbody.innerHTML,/data-category-action="order" disabled/);
+const layout=await readFile('src/main/resources/static/css/cardapio-refinement.css','utf8');
+assert.match(layout,/table-layout:fixed;width:100%;min-width:760px/);
+const widths=[...layout.matchAll(/:nth-child\([1-5]\) \{width:(\d+)%;\}/g)].map(m=>Number(m[1]));
+assert.equal(widths.length,5);
+assert.equal(widths.reduce((a,b)=>a+b,0),100);
+console.log('PASS category layout: proportional columns, explicit item navigation, real item counts.');

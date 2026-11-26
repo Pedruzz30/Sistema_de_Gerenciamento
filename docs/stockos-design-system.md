@@ -124,3 +124,7 @@ Identificação do usuário autenticado, número inteiro positivo e sugestões b
 ## Categorias do cardápio
 
 Ordem explícita com salvamento somente quando alterada, contagem de itens cadastrados e ativos (não equivale à disponibilidade operacional), acesso ao filtro de itens, status textual e ações rotuladas. Desativação exige confirmação na interface nova. Reutilizar endpoints existentes e bloquear mutações simultâneas de ordem/status no cliente. Ordem inteira não negativa dentro do limite de int Java.
+
+### Distribuição espacial da tabela de categorias
+
+Colunas proporcionais (17% ordem, 26% categoria, 26% itens, 12% status, 19% ações), cabeçalho compacto e link explícito de itens. A contagem distingue ativos e inativos, sem implicar disponibilidade de venda. Tabela nativa com rolagem interna em painéis estreitos; sem alteração das operações de persistência.
