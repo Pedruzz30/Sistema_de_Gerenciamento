@@ -204,6 +204,7 @@ async function carregarDados() {
   const produtosAtuais = produtosDisponiveis ? produtos : [];
   const caixasAtuais = caixasDisponiveis ? caixas : [];
   renderSummaryCards(produtosAtuais, caixasAtuais, metricas, { produtosDisponiveis, caixasDisponiveis });
+  renderDashboardOverview(caixasAtuais, metricas, caixasDisponiveis);
   renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
   renderAlertas(produtosAtuais);
   renderMovimentacoes(movimentacoes);
@@ -350,6 +351,66 @@ function renderSummaryCards(produtos, caixas, metricasHoje, status = { produtosD
              '</div>' +
              '</a>';
     }).join('');
+}
+
+// No additional API or chart dependency is needed on the first screen.
+// Keep all existing analysis charts lazy-loaded in the visual analysis tab.
+function renderDashboardOverview(caixas, metricas, disponivel) {
+  const grid = document.getElementById('summary-grid');
+  if (!grid || !document.querySelector('.app.stockos-shell-v2')) return;
+  let overview = grid.closest('.stockos-overview-grid');
+  if (!overview) {
+    overview = document.createElement('section');
+    overview.className = 'stockos-overview-grid';
+    grid.before(overview);
+    overview.appendChild(grid);
+  }
+  const previous = overview.querySelector('.stockos-sales-panel');
+  if (previous) previous.remove();
+  if (!PODE_VER_FINANCEIRO_DASH) return;
+
+  const element = (tag, cls, content) => {
+    const node = document.createElement(tag);
+    node.className = cls;
+    if (content != null) node.textContent = content;
+    return node;
+  };
+  const panel = element('section', 'stockos-sales-panel');
+  panel.setAttribute('aria-label', 'Vendas por caixa');
+  panel.append(element('h2', 'stockos-sales-title', 'Vendas por caixa'),
+    element('p', 'stockos-sales-sub', 'Total de vendas do dia'));
+  const total = metricas && metricas.totalVendas != null ? Number(metricas.totalVendas) : NaN;
+  panel.appendChild(element('div', 'stockos-sales-total', Number.isFinite(total) ? formatarMoedaBR(total) : '—'));
+
+  const rows = (disponivel && Array.isArray(caixas) ? caixas : [])
+    .filter(c => c && c.totalVendas != null && Number.isFinite(Number(c.totalVendas)) &&
+      Number(c.totalVendas) >= 0 && (Number(c.totalVendas) > 0 || c.status === 'ABERTO'))
+    .map(c => ({ label: 'Caixa ' + c.numeroCaixa, value: Number(c.totalVendas) }));
+  if (!rows.length) {
+    panel.appendChild(element('p', 'stockos-sales-empty', disponivel ?
+      'Nenhum caixa com dados de venda ainda.' : 'Não foi possível carregar os dados dos caixas.'));
+  } else {
+    const max = Math.max(1, ...rows.map(row => row.value));
+    const chart = element('div', 'stockos-sales-chart');
+    chart.setAttribute('role', 'list');
+    chart.setAttribute('aria-label', 'Totais informados por caixa');
+    chart.tabIndex = 0;
+    rows.forEach(row => {
+      const column = element('div', 'stockos-sales-column');
+      column.setAttribute('role', 'listitem');
+      column.setAttribute('aria-label', row.label + ': ' + formatarMoedaBR(row.value));
+      const track = element('div', 'stockos-sales-track');
+      track.setAttribute('aria-hidden', 'true');
+      const bar = element('div', 'stockos-sales-bar');
+      bar.style.setProperty('--bar-height', (row.value / max * 100) + '%');
+      track.appendChild(bar);
+      column.append(element('span', 'stockos-sales-value', formatarMoedaBR(row.value)), track,
+        element('span', 'stockos-sales-label', row.label));
+      chart.appendChild(column);
+    });
+    panel.appendChild(chart);
+  }
+  overview.prepend(panel);
 }
 
 function renderAcoesOperacionais(produtos, caixas, status) {
