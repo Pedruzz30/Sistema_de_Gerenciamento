@@ -774,3 +774,33 @@ body.fornecedores-page .supplier-directory-toolbar .filter-btn{min-height:32px;f
 body.fornecedores-page .supplier-directory .table-count{border:0;background:var(--paper-sunk);border-radius:6px;}
 @media(max-width:850px){body.fornecedores-page #fornecedor-summary.supplier-summary-compact{grid-template-columns:repeat(2,minmax(0,1fr));}body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card:nth-child(2n){border-right:0;}body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card:nth-child(-n+2){border-bottom:1px solid var(--rule);}body.fornecedores-page .supplier-directory-toolbar .search-wrap{flex-basis:100%;}}
 @media(max-width:480px){body.fornecedores-page #fornecedor-summary.supplier-summary-compact .page-summary-card{padding:10px;}.supplier-directory-title{flex-basis:100%;}body.fornecedores-page .app.stockos-shell-v2 .supplier-directory-create{min-height:44px;}body.fornecedores-page .supplier-directory-toolbar .filter-btn{min-height:44px;}}
+
+/* Supplier creation: independent, non-shrinking sections; compact field grouping. */
+.supplier-create-icon,.supplier-create-subtitle,.supplier-create-section,.supplier-create-next,.supplier-create-optional{display:none;}
+.supplier-create-fields{display:grid;gap:14px;flex:0 0 auto;min-width:0;}
+.supplier-create-help{font-size:11px;line-height:1.45;color:var(--ink-3);overflow-wrap:anywhere;}
+#supplier-cnpj-help[data-state="error"]{color:var(--bad);}
+#supplier-cnpj-help[data-state="warning"]{color:var(--warn);}
+#supplier-cnpj-help[data-state="valid"]{color:var(--ok);}
+#modal-cadastro #c-cnpj[aria-invalid="true"]{border-color:var(--bad);}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro > .modal{flex-basis:580px;max-width:min(580px,100%)!important;border-radius:12px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro :is(.modal-header,.modal-footer){background:var(--paper-raised);padding:15px 20px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro .modal-body{padding:18px 20px;gap:16px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro .modal-body>*{flex-shrink:0;}
+body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-heading{display:flex;align-items:center;gap:10px;min-width:0;}
+body.fornecedores-page:has(.app.stockos-shell-v2) :is(.supplier-create-icon,.supplier-create-next-icon){display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);}
+.supplier-create-heading svg,.supplier-create-next-icon svg{width:18px;height:18px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-subtitle{display:block;margin:4px 0 0;font-size:11px;line-height:1.4;color:var(--ink-3);}
+body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-section{display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;}
+.supplier-create-section strong{font-size:13px;font-weight:650;color:var(--ink);}
+.supplier-create-section small{font-size:10px;color:var(--ink-3);}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro .form-group label{font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-2);}
+body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-optional{display:inline;font-size:10px;font-weight:400;color:var(--ink-3);margin-left:4px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro .form-group input{min-height:44px;font-size:13px;}
+body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-next{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-sunk);}
+.supplier-create-next strong{font-size:12px;font-weight:650;color:var(--ink);}
+.supplier-create-next p{font-size:11px;line-height:1.45;color:var(--ink-3);margin:3px 0 0;}
+body.fornecedores-page:has(.app.stockos-shell-v2) #btn-cadastrar-fornecedor{color:#fff;background:var(--accent);border-color:var(--accent);min-height:42px;}
+#btn-cadastrar-fornecedor:disabled{opacity:.55;cursor:default;}
+@media(max-width:480px){body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-create-fields{grid-template-columns:minmax(0,1fr);}body.fornecedores-page:has(.app.stockos-shell-v2) #modal-cadastro :is(.modal-header,.modal-footer,.modal-body){padding:14px;}}

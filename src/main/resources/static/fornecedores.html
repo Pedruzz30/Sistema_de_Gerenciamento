@@ -103,29 +103,42 @@
 
 <!-- ── Modal: Cadastrar Fornecedor ── -->
 <div class="modal-overlay" id="modal-cadastro" onclick="fecharModalSeClicouFora(event,'modal-cadastro')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="supplier-create-title">
     <div class="modal-header">
-      <h3 class="modal-title">Novo Fornecedor</h3>
+      <div class="supplier-create-heading">
+        <span class="supplier-create-icon" data-icon="truck" aria-hidden="true"></span>
+        <div><h3 class="modal-title" id="supplier-create-title">Novo fornecedor</h3><p class="supplier-create-subtitle">Cadastre uma empresa para suas operações de compra.</p></div>
+      </div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-cadastro')">×</button>
     </div>
     <div class="modal-body">
+      <div class="supplier-create-section"><strong>Identificação da empresa</strong><small>Nome e CNPJ obrigatórios</small></div>
       <div class="form-group">
-        <label>Nome</label>
-        <input type="text" id="c-nome" placeholder="Ex: Hortifrúti São Paulo">
+        <label for="c-nome">Nome do fornecedor</label>
+        <input type="text" id="c-nome" maxlength="160" autocomplete="organization" placeholder="Ex: Hortifrúti São Paulo" required aria-describedby="supplier-name-help">
+        <small class="supplier-create-help" id="supplier-name-help">Nome utilizado para identificar a empresa no StockOS.</small>
       </div>
-      <div class="form-group">
-        <label>CNPJ</label>
-        <input type="text" id="c-cnpj" placeholder="Ex: 12.345.678/0001-90">
+      <div class="supplier-create-fields">
+        <div class="form-group">
+          <label for="c-cnpj">CNPJ</label>
+          <input type="text" id="c-cnpj" maxlength="40" placeholder="00.000.000/0000-00" autocomplete="off" spellcheck="false" inputmode="text" required aria-describedby="supplier-cnpj-help">
+          <small class="supplier-create-help" id="supplier-cnpj-help" aria-live="polite">Informe o CNPJ numérico com ou sem pontuação.</small>
+        </div>
+        <div class="form-group">
+          <label for="c-telefone">Telefone <span class="supplier-create-optional">Opcional</span></label>
+          <input type="tel" id="c-telefone" maxlength="40" autocomplete="tel" placeholder="(24) 99999-9999" aria-describedby="supplier-phone-help">
+          <small class="supplier-create-help" id="supplier-phone-help">Contato comercial do fornecedor.</small>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Telefone (opcional)</label>
-        <input type="text" id="c-telefone" placeholder="Ex: (11) 99999-9999">
+      <div class="supplier-create-next">
+        <span class="supplier-create-next-icon" data-icon="link" aria-hidden="true"></span>
+        <div><strong>Após o cadastro</strong><p>O fornecedor será criado como ativo. Você poderá vincular os produtos que ele fornece pela listagem.</p></div>
       </div>
-      <div class="alert-modal" id="alert-cadastro"></div>
+      <div class="alert-modal" id="alert-cadastro" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn-primary" onclick="cadastrarFornecedor()">Cadastrar</button>
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-cadastro')">Cancelar</button>
+      <button class="btn-primary" type="button" id="btn-cadastrar-fornecedor" onclick="cadastrarFornecedor()">Cadastrar fornecedor</button>
     </div>
   </div>
 </div>

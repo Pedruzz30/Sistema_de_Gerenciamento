@@ -144,3 +144,7 @@ Modal amplo com catálogo e vínculos em abas, busca por nome/código de barras/
 ## Visão de fornecedores
 
 Cabeçalho compacto, ação de cadastro dentro da lista, quatro métricas em superfície única, filtros integrados ao painel de tabela, contadores globais independentes da pesquisa. Busca por nome, CNPJ ou telefone, inclusive números sem formatação. Filtro sem vínculos considera apenas listas de produtos conhecidas e vazias. Sem alteração nos endpoints.
+
+## Cadastro de fornecedor
+
+Identificação e contato em formulário compacto. Validação de CNPJ numérico espelha o modelo Java, sem consulta à Receita e sem aceitar letras removendo-as silenciosamente; suporte alfanumérico depende de mudança futura do contrato/modelo. Nome e telefone limitados ao tamanho das colunas atuais. Duplicidade é aviso baseado no cache, servidor continua autoridade. Envio único em curso, falha ambígua requer conferência da listagem. Nenhum campo ou endpoint novo.

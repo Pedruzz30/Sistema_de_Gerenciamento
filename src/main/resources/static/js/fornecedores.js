@@ -159,31 +159,75 @@ function filtrar() {
   renderTabela();
 }
 
+// Match the current numeric CNPJ contract. Never strip letters into another identity.
+function supplierCnpjDigits(value){
+  const raw=String(value??'').trim();
+  return /^[0-9.\s\/-]+$/.test(raw)?raw.replace(/\D/g,''):'';
+}
+function supplierCnpjValid(digits){
+  if(!/^\d{14}$/.test(digits)||/^(\d)\1{13}$/.test(digits))return false;
+  const check=weights=>{
+    const sum=weights.reduce((total,w,i)=>total+Number(digits[i])*w,0),remainder=sum%11;
+    return Number(digits[weights.length])===(remainder<2?0:11-remainder);
+  };
+  return check([5,4,3,2,9,8,7,6,5,4,3,2])&&check([6,5,4,3,2,9,8,7,6,5,4,3,2]);
+}
+function supplierFormatCnpj(digits){
+  return /^\d{14}$/.test(digits)?digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):digits;
+}
+function supplierCreateModel(name,cnpj,phone,records=[]){
+  const nome=String(name??'').trim(),raw=String(cnpj??'').trim(),telefone=String(phone??'').trim();
+  const digits=supplierCnpjDigits(raw);
+  const cnpjError=!raw?'Informe o CNPJ.':/[a-z]/i.test(raw)?'Esta versão aceita somente CNPJ numérico.':!digits||digits.length!==14?'Informe os 14 dígitos do CNPJ.':!supplierCnpjValid(digits)?'CNPJ inválido. Confira os dígitos verificadores.':'';
+  const nameError=!nome?'Nome é obrigatório.':nome.length>160?'O nome pode ter até 160 caracteres.':'';
+  const phoneError=telefone.length>40?'O telefone pode ter até 40 caracteres.':'';
+  const duplicate=!cnpjError&&Array.isArray(records)&&records.some(r=>supplierCnpjDigits(r.cnpj)===digits);
+  return {nome,cnpj:digits,telefone,cnpjError,nameError,phoneError,duplicate,error:nameError||cnpjError||phoneError};
+}
+let supplierCreatePending=false,supplierCreateUncertain=false;
+function readSupplierCreate(){
+  const get=id=>document.getElementById(id);
+  return supplierCreateModel(get('c-nome').value,get('c-cnpj').value,get('c-telefone').value,todosFornecedores);
+}
+function updateSupplierCreate(){
+  const model=readSupplierCreate(),input=document.getElementById('c-cnpj'),note=document.getElementById('supplier-cnpj-help');
+  const entered=input.value.trim()!=='';
+  note.textContent=!entered?'Informe o CNPJ numérico com ou sem pontuação.':model.cnpjError|| (model.duplicate?'CNPJ já consta na última consulta. Confira o cadastro existente.':'Dígitos verificadores válidos. Não é uma consulta à Receita Federal.');
+  note.dataset.state=!entered?'neutral':model.cnpjError?'error':model.duplicate?'warning':'valid';
+  input.setAttribute('aria-invalid',String(entered&&!!model.cnpjError));
+  return model;
+}
 async function cadastrarFornecedor() {
-  const nome = document.getElementById('c-nome').value.trim();
-  const cnpj = document.getElementById('c-cnpj').value.trim();
-  const telefone = document.getElementById('c-telefone').value.trim();
-
-  if (!nome) { mostrarAlert('alert-cadastro', 'Nome é obrigatório.', 'error'); return; }
-  if (!cnpj) { mostrarAlert('alert-cadastro', 'CNPJ é obrigatório.', 'error'); return; }
-
-  const btn = document.querySelector('#modal-cadastro .btn-primary');
-  setLoading(btn, true);
-  try {
-    const resp = await fetch('/api/fornecedores', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, cnpj, telefone })
-    });
-    if (!resp.ok) {
-      const err = await safeReadErrorMessage(resp, 'Erro ao cadastrar.');
-      mostrarAlert('alert-cadastro', err, 'error'); return;
+  if(supplierCreatePending||supplierCreateUncertain)return;
+  const model=updateSupplierCreate();
+  if(model.error){mostrarAlert('alert-cadastro',model.error,'error');document.getElementById(model.nameError?'c-nome':model.cnpjError?'c-cnpj':'c-telefone').focus();return;}
+  const modal=document.getElementById('modal-cadastro'),btn=document.getElementById('btn-cadastrar-fornecedor');
+  const fields=['c-nome','c-cnpj','c-telefone'].map(id=>document.getElementById(id));
+  const current=()=>document.getElementById('modal-cadastro')===modal;
+  supplierCreatePending=true;
+  fields.forEach(el=>el.disabled=true);
+  setLoading(btn,true);limparAlert('alert-cadastro');
+  try{
+    const resp=await fetch('/api/fornecedores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:model.nome,cnpj:model.cnpj,telefone:model.telefone})});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      mostrarAlert('alert-cadastro',await safeReadErrorMessage(resp,'Erro ao cadastrar.'),'error');return;
     }
-    fecharModal('modal-cadastro');
-    showToast('Fornecedor cadastrado com sucesso!', 'success');
+    modal.classList.remove('open');
+    showToast('Fornecedor cadastrado com sucesso!','success');
     await carregarFornecedores();
-  } finally {
-    setLoading(btn, false);
+  }catch(error){
+    if(current()){
+      supplierCreateUncertain=true;
+      mostrarAlert('alert-cadastro','Não foi possível confirmar o cadastro. Confira a listagem antes de tentar novamente.','error');
+      await carregarFornecedores();
+    }
+  }finally{
+    supplierCreatePending=false;
+    fields.forEach(el=>el.disabled=false);
+    setLoading(btn,false);
+    if(supplierCreateUncertain){btn.disabled=true;btn.textContent='Confira a listagem';}
   }
 }
 
@@ -394,15 +438,20 @@ function verProdutos(id) {
 // ── Modal helpers ─────────────────────────────────────────────────────────
 
 function abrirModalCadastro() {
+  if(supplierCreatePending)return;
+  supplierCreateUncertain=false;
   limparAlert('alert-cadastro');
-  document.getElementById('c-nome').value = '';
-  document.getElementById('c-cnpj').value = '';
-  document.getElementById('c-telefone').value = '';
-  abrirModal('modal-cadastro');
+  const name=document.getElementById('c-nome'),cnpj=document.getElementById('c-cnpj'),phone=document.getElementById('c-telefone'),btn=document.getElementById('btn-cadastrar-fornecedor');
+  name.value=cnpj.value=phone.value='';
+  btn.disabled=false;btn.textContent='Cadastrar fornecedor';
+  cnpj.oninput=updateSupplierCreate;
+  cnpj.onblur=()=>{const digits=supplierCnpjDigits(cnpj.value);if(digits.length===14)cnpj.value=supplierFormatCnpj(digits);updateSupplierCreate();};
+  updateSupplierCreate();
+  abrirModal('modal-cadastro');name.focus();
 }
 
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
-function fecharModal(id) { if(id==='modal-vincular'){if(linkPending)return;linkVersion++;linkState=null;} document.getElementById(id).classList.remove('open'); }
+function fecharModal(id) { if(id==='modal-cadastro'&&supplierCreatePending)return; if(id==='modal-vincular'){if(linkPending)return;linkVersion++;linkState=null;} document.getElementById(id).classList.remove('open'); }
 function fecharModalSeClicouFora(e, id) { if (e.target.id === id) fecharModal(id); }
 function mostrarAlert(id, msg, tipo) {
   const el = document.getElementById(id);
