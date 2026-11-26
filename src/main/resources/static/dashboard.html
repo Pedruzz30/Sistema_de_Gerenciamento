@@ -122,15 +122,15 @@
                     <div class="perm-section card fade-up" id="section-movimentacoes">
                         <div class="card-header">
                             <span class="card-title">Movimentações Recentes</span>
-                            <span class="card-badge">Hoje</span>
+                            <div class="stockos-secondary-actions"><span class="card-badge" id="stockos-movement-count">Hoje</span><a class="stockos-secondary-link" href="/estoque.html">Ver estoque</a></div>
                         </div>
                         <div class="mov-list" id="mov-list"></div>
                     </div>
 
                     <div class="perm-section card fade-up" id="section-financeiro">
                         <div class="card-header">
-                            <span class="card-title">Resumo Financeiro</span>
-                            <span class="card-badge">Dia atual</span>
+                            <span class="card-title stockos-legacy-fin-title">Resumo Financeiro</span><span class="card-title stockos-cash-title">Sessões de caixa</span>
+                            <div class="stockos-secondary-actions"><span class="card-badge stockos-legacy-fin-title">Dia atual</span><span class="stockos-secondary-meta" id="stockos-cash-meta"></span><a class="stockos-secondary-link" href="/caixas.html">Ver caixas</a></div>
                         </div>
                         <div class="financial-grid">
                             <div class="fin-card">
@@ -149,6 +149,7 @@
                         <div class="card-header card-header--subtle">
                             <span class="card-title card-title--muted">Status dos Caixas</span>
                         </div>
+                        <p class="stockos-cash-caption">Caixas abertos e sessões registradas hoje.</p>
                         <div class="caixa-list" id="caixa-list"></div>
                     </div>
                 </div>

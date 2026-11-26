@@ -4656,3 +4656,37 @@ body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item:
  body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item {padding:12px;}
 }
 @media(prefers-reduced-motion:reduce) {.stockos-priority-item {transition:none!important;}}
+
+/* Secondary dashboard detail: compact activity and cash session table. */
+.stockos-secondary-link,.stockos-secondary-meta,.stockos-cash-title,.stockos-cash-caption {display:none;}
+body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) {padding:16px;box-shadow:none!important;border-radius:10px;}
+body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) .card-header {margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) .card-title {font-size:15px;font-weight:650;}
+.stockos-secondary-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-secondary-actions .card-badge {background:var(--paper-sunk);border:0;color:var(--ink-3);font-size:10px;font-weight:550;text-transform:none;letter-spacing:0;padding:4px 8px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-secondary-link {display:inline-block;color:var(--accent-ink);font-size:11px;font-weight:650;text-decoration:none;}
+.stockos-secondary-link:hover {text-decoration:underline!important;}
+.stockos-secondary-link:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-secondary-meta {display:inline-block;font-size:11px;color:var(--ink-3);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-cash-title {display:inline;}
+body.dashboard-page .app.stockos-shell-v2 #section-financeiro :is(.stockos-legacy-fin-title,.financial-grid,.card-header--subtle) {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-cash-caption {display:block;font-size:11px;color:var(--ink-3);margin:0 0 10px;}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state {min-height:0;padding:12px 10px;gap:4px;border:0;border-radius:6px;background:var(--paper-sunk);}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state__icon {width:27px;height:27px;background:transparent;border:0;}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state__title {font-size:12px;font-weight:600;}
+body.dashboard-page .app.stockos-shell-v2 #mov-list .empty-state__copy {font-size:11px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-movements-table td {padding-block:10px;}
+.stockos-cash-table .stockos-cash-identity {text-align:left;min-width:115px;white-space:normal;}
+.stockos-cash-identity > :is(strong,span,small) {display:block;line-height:1.4;}
+.stockos-cash-identity > strong {font-size:12px;font-weight:650;}
+.stockos-cash-identity > span {font-size:11px;color:var(--ink-2);overflow-wrap:anywhere;}
+.stockos-cash-identity > small {font-size:9px;color:var(--ink-3);}
+.stockos-cash-state {display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border-radius:5px;background:var(--paper-sunk);color:var(--ink-3);font-size:10px;font-weight:550;}
+.stockos-cash-state.is-open {color:var(--ok);background:var(--ok-soft);}
+.stockos-cash-state.is-open::before {content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.stockos-cash-total {font-weight:650;}
+@media(max-width:600px) {
+ body.dashboard-page .app.stockos-shell-v2 :is(#section-movimentacoes,#section-financeiro) {padding:12px;}
+ .stockos-cash-table :is(th,td) {padding-inline:5px;font-size:11px;}
+ .stockos-cash-table .stockos-cash-identity {min-width:96px;}
+}

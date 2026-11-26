@@ -88,3 +88,7 @@ Pagamentos por valor líquido, ordenados, com percentual, cores fixas por forma 
 ## Próximas ações
 
 Fila compacta ordenada por urgência. A contagem representa grupos de prioridades pendentes (alertas e consultas indisponíveis), não o número de produtos nem os caixas abertos. Caixas em operação e estoque sem alertas são atalhos informativos. Preservar filtros e permissões existentes.
+
+## Detalhes operacionais secundários
+
+Movimentações de hoje com estado vazio compacto e acesso ao estoque; limite de 10 registros recentes. Resumo repetido substituído na experiência nova por sessões de caixa abertas ou com abertura/encerramento hoje. Até oito sessões, operador, estado, contagem de vendas e total líquido acumulado por sessão, não vendas de hoje. Dados ausentes permanecem indisponíveis. Preservar modo original e permissões.

@@ -377,3 +377,24 @@ vm.runInNewContext(priorityCode+'\nrenderAcoesOperacionais([],[],{produtosDispon
 assert.doesNotMatch(priorityNodes['daily-actions-list'].innerHTML,/estoque\.html/);
 assert.match(css,/stockos-priority-action/);
 console.log('PASS operational priorities: semantic urgency, unique open registers, unavailable states and permissions.');
+
+const cashSessionsApi=vm.runInNewContext(extract(dashboard,'function referenceCashSessions(','function renderReferenceCashSessions(')+'\nreferenceCashSessions;',{});
+const cashSample=[
+ {numeroCaixa:1,status:'ABERTO',dataAbertura:'2026-11-25T09:00:00',totalVendas:1081,quantidadeVendas:20,nomeOperador:'Marina'},
+ {numeroCaixa:2,status:'ENCERRADO',dataAbertura:'2026-11-26T09:00:00',totalVendas:1428,quantidadeVendas:30},
+ {numeroCaixa:3,status:'ENCERRADO',dataAbertura:'2026-11-25T09:00:00',dataEncerramento:'2026-11-25T18:00:00',totalVendas:999},
+ {numeroCaixa:4,status:'ABERTO',totalVendas:null,quantidadeVendas:null}
+];
+const cashModel=cashSessionsApi(cashSample,'2026-11-26');
+assert.equal(cashModel.sessions.length,3);
+assert.equal(cashModel.open,2);
+assert.equal(cashModel.sessions.map(s=>s.number).join(','),'1,4,2');
+assert.equal(cashModel.sessions[0].sales,1081);
+assert.equal(cashModel.sessions[1].sales,null);
+assert.equal(cashModel.sessions[1].quantity,null);
+assert.equal(cashSessionsApi(null,'2026-11-26'),null);
+assert.equal(cashSessionsApi([],'2026-11-26').open,0);
+assert.equal(cashSessionsApi([{numeroCaixa:1,status:'ENCERRADO',dataAbertura:'2026-11-25T10:00:00',dataEncerramento:'2026-11-26T09:00:00'}],'2026-11-26').sessions.length,1);
+assert.match(dashboard,/renderFinanceiro\(caixasAtuais, metricas, caixasDisponiveis\)/);
+assert.match(css,/stockos-cash-table/);
+console.log('PASS secondary dashboard: relevant cash sessions, no historical mislabeling, nullable data and open register counts.');

@@ -246,7 +246,7 @@ async function carregarDados() {
   renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
   renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
-  renderFinanceiro(caixasAtuais, metricas);
+  renderFinanceiro(caixasAtuais, metricas, caixasDisponiveis);
   window._dadosProdutos = produtosAtuais;
   window._dadosMov = Array.isArray(movimentacoes) ? movimentacoes : [];
   window._dadosCaixas = caixasAtuais;
@@ -1177,6 +1177,9 @@ function renderAlertas(produtos) {
 function renderMovimentacoes(movimentacoes) {
   var list = document.getElementById('mov-list');
   if (!list) return;
+  const compact = !!document.querySelector?.('.app.stockos-shell-v2');
+  const count = document.getElementById('stockos-movement-count');
+  if (compact && count) count.textContent = Array.isArray(movimentacoes) ? 'Hoje' : 'Indisponível';
   if (!Array.isArray(movimentacoes)) {
     list.innerHTML = emptyStateMarkup({ icon: 'box', title: 'Movimentações indisponíveis', copy: 'Não foi possível carregar o histórico. Atualize a página para tentar novamente.', compact: true });
     return;
@@ -1186,6 +1189,9 @@ function renderMovimentacoes(movimentacoes) {
   var recentesHoje = (movimentacoes || [])
     .filter(m => m && String(m.dataHora || '').slice(0, 10) === hoje)
     .sort((a, b) => String(b.dataHora).localeCompare(String(a.dataHora)));
+  if (compact && count) count.textContent = recentesHoje.length
+    ? recentesHoje.length + ' registro' + (recentesHoje.length===1?'':'s') + ' hoje'
+    : 'Hoje';
   if (recentesHoje.length === 0) {
     list.innerHTML = emptyStateMarkup({
       icon: 'box',
@@ -1196,8 +1202,11 @@ function renderMovimentacoes(movimentacoes) {
     return;
   }
 
-  if (document.querySelector('.app.stockos-shell-v2')) {
+  if (compact) {
     renderRecentMovementTable(list, recentesHoje.slice(0, 10));
+    if (recentesHoje.length>10) {
+      const note=document.createElement('p');note.className='stockos-reference-note';note.textContent='Exibindo 10 dos '+recentesHoje.length+' registros retornados de hoje.';list.appendChild(note);
+    }
     return;
   }
   list.innerHTML = recentesHoje.slice(0, 10).map(function (m) {
@@ -1261,16 +1270,64 @@ function renderRecentMovementTable(list, rows) {
 }
 
 // ── Resumo financeiro (BUG 2: correct ticket médio) ───────
-function renderFinanceiro(caixas, metricasHoje) {
-  var totalVendas = metricasHoje ? Number(metricasHoje.totalVendas) : null;
+function referenceCashSessions(caixas, hoje) {
+  if(!Array.isArray(caixas))return null;
+  const sessions=caixas.filter(c=>c && (c.status==='ABERTO' ||
+    [c.dataAbertura,c.dataEncerramento].some(d=>String(d||'').slice(0,10)===hoje)))
+    .map(c=>({
+      number:String(c.numeroCaixa??'—'),operator:String(c.nomeOperador||'Não informado'),
+      open:c.status==='ABERTO',status:String(c.status||'—'),
+      date:String(c.dataAbertura||'').slice(0,10),time:String(c.dataAbertura||'').slice(11,16),
+      sales:c.totalVendas!=null&&Number.isFinite(Number(c.totalVendas))?Number(c.totalVendas):null,
+      quantity:c.quantidadeVendas!=null&&Number.isFinite(Number(c.quantidadeVendas))?Number(c.quantidadeVendas):null
+    })).sort((a,b)=>Number(b.open)-Number(a.open)||a.number.localeCompare(b.number,'pt-BR',{numeric:true})||
+      (b.date+b.time).localeCompare(a.date+a.time));
+  return {sessions,open:new Set(sessions.filter(s=>s.open).map(s=>s.number)).size};
+}
+function renderReferenceCashSessions(list, caixas, available) {
+  const model=referenceCashSessions(available?caixas:null,dataLocalHojeIso());
+  const meta=document.getElementById('stockos-cash-meta');
+  if(meta)meta.textContent=model?model.open+' em operação':'Indisponível';
+  if(!model||!model.sessions.length){
+    referenceMessage(list,model?'Nenhuma sessão aberta ou registrada hoje.':'Não foi possível consultar os caixas.');
+    return;
+  }
+  const wrap=referenceNode('div','stockos-movements-wrap');
+  const table=referenceNode('table','stockos-reference-table stockos-cash-table');
+  table.setAttribute('aria-label','Sessões abertas e sessões registradas hoje');
+  const head=referenceNode('thead'),hr=referenceNode('tr');
+  ['Caixa / operador','Status','Vendas','Total da sessão'].forEach(label=>{
+    const th=referenceNode('th','',label);th.scope='col';hr.appendChild(th);
+  });
+  head.appendChild(hr);
+  const body=referenceNode('tbody');
+  model.sessions.slice(0,8).forEach(s=>{
+    const tr=referenceNode('tr'),identity=referenceNode('td','stockos-cash-identity');
+    identity.append(referenceNode('strong','','Caixa '+s.number),referenceNode('span','',s.operator));
+    if(s.date)identity.appendChild(referenceNode('small','','Abertura: '+s.date.split('-').reverse().join('/')+(s.time?' · '+s.time:'')));
+    const state=referenceNode('td','');
+    state.appendChild(referenceNode('span','stockos-cash-state'+(s.open?' is-open':''),s.status==='ABERTO'?'Aberto':s.status==='ENCERRADO'||s.status==='FECHADO'?'Encerrado':s.status));
+    tr.append(identity,state,referenceNode('td','',s.quantity==null?'—':s.quantity.toLocaleString('pt-BR')),
+      referenceNode('td','stockos-cash-total',s.sales==null?'—':formatarMoedaBR(s.sales)));
+    body.appendChild(tr);
+  });
+  table.append(head,body);wrap.appendChild(table);list.replaceChildren(wrap);
+  list.appendChild(referenceNode('p','stockos-reference-note',(model.sessions.length>8?'Exibindo 8 de '+model.sessions.length+' sessões. ':'')+'Valores líquidos acumulados por sessão, inclusive quando iniciada antes de hoje.'));
+}
+function renderFinanceiro(caixas, metricasHoje, caixasDisponiveis = true) {
+  var totalVendas = metricasHoje?.totalVendas != null ? Number(metricasHoje.totalVendas) : null;
   var caixasAbertos = metricasHoje ? metricasHoje.caixasAbertos : caixas.filter(function (c) { return c.status === 'ABERTO'; }).length;
-  var ticketMedio = metricasHoje ? Number(metricasHoje.ticketMedio) : null;
+  var ticketMedio = metricasHoje?.ticketMedio != null ? Number(metricasHoje.ticketMedio) : null;
 
   document.getElementById('fin-total-vendas').textContent = Number.isFinite(totalVendas) ? formatarMoedaBR(totalVendas) : '—';
   document.getElementById('fin-caixas-abertos').textContent = caixasAbertos;
   document.getElementById('fin-ticket-medio').textContent = Number.isFinite(ticketMedio) ? formatarMoedaBR(ticketMedio) : '—';
 
   var caixaList = document.getElementById('caixa-list');
+  if (document.querySelector?.('.app.stockos-shell-v2')) {
+    renderReferenceCashSessions(caixaList, caixas, caixasDisponiveis);
+    return;
+  }
   if (caixas.length === 0) {
     caixaList.innerHTML = emptyStateMarkup({
       icon: 'wallet',
