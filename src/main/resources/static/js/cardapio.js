@@ -495,15 +495,48 @@ function preencherSelectProdutos() {
   campoProduto.innerHTML = '<option value="">Sem produto vinculado</option>' + opcoesProdutos;
 }
 
+
+function categoryModalModel(name,code,order) {
+  const nomeExibicao=String(name??'').trim(),codigo=String(code??'').trim();
+  // Preview mirrors the service's NFD, lowercase and underscore normalization.
+  const normalized=(codigo||nomeExibicao).normalize('NFD').replace(/\p{M}+/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  const ordemExibicao=categoryOrderValue(order);
+  const error=!nomeExibicao?'Informe o nome da categoria.':nomeExibicao.length>120?'O nome pode ter até 120 caracteres.':!normalized?'Informe um código que contenha letras ou números.':normalized.length>80?'O código normalizado pode ter até 80 caracteres.':ordemExibicao==null?'Informe uma ordem inteira não negativa.':'';
+  return {nomeExibicao,codigo,normalized,ordemExibicao,error};
+}
+function suggestedCategoryOrder(categories){
+  const values=categories.map(c=>categoryOrderValue(c.ordemExibicao)).filter(v=>v!=null);
+  if(!values.length)return 1;
+  return Math.min(2147483647,Math.max(...values)+1);
+}
+let categoryModalSaving=false;
+function atualizarPreviaCategoria(){
+  const model=categoryModalModel(document.getElementById('categoria-nome').value,document.getElementById('categoria-codigo').value,document.getElementById('categoria-ordem').value);
+  document.getElementById('categoria-preview-name').textContent=model.nomeExibicao||'Nome da categoria';
+  document.getElementById('categoria-preview-code').textContent=model.normalized||'Código automático';
+  document.getElementById('categoria-preview-order').textContent='Ordem '+(model.ordemExibicao??'—');
+  const warning=document.getElementById('categoria-preview-warning');
+  const id=document.getElementById('categoria-id').value;
+  const duplicate=model.normalized&&cardapioCategorias.some(c=>String(c.id)!==id&&categoryModalModel(c.nomeExibicao,c.codigo,c.ordemExibicao).normalized===model.normalized);
+  warning.hidden=!duplicate;
+  warning.textContent=duplicate?'Já existe uma categoria com este código na última consulta. O servidor verificará a disponibilidade.':'';
+  return model;
+}
+
 function abrirModalCategoria(categoriaId) {
+  if(categoryModalSaving||categoryMutationPending)return;
   limparAlertaModal('alert-categoria');
   document.getElementById('categoria-id').value = '';
   document.getElementById('categoria-codigo').value = '';
   document.getElementById('categoria-nome').value = '';
   document.getElementById('categoria-ordem').value = '';
 
+  const context=document.getElementById('categoria-context');
+  context.hidden=true;
+  document.getElementById('categoria-modal-subtitle').textContent=categoriaId?'Atualize a identificação e a posição da categoria.':'Organize um novo grupo de itens do cardápio.';
+  document.getElementById('btn-salvar-categoria').textContent=categoriaId?'Salvar alterações':'Criar categoria';
   if (categoriaId) {
-    const categoria = cardapioCategorias.find(function (item) { return item.id === categoriaId; });
+    const categoria = cardapioCategorias.find(function (item) { return String(item.id) === String(categoriaId); });
     if (!categoria) return;
 
     document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoria';
@@ -511,52 +544,49 @@ function abrirModalCategoria(categoriaId) {
     document.getElementById('categoria-codigo').value = categoria.codigo || '';
     document.getElementById('categoria-nome').value = categoria.nomeExibicao || '';
     document.getElementById('categoria-ordem').value = categoria.ordemExibicao;
+    const counts=categoryManagementModel([categoria],cardapioItens)[0].items;
+    document.getElementById('categoria-context-items').textContent=counts.total+' '+(counts.total===1?'item cadastrado':'itens cadastrados');
+    document.getElementById('categoria-context-state').dataset.active=String(!!categoria.ativo);
+    document.getElementById('categoria-context-state-text').textContent=categoria.ativo?'Ativa':'Inativa';
+    context.hidden=false;
   } else {
     document.getElementById('modal-categoria-titulo').textContent = 'Nova Categoria';
+    document.getElementById('categoria-ordem').value=String(suggestedCategoryOrder(cardapioCategorias));
   }
-
+  ['categoria-nome','categoria-codigo','categoria-ordem'].forEach(id=>document.getElementById(id).oninput=atualizarPreviaCategoria);
+  atualizarPreviaCategoria();
   document.getElementById('modal-categoria').classList.add('open');
+  document.getElementById('categoria-nome').focus();
 }
 
 async function salvarCategoria() {
-  const id = document.getElementById('categoria-id').value;
-  const nomeExibicao = document.getElementById('categoria-nome').value.trim();
-  const codigo = document.getElementById('categoria-codigo').value.trim();
-  const ordemExibicao = parseInt(document.getElementById('categoria-ordem').value, 10);
-  const alertEl = document.getElementById('alert-categoria');
-  const btn = document.getElementById('btn-salvar-categoria');
-
-  if (!nomeExibicao) {
-    mostrarAlertaModal(alertEl, 'error', 'Nome da categoria e obrigatorio.');
-    return;
-  }
-  if (Number.isNaN(ordemExibicao) || ordemExibicao < 0) {
-    mostrarAlertaModal(alertEl, 'error', 'Ordem de exibicao invalida.');
-    return;
-  }
-
-  setLoading(btn, true);
+  if(categoryModalSaving||categoryMutationPending)return;
+  const id=document.getElementById('categoria-id').value;
+  const model=atualizarPreviaCategoria();
+  const alertEl=document.getElementById('alert-categoria');
+  const btn=document.getElementById('btn-salvar-categoria');
+  if(model.error){mostrarAlertaModal(alertEl,'error',model.error);return;}
+  categoryModalSaving=true;
+  const fields=['categoria-nome','categoria-codigo','categoria-ordem'].map(key=>document.getElementById(key));
+  fields.forEach(field=>field.disabled=true);
+  setLoading(btn,true);
   limparAlertaModal('alert-categoria');
-
-  try {
-    const payload = { codigo, nomeExibicao, ordemExibicao };
-    const response = await fetch(id ? '/api/cardapio/admin/categorias/' + id : '/api/cardapio/admin/categorias', {
-      method: id ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+  try{
+    const payload={codigo:model.codigo,nomeExibicao:model.nomeExibicao,ordemExibicao:model.ordemExibicao};
+    const response=await fetch(id?'/api/cardapio/admin/categorias/'+id:'/api/cardapio/admin/categorias',{
+      method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
     });
-
-    if (!response.ok) {
-      throw new Error(await safeReadErrorMessage(response, 'Erro ao salvar categoria.'));
-    }
-
-    showToast(id ? 'Categoria atualizada.' : 'Categoria criada.', 'success');
-    fecharModal('modal-categoria');
+    if(!response.ok)throw new Error(await safeReadErrorMessage(response,'Erro ao salvar categoria.'));
+    showToast(id?'Categoria atualizada.':'Categoria criada.','success');
+    // Close only after server confirmation; preserve the guard until data reload.
+    document.getElementById('modal-categoria').classList.remove('open');
     await recarregarDados();
-  } catch (error) {
-    mostrarAlertaModal(alertEl, 'error', error.message || 'Erro ao salvar categoria.');
-  } finally {
-    setLoading(btn, false);
+  }catch(error){
+    mostrarAlertaModal(alertEl,'error',error.message||'Erro ao salvar categoria. Confira os dados antes de repetir.');
+  }finally{
+    categoryModalSaving=false;
+    fields.forEach(field=>field.disabled=false);
+    setLoading(btn,false);
   }
 }
 
@@ -1130,6 +1160,7 @@ function nomeProdutoAdmin(produtoId) {
 }
 
 function fecharModal(id) {
+  if(id==='modal-categoria'&&categoryModalSaving)return;
   document.getElementById(id).classList.remove('open');
 }
 

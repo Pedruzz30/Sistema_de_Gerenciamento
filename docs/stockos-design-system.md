@@ -128,3 +128,7 @@ Ordem explícita com salvamento somente quando alterada, contagem de itens cadas
 ### Distribuição espacial da tabela de categorias
 
 Colunas proporcionais (17% ordem, 26% categoria, 26% itens, 12% status, 19% ações), cabeçalho compacto e link explícito de itens. A contagem distingue ativos e inativos, sem implicar disponibilidade de venda. Tabela nativa com rolagem interna em painéis estreitos; sem alteração das operações de persistência.
+
+## Editor de categoria
+
+Modal compartilhado de criação e edição com identificação, código técnico opcional, ordem, contexto de itens/status somente na edição e prévia textual. Código normalizado apenas na prévia; payload preserva o valor informado e backend continua responsável pela normalização e unicidade. Ordem sugerida para novos grupos, sem renumerar existentes. Limites alinhados ao modelo Java; bloqueio de submissão concorrente do modal. Layout de dois campos em telas largas e empilhado em telas estreitas.

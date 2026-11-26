@@ -200,26 +200,42 @@
 </div>
 
 <div class="modal-overlay" id="modal-categoria" onclick="fecharModalSeClicouFora(event, 'modal-categoria')">
-  <div class="modal modal--narrow">
+  <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="modal-categoria-titulo">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-categoria-titulo">Nova Categoria</h3>
+      <div class="stockos-category-modal-heading">
+        <span class="stockos-category-modal-icon" data-icon="clipboard" aria-hidden="true"></span>
+        <div><h3 class="modal-title" id="modal-categoria-titulo">Nova Categoria</h3><p id="categoria-modal-subtitle" class="stockos-category-modal-subtitle"></p></div>
+      </div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-categoria')">×</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="categoria-id">
-      <div class="form-group">
-        <label>Nome exibido</label>
-        <input type="text" id="categoria-nome" placeholder="Ex: Sobremesas especiais">
+      <div class="stockos-category-modal-context" id="categoria-context" hidden>
+        <span id="categoria-context-items"></span><span id="categoria-context-state" class="stockos-category-status"><span aria-hidden="true"></span><span id="categoria-context-state-text"></span></span>
       </div>
       <div class="form-group">
-        <label>Codigo tecnico</label>
-        <input type="text" id="categoria-codigo" placeholder="Opcional. Se vazio, sera gerado pelo nome.">
+        <label for="categoria-nome">Nome exibido</label>
+        <input type="text" id="categoria-nome" maxlength="120" placeholder="Ex: Sobremesas especiais" aria-describedby="categoria-nome-help" required>
+        <small id="categoria-nome-help" class="stockos-category-modal-help">Nome apresentado no cardápio e no PDV.</small>
       </div>
-      <div class="form-group">
-        <label>Ordem de exibicao</label>
-        <input type="number" id="categoria-ordem" min="0" step="1" placeholder="0">
+      <div class="stockos-category-modal-fields">
+        <div class="form-group">
+          <label for="categoria-codigo">Código técnico <span class="stockos-category-optional">Opcional</span></label>
+          <input type="text" id="categoria-codigo" placeholder="Gerado pelo nome" aria-describedby="categoria-codigo-help" autocomplete="off" spellcheck="false">
+          <small id="categoria-codigo-help" class="stockos-category-modal-help">Identificador interno. Em branco, será gerado pelo nome.</small>
+        </div>
+        <div class="form-group">
+          <label for="categoria-ordem">Ordem de exibição</label>
+          <input type="number" id="categoria-ordem" min="0" max="2147483647" step="1" inputmode="numeric" placeholder="0" aria-describedby="categoria-ordem-help" required>
+          <small id="categoria-ordem-help" class="stockos-category-modal-help">Menores valores aparecem primeiro.</small>
+        </div>
       </div>
-      <div class="alert-modal alert-modal--spaced-top" id="alert-categoria"></div>
+      <div class="stockos-category-modal-preview" aria-label="Prévia da categoria">
+        <span class="stockos-category-preview-label">Prévia no cardápio</span>
+        <div class="stockos-category-preview-row"><span class="stockos-category-preview-icon" aria-hidden="true" data-icon="clipboard"></span><div><strong id="categoria-preview-name">Nome da categoria</strong><small id="categoria-preview-code">Código automático</small></div><span id="categoria-preview-order" class="stockos-category-preview-order">Ordem —</span></div>
+        <small id="categoria-preview-warning" class="stockos-category-modal-warning" hidden></small>
+      </div>
+      <div class="alert-modal alert-modal--spaced-top" id="alert-categoria" role="alert"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" type="button" onclick="fecharModal('modal-categoria')">Cancelar</button>

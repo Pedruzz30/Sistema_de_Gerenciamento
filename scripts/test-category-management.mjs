@@ -40,3 +40,26 @@ const widths=[...layout.matchAll(/:nth-child\([1-5]\) \{width:(\d+)%;\}/g)].map(
 assert.equal(widths.length,5);
 assert.equal(widths.reduce((a,b)=>a+b,0),100);
 console.log('PASS category layout: proportional columns, explicit item navigation, real item counts.');
+
+const modalStart=source.indexOf('function categoryModalModel('),modalEnd=source.indexOf('let categoryModalSaving',modalStart);
+const editor=vm.runInNewContext(source.slice(modalStart,modalEnd)+'\n({categoryModalModel,suggestedCategoryOrder});',{categoryOrderValue:api.categoryOrderValue});
+assert.equal(editor.categoryModalModel('  Pratos  ','','1').normalized,'pratos');
+assert.equal(editor.categoryModalModel('Bebidas','  CAFÉ & Chá  ','2').normalized,'cafe_cha');
+assert.equal(editor.categoryModalModel('Bebidas','OLD_CODE','0').codigo,'OLD_CODE');
+assert.equal(editor.categoryModalModel('Bebidas','OLD_CODE','0').ordemExibicao,0);
+assert.equal(editor.categoryModalModel('Bebidas','OLD_CODE','0').error,'');
+assert.ok(editor.categoryModalModel('','','0').error);
+assert.ok(editor.categoryModalModel('Pratos','!!!','0').error);
+assert.ok(editor.categoryModalModel('Pratos','','1.5').error);
+assert.ok(editor.categoryModalModel('x'.repeat(121),'ok','0').error);
+assert.ok(editor.categoryModalModel('Pratos','x'.repeat(81),'0').error);
+assert.equal(editor.suggestedCategoryOrder(cats),3);
+assert.equal(editor.suggestedCategoryOrder([]),1);
+assert.equal(editor.suggestedCategoryOrder([{ordemExibicao:2147483647}]),2147483647);
+assert.match(source,/if\(categoryModalSaving\|\|categoryMutationPending\)return/);
+assert.match(source,/codigo:model\.codigo,nomeExibicao:model\.nomeExibicao,ordemExibicao:model\.ordemExibicao/);
+assert.match(layout,/stockos-category-modal-fields \{grid-template-columns:minmax\(0,1fr\)/);
+const editorHtml=await readFile('src/main/resources/static/cardapio.html','utf8');
+assert.match(editorHtml,/aria-labelledby="modal-categoria-titulo"/);
+assert.match(editorHtml,/id="categoria-preview-name"/);
+console.log('PASS category editor: normalization preview, field validation, order suggestion and existing payload.');
