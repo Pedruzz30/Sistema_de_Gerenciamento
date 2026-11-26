@@ -4230,3 +4230,87 @@ body.cardapio-page .app.stockos-shell-v2 .cardapio-help {
 /* Original design comparison: wrappers are transparent to legacy layout. */
 body.estoque-page .app:not(.stockos-shell-v2) .stockos-filter-row {display:contents;}
 body.estoque-page .app:not(.stockos-shell-v2) .stockos-filter-label {display:none;}
+
+
+/* Design system — cash registers and tabs. Preserve all payment and scan geometry. */
+body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .main-body.content {
+  padding:20px clamp(16px,2vw,28px) 32px;max-width:1680px;margin-inline:auto;min-width:0;
+}
+body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .topbar .topbar-right {
+  order:6;flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;align-items:center;
+}
+body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .topbar .btn {
+  min-height:var(--stockos-control-height);border-radius:var(--stockos-control-radius);
+}
+body.caixas-page .app.stockos-shell-v2 :is(#resumo-dia .info-card,#caixas-grid .caixa-card,#consolidado-card,.fechamento-card),
+body.comandas-page .app.stockos-shell-v2 :is(.page-summary-card,.table-card) {
+  border:1px solid var(--rule);border-radius:var(--stockos-panel-radius);
+  box-shadow:none!important;background:var(--paper-raised);min-width:0;
+}
+body.caixas-page .app.stockos-shell-v2 #resumo-dia .info-label,
+body.comandas-page .app.stockos-shell-v2 .page-summary-label {
+  text-transform:none;letter-spacing:0;font-size:12px;font-weight:550;
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card.aberto {border-color:var(--rule-strong);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-card.encerrado {opacity:1;}
+body.caixas-page .app.stockos-shell-v2 .caixa-num {font-size:19px;font-weight:650;}
+body.caixas-page .app.stockos-shell-v2 .caixa-details {gap:0;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row {padding:7px 0;border-bottom:1px solid var(--rule);}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row:last-child {border-bottom:0;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-value {font-size:13px;font-weight:650;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row--cash {background:var(--paper-sunk);border-radius:7px;padding:10px;margin:3px 0;}
+body.caixas-page .app.stockos-shell-v2 .caixa-detail-row--cash .caixa-detail-value {font-size:18px;font-weight:750;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm {
+  min-height:40px;border-radius:var(--stockos-control-radius);font-size:12px;
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm.stockos-pdv-entry {
+  flex:1 1 100%;min-height:44px;background:var(--ink);color:var(--paper);border-color:var(--ink);font-size:13px;
+}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm.stockos-pdv-entry:hover {opacity:.9;background:var(--ink);color:var(--paper);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+/* Real PDV: only typography, color, border radius, focus. No height, grid or overflow changes. */
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell {border-radius:var(--stockos-dialog-radius);}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell .pdv-shell__header {background:var(--paper-raised);}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell :is(.pdv-shell__title,.pdv-cart-title,.pdv-summary-label--total,.pdv-summary-value--total) {font-family:var(--font-ui,inherit);font-weight:700;letter-spacing:-.02em;}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell .pdv-summary-value--total {font-variant-numeric:tabular-nums;}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell :is(.pdv-scan__input,.pdv-search-input,.pdv-submit,.pdv-forma) {border-radius:var(--stockos-control-radius);}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell :is(button,input,select):focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+body.caixas-page:has(> .app.stockos-shell-v2) #pdv-shell .pdv-scan__label {text-transform:none;letter-spacing:0;}
+/* Comandas: compact live overview + readable selectable cards. */
+body.comandas-page .app.stockos-shell-v2 #comandas-resumo {gap:var(--stockos-panel-gap);margin-bottom:var(--stockos-panel-gap);}
+body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-card {padding:14px 16px;min-height:104px;}
+body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-value {font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-weight:700;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comandas-layout {grid-template-columns:minmax(0,1fr) minmax(300px, .55fr);gap:var(--stockos-panel-gap);margin-top:0;}
+body.comandas-page .app.stockos-shell-v2 .comandas-lista-card .table-header {background:var(--paper-raised);padding:var(--stockos-panel-padding);flex-wrap:wrap;gap:10px;min-width:0;}
+body.comandas-page .app.stockos-shell-v2 .table-title {font-family:var(--font-ui);font-size:var(--stockos-section-title-size);font-weight:650;letter-spacing:-.025em;}
+body.comandas-page .app.stockos-shell-v2 .comandas-busca {flex:1 1 180px;min-width:0;max-width:100%;margin:0;min-height:40px;border-radius:var(--stockos-control-radius);background:var(--paper-sunk);}
+body.comandas-page .app.stockos-shell-v2 .comandas-grade {grid-template-columns:repeat(auto-fill,minmax(min(165px,100%),1fr));gap:10px;padding:14px;}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao {min-width:0;min-height:112px;gap:5px;padding:12px;border:1px solid var(--rule);border-radius:var(--stockos-control-radius);color:var(--ink);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao__numero {font-size:12px;font-weight:650;color:var(--ink-2);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao__total {font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao__info {font-size:11px;line-height:1.45;color:var(--ink-3);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao--ativa {background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 3px 0 var(--accent);}
+body.comandas-page .app.stockos-shell-v2 .comanda-cartao:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {padding:18px;scroll-margin:16px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__topo {flex-wrap:wrap;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__topo h2 {font-size:17px;font-weight:650;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__total {font-size:23px;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__linhas li {padding:9px 0;line-height:1.4;overflow-wrap:anywhere;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__cobrar {min-height:44px;border-radius:var(--stockos-control-radius);}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__nome-linha {flex-wrap:wrap;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__nome-linha .input {min-width:120px;min-height:40px;}
+body.comandas-page .app.stockos-shell-v2 .comandas-detalhe__nome-linha .btn {min-height:40px;}
+@media(max-width:1150px) {body.comandas-page .app.stockos-shell-v2 .comandas-layout {grid-template-columns:minmax(0,1fr);}body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {position:static;}}
+@media(max-width:740px) {
+  body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .main-body.content {padding:16px 14px 28px;}
+  body:is(.caixas-page,.comandas-page) .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid.caixas-grid {grid-template-columns:minmax(0,1fr);}
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .caixa-actions .btn-sm {min-height:44px;white-space:normal;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-grade {grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));padding:10px;gap:8px;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-busca {order:3;flex-basis:100%;}
+}
+@media(max-width:480px) {
+  body.comandas-page .app.stockos-shell-v2 #comandas-resumo {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+  body.comandas-page .app.stockos-shell-v2 #comandas-resumo .page-summary-card {padding:12px;min-height:100px;}
+  body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {padding:14px;}
+}

@@ -353,6 +353,8 @@ try {
     await admin.click('#modal-abrir .btn-primary');
     await cardDoCaixa(admin, 1).waitFor();
     assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 100,00');
+    await naTela(admin, '#caixas-grid .stockos-pdv-entry');
+    assert.ok(await admin.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Caixas sem rolagem horizontal do documento');
   });
 
   await passo(admin, 'Dono faz sangria sem pedir autorizacao', async () => {
@@ -1557,7 +1559,20 @@ try {
     await esperarTexto(dono, '#comandas-detalhe-titulo', 'Comanda 9');
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Skol lata 350ml');
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Gelo 5kg');
+    assert.equal(await cartao.getAttribute('aria-pressed'), 'true');
     await naTela(dono, '#btn-cobrar-comanda');
+    await dono.setViewportSize({width:390,height:844});
+    try {
+      await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await cartao.click();
+      await dono.waitForFunction(() => document.activeElement?.id === 'comandas-detalhe');
+      await dono.locator('#btn-cobrar-comanda').scrollIntoViewIfNeeded();
+      await naTela(dono, '#btn-cobrar-comanda');
+      await print(dono,'redesign-comandas-mobile');
+    } finally {
+      await dono.setViewportSize({width:1366,height:650});
+      await dono.evaluate(() => window.scrollTo(0,0));
+    }
     // Nova comanda sem caixa aberto: abre vazia aqui mesmo.
     await dono.click('#btn-nova-comanda');
     await dono.waitForSelector('#modal-nova-comanda.open');

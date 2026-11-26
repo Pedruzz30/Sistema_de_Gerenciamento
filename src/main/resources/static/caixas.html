@@ -47,7 +47,7 @@
           <span class="cur">Caixas PDV</span>
         </div>
         <h1 class="page-title header-title" id="header-title">Caixas PDV</h1>
-        <p class="page-sub header-sub" id="header-sub">Gerencie abertura, vendas e encerramento de caixas.</p>
+        <p class="page-sub header-sub" id="header-sub">Acompanhe os caixas, o dinheiro em espécie e as vendas do turno.</p>
       </div>
       <div class="topbar-right header-right">
         <button class="btn btn-secondary" type="button" id="btn-cozinha" onclick="abrirCozinha()" hidden>Cozinha <span class="cozinha-alerta" id="cozinha-alerta" hidden></span></button>
@@ -268,7 +268,7 @@
         </div>
         <div class="pdv-catalog-toolbar">
           <label class="visually-hidden" for="pdv-busca">Buscar item do cardapio</label>
-          <input id="pdv-busca" class="pdv-search-input" type="text" placeholder="Buscar item do cardapio..." oninput="filtrarProdutosPDV()">
+          <input id="pdv-busca" class="pdv-search-input" type="text" aria-label="Buscar item do cardápio no PDV" placeholder="Buscar item do cardápio..." oninput="filtrarProdutosPDV()">
           <div id="pdv-categorias" class="pdv-category-tabs"></div>
         </div>
 

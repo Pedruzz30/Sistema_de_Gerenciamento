@@ -35,3 +35,11 @@ Dashboard, Estoque e Cardápio. Estoque mantém cartões móveis existentes, bus
 ## Validação
 
 Executar `npm run test:shell-redesign`, `npm run test:preview`, `npm run test:design`, `npm run test:spa` e o E2E real. Conferir capturas de desktop e mobile. A aprovação visual humana continua necessária antes do merge.
+
+
+## Incremento 2 — Caixas, PDV e Comandas
+
+- Caixas: ação PDV em destaque, distinção de dinheiro em espécie e pagamentos eletrônicos, dados de sessões e ações originais preservados.
+- PDV real: somente apresentação (tipografia, bordas, foco e superfície do cabeçalho); manter dimensões, painéis, atalhos e fluxo de cobrança.
+- Comandas: seleção anunciada via aria-pressed, foco preservado em atualizações e acesso direto ao detalhe no mobile. Ignorar respostas atrasadas de outra comanda.
+- Validar no E2E: abrir caixa, visibilidade do PDV, scanner e atalhos existentes, seleção da comanda no celular, cobrança, divisão, desconto e estorno.

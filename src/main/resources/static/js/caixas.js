@@ -198,7 +198,7 @@ function renderCaixas() {
     const botoesAbertos = [
       // PDV substitui o modal simples de venda
       PODE_OPERAR_CAIXA
-        ? `<button class="btn-sm success" onclick="abrirPDV(${c.numeroCaixa})">${buttonIcon('cart')}PDV</button>`
+        ? `<button class="btn-sm success stockos-pdv-entry" onclick="abrirPDV(${c.numeroCaixa})">${buttonIcon('cart')}PDV</button>`
         : '',
       PODE_OPERAR_CAIXA
         ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('minus')}Sangria</button>`
@@ -227,7 +227,7 @@ function renderCaixas() {
             <span class="caixa-detail-label">Saldo Inicial</span>
             <span class="caixa-detail-value">${moeda(c.saldoInicial)}</span>
           </div>
-          <div class="caixa-detail-row">
+          <div class="caixa-detail-row caixa-detail-row--cash">
             <span class="caixa-detail-label" title="Só dinheiro em espécie: fundo + vendas em dinheiro + suprimentos − sangrias − devoluções">Dinheiro na gaveta</span>
             <span class="caixa-detail-value text-success">
               ${moeda(c.dinheiroNaGaveta ?? c.saldoAtual)}

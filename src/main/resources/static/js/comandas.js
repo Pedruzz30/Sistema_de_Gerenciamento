@@ -80,8 +80,10 @@ function renderResumo() {
 }
 
 function renderGrade() {
-  document.getElementById('comandas-contagem').textContent = `${comandas.length} aberta${comandas.length === 1 ? '' : 's'}`;
+  const contagem = document.getElementById('comandas-contagem');
   const grade = document.getElementById('comandas-grade');
+  const focoAnterior = grade.contains(document.activeElement) ? document.activeElement.dataset.comanda : null;
+  contagem.textContent = `${comandas.length} aberta${comandas.length === 1 ? '' : 's'}`;
   if (!comandas.length) {
     grade.innerHTML = '<div class="empty">Nenhuma comanda aberta. Para abrir uma, use "+ Nova comanda", bipe o cartão no caixa ou digite o número no celular do atendente.</div>';
     return;
@@ -90,26 +92,30 @@ function renderGrade() {
   const visiveis = !termo ? comandas : comandas.filter(c => /^\d+$/.test(termo)
     ? String(c.numero).startsWith(termo)
     : semAcento(c.cliente).includes(termo));
+  if (termo && document.querySelector('.app.stockos-shell-v2')) contagem.textContent = `${visiveis.length} de ${comandas.length}`;
   if (!visiveis.length) {
     grade.innerHTML = `<div class="empty">Nenhuma comanda aberta com "${escapeHtml(busca.trim())}".</div>`;
     return;
   }
   grade.innerHTML = visiveis.map(c => `
-    <button type="button" class="comanda-cartao${c.numero === selecionada ? ' comanda-cartao--ativa' : ''}" data-comanda="${c.numero}">
+    <button type="button" class="comanda-cartao${c.numero === selecionada ? ' comanda-cartao--ativa' : ''}" data-comanda="${c.numero}" aria-pressed="${c.numero === selecionada}">
       <span class="comanda-cartao__numero">Comanda ${c.numero}</span>
       ${c.cliente ? `<span class="comanda-cartao__cliente">${escapeHtml(c.cliente)}</span>` : ''}
       <strong class="comanda-cartao__total">${moeda(c.total)}</strong>
       <span class="comanda-cartao__info">${quantidade(c.itens)} ${Number(c.itens) === 1 ? 'item' : 'itens'} · aberta ${tempoAberta(c.abertaEm)}</span>
     </button>`).join('');
+  if (focoAnterior) [...grade.querySelectorAll('[data-comanda]')].find(card => card.dataset.comanda === focoAnterior)?.focus({ preventScroll: true });
 }
 
 async function carregarDetalhe(numero) {
   const resp = await fetch(`/api/comandas/${numero}`);
+  if (numero !== selecionada) return;
   if (!resp.ok) {
     mostrarDetalhe(null);
     return;
   }
-  mostrarDetalhe(await resp.json());
+  const detalhe = await resp.json();
+  if (numero === selecionada) mostrarDetalhe(detalhe);
 }
 
 function mostrarDetalhe(detalhe) {
@@ -128,11 +134,16 @@ function mostrarDetalhe(detalhe) {
     : '<li class="inline-note">Nada lançado ainda.</li>';
 }
 
-async function selecionarComanda(numero) {
+async function selecionarComanda(numero, mostrarNoMobile = false) {
   if (numero !== selecionada) nomeEditado = false;
   selecionada = numero;
   renderGrade();
   await carregarDetalhe(numero);
+  if (mostrarNoMobile && numero === selecionada && document.querySelector('.app.stockos-shell-v2') && window.innerWidth <= 1150 && !document.getElementById('comandas-detalhe-conteudo').hidden) {
+    const painel = document.getElementById('comandas-detalhe');
+    painel.scrollIntoView({ block: 'start', behavior: 'instant' });
+    painel.focus({ preventScroll: true });
+  }
 }
 
 async function salvarNomeComanda() {
@@ -254,7 +265,7 @@ document.addEventListener('submit', event => {
 
 document.addEventListener('click', event => {
   const cartao = event.target.closest && event.target.closest('[data-comanda]');
-  if (cartao && document.getElementById('comandas-grade')?.contains(cartao)) selecionarComanda(Number(cartao.dataset.comanda));
+  if (cartao && document.getElementById('comandas-grade')?.contains(cartao)) selecionarComanda(Number(cartao.dataset.comanda), true);
 });
 
 window.StockOSPages = window.StockOSPages || {};

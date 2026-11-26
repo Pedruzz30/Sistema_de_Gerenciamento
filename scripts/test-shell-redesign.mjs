@@ -134,3 +134,17 @@ assert.match(dashboard,/atalho\.onclick = \(\) =>/);
 assert.match(dashboard,/painel\.scrollIntoView\(/);
 assert.match(dashboard,/painel\.focus\(\{ preventScroll: true \}\)/);
 console.log('PASS shared management visual tokens and reachable device configuration.');
+
+const comandasSource = await readFile(new URL('js/comandas.js', root), 'utf8');
+const caixasSource = await readFile(new URL('js/caixas.js', root), 'utf8');
+new vm.Script(comandasSource);
+new vm.Script(caixasSource);
+assert.match(comandasSource,/aria-pressed="\$\{c\.numero === selecionada\}"/);
+assert.match(comandasSource,/if \(numero !== selecionada\) return;/);
+assert.match(comandasSource,/if \(numero === selecionada\) mostrarDetalhe\(detalhe\)/);
+assert.match(comandasSource,/painel\.scrollIntoView/);
+assert.match(comandasSource,/focoAnterior/);
+assert.match(caixasSource,/stockos-pdv-entry/);
+assert.match(css,/stockos-pdv-entry/);
+assert.match(css,/stockos-shell-v2\) #pdv-shell/);
+console.log('PASS cash and tabs design contracts: selected state, stale response guard, accessible mobile detail and scoped PDV presentation.');
