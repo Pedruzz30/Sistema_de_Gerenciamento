@@ -79,11 +79,18 @@ let noteSupplierPage=1,noteSupplierLoadVersion=0,noteSupplierLoading=false,noteS
 function noteSupplierCnpj(raw){
   return /^\d{14}$/.test(raw)?raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):raw||'—';
 }
+// Reuse the same action nodes, IDs and handlers in either shell.
+function placeNoteSupplierActions(managed, get){
+  const block=get('note-supplier-action-block');
+  const target=get(managed?'note-supplier-action-slot':'note-supplier-legacy-slot');
+  if(block&&target&&block.parentElement!==target)target.appendChild(block);
+}
 function drawNoteSuppliers(){
   const get=id=>document.getElementById(id),workspace=get('note-supplier-workspace'),select=get('s1-fornecedor');
   if(!workspace||!select)return;
   const managed=!!document.querySelector('.app.stockos-shell-v2');
   workspace.hidden=!managed;get('note-supplier-native').hidden=managed;
+  placeNoteSupplierActions(managed,get);
   const ready=!noteSupplierLoading&&!noteSupplierFailed;
   const model=noteSupplierModel(fornecedoresAtivos,get('note-supplier-search').value,noteSupplierPage);
   const selected=model?.all.find(f=>String(f.id)===select.value);
@@ -96,15 +103,15 @@ function drawNoteSuppliers(){
   get('note-supplier-refresh').disabled=noteSupplierLoading||noteOpening;
   get('note-supplier-prev').disabled=!ready||locked||model.page<=1;
   get('note-supplier-next').disabled=!ready||locked||model.page>=model.pages;
-  get('note-supplier-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' fornecedores':'0 resultados'):'';
+  get('note-supplier-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' · página '+model.page+' de '+model.pages:'0 resultados'):'';
   const results=get('note-supplier-results'),summary=get('note-supplier-selected'),esc=escapeHtml;
   if(!ready){results.textContent=noteSupplierLoading?'Consultando fornecedores ativos…':'Não foi possível carregar os fornecedores. Use Atualizar.';summary.textContent='Seleção indisponível.';return;}
   noteSupplierPage=model.page;
-  summary.innerHTML=selected?'<div class="note-supplier-selected-name">'+esc(selected.name)+'</div><div class="note-supplier-summary-meta"><span>CNPJ</span><strong>'+esc(noteSupplierCnpj(selected.cnpj))+'</strong><span>Telefone</span><strong>'+esc(selected.phone||'—')+'</strong><span>Produtos vinculados</span><strong>'+(selected.count??'—')+'</strong></div>':'<div class="note-supplier-empty-selection">Nenhum fornecedor selecionado. Escolha uma empresa na lista.</div>';
+  summary.innerHTML=selected?'<div class="note-supplier-selection-state"><span aria-hidden="true">✓</span> Fornecedor selecionado</div><div class="note-supplier-selected-name">'+esc(selected.name)+'</div><div class="note-supplier-summary-meta"><span>CNPJ</span><strong>'+esc(noteSupplierCnpj(selected.cnpj))+'</strong><span>Telefone comercial</span><strong>'+esc(selected.phone||'—')+'</strong><span>Produtos vinculados</span><strong>'+(selected.count??'—')+'</strong></div>':'<div class="note-supplier-empty-selection"><strong>Escolha um fornecedor</strong><span>Selecione uma empresa na lista para conferir seus dados e abrir a nota.</span></div>';
   if(!model.rows.length){results.textContent=model.total?'Nenhum fornecedor corresponde à pesquisa.':'Nenhum fornecedor ativo cadastrado.';return;}
   results.innerHTML='<table class="note-supplier-table"><thead><tr><th scope="col">Fornecedor</th><th scope="col">Vínculos</th><th scope="col">Seleção</th></tr></thead><tbody>'+model.rows.map(f=>{
     const active=selected?.id===f.id;
-    return '<tr'+(active?' class="is-selected"':'')+'><td><strong>'+esc(f.name)+'</strong><small>'+esc(noteSupplierCnpj(f.cnpj))+' · #'+f.id+'</small></td><td>'+(f.count??'—')+'</td><td><button type="button" data-note-supplier="'+f.id+'" aria-pressed="'+active+'" aria-label="Selecionar '+esc(f.name)+'"'+(locked?' disabled':'')+'>'+(active?'Selecionado':'Selecionar')+'</button></td></tr>';
+    return '<tr'+(active?' class="is-selected"':'')+'><td><strong>'+esc(f.name)+'</strong><small>'+esc(noteSupplierCnpj(f.cnpj))+' · #'+f.id+'</small></td><td>'+(f.count??'—')+'</td><td><button type="button" data-note-supplier="'+f.id+'" aria-pressed="'+active+'" aria-label="Selecionar '+esc(f.name)+'"'+(locked?' disabled':'')+'>'+(active?'✓ Selecionado':'Selecionar')+'</button></td></tr>';
   }).join('')+'</tbody></table>';
   results.querySelectorAll('[data-note-supplier]').forEach(b=>b.onclick=()=>{
     if(noteOpening||noteOpeningUncertain)return;

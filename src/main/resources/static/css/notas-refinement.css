@@ -552,3 +552,32 @@ body.notas-page #aba-lista .note-list-row-actions .btn-acao{min-height:32px;padd
 @media(max-width:1250px){.note-list-filters{grid-template-columns:repeat(2,minmax(0,1fr));}.note-list-filters button{justify-self:start;}}
 @media(max-width:1000px){.note-list-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.note-list-summary>div:nth-child(3){border-left:0;}.note-list-summary>div:nth-child(n+3){border-top:1px solid var(--rule);}}
 @media(max-width:540px){.note-list-actions{width:100%;margin-left:0;}.note-list-actions .btn{flex:1;min-height:44px;}.note-list-filters>div:first-child{grid-column:1/-1;}.note-list-filters button,.note-list-pagination button{min-height:44px;}.note-list-summary>div{padding:10px;}}
+
+/* Step 1: selection and opening in the same visual context, without a detached footer. */
+body.notas-page .app.stockos-shell-v2 #painel-step1{padding:14px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .nota-panel-header{margin-bottom:12px;padding-bottom:10px;gap:8px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-workspace{grid-template-columns:minmax(0,1.9fr) minmax(260px,1fr);gap:12px;align-items:start;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-directory{padding:0;gap:0;overflow:hidden;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-directory-head{padding:10px 12px 8px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-search-row{padding:0 12px 10px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-search-row input{min-height:36px;height:36px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 :is(.note-supplier-search-row,.note-supplier-pages) button{min-height:34px;padding:6px 10px;font-size:12px;box-shadow:none;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-results{border-width:1px 0 0;border-radius:0;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-table :is(th,td){padding:7px 12px;line-height:1.35;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-table td strong{font-size:13px;line-height:1.3;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-table td small{font-size:11px;line-height:1.3;margin-top:3px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-table button{min-height:32px;padding:5px 8px;font-size:11px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-pages{padding:8px 12px;border-top:1px solid var(--rule);}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-summary{padding:13px;gap:12px;background:var(--paper-raised);}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-summary-title{padding-bottom:10px;border-bottom:1px solid var(--rule);}
+.note-supplier-empty-selection{display:grid;gap:5px;padding:12px;background:var(--paper-sunk);border-radius:7px;line-height:1.45;}
+.note-supplier-empty-selection strong{font-size:13px;color:var(--ink);}
+.note-supplier-empty-selection span{font-size:12px;color:var(--ink-3);}
+.note-supplier-selection-state{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ok);margin-bottom:7px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-summary-meta{gap:9px;margin-top:10px;font-size:12px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-next{background:var(--paper-sunk);border:0;border-radius:7px;padding:10px 12px;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 #note-supplier-action-slot .note-supplier-actions{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding-top:10px;margin:0;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 #note-supplier-action-slot .note-supplier-actions button{min-height:40px;padding:8px 10px;box-shadow:none;}
+body.notas-page .app.stockos-shell-v2 #painel-step1 #note-supplier-legacy-slot:empty{display:none;}
+@media(max-width:1050px){body.notas-page .app.stockos-shell-v2 #painel-step1 .note-supplier-workspace{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:540px){body.notas-page .app.stockos-shell-v2 #painel-step1{padding:10px;}body.notas-page .app.stockos-shell-v2 #painel-step1 :is(.note-supplier-table,.note-supplier-pages,.note-supplier-search-row,.note-supplier-actions) button{min-height:44px;}body.notas-page .app.stockos-shell-v2 #painel-step1 #note-supplier-action-slot .note-supplier-actions button{min-height:44px;}}

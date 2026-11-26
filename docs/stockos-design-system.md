@@ -164,3 +164,7 @@ Modal somente de consulta com fornecedor, emissão, status real, número/chave N
 ## Listagem de notas fiscais
 
 Resumo global de registros, pendentes, valores confirmados não pagos e pagos; canceladas excluídas dos valores. Busca por fornecedor, ID e NF-e, situação, intervalo de emissão local, paginação local 10/25/50. Valores inválidos não viram zero. Confirmação de pagamento já realizado, bloqueio de mutações concorrentes e releitura. Endpoints e assistente de entrada preservados.
+
+### Refinamento da seleção de fornecedor
+
+Listagem compacta de cinco registros, paginação explícita e resumo de abertura com ações e mensagem de erro no mesmo painel. Os mesmos nós de ação são movidos entre o resumo no shell novo e a posição original no shell legado. Nenhum novo endpoint ou alteração na abertura da nota.

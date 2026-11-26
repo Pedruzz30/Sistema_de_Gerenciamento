@@ -132,18 +132,23 @@
             <div class="note-supplier-pages"><span id="note-supplier-range" role="status"></span><div><button class="btn-secondary" type="button" id="note-supplier-prev">Anterior</button><button class="btn-secondary" type="button" id="note-supplier-next">Próxima</button></div></div>
           </section>
           <aside class="note-supplier-summary" aria-label="Resumo da seleção">
-            <div class="note-supplier-summary-title"><span data-icon="truck" aria-hidden="true"></span><strong>Fornecedor selecionado</strong></div>
-            <div id="note-supplier-selected"></div>
-            <div class="note-supplier-next"><strong>O que acontece a seguir?</strong><p>A nota será aberta como pendente. Na próxima etapa, você poderá adicionar produtos existentes ou cadastrar novos produtos.</p><p>O estoque não é atualizado pela abertura da nota.</p></div>
+            <div class="note-supplier-summary-title"><span data-icon="truck" aria-hidden="true"></span><strong>Resumo da abertura</strong></div>
+            <div id="note-supplier-selected" aria-live="polite"></div>
+            <div class="note-supplier-next"><strong>Próxima etapa · Itens</strong><p>A nota será aberta como pendente. A abertura não altera o estoque.</p></div>
+            <div id="note-supplier-action-slot"></div>
           </aside>
         </div>
-        <div class="alert-modal" id="alert-s1" role="alert"></div>
-        <div class="actions-inline note-supplier-actions">
-          <button class="btn-secondary" onclick="abrirAba('aba-lista')">Cancelar</button>
-          <button class="btn-primary" id="btn-step1-avancar" onclick="avancarStep1()">
-            Abrir nota
-            <span class="btn-inline-icon" data-icon="arrowRight"></span>
-          </button>
+        <div id="note-supplier-legacy-slot">
+          <div id="note-supplier-action-block">
+            <div class="alert-modal" id="alert-s1" role="alert"></div>
+            <div class="actions-inline note-supplier-actions">
+              <button type="button" class="btn-secondary" onclick="abrirAba('aba-lista')">Cancelar</button>
+              <button type="button" class="btn-primary" id="btn-step1-avancar" onclick="avancarStep1()">
+                Abrir nota
+                <span class="btn-inline-icon" data-icon="arrowRight"></span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
