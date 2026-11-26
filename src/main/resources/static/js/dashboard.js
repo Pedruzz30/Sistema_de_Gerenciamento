@@ -378,22 +378,25 @@ function renderDashboardOverview(caixas, metricas, disponivel) {
   const panel = element('section', 'stockos-sales-panel');
   panel.setAttribute('aria-label', 'Vendas por caixa');
   panel.append(element('h2', 'stockos-sales-title', 'Vendas por caixa'),
-    element('p', 'stockos-sales-sub', 'Total de vendas do dia'));
+    element('p', 'stockos-sales-sub', 'Total líquido de vendas de hoje'));
   const total = metricas && metricas.totalVendas != null ? Number(metricas.totalVendas) : NaN;
   panel.appendChild(element('div', 'stockos-sales-total', Number.isFinite(total) ? formatarMoedaBR(total) : '—'));
 
+  panel.appendChild(element('p', 'stockos-sales-caption', 'Barras: vendas líquidas acumuladas por caixa, conforme o período registrado de cada caixa.'));
   const rows = (disponivel && Array.isArray(caixas) ? caixas : [])
     .filter(c => c && c.totalVendas != null && Number.isFinite(Number(c.totalVendas)) &&
-      Number(c.totalVendas) >= 0 && (Number(c.totalVendas) > 0 || c.status === 'ABERTO'))
+      (Number(c.totalVendas) !== 0 || c.status === 'ABERTO'))
     .map(c => ({ label: 'Caixa ' + c.numeroCaixa, value: Number(c.totalVendas) }));
   if (!rows.length) {
     panel.appendChild(element('p', 'stockos-sales-empty', disponivel ?
       'Nenhum caixa com dados de venda ainda.' : 'Não foi possível carregar os dados dos caixas.'));
   } else {
-    const max = Math.max(1, ...rows.map(row => row.value));
+    const max = rows.reduce((highest, row) => Math.max(highest, Math.abs(row.value)), 1);
+    const hasNegative = rows.some(row => row.value < 0);
     const chart = element('div', 'stockos-sales-chart');
     chart.setAttribute('role', 'list');
-    chart.setAttribute('aria-label', 'Totais informados por caixa');
+    chart.setAttribute('aria-label', 'Totais líquidos acumulados por caixa');
+    if (hasNegative) chart.classList.add('stockos-sales-chart--signed');
     chart.tabIndex = 0;
     rows.forEach(row => {
       const column = element('div', 'stockos-sales-column');
@@ -402,7 +405,9 @@ function renderDashboardOverview(caixas, metricas, disponivel) {
       const track = element('div', 'stockos-sales-track');
       track.setAttribute('aria-hidden', 'true');
       const bar = element('div', 'stockos-sales-bar');
-      bar.style.setProperty('--bar-height', (row.value / max * 100) + '%');
+      const height = Math.abs(row.value) / max * (hasNegative ? 50 : 100);
+      bar.style.setProperty('--bar-height', height + '%');
+      if (row.value < 0) bar.classList.add('stockos-sales-bar--negative');
       track.appendChild(bar);
       column.append(element('span', 'stockos-sales-value', formatarMoedaBR(row.value)), track,
         element('span', 'stockos-sales-label', row.label));
