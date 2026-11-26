@@ -4,6 +4,8 @@
 
 let comandas = [];
 let selecionada = null;
+let detalheConfirmado = null;
+let detalheVersao = 0;
 let atualizador = null;
 let busca = '';
 let nomeEditado = false; // quem está digitando o nome não perde o texto na atualização automática
@@ -108,17 +110,27 @@ function renderGrade() {
 }
 
 async function carregarDetalhe(numero) {
-  const resp = await fetch(`/api/comandas/${numero}`);
-  if (numero !== selecionada) return;
-  if (!resp.ok) {
+  const versao = ++detalheVersao;
+  try {
+    const resp = await fetch(`/api/comandas/${numero}`);
+    if (numero !== selecionada || versao !== detalheVersao) return;
+    if (!resp.ok) {
+      mostrarDetalhe(null);
+      mostrarAlert('alert-comandas', await lerErro(resp, 'Não foi possível carregar esta comanda.'), 'error');
+      return;
+    }
+    const detalhe = await resp.json();
+    if (numero === selecionada && versao === detalheVersao) mostrarDetalhe(detalhe);
+  } catch (error) {
+    if (numero !== selecionada || versao !== detalheVersao) return;
     mostrarDetalhe(null);
-    return;
+    mostrarAlert('alert-comandas', 'Não foi possível carregar esta comanda.', 'error');
   }
-  const detalhe = await resp.json();
-  if (numero === selecionada) mostrarDetalhe(detalhe);
 }
 
 function mostrarDetalhe(detalhe) {
+  detalheConfirmado = detalhe ? Number(detalhe.numero) : null;
+  document.getElementById('btn-cobrar-comanda').disabled = !detalhe || detalheConfirmado !== selecionada;
   document.getElementById('comandas-detalhe-vazio').hidden = !!detalhe;
   document.getElementById('comandas-detalhe-conteudo').hidden = !detalhe;
   if (!detalhe) return;
@@ -135,7 +147,10 @@ function mostrarDetalhe(detalhe) {
 }
 
 async function selecionarComanda(numero, mostrarNoMobile = false) {
-  if (numero !== selecionada) nomeEditado = false;
+  if (numero !== selecionada) {
+    nomeEditado = false;
+    mostrarDetalhe(null);
+  }
   selecionada = numero;
   renderGrade();
   await carregarDetalhe(numero);
@@ -249,7 +264,7 @@ document.addEventListener('keydown', event => {
 });
 
 function cobrarComanda() {
-  if (!selecionada) return;
+  if (!selecionada || detalheConfirmado !== selecionada) return;
   window.location.href = `caixas.html?comanda=${selecionada}`;
 }
 

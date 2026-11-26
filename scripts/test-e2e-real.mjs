@@ -1561,6 +1561,9 @@ try {
     await esperarTexto(dono, '#comandas-detalhe-linhas', 'Gelo 5kg');
     assert.equal(await cartao.getAttribute('aria-pressed'), 'true');
     await naTela(dono, '#btn-cobrar-comanda');
+    assert.equal(await dono.locator('#btn-cobrar-comanda').isEnabled(), true);
+    assert.ok(await dono.evaluate(() => document.querySelector('#btn-cobrar-comanda').getBoundingClientRect().bottom <= document.querySelector('#comandas-detalhe-linhas').getBoundingClientRect().top), 'Cobrança antes da lista de itens');
+    await print(dono,'redesign-comandas-desktop');
     await dono.setViewportSize({width:390,height:844});
     try {
       await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);

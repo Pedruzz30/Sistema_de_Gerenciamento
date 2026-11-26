@@ -51,3 +51,8 @@ Executar `npm run test:shell-redesign`, `npm run test:preview`, `npm run test:de
 - Relatórios: página independente para impressão, com a mesma linguagem visual em tela; filtros acessíveis, indicadores e tabelas em painéis. A impressão não recebe a camada de estilo de tela.
 - Relatórios: bloquear a impressão enquanto a consulta não termina, remover números antigos durante uma nova consulta e ignorar respostas de consultas anteriores.
 - Nenhuma modificação de contrato da API, permissões, cálculo financeiro, persistência ou geração de documentos.
+
+## Refinamento de homologação
+
+- Comandas: ação de cobrança antes da lista de itens; compactação para notebooks de baixa altura. Não cobrar com dados de outra comanda ou antes de confirmar o detalhe selecionado. Respostas atrasadas de requisições concorrentes são ignoradas.
+- O E2E mantém a exigência de visibilidade da ação principal em 1366 × 650, além dos testes em 390 × 844.

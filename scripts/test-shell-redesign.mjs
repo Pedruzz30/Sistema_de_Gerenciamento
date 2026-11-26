@@ -140,8 +140,8 @@ const caixasSource = await readFile(new URL('js/caixas.js', root), 'utf8');
 new vm.Script(comandasSource);
 new vm.Script(caixasSource);
 assert.match(comandasSource,/aria-pressed="\$\{c\.numero === selecionada\}"/);
-assert.match(comandasSource,/if \(numero !== selecionada\) return;/);
-assert.match(comandasSource,/if \(numero === selecionada\) mostrarDetalhe\(detalhe\)/);
+assert.match(comandasSource,/if \(numero !== selecionada \|\| versao !== detalheVersao\) return;/);
+assert.match(comandasSource,/if \(numero === selecionada && versao === detalheVersao\) mostrarDetalhe\(detalhe\)/);
 assert.match(comandasSource,/painel\.scrollIntoView/);
 assert.match(comandasSource,/focoAnterior/);
 assert.match(caixasSource,/stockos-pdv-entry/);
@@ -194,3 +194,31 @@ await reportFailed;
 assert.ok(reportNodes['btn-imprimir-relatorio'].disabled && reportNodes['rel-grade'].hidden && reportNodes['rel-abc'].hidden);
 assert.equal(reportNodes['alert-relatorio'].textContent,'Falha');
 console.log('PASS visible POS action placement and concurrent report requests.');
+
+const comandasHtml = await readFile(new URL('comandas.html', root), 'utf8');
+assert.ok(comandasHtml.indexOf('id="btn-cobrar-comanda"') < comandasHtml.indexOf('id="comandas-detalhe-linhas"'));
+assert.match(comandasSource,/detalheConfirmado !== selecionada/);
+assert.match(comandasSource,/mostrarDetalhe\(null\);\n  \}\n  selecionada = numero/);
+const tabPending=[], tabRendered=[];
+const detailLoader=comandasSource.slice(comandasSource.indexOf('async function carregarDetalhe('),comandasSource.indexOf('function mostrarDetalhe('));
+const tabApi=vm.runInNewContext(`let selecionada=9,detalheVersao=0;\n${detailLoader}\n({load:carregarDetalhe,select:n=>selecionada=n})`,{
+  fetch:url=>new Promise(resolve=>tabPending.push({url,resolve})),
+  mostrarDetalhe:d=>tabRendered.push(d?.numero ?? null),
+  mostrarAlert:()=>{},lerErro:async()=> 'Falha'
+});
+const tabFirst=tabApi.load(9);
+tabApi.select(20);
+const tabSecond=tabApi.load(20);
+tabPending[1].resolve({ok:true,json:async()=>({numero:20})});
+await tabSecond;
+tabPending[0].resolve({ok:true,json:async()=>({numero:9})});
+await tabFirst;
+assert.equal(tabRendered.join(','),'20');
+const tabOlder=tabApi.load(20);
+const tabNewer=tabApi.load(20);
+tabPending[3].resolve({ok:true,json:async()=>({numero:21})});
+await tabNewer;
+tabPending[2].resolve({ok:true,json:async()=>({numero:22})});
+await tabOlder;
+assert.equal(tabRendered.join(','),'20,21');
+console.log('PASS tab primary action and out-of-order detail responses.');
