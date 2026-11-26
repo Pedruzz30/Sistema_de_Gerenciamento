@@ -221,6 +221,8 @@ function updateEmployeeClass(){
   const get=employeeGet,select=get('nova-classe'),target=select.value,person=employeeClassTarget;
   const model=employeeClassDiff(person,target,usuario?.ru);
   get('classe-atual').textContent=employeeClassLabel(person?.nomeClasse);
+  get('employee-class-status').dataset.active=String(person?.ativo===true);
+  get('employee-class-status-label').textContent=person?.ativo===true?'Ativo':'Inativo';
   get('employee-class-current-count').textContent=Array.isArray(person?.permissoes)?new Set(person.permissoes).size+' permissões atuais':'Permissões não informadas';
   get('employee-class-description').textContent=Object.prototype.hasOwnProperty.call(EMPLOYEE_ROLE_ACCESS,target)?EMPLOYEE_ROLE_ACCESS[target].description:'Escolha o novo nível de acesso.';
   const esc=escapeHtml;

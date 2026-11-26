@@ -97,3 +97,6 @@ assert.match(html,/id="employee-class-diff" aria-live="polite"/);
 assert.match(html,/id="employee-class-reconcile" hidden/);
 assert.match(css,/\.employee-class-diff-grid\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
 console.log('PASS class change: permission deltas, explicit privileged/self confirmation, stale snapshot protection and reconciliation controls.');
+
+assert.match(html,/id="employee-class-status-label"/);
+assert.match(source,/employee-class-status-label'\)\.textContent=person\?\.ativo===true\?'Ativo':'Inativo'/);
