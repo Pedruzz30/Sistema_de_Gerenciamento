@@ -50,42 +50,35 @@
         <p class="page-sub header-sub" id="header-sub">Gerencie cadastros, classes e permissões.</p>
       </div>
       <div class="topbar-right header-right">
-        <button class="btn btn-accent btn-primary" onclick="abrirModalCadastro()">+ Novo Funcionário</button>
+
       </div>
     </header>
 
     <div class="main-body content">
 
-    <div class="page-summary-grid fade-up" id="funcionario-summary"></div>
-
-    <!-- Filtros -->
-    <div class="toolbar fade-up">
-      <div class="search-wrap">
-        <input class="input input-search" type="text" id="busca" aria-label="Buscar funcionário" placeholder="Buscar funcionário..." oninput="filtrar()">
-      </div>
-      <div class="seg filter-group">
-        <button type="button" class="filter-btn active" onclick="setFiltro('todos', this)">Todos</button>
-        <button type="button" class="filter-btn" onclick="setFiltro('ativos', this)">Ativos</button>
-        <button type="button" class="filter-btn" onclick="setFiltro('inativos', this)">Inativos</button>
-      </div>
-    </div>
-
-    <!-- Tabela -->
-    <div class="table-card fade-up fade-up-1">
+    <div class="employee-list-heading"><div><strong>Visão da equipe</strong><p>Gerencie os acessos e a distribuição de responsabilidades.</p></div><button type="button" class="btn btn-accent btn-primary" onclick="abrirModalCadastro()">+ Novo funcionário</button></div>
+    <section class="page-summary-grid fade-up" id="funcionario-summary" aria-label="Indicadores de toda a equipe"></section>
+    <div class="table-card fade-up fade-up-1 employee-directory">
       <div class="table-header">
-        <span class="table-title">Funcionários Cadastrados</span>
-        <span class="table-count" id="table-count">—</span>
+        <div class="employee-directory-title"><span class="table-title">Equipe cadastrada</span><span class="table-count" id="table-count" role="status">—</span></div>
+        <button type="button" class="btn-secondary" id="employee-refresh">Atualizar</button>
+      </div>
+      <div class="toolbar employee-directory-filters">
+        <div class="search-wrap"><label for="busca">Pesquisar</label><input class="input input-search" type="search" id="busca" placeholder="Nome ou RU..." oninput="filtrar()" autocomplete="off"></div>
+        <div class="employee-filter-class"><label for="employee-class-filter">Classe</label><select id="employee-class-filter"><option value="">Todas as classes</option></select></div>
+        <div class="employee-filter-status"><span>Situação</span><div class="seg filter-group" role="group" aria-label="Situação"><button type="button" class="filter-btn active" data-status="todos" aria-pressed="true" onclick="setFiltro('todos', this)">Todos</button><button type="button" class="filter-btn" data-status="ativos" aria-pressed="false" onclick="setFiltro('ativos', this)">Ativos</button><button type="button" class="filter-btn" data-status="inativos" aria-pressed="false" onclick="setFiltro('inativos', this)">Inativos</button></div></div>
+        <button type="button" class="btn-secondary" id="employee-clear">Limpar</button>
       </div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>RU</th>
-              <th>Nome</th>
-              <th>Classe</th>
-              <th>Permissões</th>
-              <th>Status</th>
-              <th>Ações</th>
+              <th scope="col">RU</th>
+              <th scope="col">Funcionário</th>
+              <th scope="col">Classe de acesso</th>
+              <th scope="col">Permissões</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Ações</th>
             </tr>
           </thead>
           <tbody id="tabela-funcionarios">
@@ -93,6 +86,7 @@
           </tbody>
         </table>
       </div>
+      <div class="employee-pagination"><span id="employee-range" role="status"></span><div><label for="employee-page-size">Por página</label><select id="employee-page-size"><option>10</option><option selected>15</option><option>25</option><option>50</option></select><button type="button" class="btn-secondary" id="employee-prev">Anterior</button><button type="button" class="btn-secondary" id="employee-next">Próxima</button></div></div>
     </div>
 
     </div>

@@ -15,156 +15,97 @@ const CLASSE_LABEL = {
   ESTOQUISTA:      'Estoquista',
   CAIXA:           'Caixa'
 };
-const CLASSE_BADGE = {
-  SUPERIOR:        'badge-purple',
-  GERENTE_ESTOQUE: 'badge-cyan',
-  ESTOQUISTA:      'badge-amber',
-  CAIXA:           'badge-gray'
-};
-
-// ── Init ──────────────────────────────────────────────────────────────────
-
-async function stockOSMount_funcionarios() {
-  if (typeof paginaAtual === 'function' && paginaAtual() !== 'funcionarios') return;
-  carregarFuncionarios();
+const employeeNorm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+function employeeClassLabel(value){
+  if(value==='GERENTE')return 'Gerente';
+  return Object.prototype.hasOwnProperty.call(CLASSE_LABEL,value)?CLASSE_LABEL[value]:value||'Não informada';
 }
-
-// ── API ───────────────────────────────────────────────────────────────────
-
-async function carregarFuncionarios() {
-  const table=document.getElementById('tabela-funcionarios');
-  if(!table)return;
-  try {
-    const resp = await fetch('/api/funcionarios');
-    if (!resp.ok) throw new Error();
+function employeeListModel(records,filters={},page=1,pageSize=15){
+  if(!Array.isArray(records))return null;
+  const rows=records.map(f=>({ru:String(f.ru),name:[f.nome,f.sobrenome].filter(Boolean).join(' ').trim()||'Nome não informado',role:String(f.nomeClasse||''),profile:String(f.perfil||''),active:f.ativo===true,permissions:Array.isArray(f.permissoes)?[...new Set(f.permissoes.filter(p=>typeof p==='string'))]:null}));
+  const active=rows.filter(f=>f.active).length;
+  // Use actual returned permissions, not assumptions based on role names.
+  const managers=rows.filter(f=>f.active&&f.permissions?.includes('GERENCIAR_FUNCIONARIOS')).length;
+  const unknownPermissions=rows.filter(f=>f.active&&f.permissions===null).length;
+  const classes=[...new Set(rows.map(f=>f.role))].sort((a,b)=>employeeClassLabel(a).localeCompare(employeeClassLabel(b),'pt-BR'));
+  const term=employeeNorm(filters.query).replace(/^#/,'');
+  const filtered=rows.filter(f=>(filters.status!=='ativos'||f.active)&&(filters.status!=='inativos'||!f.active)&&(!filters.role||(filters.role==='__unknown__'?f.role==='':f.role===filters.role))&&(!term||employeeNorm(f.name+' '+f.ru).includes(term))).sort((a,b)=>Number(b.active)-Number(a.active)||a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})||a.ru.localeCompare(b.ru,'pt-BR',{numeric:true}));
+  const size=[10,15,25,50].includes(Number(pageSize))?Number(pageSize):15,pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {total:rows.length,active,inactive:rows.length-active,managers,unknownPermissions,classes,count:filtered.length,pages,page:current,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+let employeeListPage=1,employeeListVersion=0,employeeListReady=false,employeeListLoading=false;
+const employeeListGet=id=>document.getElementById(id);
+async function stockOSMount_funcionarios(){
+  if(typeof paginaAtual==='function'&&paginaAtual()!=='funcionarios')return;
+  if(!employeeListGet('tabela-funcionarios'))return;
+  filtroAtivo='todos';employeeListPage=1;
+  employeeListGet('employee-class-filter').onchange=filtrar;
+  employeeListGet('employee-page-size').onchange=filtrar;
+  employeeListGet('employee-refresh').onclick=()=>void carregarFuncionarios();
+  employeeListGet('employee-clear').onclick=()=>{
+    employeeListGet('busca').value='';employeeListGet('employee-class-filter').value='';
+    setFiltro('todos',document.querySelector('.employee-directory [data-status="todos"]'));
+  };
+  employeeListGet('employee-prev').onclick=()=>{employeeListPage--;renderTabela();};
+  employeeListGet('employee-next').onclick=()=>{employeeListPage++;renderTabela();};
+  await carregarFuncionarios();
+}
+function employeePopulateClasses(){
+  const select=employeeListGet('employee-class-filter'),old=select.value,model=employeeListModel(todosFuncionarios);
+  select.replaceChildren();
+  const add=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;select.appendChild(o);};
+  add('','Todas as classes');model.classes.forEach(v=>add(v||'__unknown__',employeeClassLabel(v)));
+  select.value=[...select.options].some(o=>o.value===old)?old:'';
+}
+async function carregarFuncionarios(){
+  const table=employeeListGet('tabela-funcionarios');if(!table)return;
+  const version=++employeeListVersion,current=()=>employeeListGet('tabela-funcionarios')===table&&version===employeeListVersion;
+  employeeListLoading=true;employeeListReady=false;renderTabela();
+  try{
+    const resp=await fetch('/api/funcionarios');if(!resp.ok)throw Error();
     const data=await resp.json();
-    if(document.getElementById('tabela-funcionarios')!==table)return;
-    if(!Array.isArray(data))throw Error('Resposta inválida');
-    todosFuncionarios=data;
-    renderTabela();
-  } catch {
-    if(document.getElementById('tabela-funcionarios')!==table)return;
-    table.innerHTML =
-      '<tr><td colspan="6" class="empty">Erro ao carregar funcionários.</td></tr>';
-  }
+    if(!current())return;
+    if(!Array.isArray(data)||data.some(f=>!f||!/^\d+$/.test(String(f.ru))||typeof f.ativo!=='boolean'))throw Error('Resposta inválida');
+    todosFuncionarios=data;employeePopulateClasses();employeeListReady=true;
+  }catch{if(current())todosFuncionarios=[];}
+  finally{if(current()){employeeListLoading=false;renderTabela();}}
 }
-
-// ── Render ────────────────────────────────────────────────────────────────
-
-function renderResumo(listaVisivel) {
-  const container = document.getElementById('funcionario-summary');
-  if (!container) return;
-
-  const ativos = todosFuncionarios.filter(f => f.ativo).length;
-  const gestores = todosFuncionarios.filter(f => ['SUPERIOR', 'GERENTE_ESTOQUE'].includes(f.nomeClasse)).length;
-
-  container.innerHTML = [
-    {
-      label: 'Total de funcionários',
-      value: todosFuncionarios.length,
-      sub: 'Cadastros com acesso potencial ao sistema.'
-    },
-    {
-      label: 'Equipe ativa',
-      value: ativos,
-      sub: 'Usuários atualmente habilitados.'
-    },
-    {
-      label: 'Perfis de gestão',
-      value: gestores,
-      sub: `${listaVisivel.length} resultado(s) visível(is) no filtro atual.`
-    }
-  ].map(card => `
-    <div class="page-summary-card">
-      <div class="page-summary-label">${card.label}</div>
-      <div class="page-summary-value">${card.value}</div>
-      <div class="page-summary-sub">${card.sub}</div>
-    </div>
-  `).join('');
+function renderResumo(model){
+  const container=employeeListGet('funcionario-summary');if(!container)return;
+  const cards=[
+    ['Total de funcionários',model?.total,'Todos os cadastros','neutral'],
+    ['Equipe ativa',model?.active,'Contas habilitadas','success'],
+    ['Contas inativas',model?.inactive,'Acesso desativado','neutral'],
+    ['Gestão de funcionários',model?(model.unknownPermissions?model.managers+'+':model.managers):null,model?.unknownPermissions?'Contas ativas confirmadas; dados incompletos':'Ativos com permissão de gestão','neutral']
+  ];
+  container.innerHTML=cards.map(([label,value,sub,tone])=>'<div class="page-summary-card" data-tone="'+tone+'"><div class="page-summary-label">'+label+'</div><div class="page-summary-value">'+(value??'—')+'</div><div class="page-summary-sub">'+sub+'</div></div>').join('');
 }
-
-function renderTabela() {
-  const busca = document.getElementById('busca').value.toLowerCase();
-  let lista = todosFuncionarios.filter(f => {
-    const matchFiltro =
-      filtroAtivo === 'todos' ||
-      (filtroAtivo === 'ativos' && f.ativo) ||
-      (filtroAtivo === 'inativos' && !f.ativo);
-    const nomeCompleto = `${f.nome} ${f.sobrenome}`.toLowerCase();
-    const matchBusca = !busca || nomeCompleto.includes(busca) || String(f.ru).includes(busca);
-    return matchFiltro && matchBusca;
-  });
-
-  document.getElementById('table-count').textContent = `${lista.length} funcionário(s)`;
-  renderResumo(lista);
-
-  const tbody = document.getElementById('tabela-funcionarios');
-  if (lista.length === 0) {
-    if (todosFuncionarios.length === 0) {
-      tbody.innerHTML = `
-        <tr><td colspan="6" class="table-empty-cell">
-          ${emptyStateMarkup({
-            icon: 'users',
-            title: 'Nenhum funcionário cadastrado',
-            copy: 'Adicione funcionários para distribuir classes, permissões e acesso operacional.',
-            actions: '<button class="btn-primary" onclick="abrirModalCadastro()">Novo Funcionário</button>'
-          })}
-        </td></tr>`;
-    } else {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
-    }
-    return;
-  }
-
-  tbody.innerHTML = lista.map(f => {
-    const classeLabel = CLASSE_LABEL[f.nomeClasse] || f.nomeClasse || '—';
-    const classeBadge = CLASSE_BADGE[f.nomeClasse] || 'badge-gray';
-    const perms = Array.isArray(f.permissoes) ? f.permissoes.length : 0;
-    // Escapado para caber dentro do atributo onclick, que usa aspas duplas.
-    const nomeCompletoJs = escapeHtml(JSON.stringify(`${f.nome || ''} ${f.sobrenome || ''}`.trim()));
-    const nomeClasseJs = escapeHtml(JSON.stringify(f.nomeClasse || ''));
-    const podeRedefinir = f.ru !== usuario.ru && (f.perfil !== 'ADMIN' || usuario.perfil === 'ADMIN');
-
-    return `
-      <tr>
-        <td class="table-cell-subtle table-cell-strong">#${f.ru}</td>
-        <td>
-          <div class="produto-nome">${escapeHtml(f.nome)} ${escapeHtml(f.sobrenome)}</div>
-          <div class="produto-id">${escapeHtml(f.perfil || 'OPERADOR')}</div>
-        </td>
-        <td><span class="badge ${classeBadge}">${classeLabel}</span></td>
-        <td class="table-cell-muted table-cell-subtle">${perms} permissão(ões)</td>
-        <td>
-          <span class="badge ${f.ativo ? 'badge-green' : 'badge-gray'}">
-            ${f.ativo ? 'Ativo' : 'Inativo'}
-          </span>
-        </td>
-        <td>
-          <div class="acoes">
-            ${f.ativo ? `
-              <button class="btn-acao" onclick="abrirModalClasse(${f.ru}, ${nomeCompletoJs}, ${nomeClasseJs})">Classe</button>
-              ${podeRedefinir ? `<button class="btn-acao" data-redefinir-senha="${f.ru}" onclick="redefinirSenhaFuncionario(${f.ru}, ${nomeCompletoJs})">Redefinir senha</button>` : ''}
-              <button class="btn-acao saida" onclick="desativar(${f.ru})">Desativar</button>
-            ` : `
-              <span class="status-placeholder">Inativo</span>
-            `}
-          </div>
-        </td>
-      </tr>
-    `;
+function renderTabela(){
+  const get=employeeListGet,tbody=get('tabela-funcionarios');if(!tbody)return;
+  const model=employeeListReady?employeeListModel(todosFuncionarios,{query:get('busca').value,status:filtroAtivo,role:get('employee-class-filter').value},employeeListPage,get('employee-page-size').value):null;
+  renderResumo(model);
+  get('employee-refresh').disabled=employeeListLoading;
+  get('table-count').textContent=model?model.count+' de '+model.total:'—';
+  get('employee-prev').disabled=!model||model.page<=1;get('employee-next').disabled=!model||model.page>=model.pages;
+  get('employee-range').textContent=model?(model.count?model.from+'–'+model.to+' de '+model.count+' · página '+model.page+' de '+model.pages:'0 resultados'):'';
+  if(!model){tbody.innerHTML='<tr><td colspan="6" class="empty">'+(employeeListLoading?'Carregando funcionários…':'Não foi possível carregar a equipe. Use Atualizar para tentar novamente.')+'</td></tr>';return;}
+  employeeListPage=model.page;
+  if(!model.rows.length){tbody.innerHTML='<tr><td colspan="6" class="empty">'+(model.total?'Nenhum funcionário corresponde aos filtros.':'Nenhum funcionário cadastrado.')+'</td></tr>';return;}
+  const esc=escapeHtml;
+  tbody.innerHTML=model.rows.map(f=>{
+    const initials=f.name.split(/\s+/).slice(0,2).map(x=>Array.from(x)[0]||'').join('').toUpperCase();
+    const canReset=String(f.ru)!==String(usuario?.ru)&&(f.profile!=='ADMIN'||usuario?.perfil==='ADMIN');
+    const nameJs=esc(JSON.stringify(f.name)),roleJs=esc(JSON.stringify(f.role)),idJs=esc(JSON.stringify(f.ru));
+    const own=String(f.ru)===String(usuario?.ru);
+    return '<tr><td class="employee-ru">#'+esc(f.ru)+'</td><td><div class="employee-person"><span class="employee-initials" aria-hidden="true">'+esc(initials)+'</span><div><strong>'+esc(f.name)+'</strong><small>'+esc(f.profile||'Perfil não informado')+(own?' · Sua conta':'')+'</small></div></div></td><td><span class="employee-role-label">'+esc(employeeClassLabel(f.role))+'</span></td><td><span class="employee-permission-count">'+(f.permissions===null?'—':f.permissions.length)+'</span><small class="employee-permission-caption">'+(f.permissions===null?'Não informadas':f.permissions.includes('GERENCIAR_FUNCIONARIOS')?'Inclui gestão de equipe':f.permissions.length===1?'permissão':'permissões')+'</small></td><td><span class="employee-status" data-active="'+f.active+'"><span aria-hidden="true"></span>'+(f.active?'Ativo':'Inativo')+'</span></td><td><div class="acoes employee-row-actions">'+(f.active?'<button type="button" class="btn-acao" onclick="abrirModalClasse('+idJs+', '+nameJs+', '+roleJs+')">Alterar classe</button>'+(canReset?'<button type="button" class="btn-acao" data-redefinir-senha="'+esc(f.ru)+'" onclick="redefinirSenhaFuncionario('+idJs+', '+nameJs+')">Redefinir senha</button>':'')+'<button type="button" class="btn-acao saida" onclick="desativar('+idJs+')">Desativar</button>':'<span class="status-placeholder">Sem ações disponíveis</span>')+'</div></td></tr>';
   }).join('');
 }
-
-// ── Actions ───────────────────────────────────────────────────────────────
-
-function setFiltro(tipo, btn) {
-  filtroAtivo = tipo;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTabela();
+function setFiltro(tipo,btn){
+  filtroAtivo=['todos','ativos','inativos'].includes(tipo)?tipo:'todos';
+  document.querySelectorAll('.employee-directory .filter-btn').forEach(b=>{const selected=b===btn;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));});
+  filtrar();
 }
-
-function filtrar() { renderTabela(); }
+function filtrar(){employeeListPage=1;renderTabela();}
 
 const EMPLOYEE_ROLE_ACCESS={
   SUPERIOR:{description:'Acesso total ao sistema. Reserve para pessoas autorizadas a administrar toda a operação.',permissions:['Consultar estoque','Editar estoque','Compras','Vendas','Finanças','Gerenciar funcionários','Logs de auditoria']},

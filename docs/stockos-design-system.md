@@ -190,3 +190,7 @@ Barra de ações compacta, indicadores do relatório consultado (sem estimar dad
 ## Cadastro de funcionário
 
 Modal compacto com dados pessoais, credenciais e permissões da classe conforme FuncionarioController. CPF formatado e validado por dígitos verificadores (não verifica titularidade), senha inicial validada no cliente com mínimo de seis caracteres, rejeição de 123456/repetições e máximo de 72 bytes, visualização opcional e limpeza ao fechar. Classe Superior exige confirmação explícita na interface. Envio único enquanto pendente e orientação de conferência da lista quando o resultado for incerto. Mesmo endpoint e payload; nenhuma alteração de autorização do servidor.
+
+### Diretório de funcionários
+
+Indicadores globais de cadastros, ativos, inativos e contas ativas com a permissão GERENCIAR_FUNCIONARIOS. Permissões ausentes são sinalizadas, sem inferência a partir do nome da classe. Classes são extraídas da API, incluindo variantes do preview. Busca por nome/RU, filtros combinados, ordenação por situação e nome e paginação local 10/15/25/50. Ações e endpoints existentes preservados; não altera autorização no servidor.
