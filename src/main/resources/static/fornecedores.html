@@ -130,27 +130,39 @@
 
 <!-- ── Modal: Vincular Produto ── -->
 <div class="modal-overlay" id="modal-vincular" onclick="fecharModalSeClicouFora(event,'modal-vincular')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vincular-titulo">
     <div class="modal-header">
-      <h3 class="modal-title">Vincular Produto</h3>
+      <div><h3 class="modal-title" id="vincular-titulo">Vincular produto</h3><p class="supplier-link-subtitle">Gerencie os produtos fornecidos por esta empresa.</p></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-vincular')">×</button>
     </div>
     <div class="modal-body">
-      <div class="produto-info-card">
-        <div class="produto-info-nome" id="vincular-fornecedor-nome">Fornecedor —</div>
+      <div class="produto-info-card supplier-link-context">
+        <div><div class="supplier-link-caption">Fornecedor</div><div class="produto-info-nome" id="vincular-fornecedor-nome">Fornecedor —</div></div>
         <div class="produto-info-qtd" id="vincular-produtos-atuais"></div>
       </div>
-      <div class="form-group">
-        <label>Selecionar Produto</label>
-        <select id="vincular-produto-select">
-          <option value="">— carregando produtos —</option>
-        </select>
+      <section id="supplier-link-workspace" hidden>
+        <div class="supplier-link-tabs" role="group" aria-label="Visualizar produtos">
+          <button type="button" data-link-tab="available" aria-pressed="true">Para vincular <strong id="supplier-available-count">—</strong></button>
+          <button type="button" data-link-tab="linked" aria-pressed="false">Já vinculados <strong id="supplier-linked-count">—</strong></button>
+        </div>
+        <div class="supplier-link-tools">
+          <input class="input" id="supplier-link-search" type="search" aria-label="Buscar produtos" placeholder="Buscar nome ou código de barras..." autocomplete="off">
+          <select class="input" id="supplier-link-category" aria-label="Filtrar categoria"></select>
+        </div>
+        <div class="supplier-link-table-wrap" id="supplier-link-results"></div>
+        <div class="supplier-link-pagination"><span id="supplier-link-range" role="status"></span><div><button type="button" id="supplier-link-prev" aria-label="Página anterior">Anterior</button><button type="button" id="supplier-link-next" aria-label="Próxima página">Próxima</button></div></div>
+        <div class="supplier-link-selection" id="supplier-link-selection" aria-live="polite">Nenhum produto selecionado.</div>
+        <button type="button" id="supplier-link-refresh" class="supplier-link-refresh">Atualizar catálogo e vínculos</button>
+      </section>
+      <div class="form-group" id="supplier-link-legacy">
+        <label for="vincular-produto-select">Selecionar produto</label>
+        <select id="vincular-produto-select"><option value="">— carregando produtos —</option></select>
       </div>
-      <div class="alert-modal" id="alert-vincular"></div>
+      <div class="alert-modal" id="alert-vincular" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-vincular')">Cancelar</button>
-      <button class="btn-primary" onclick="confirmarVincular()">Vincular</button>
+      <button class="btn-secondary" type="button" onclick="fecharModal('modal-vincular')">Fechar</button>
+      <button class="btn-primary" type="button" id="btn-confirmar-vincular" onclick="confirmarVincular()" disabled>Vincular produto</button>
     </div>
   </div>
 </div>

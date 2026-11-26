@@ -205,46 +205,168 @@ async function reativar(id) {
   await carregarFornecedores();
 }
 
-function abrirModalVincular(id) {
-  fornecedorVincularId = id;
-  const fornecedor = todosFornecedores.find(f => f.id === id);
-  limparAlert('alert-vincular');
-
-  document.getElementById('vincular-fornecedor-nome').textContent = fornecedor.nome;
-  const jaVinculados = fornecedor.produtos.map(p => p.id);
-  const disponiveis = todosProdutos.filter(p => !jaVinculados.includes(p.id));
-
-  document.getElementById('vincular-produtos-atuais').textContent =
-    fornecedor.produtos.length > 0
-      ? `Já vinculados: ${fornecedor.produtos.map(p => p.nome).join(', ')}`
-      : 'Nenhum produto vinculado ainda.';
-
-  const select = document.getElementById('vincular-produto-select');
-  if (disponiveis.length === 0) {
-    select.innerHTML = '<option value="">Todos os produtos já estão vinculados</option>';
-  } else {
-    select.innerHTML = `<option value="">— Selecione um produto —</option>` +
-      disponiveis.map(p => `<option value="${p.id}">${escapeHtml(p.nome)} (R$${p.precoUnitario.toFixed(2)})</option>`).join('');
-  }
-  abrirModal('modal-vincular');
+// Supplier link workspace: one existing API operation at a time.
+function supplierLinkModel(products,linked,tab='available',query='',category='',page=1,pageSize=7){
+  if(!Array.isArray(products)||!Array.isArray(linked))return null;
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const validId=p=>Number.isSafeInteger(Number(p?.id))&&Number(p.id)>0;
+  const catalog=new Map(products.filter(validId).map(p=>[Number(p.id),p]));
+  const existing=new Map(linked.filter(validId).map(p=>[Number(p.id),p]));
+  const normalize=(p,id,isLinked)=>{
+    const current=catalog.get(id)||{};
+    const item={...p,...current};
+    const price=item.precoUnitario!=null&&String(item.precoUnitario).trim()!==''&&Number.isFinite(Number(item.precoUnitario))?Number(item.precoUnitario):null;
+    return {id,name:String(item.nome||'Produto sem nome'),category:String(item.categoriaEstoque||''),code:String(item.codigoBarras||''),price,linked:isLinked,active:item.ativo!==false};
+  };
+  const available=[...catalog].filter(([id])=>!existing.has(id)).map(([id,p])=>normalize(p,id,false));
+  const current=[...existing].map(([id,p])=>normalize(p,id,true));
+  const all=tab==='linked'?current:available;
+  const categories=[...new Set(all.map(p=>p.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const term=norm(query);
+  const filtered=all.filter(p=>(!category||p.category===category)&&norm([p.name,p.code,p.id].join(' ')).includes(term))
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')||a.id-b.id);
+  const size=Math.max(1,Math.floor(Number(pageSize)||7)),pages=Math.max(1,Math.ceil(filtered.length/size)),currentPage=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {available:available.length,linked:current.length,categories,count:filtered.length,page:currentPage,pages,
+    from:filtered.length?(currentPage-1)*size+1:0,to:Math.min(currentPage*size,filtered.length),rows:filtered.slice((currentPage-1)*size,currentPage*size),availableProducts:available};
 }
-
-async function confirmarVincular() {
-  const produtoId = parseInt(document.getElementById('vincular-produto-select').value);
-  if (!produtoId) {
-    mostrarAlert('alert-vincular', 'Selecione um produto.', 'error'); return;
+let linkVersion=0,linkPending=false,linkState=null;
+const supplierLinkPrice=p=>p==null?'—':p.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const supplierLinkCategory=c=>c?c.replace(/_/g,' ').toLocaleLowerCase('pt-BR').replace(/^./,x=>x.toUpperCase()):'—';
+function linkIsCurrent(state){
+  return linkState===state&&state.version===linkVersion&&document.getElementById('modal-vincular')===state.modal&&state.modal.classList.contains('open');
+}
+function renderSupplierLinks(state){
+  if(!linkIsCurrent(state))return;
+  const get=id=>document.getElementById(id);
+  const model=supplierLinkModel(state.products,state.linked,state.tab,state.query,state.category,state.page);
+  const button=get('btn-confirmar-vincular'),results=get('supplier-link-results');
+  const selected=state.selected!=null&&model?.availableProducts.find(p=>p.id===state.selected);
+  const ready=!!model&&!state.loading&&!state.uncertain;
+  button.disabled=linkPending||!ready||!selected;
+  button.textContent=linkPending?'Vinculando…':'Vincular produto';
+  get('supplier-link-refresh').disabled=linkPending||state.loading;
+  get('supplier-link-search').disabled=get('supplier-link-category').disabled=!ready||linkPending;
+  state.modal.querySelectorAll('[data-link-tab]').forEach(b=>{b.disabled=!ready||linkPending;b.setAttribute('aria-pressed',String(b.dataset.linkTab===state.tab));});
+  get('supplier-link-selection').textContent=selected?'Selecionado: '+selected.name:'Nenhum produto selecionado.';
+  get('supplier-available-count').textContent=ready?model.available:'—';
+  get('supplier-linked-count').textContent=ready?model.linked:'—';
+  get('vincular-produtos-atuais').textContent=ready?model.linked+' vinculados':'Vínculos não confirmados';
+  get('supplier-link-prev').disabled=!ready||linkPending||model.page<=1;
+  get('supplier-link-next').disabled=!ready||linkPending||model.page>=model.pages;
+  get('supplier-link-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' produtos':'0 resultados'):'';
+  if(!ready){results.textContent=state.loading?'Consultando catálogo e vínculos…':'Atualize o catálogo para consultar os produtos.';return;}
+  state.page=model.page;
+  const category=get('supplier-link-category');
+  category.replaceChildren();
+  for(const [value,label] of [['','Todas as categorias'],...model.categories.map(c=>[c,supplierLinkCategory(c)])]){
+    const opt=document.createElement('option');opt.value=value;opt.textContent=label;category.appendChild(opt);
   }
-  const resp = await fetch(`/api/fornecedores/${fornecedorVincularId}/vincular-produto`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ produtoId })
+  category.value=state.category;
+  if(!model.rows.length){
+    results.textContent=state.query||state.category?'Nenhum produto corresponde aos filtros.':state.tab==='linked'?'Nenhum produto vinculado.':'Nenhum produto disponível para vincular.';
+    return;
+  }
+  const esc=escapeHtml;
+  results.innerHTML='<table class="supplier-link-table"><thead><tr><th scope="col">Produto</th><th scope="col">Categoria</th><th scope="col">Preço de cadastro</th><th scope="col">'+(state.tab==='linked'?'Vínculo':'Selecionar')+'</th></tr></thead><tbody>'+
+    model.rows.map(p=>'<tr'+(p.id===state.selected?' class="is-selected"':'')+'><td><strong>'+esc(p.name)+'</strong><small>#'+p.id+(p.code?' · '+esc(p.code):'')+(p.active?'':' · Inativo')+'</small></td><td>'+esc(supplierLinkCategory(p.category))+'</td><td>'+esc(supplierLinkPrice(p.price))+'</td><td>'+
+      (p.linked?'<span class="supplier-link-linked"><span aria-hidden="true"></span>Vinculado</span>':'<button type="button" data-link-product="'+p.id+'" aria-pressed="'+String(p.id===state.selected)+'" aria-label="Selecionar '+esc(p.name)+'"'+(linkPending?' disabled':'')+'>'+(p.id===state.selected?'Selecionado':'Selecionar')+'</button>')+'</td></tr>').join('')+'</tbody></table>';
+  results.querySelectorAll('[data-link-product]').forEach(b=>b.onclick=()=>{
+    if(linkPending)return;
+    const id=Number(b.dataset.linkProduct);state.selected=state.selected===id?null:id;renderSupplierLinks(state);
+    const next=results.querySelector('[data-link-product="'+id+'"]');next?.focus({preventScroll:true});
   });
-  if (!resp.ok) {
-    const err = await safeReadErrorMessage(resp, 'Erro ao vincular.');
-    mostrarAlert('alert-vincular', err, 'error'); return;
+}
+async function refreshSupplierLinks(state){
+  if(!linkIsCurrent(state)||state.loading)return;
+  state.loading=true;state.selected=null;renderSupplierLinks(state);
+  try{
+    const [a,b]=await Promise.all([fetch('/api/fornecedores'),fetch('/api/produtos')]);
+    if(!a.ok||!b.ok)throw Error('Não foi possível consultar catálogo e vínculos.');
+    const [suppliers,products]=await Promise.all([a.json(),b.json()]);
+    if(!Array.isArray(suppliers)||!Array.isArray(products))throw Error('Resposta inválida do catálogo.');
+    const supplier=suppliers.find(f=>Number(f.id)===state.id);
+    if(!supplier||!Array.isArray(supplier.produtos))throw Error('Fornecedor ou vínculos indisponíveis.');
+    if(!linkIsCurrent(state))return;
+    state.products=products;state.linked=supplier.produtos;state.uncertain=false;
+    document.getElementById('vincular-fornecedor-nome').textContent=supplier.nome;
+    if(!supplierLinkModel(products,state.linked,state.tab).categories.includes(state.category))state.category='';
+    todosFornecedores=suppliers;todosProdutos=products;
+    renderTabela();
+  }catch(error){
+    if(linkIsCurrent(state)){
+      state.products=null;state.linked=null;
+      mostrarAlert('alert-vincular',error.message||'Não foi possível carregar os produtos.','error');
+    }
+  }finally{
+    state.loading=false;renderSupplierLinks(state);
   }
-  fecharModal('modal-vincular');
-  await carregarFornecedores();
+}
+function abrirModalVincular(id){
+  if(linkPending)return;
+  const fornecedor=todosFornecedores.find(f=>Number(f.id)===Number(id));
+  if(!fornecedor)return;
+  fornecedorVincularId=Number(id);
+  limparAlert('alert-vincular');
+  document.getElementById('vincular-fornecedor-nome').textContent=fornecedor.nome;
+  const modal=document.getElementById('modal-vincular'),workspace=document.getElementById('supplier-link-workspace'),legacy=document.getElementById('supplier-link-legacy');
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  workspace.hidden=!managed;legacy.hidden=managed;
+  const button=document.getElementById('btn-confirmar-vincular');button.disabled=true;
+  const select=document.getElementById('vincular-produto-select');
+  if(!managed){
+    linkState=null;linkVersion++;
+    const model=supplierLinkModel(todosProdutos,fornecedor.produtos);
+    document.getElementById('vincular-produtos-atuais').textContent=fornecedor.produtos.length+' produtos vinculados';
+    select.replaceChildren();
+    const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Selecione um produto';select.appendChild(placeholder);
+    model.availableProducts.forEach(p=>{const opt=document.createElement('option');opt.value=String(p.id);opt.textContent=p.name+' ('+supplierLinkPrice(p.price)+')';select.appendChild(opt);});
+    select.value='';select.onchange=()=>button.disabled=!select.value;
+    abrirModal('modal-vincular');return;
+  }
+  const state={version:++linkVersion,id:Number(id),modal,tab:'available',query:'',category:'',page:1,selected:null,products:null,linked:null,loading:false,uncertain:false};
+  linkState=state;
+  const search=document.getElementById('supplier-link-search'),category=document.getElementById('supplier-link-category');
+  search.value='';
+  search.oninput=()=>{state.query=search.value;state.page=1;renderSupplierLinks(state);};
+  category.onchange=()=>{state.category=category.value;state.page=1;renderSupplierLinks(state);};
+  modal.querySelectorAll('[data-link-tab]').forEach(b=>b.onclick=()=>{state.tab=b.dataset.linkTab;state.category='';state.page=1;renderSupplierLinks(state);});
+  document.getElementById('supplier-link-prev').onclick=()=>{state.page--;renderSupplierLinks(state);};
+  document.getElementById('supplier-link-next').onclick=()=>{state.page++;renderSupplierLinks(state);};
+  document.getElementById('supplier-link-refresh').onclick=()=>{limparAlert('alert-vincular');void refreshSupplierLinks(state);};
+  abrirModal('modal-vincular');void refreshSupplierLinks(state);
+}
+async function confirmarVincular(){
+  if(linkPending)return;
+  const state=linkState,modal=document.getElementById('modal-vincular'),button=document.getElementById('btn-confirmar-vincular');
+  const produtoId=state?state.selected:Number(document.getElementById('vincular-produto-select').value);
+  if(!Number.isSafeInteger(produtoId)||produtoId<=0||(state&&(!linkIsCurrent(state)||state.loading||state.uncertain||!supplierLinkModel(state.products,state.linked)?.availableProducts.some(p=>p.id===produtoId)))){
+    mostrarAlert('alert-vincular','Selecione um produto ainda não vinculado.','error');return;
+  }
+  const fornecedorId=fornecedorVincularId;
+  linkPending=true;button.disabled=true;
+  if(state)renderSupplierLinks(state);
+  try{
+    const resp=await fetch('/api/fornecedores/'+fornecedorId+'/vincular-produto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({produtoId})});
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto.');
+      mostrarAlert('alert-vincular',await safeReadErrorMessage(resp,'Erro ao vincular.'),'error');return;
+    }
+    if(document.getElementById('modal-vincular')!==modal)return;
+    if(state&&linkIsCurrent(state)){
+      state.selected=null;
+      mostrarAlert('alert-vincular','Produto vinculado com sucesso.','success');
+      await refreshSupplierLinks(state);
+    }else if(!state){
+      linkPending=false;fecharModal('modal-vincular');await carregarFornecedores();
+    }
+  }catch(error){
+    if(document.getElementById('modal-vincular')!==modal)return;
+    if(state){state.uncertain=true;state.selected=null;}
+    mostrarAlert('alert-vincular','Não foi possível confirmar o resultado. Atualize os vínculos antes de tentar novamente.','error');
+  }finally{
+    linkPending=false;
+    if(state)renderSupplierLinks(state);else button.disabled=!document.getElementById('vincular-produto-select')?.value;
+  }
 }
 
 function verProdutos(id) {
@@ -278,7 +400,7 @@ function abrirModalCadastro() {
 }
 
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
-function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+function fecharModal(id) { if(id==='modal-vincular'){if(linkPending)return;linkVersion++;linkState=null;} document.getElementById(id).classList.remove('open'); }
 function fecharModalSeClicouFora(e, id) { if (e.target.id === id) fecharModal(id); }
 function mostrarAlert(id, msg, tipo) {
   const el = document.getElementById(id);

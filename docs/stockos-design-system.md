@@ -136,3 +136,7 @@ Modal compartilhado de criação e edição com identificação, código técnic
 ## Itens de cardápio
 
 Identificação e categoria agrupadas; preço, tipo, disponibilidade, ordem e ações em colunas proporcionais. Filtro de estado usa a resolução existente, distingue liberação cadastral sem confirmação operacional e não redefine as regras de venda. Ações explícitas de edição, pausa/liberação e ativação/inativação; confirmação na inativação e salvamento de ordem somente quando alterada. Preservar endpoints e modo original.
+
+## Vínculos de fornecedor
+
+Modal amplo com catálogo e vínculos em abas, busca por nome/código de barras/ID, categoria, paginação de sete itens e seleção única explícita. Preço apresentado é o preço cadastrado, não custo negociado. Consulta atualizada antes de selecionar e após confirmar. Falha ambígua exige nova consulta. Não inclui remoção nem operação em lote; mantém endpoint, autorização e semântica existentes. Produtos inativos identificados sem introduzir restrição não definida pelo servidor.
