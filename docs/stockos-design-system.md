@@ -148,3 +148,7 @@ Cabeçalho compacto, ação de cadastro dentro da lista, quatro métricas em sup
 ## Cadastro de fornecedor
 
 Identificação e contato em formulário compacto. Validação de CNPJ numérico espelha o modelo Java, sem consulta à Receita e sem aceitar letras removendo-as silenciosamente; suporte alfanumérico depende de mudança futura do contrato/modelo. Nome e telefone limitados ao tamanho das colunas atuais. Duplicidade é aviso baseado no cache, servidor continua autoridade. Envio único em curso, falha ambígua requer conferência da listagem. Nenhum campo ou endpoint novo.
+
+## Produtos vinculados ao fornecedor
+
+Consulta de vínculos atualizada ao abrir ou solicitar atualização, tabela compacta com nome, ID/código de barras, categoria quando disponível e preço cadastrado em BRL. Busca sem acentos, filtro por categoria e paginação de oito registros. Vínculos e preço informado pelo endpoint de fornecedores prevalecem sobre metadados opcionais do catálogo. Falha de consulta não vira lista vazia; respostas de modais antigos são ignoradas. Atalho para o fluxo existente de vinculação apenas para fornecedor ativo; nenhuma desvinculação ou alteração de backend.

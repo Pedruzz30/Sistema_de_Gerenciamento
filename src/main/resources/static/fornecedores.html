@@ -187,16 +187,29 @@
 
 <!-- ── Modal: Produtos Vinculados ── -->
 <div class="modal-overlay" id="modal-produtos" onclick="fecharModalSeClicouFora(event,'modal-produtos')">
-  <div class="modal modal--narrow">
+  <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="modal-produtos-titulo">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-produtos-titulo">Produtos Vinculados</h3>
+      <div class="supplier-products-heading"><span class="supplier-products-icon" data-icon="box" aria-hidden="true"></span><div><h3 class="modal-title" id="modal-produtos-titulo">Produtos vinculados</h3><p>Consulte o catálogo associado a este fornecedor.</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-produtos')">×</button>
     </div>
     <div class="modal-body">
-      <div id="produtos-lista"></div>
+      <div class="supplier-products-context">
+        <div><span>Fornecedor</span><strong id="supplier-products-name">—</strong></div>
+        <div class="supplier-products-total"><strong id="supplier-products-count">—</strong><span>Produtos vinculados</span></div>
+      </div>
+      <div class="supplier-products-tools">
+        <input class="input" type="search" id="supplier-products-search" placeholder="Buscar nome, código de barras ou ID..." aria-label="Buscar produtos vinculados">
+        <select class="input" id="supplier-products-category" aria-label="Filtrar categoria"><option value="">Todas as categorias</option></select>
+      </div>
+      <div id="produtos-lista" class="supplier-products-results"></div>
+      <div class="supplier-products-pagination"><span id="supplier-products-range" role="status"></span><div><button type="button" id="supplier-products-prev">Anterior</button><button type="button" id="supplier-products-next">Próxima</button></div></div>
+      <p class="supplier-products-note">Os valores são preços cadastrados no StockOS, não custos negociados com o fornecedor.</p>
+      <div id="alert-produtos" class="alert-modal" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-produtos')">Fechar</button>
+      <button type="button" class="btn-secondary" id="supplier-products-refresh">Atualizar lista</button>
+      <button type="button" class="btn-secondary" onclick="fecharModal('modal-produtos')">Fechar</button>
+      <button type="button" class="btn-primary" id="supplier-products-link">Vincular produto</button>
     </div>
   </div>
 </div>

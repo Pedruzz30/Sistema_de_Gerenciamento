@@ -415,24 +415,93 @@ async function confirmarVincular(){
   }
 }
 
-function verProdutos(id) {
-  const fornecedor = todosFornecedores.find(f => f.id === id);
-  document.getElementById('modal-produtos-titulo').textContent = `Produtos — ${fornecedor.nome}`;
-  const lista = document.getElementById('produtos-lista');
-  if (fornecedor.produtos.length === 0) {
-    lista.innerHTML = '<div class="empty">Nenhum produto vinculado.</div>';
-  } else {
-    lista.innerHTML = `
-      <div class="itens-nota-list">
-        ${fornecedor.produtos.map(p => `
-          <div class="item-nota-row">
-            <span class="item-nota-nome">${escapeHtml(p.nome)}</span>
-            <span class="item-nota-preco">R$${p.precoUnitario.toFixed(2)}</span>
-          </div>
-        `).join('')}
-      </div>`;
+// The linked endpoint is authoritative for membership and its reported price.
+function supplierProductsModel(products,linked,query='',category='',page=1){
+  if(!Array.isArray(linked))return null;
+  const catalog=new Map((Array.isArray(products)?products:[]).map(p=>[Number(p.id),p]));
+  const enriched=linked.map(p=>({...catalog.get(Number(p.id)),...p}));
+  return supplierLinkModel(enriched,linked,'linked',query,category,page,8);
+}
+let supplierProductsState=null;
+function supplierProductsCurrent(state){
+  return supplierProductsState===state&&document.getElementById('modal-produtos')===state.modal&&state.modal.classList.contains('open');
+}
+function drawSupplierProducts(state){
+  if(!supplierProductsCurrent(state))return;
+  const get=id=>document.getElementById(id);
+  const model=supplierProductsModel(state.products,state.linked,state.query,state.category,state.page);
+  const ready=!!model&&!state.loading;
+  get('supplier-products-name').textContent=state.name;
+  get('supplier-products-count').textContent=ready?model.linked:'—';
+  get('supplier-products-search').disabled=get('supplier-products-category').disabled=!ready;
+  get('supplier-products-refresh').disabled=state.loading;
+  get('supplier-products-link').disabled=!ready||state.active!==true||linkPending;
+  get('supplier-products-prev').disabled=!ready||model.page<=1;
+  get('supplier-products-next').disabled=!ready||model.page>=model.pages;
+  const results=get('produtos-lista');
+  get('supplier-products-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' produtos':'0 resultados'):'';
+  if(!ready){results.textContent=state.loading?'Consultando produtos vinculados…':'Lista indisponível. Atualize para tentar novamente.';return;}
+  state.page=model.page;
+  const select=get('supplier-products-category');
+  select.replaceChildren();
+  for(const [value,label] of [['','Todas as categorias'],...model.categories.map(c=>[c,supplierLinkCategory(c)])]){
+    const opt=document.createElement('option');opt.value=value;opt.textContent=label;select.appendChild(opt);
   }
-  abrirModal('modal-produtos');
+  select.value=state.category;
+  if(!model.rows.length){results.textContent=state.query||state.category?'Nenhum produto corresponde aos filtros.':'Nenhum produto vinculado a este fornecedor.';return;}
+  const esc=escapeHtml;
+  results.innerHTML='<table class="supplier-products-table"><thead><tr><th scope="col">Produto</th><th scope="col">Categoria</th><th scope="col">Preço cadastrado</th></tr></thead><tbody>'+
+    model.rows.map(p=>'<tr><td><strong>'+esc(p.name)+'</strong><small>#'+p.id+(p.code?' · '+esc(p.code):'')+'</small></td><td>'+esc(supplierLinkCategory(p.category))+'</td><td>'+esc(supplierLinkPrice(p.price))+'</td></tr>').join('')+'</tbody></table>';
+}
+async function refreshSupplierProducts(state){
+  if(!supplierProductsCurrent(state)||state.loading)return;
+  state.loading=true;limparAlert('alert-produtos');drawSupplierProducts(state);
+  try{
+    const resp=await fetch('/api/fornecedores');
+    if(!resp.ok)throw Error('Não foi possível consultar os vínculos.');
+    const data=await resp.json();
+    if(!Array.isArray(data))throw Error('Resposta inválida de fornecedores.');
+    const supplier=data.find(f=>Number(f.id)===state.id);
+    if(!supplier||!Array.isArray(supplier.produtos))throw Error('Fornecedor ou vínculos indisponíveis.');
+    // Catalog metadata is optional; supplier membership never depends on it.
+    let catalog=[];
+    try{
+      const response=await fetch('/api/produtos');
+      if(response.ok){const items=await response.json();if(Array.isArray(items))catalog=items;}
+    }catch{}
+    if(!supplierProductsCurrent(state))return;
+    state.name=supplier.nome;state.active=supplier.ativo;state.linked=supplier.produtos;state.products=catalog;
+    if(!supplierProductsModel(catalog,state.linked).categories.includes(state.category))state.category='';
+    todosFornecedores=data;
+    if(document.getElementById('tabela-fornecedores'))renderTabela();
+  }catch(error){
+    if(supplierProductsCurrent(state)){
+      state.linked=null;
+      mostrarAlert('alert-produtos','Não foi possível atualizar os produtos vinculados. Tente novamente.','error');
+    }
+  }finally{
+    state.loading=false;drawSupplierProducts(state);
+  }
+}
+function verProdutos(id){
+  if(linkPending)return;
+  const supplier=todosFornecedores.find(f=>Number(f.id)===Number(id));
+  if(!supplier)return;
+  const modal=document.getElementById('modal-produtos');
+  const state={modal,id:Number(id),name:supplier.nome,active:supplier.ativo,linked:null,products:[],query:'',category:'',page:1,loading:false};
+  supplierProductsState=state;
+  const get=id=>document.getElementById(id);
+  get('supplier-products-search').value='';
+  get('supplier-products-search').oninput=()=>{state.query=get('supplier-products-search').value;state.page=1;drawSupplierProducts(state);};
+  get('supplier-products-category').onchange=()=>{state.category=get('supplier-products-category').value;state.page=1;drawSupplierProducts(state);};
+  get('supplier-products-prev').onclick=()=>{state.page--;drawSupplierProducts(state);};
+  get('supplier-products-next').onclick=()=>{state.page++;drawSupplierProducts(state);};
+  get('supplier-products-refresh').onclick=()=>void refreshSupplierProducts(state);
+  get('supplier-products-link').onclick=()=>{
+    if(!supplierProductsCurrent(state)||state.loading||state.active!==true||linkPending||!Array.isArray(state.linked))return;
+    fecharModal('modal-produtos');abrirModalVincular(state.id);
+  };
+  abrirModal('modal-produtos');void refreshSupplierProducts(state);
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────
@@ -451,7 +520,7 @@ function abrirModalCadastro() {
 }
 
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
-function fecharModal(id) { if(id==='modal-cadastro'&&supplierCreatePending)return; if(id==='modal-vincular'){if(linkPending)return;linkVersion++;linkState=null;} document.getElementById(id).classList.remove('open'); }
+function fecharModal(id) { if(id==='modal-produtos')supplierProductsState=null; if(id==='modal-cadastro'&&supplierCreatePending)return; if(id==='modal-vincular'){if(linkPending)return;linkVersion++;linkState=null;} document.getElementById(id).classList.remove('open'); }
 function fecharModalSeClicouFora(e, id) { if (e.target.id === id) fecharModal(id); }
 function mostrarAlert(id, msg, tipo) {
   const el = document.getElementById(id);
