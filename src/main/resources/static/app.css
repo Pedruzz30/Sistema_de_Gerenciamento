@@ -4013,3 +4013,12 @@ body.dashboard-page .app.stockos-shell-v2 .main-grid {grid-template-columns:minm
 body.dashboard-page .app.stockos-shell-v2 .main-grid .card {border-radius:10px;box-shadow:none;}
 @media(max-width:1150px) {body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid,body.dashboard-page .app.stockos-shell-v2 .main-grid {grid-template-columns:minmax(0,1fr);}}
 @media(max-width:480px) {body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card {min-height:118px;padding:12px;}body.dashboard-page .app.stockos-shell-v2 .stockos-sales-panel {padding:14px;}body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-value {font-size:19px;}}
+
+/* Distinguish daily metrics from the accumulated per-register totals. */
+.stockos-sales-caption {margin:0 0 8px;color:var(--ink-3);font-size:11px;line-height:1.45;}
+.stockos-sales-column {grid-template-rows:minmax(20px,auto) minmax(90px,1fr) minmax(24px,auto);flex-basis:94px;}
+.stockos-sales-value {max-width:100%;overflow-wrap:anywhere;text-align:center;line-height:1.25;}
+.stockos-sales-chart--signed .stockos-sales-track {position:relative;}
+.stockos-sales-chart--signed .stockos-sales-track::after {content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--rule-strong);}
+.stockos-sales-chart--signed .stockos-sales-bar {position:absolute;bottom:50%;left:0;}
+.stockos-sales-chart--signed .stockos-sales-bar--negative {bottom:auto;top:50%;background:var(--bad);border-radius:0 0 5px 5px;}
