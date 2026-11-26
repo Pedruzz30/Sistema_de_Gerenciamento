@@ -347,3 +347,45 @@ body.funcionarios-page .modal-footer > button:focus-visible {
   body.funcionarios-page .sidebar,body.funcionarios-page .page-summary-card,
   body.funcionarios-page .modal {animation:none;transition:none;}
 }
+
+/* Employee registration — identity, credentials and actual class permissions. */
+body.funcionarios-page #modal-cadastro>.modal{flex-basis:650px;max-width:min(650px,100%)!important;border-radius:12px;}
+body.funcionarios-page #modal-cadastro :is(.modal-header,.modal-footer){padding:12px 16px;min-height:0;background:var(--paper-raised);}
+.employee-create-heading{display:flex;align-items:center;gap:10px;min-width:0;}
+.employee-create-heading>div{min-width:0;}
+.employee-create-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;background:var(--paper-sunk);color:var(--ink-2);border-radius:8px;}
+.employee-create-icon svg{width:18px;height:18px;}
+.employee-create-heading p{margin:4px 0 0;font-size:12px;color:var(--ink-3);line-height:1.4;}
+body.funcionarios-page #modal-cadastro .modal-body{padding:15px 16px;gap:12px;min-height:0;}
+body.funcionarios-page #modal-cadastro .modal-body>*{flex-shrink:0;}
+.employee-create-section{display:grid;gap:9px;min-width:0;}
+.employee-create-section+.employee-create-section{padding-top:12px;border-top:1px solid var(--rule);}
+.employee-section-title{display:flex;justify-content:space-between;align-items:baseline;gap:5px 10px;flex-wrap:wrap;}
+.employee-section-title strong{font-size:13px;color:var(--ink);}
+.employee-section-title span,.employee-field-help{font-size:11px;color:var(--ink-3);line-height:1.45;}
+.employee-create-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 10px;}
+.employee-create-full{grid-column:1/-1;}
+body.funcionarios-page #modal-cadastro .form-group{gap:5px;margin:0;}
+body.funcionarios-page #modal-cadastro .form-group label{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink-2);}
+body.funcionarios-page #modal-cadastro .form-group :is(input,select){height:38px;min-height:38px;font-size:13px;}
+.employee-password-wrap{display:flex;min-width:0;gap:6px;}
+.employee-password-wrap input{flex:1;min-width:0;}
+.employee-password-wrap button{flex:0 0 auto;min-height:38px;padding:6px 10px;border:1px solid var(--rule-strong);border-radius:7px;background:var(--paper-raised);color:var(--ink-2);font:inherit;font-size:12px;cursor:pointer;}
+.employee-field-help[data-tone="error"]{color:var(--bad);}
+.employee-field-help[data-tone="success"]{color:var(--ok);}
+body.funcionarios-page #modal-cadastro input[aria-invalid="true"]{border-color:var(--bad);}
+.employee-role-preview{display:grid;gap:5px;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-sunk);}
+.employee-role-preview strong{font-size:12px;color:var(--ink);}
+.employee-role-preview p{margin:0;font-size:11px;line-height:1.45;color:var(--ink-3);}
+.employee-role-preview[data-tone="warning"]{border-color:var(--warn);}
+.employee-permission-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px;}
+.employee-permission-list span{font-size:11px;line-height:1.4;padding:3px 7px;border:1px solid var(--rule);border-radius:5px;background:var(--paper-raised);color:var(--ink-2);}
+.employee-elevated-confirm{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;color:var(--ink-2);}
+body.funcionarios-page #modal-cadastro .employee-elevated-confirm input{appearance:auto;flex:0 0 17px;width:17px;height:17px;min-height:0;margin:0;accent-color:var(--accent);}
+body.funcionarios-page #modal-cadastro [hidden]{display:none!important;}
+body.funcionarios-page #modal-cadastro .modal-footer{justify-content:space-between;gap:10px;}
+.employee-create-footer-note{font-size:11px;color:var(--ink-3);}
+.employee-create-actions{display:flex;gap:7px;flex-wrap:wrap;margin-left:auto;}
+body.funcionarios-page #modal-cadastro .employee-create-actions button{min-height:38px;padding:8px 12px;font-size:12px;box-shadow:none;}
+body.funcionarios-page #modal-cadastro button:disabled{opacity:.5;cursor:default;}
+@media(max-width:540px){.employee-create-grid{grid-template-columns:minmax(0,1fr);}.employee-create-actions{width:100%;}.employee-create-actions button{flex:1;}body.funcionarios-page #modal-cadastro .employee-create-actions button,body.funcionarios-page #modal-cadastro .form-group :is(input,select),.employee-password-wrap button{min-height:44px;}}

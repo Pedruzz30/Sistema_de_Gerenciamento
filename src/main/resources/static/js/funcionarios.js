@@ -32,13 +32,19 @@ async function stockOSMount_funcionarios() {
 // ── API ───────────────────────────────────────────────────────────────────
 
 async function carregarFuncionarios() {
+  const table=document.getElementById('tabela-funcionarios');
+  if(!table)return;
   try {
     const resp = await fetch('/api/funcionarios');
     if (!resp.ok) throw new Error();
-    todosFuncionarios = await resp.json();
+    const data=await resp.json();
+    if(document.getElementById('tabela-funcionarios')!==table)return;
+    if(!Array.isArray(data))throw Error('Resposta inválida');
+    todosFuncionarios=data;
     renderTabela();
   } catch {
-    document.getElementById('tabela-funcionarios').innerHTML =
+    if(document.getElementById('tabela-funcionarios')!==table)return;
+    table.innerHTML =
       '<tr><td colspan="6" class="empty">Erro ao carregar funcionários.</td></tr>';
   }
 }
@@ -160,31 +166,90 @@ function setFiltro(tipo, btn) {
 
 function filtrar() { renderTabela(); }
 
-async function cadastrarFuncionario() {
-  const nome     = document.getElementById('c-nome').value.trim();
-  const sobrenome= document.getElementById('c-sobrenome').value.trim();
-  const cpf      = document.getElementById('c-cpf').value.trim();
-  const senha    = document.getElementById('c-senha').value;
-  const nomeClasse = document.getElementById('c-classe').value;
-
-  if (!nome)      { mostrarAlert('alert-cadastro', 'Nome é obrigatório.', 'error'); return; }
-  if (!sobrenome) { mostrarAlert('alert-cadastro', 'Sobrenome é obrigatório.', 'error'); return; }
-  if (!cpf)       { mostrarAlert('alert-cadastro', 'CPF é obrigatório.', 'error'); return; }
-  if (!senha)     { mostrarAlert('alert-cadastro', 'Senha é obrigatória.', 'error'); return; }
-  if (!nomeClasse){ mostrarAlert('alert-cadastro', 'Selecione uma classe.', 'error'); return; }
-
-  const resp = await fetch('/api/funcionarios', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, sobrenome, cpf, senha, nomeClasse })
-    });
-    if (!resp.ok) {
-      const err = await safeReadErrorMessage(resp, 'Erro ao cadastrar.');
-      mostrarAlert('alert-cadastro', err, 'error'); return;
-    }
-    fecharModal('modal-cadastro');
-    await carregarFuncionarios();
+const EMPLOYEE_ROLE_ACCESS={
+  SUPERIOR:{description:'Acesso total ao sistema. Reserve para pessoas autorizadas a administrar toda a operação.',permissions:['Consultar estoque','Editar estoque','Compras','Vendas','Finanças','Gerenciar funcionários','Logs de auditoria']},
+  GERENTE_ESTOQUE:{description:'Gerencia estoque, compras e funções administrativas.',permissions:['Consultar estoque','Editar estoque','Compras','Finanças','Gerenciar funcionários','Logs de auditoria']},
+  ESTOQUISTA:{description:'Consulta e movimenta itens de estoque.',permissions:['Consultar estoque','Editar estoque']},
+  CAIXA:{description:'Opera vendas e consulta o estoque.',permissions:['Vendas','Consultar estoque']}
+};
+function employeeCpfMask(value){
+  return String(value??'').replace(/\D/g,'').slice(0,11).replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3}\.\d{3})(\d)/,'$1.$2').replace(/^(\d{3}\.\d{3}\.\d{3})(\d)/,'$1-$2');
+}
+function employeeCpfValid(value){
+  const digits=String(value??'').replace(/\D/g,'');
+  if(!/^\d{11}$/.test(digits)||/^(\d)\1+$/.test(digits))return false;
+  for(const length of [9,10]){
+    let sum=0;for(let i=0;i<length;i++)sum+=Number(digits[i])*(length+1-i);
+    const remainder=(sum*10)%11;
+    if(Number(digits[length])!==(remainder===10?0:remainder))return false;
   }
+  return true;
+}
+function employeePasswordValid(value){
+  return typeof value==='string'&&value.length>=6&&!!value.trim()&&new Set(value).size>1&&value!=='123456'&&new TextEncoder().encode(value).length<=72;
+}
+function employeeCreateInput(fields){
+  const nome=String(fields.nome??'').trim(),sobrenome=String(fields.sobrenome??'').trim(),cpf=String(fields.cpf??'').replace(/\D/g,''),senha=fields.senha,nomeClasse=fields.nomeClasse;
+  if(!nome||!sobrenome||!employeeCpfValid(cpf)||!employeePasswordValid(senha)||!Object.prototype.hasOwnProperty.call(EMPLOYEE_ROLE_ACCESS,nomeClasse)||(nomeClasse==='SUPERIOR'&&!fields.confirmed))return null;
+  return {nome,sobrenome,cpf,senha,nomeClasse};
+}
+let employeeCreatePending=false,employeeCreateUncertain=false;
+const employeeGet=id=>document.getElementById(id);
+function employeeCreateFields(){
+  return {nome:employeeGet('c-nome').value,sobrenome:employeeGet('c-sobrenome').value,cpf:employeeGet('c-cpf').value,senha:employeeGet('c-senha').value,nomeClasse:employeeGet('c-classe').value,confirmed:employeeGet('employee-elevated-confirm').checked};
+}
+function employeeHidePassword(){
+  employeeGet('c-senha').type='password';
+  const button=employeeGet('employee-password-toggle');button.textContent='Mostrar';button.setAttribute('aria-pressed','false');
+}
+function updateEmployeeCreate(){
+  const fields=employeeCreateFields(),cpf=employeeGet('c-cpf'),help=employeeGet('employee-cpf-help'),digits=fields.cpf.replace(/\D/g,''),valid=employeeCpfValid(fields.cpf);
+  help.textContent=digits.length===11?(valid?'CPF com dígitos verificadores válidos.':'CPF inválido. Confira os dígitos do documento.'):'Informe os 11 dígitos do documento.';
+  cpf.setAttribute('aria-invalid',String(digits.length===11&&!valid));help.dataset.tone=digits.length===11?(valid?'success':'error'):'neutral';
+  const password=employeeGet('employee-password-help'),passValid=employeePasswordValid(fields.senha);
+  password.textContent=fields.senha&&!passValid?'Use de 6 caracteres a 72 bytes, sem sequências triviais como 123456 ou caracteres repetidos.':'Use pelo menos 6 caracteres. Entregue a senha somente ao funcionário.';
+  password.dataset.tone=fields.senha&&!passValid?'error':'neutral';
+  employeeGet('c-senha').setAttribute('aria-invalid',String(!!fields.senha&&!passValid));
+  const elevated=fields.nomeClasse==='SUPERIOR';employeeGet('employee-elevated-wrap').hidden=!elevated;
+  if(!elevated)employeeGet('employee-elevated-confirm').checked=false;
+  employeeGet('employee-create-submit').disabled=employeeCreatePending||employeeCreateUncertain||!employeeCreateInput(fields);
+}
+function drawEmployeeRole(){
+  const role=employeeGet('c-classe').value,preview=employeeGet('employee-role-preview'),item=Object.prototype.hasOwnProperty.call(EMPLOYEE_ROLE_ACCESS,role)?EMPLOYEE_ROLE_ACCESS[role]:null;
+  preview.dataset.tone=role==='SUPERIOR'?'warning':'neutral';
+  preview.innerHTML=item?'<strong>'+CLASSE_LABEL[role]+' · '+item.permissions.length+' permissões</strong><p>'+item.description+'</p><div class="employee-permission-list">'+item.permissions.map(p=>'<span>'+p+'</span>').join('')+'</div>':'<strong>Escolha uma classe</strong><p>As permissões correspondentes serão exibidas aqui.</p>';
+}
+function bindEmployeeCreate(){
+  for(const id of ['c-nome','c-sobrenome','c-senha'])employeeGet(id).oninput=updateEmployeeCreate;
+  employeeGet('c-cpf').oninput=()=>{const input=employeeGet('c-cpf'),pos=input.selectionStart??input.value.length,digits=input.value.slice(0,pos).replace(/\D/g,'').length;input.value=employeeCpfMask(input.value);let cursor=0,count=0;while(cursor<input.value.length&&count<digits){if(/\d/.test(input.value[cursor]))count++;cursor++;}input.setSelectionRange(cursor,cursor);updateEmployeeCreate();};
+  employeeGet('c-classe').onchange=()=>{employeeGet('employee-elevated-confirm').checked=false;drawEmployeeRole();updateEmployeeCreate();};
+  employeeGet('employee-elevated-confirm').onchange=updateEmployeeCreate;
+  employeeGet('employee-password-toggle').onclick=()=>{const input=employeeGet('c-senha'),button=employeeGet('employee-password-toggle'),show=input.type==='password';input.type=show?'text':'password';button.textContent=show?'Ocultar':'Mostrar';button.setAttribute('aria-pressed',String(show));};
+}
+async function cadastrarFuncionario(){
+  if(employeeCreatePending||employeeCreateUncertain)return;
+  const payload=employeeCreateInput(employeeCreateFields());
+  if(!payload){mostrarAlert('alert-cadastro','Confira os dados pessoais, senha e classe de acesso.','error');return;}
+  const modal=employeeGet('modal-cadastro'),current=()=>employeeGet('modal-cadastro')===modal&&modal.classList.contains('open');
+  const controls=[...modal.querySelectorAll('input,select,button')].map(el=>[el,el.disabled]);
+  employeeCreatePending=true;limparAlert('alert-cadastro');employeeHidePassword();controls.forEach(([el])=>el.disabled=true);
+  try{
+    const resp=await fetch('/api/funcionarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500||resp.status===409)throw Error('Resultado incerto');
+      const err=await safeReadErrorMessage(resp,'Erro ao cadastrar.');if(current())mostrarAlert('alert-cadastro',err,'error');return;
+    }
+    // Do not retain credentials in the DOM after a successful registration.
+    employeeGet('c-senha').value='';modal.classList.remove('open');
+    showToast('Funcionário cadastrado.','success');await carregarFuncionarios();
+  }catch{
+    if(current()){employeeCreateUncertain=true;employeeGet('c-senha').value='';mostrarAlert('alert-cadastro','Não foi possível confirmar o cadastro. Feche a janela e atualize a lista de funcionários antes de tentar novamente.','error');}
+  }finally{
+    employeeCreatePending=false;controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
+    if(current())updateEmployeeCreate();
+  }
+}
 
 function abrirModalClasse(ru, nomeCompleto, classeAtual) {
   ruMudarClasse = ru;
@@ -244,14 +309,23 @@ function fecharSenhaTemporaria() {
 // ── Modal helpers ─────────────────────────────────────────────────────────
 
 function abrirModalCadastro() {
-  limparAlert('alert-cadastro');
-  ['c-nome','c-sobrenome','c-cpf','c-senha'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('c-classe').value = '';
-  abrirModal('modal-cadastro');
+  if(employeeCreatePending)return;
+  employeeCreateUncertain=false;limparAlert('alert-cadastro');
+  ['c-nome','c-sobrenome','c-cpf','c-senha','c-classe'].forEach(id=>employeeGet(id).value='');
+  employeeGet('employee-elevated-confirm').checked=false;
+  employeeHidePassword();bindEmployeeCreate();drawEmployeeRole();updateEmployeeCreate();
+  abrirModal('modal-cadastro');employeeGet('c-nome').focus();
 }
 
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
-function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+function fecharModal(id) {
+  if(id==='modal-cadastro'){
+    if(employeeCreatePending)return;
+    employeeHidePassword();employeeGet('c-senha').value='';employeeGet('c-cpf').value='';
+    if(employeeCreateUncertain)void carregarFuncionarios();
+  }
+  document.getElementById(id).classList.remove('open');
+}
 function fecharModalSeClicouFora(e, id) { if (e.target.id === id) fecharModal(id); }
 function mostrarAlert(id, msg, tipo) {
   const el = document.getElementById(id);

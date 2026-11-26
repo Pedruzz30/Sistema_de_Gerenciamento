@@ -186,3 +186,7 @@ Conferência tabular com totais em BRL, resumo lateral e declaração explícita
 ## Cotações mensais
 
 Barra de ações compacta, indicadores do relatório consultado (sem estimar dados ausentes), tabela com variações em BRL, filtros, ordenação e paginação local de 15 itens. Consulta mensal explícita para evitar chamadas automáticas ao relatório que percorre o catálogo. Histórico com último preço, variação apenas quando há mês consecutivo e último gasto. Catálogo pesquisável; valores decimais em string do backend e números do preview tratados. Cadastro preserva endpoint e semântica de substituição produto+mês, com confirmação e validação de quantidade inteira/preço até centavos no cliente. Falha incerta bloqueia repetição na janela e orienta consulta do histórico. Sem mudanças no backend.
+
+## Cadastro de funcionário
+
+Modal compacto com dados pessoais, credenciais e permissões da classe conforme FuncionarioController. CPF formatado e validado por dígitos verificadores (não verifica titularidade), senha inicial validada no cliente com mínimo de seis caracteres, rejeição de 123456/repetições e máximo de 72 bytes, visualização opcional e limpeza ao fechar. Classe Superior exige confirmação explícita na interface. Envio único enquanto pendente e orientação de conferência da lista quando o resultado for incerto. Mesmo endpoint e payload; nenhuma alteração de autorização do servidor.

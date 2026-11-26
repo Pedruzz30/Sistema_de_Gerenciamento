@@ -101,46 +101,34 @@
 
 <!-- ── Modal: Cadastrar Funcionário ── -->
 <div class="modal-overlay" id="modal-cadastro" onclick="fecharModalSeClicouFora(event,'modal-cadastro')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="employee-create-title">
     <div class="modal-header">
-      <h3 class="modal-title">Novo Funcionário</h3>
+      <div class="employee-create-heading"><span class="employee-create-icon" data-icon="users" aria-hidden="true"></span><div><h3 class="modal-title" id="employee-create-title">Novo funcionário</h3><p>Cadastre uma pessoa e defina seu acesso ao StockOS.</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-cadastro')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-row-2">
-        <div class="form-group">
-          <label>Nome</label>
-          <input type="text" id="c-nome" placeholder="Ex: João">
+      <section class="employee-create-section" aria-labelledby="employee-person-title">
+        <div class="employee-section-title"><strong id="employee-person-title">Dados pessoais</strong><span>Todos os campos são obrigatórios</span></div>
+        <div class="employee-create-grid">
+          <div class="form-group"><label for="c-nome">Nome</label><input type="text" id="c-nome" placeholder="Ex: João" autocomplete="off" required></div>
+          <div class="form-group"><label for="c-sobrenome">Sobrenome</label><input type="text" id="c-sobrenome" placeholder="Ex: Silva" autocomplete="off" required></div>
+          <div class="form-group employee-create-full"><label for="c-cpf">CPF</label><input type="text" id="c-cpf" placeholder="000.000.000-00" inputmode="numeric" autocomplete="off" maxlength="14" aria-describedby="employee-cpf-help" required><small id="employee-cpf-help" class="employee-field-help" aria-live="polite">Informe os 11 dígitos do documento.</small></div>
         </div>
-        <div class="form-group">
-          <label>Sobrenome</label>
-          <input type="text" id="c-sobrenome" placeholder="Ex: Silva">
+      </section>
+      <section class="employee-create-section" aria-labelledby="employee-access-title">
+        <div class="employee-section-title"><strong id="employee-access-title">Credenciais e acesso</strong><span>Permissões por classe</span></div>
+        <div class="employee-create-grid">
+          <div class="form-group employee-create-full"><label for="c-senha">Senha inicial</label><div class="employee-password-wrap"><input type="password" id="c-senha" placeholder="Defina uma senha inicial" autocomplete="new-password" aria-describedby="employee-password-help" required><button type="button" id="employee-password-toggle" aria-controls="c-senha" aria-pressed="false">Mostrar</button></div><small id="employee-password-help" class="employee-field-help">Use pelo menos 6 caracteres. Entregue a senha somente ao funcionário.</small></div>
+          <div class="form-group employee-create-full"><label for="c-classe">Classe de acesso</label><select id="c-classe" aria-describedby="employee-role-preview" required>
+            <option value="">Selecione uma classe</option><option value="SUPERIOR">Superior — Acesso total</option><option value="GERENTE_ESTOQUE">Gerente de Estoque</option><option value="ESTOQUISTA">Estoquista</option><option value="CAIXA">Caixa</option>
+          </select></div>
         </div>
-      </div>
-      <div class="form-group">
-        <label>CPF</label>
-        <input type="text" id="c-cpf" placeholder="Ex: 123.456.789-00">
-      </div>
-      <div class="form-group">
-        <label>Senha Inicial</label>
-        <input type="password" id="c-senha" placeholder="Senha de acesso">
-      </div>
-      <div class="form-group">
-        <label>Classe</label>
-        <select id="c-classe">
-          <option value="">— Selecione uma classe —</option>
-          <option value="SUPERIOR">Superior — Acesso total</option>
-          <option value="GERENTE_ESTOQUE">Gerente de Estoque</option>
-          <option value="ESTOQUISTA">Estoquista</option>
-          <option value="CAIXA">Caixa</option>
-        </select>
-      </div>
-      <div class="alert-modal" id="alert-cadastro"></div>
+        <div id="employee-role-preview" class="employee-role-preview" aria-live="polite"><strong>Escolha uma classe</strong><p>As permissões correspondentes serão exibidas aqui.</p></div>
+        <label class="employee-elevated-confirm" id="employee-elevated-wrap" hidden><input type="checkbox" id="employee-elevated-confirm"><span>Confirmo que esta pessoa deve receber acesso total ao sistema.</span></label>
+      </section>
+      <div class="alert-modal" id="alert-cadastro" role="alert"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn-primary" onclick="cadastrarFuncionario()">Cadastrar</button>
-    </div>
+    <div class="modal-footer"><span class="employee-create-footer-note">O RU será gerado automaticamente.</span><div class="employee-create-actions"><button type="button" class="btn-secondary" onclick="fecharModal('modal-cadastro')">Cancelar</button><button type="button" class="btn-primary" id="employee-create-submit" onclick="cadastrarFuncionario()" disabled>Cadastrar funcionário</button></div></div>
   </div>
 </div>
 
