@@ -94,8 +94,8 @@
         <div class="table-header table-header--stack">
           <div class="table-header-row">
             <div>
-              <span class="table-title">Itens de Cardapio</span>
-              <div class="inline-note inline-note--spaced">Filtre por categoria, busque por nome e ajuste disponibilidade sem impactar o dominio de produtos.</div>
+              <span class="table-title">Itens de cardápio</span>
+              <div class="inline-note inline-note--spaced">Gerencie preços, categorias e disponibilidade de venda.</div>
             </div>
             <span class="table-count" id="itens-count">-</span>
           </div>
@@ -105,6 +105,15 @@
             </div>
             <select class="compact-control compact-control--select" id="item-category-filter" aria-label="Filtrar itens por categoria" onchange="aplicarFiltrosItens()">
               <option value="">Todas as categorias</option>
+            </select>
+            <select class="compact-control compact-control--select" id="item-status-filter" aria-label="Filtrar disponibilidade" onchange="aplicarFiltrosItens()" hidden>
+              <option value="">Todos os estados</option>
+              <option value="available">Disponíveis</option>
+              <option value="unverified">Liberados sem confirmação</option>
+              <option value="attention">Com alerta</option>
+              <option value="paused">Pausa manual</option>
+              <option value="blocked">Bloqueados / sem estoque</option>
+              <option value="inactive">Inativos</option>
             </select>
           </div>
           <details class="cardapio-help">
@@ -129,12 +138,12 @@
           <table class="table cardapio-items-table">
             <thead>
             <tr>
-              <th>Item</th>
-              <th>Categoria</th>
-              <th>Tipo</th>
-              <th>Disponibilidade</th>
-              <th>Ordem</th>
-              <th>Acoes</th>
+              <th scope="col">Item</th>
+              <th scope="col" id="item-second-heading">Categoria</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Disponibilidade</th>
+              <th scope="col">Ordem</th>
+              <th scope="col">Ações</th>
             </tr>
             </thead>
             <tbody id="tabela-itens">

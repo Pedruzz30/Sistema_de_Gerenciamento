@@ -132,3 +132,7 @@ Colunas proporcionais (17% ordem, 26% categoria, 26% itens, 12% status, 19% aç�
 ## Editor de categoria
 
 Modal compartilhado de criação e edição com identificação, código técnico opcional, ordem, contexto de itens/status somente na edição e prévia textual. Código normalizado apenas na prévia; payload preserva o valor informado e backend continua responsável pela normalização e unicidade. Ordem sugerida para novos grupos, sem renumerar existentes. Limites alinhados ao modelo Java; bloqueio de submissão concorrente do modal. Layout de dois campos em telas largas e empilhado em telas estreitas.
+
+## Itens de cardápio
+
+Identificação e categoria agrupadas; preço, tipo, disponibilidade, ordem e ações em colunas proporcionais. Filtro de estado usa a resolução existente, distingue liberação cadastral sem confirmação operacional e não redefine as regras de venda. Ações explícitas de edição, pausa/liberação e ativação/inativação; confirmação na inativação e salvamento de ordem somente quando alterada. Preservar endpoints e modo original.

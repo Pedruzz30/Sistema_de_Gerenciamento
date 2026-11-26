@@ -832,3 +832,40 @@ body.cardapio-page:has(.app.stockos-shell-v2) .stockos-category-modal-preview {d
 #categoria-context-state {flex:0 0 auto;white-space:nowrap;}
 #categoria-context-items {min-width:0;overflow-wrap:anywhere;}
 #categoria-context-state-text {display:inline;width:auto;height:auto;background:none;line-height:normal;}
+
+/* Menu items: price and availability have dedicated columns; category travels with item. */
+#item-status-filter[hidden]{display:none!important;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .table-header--stack {background:var(--paper-raised);padding:14px 18px;gap:10px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio {grid-template-columns:minmax(180px,1fr) minmax(140px,190px) minmax(165px,220px);}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .table-wrap {overflow-x:auto;min-width:0;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table {table-layout:fixed;width:100%;min-width:1000px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(1){width:24%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(2){width:10%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(3){width:18%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(4){width:19%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(5){width:12%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td):nth-child(6){width:17%;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table :is(th,td){padding:11px 12px;text-align:left;white-space:normal;overflow-wrap:anywhere;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table th{font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;}
+.stockos-menu-item-identity,.stockos-menu-item-type,.stockos-menu-item-availability{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.stockos-menu-item-identity strong{font-size:13px;color:var(--ink);font-weight:650;}
+.stockos-menu-item-type strong{font-size:12px;color:var(--ink-2);font-weight:600;}
+.stockos-menu-item-identity small,.stockos-menu-item-identity>span,.stockos-menu-item-type small,.stockos-menu-item-availability small{font-size:11px;line-height:1.4;color:var(--ink-3);overflow-wrap:anywhere;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table .stockos-menu-item-price{font-size:14px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-menu-item-status{display:inline-flex;align-items:center;gap:5px;font-weight:650;font-size:11px;color:var(--ink-3);}
+.stockos-menu-item-status>span[aria-hidden="true"]{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:currentColor;}
+.stockos-menu-item-status[data-state="available"]{color:var(--ok);}
+.stockos-menu-item-status:is([data-state="attention"],[data-state="paused"]){color:var(--warn);}
+.stockos-menu-item-status[data-state="blocked"]{color:var(--bad);}
+.stockos-menu-item-order,.stockos-menu-item-actions{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-items-table .stockos-menu-item-order input{width:46px;min-width:46px;height:34px;text-align:center;}
+.stockos-menu-item-order button,.stockos-menu-item-actions button{font:inherit;font-size:11px;min-height:34px;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);cursor:pointer;white-space:nowrap;}
+.stockos-menu-item-order button:not(:disabled){color:var(--accent-ink);border-color:var(--accent);}
+.stockos-menu-item-actions button[data-tone="warning"]{color:var(--warn);}
+.stockos-menu-item-actions button[data-tone="danger"]{color:var(--bad);}
+.stockos-menu-item-actions button[data-tone="success"]{color:var(--ok);}
+.stockos-menu-item-actions button:disabled,.stockos-menu-item-order button:disabled{opacity:.45;cursor:default;}
+.stockos-menu-item-order input[aria-invalid="true"]{border-color:var(--bad);}
+.stockos-menu-item-order button:focus-visible,.stockos-menu-item-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+@media(max-width:850px){body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio{grid-template-columns:repeat(2,minmax(0,1fr));}body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio .search-wrap{grid-column:1/-1;}}
+@media(max-width:480px){body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio{grid-template-columns:minmax(0,1fr);}.stockos-menu-item-order button,.stockos-menu-item-actions button{min-height:44px;}}

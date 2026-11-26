@@ -189,6 +189,7 @@ function renderManagedCategories(tbody,categories,items){
     row.querySelector('[data-category-action="items"]').onclick=()=>{
       const filter=document.getElementById('item-category-filter'),search=document.getElementById('item-search');
       if(!filter||!search)return;
+      const status=document.getElementById('item-status-filter');if(status)status.value='';
       filter.value=String(id);search.value='';aplicarFiltrosItens();
       document.querySelector('.cardapio-panel--items')?.scrollIntoView({block:'start'});
       filter.focus({preventScroll:true});
@@ -256,9 +257,82 @@ function renderCategorias() {
   }).join('');
 }
 
+
+function managedItemState(item){
+  const result=resolverDisponibilidadeItem(item);
+  const labels={
+    'Inativo':['inactive','Inativo'],
+    'Bloqueado':['blocked','Categoria inativa'],
+    'Pausa manual':['paused','Pausado'],
+    'Indisponivel agora':['blocked','Indisponível agora'],
+    'Sem estoque':['blocked','Sem estoque'],
+    'Disponivel com alerta':['attention','Disponível com alerta'],
+    'Disponivel agora':['available','Disponível agora'],
+    'Disponivel':['unverified','Liberado']
+  };
+  const [group,label]=labels[result.label]||['unverified','Não confirmado'];
+  return {group,label,meta:String(result.meta||'').replace(/^Manual (?:liberado|pausado)\.\s*/, ''),
+    note:group==='unverified'?'Sem confirmação operacional.':''};
+}
+function managedItemRow(item){
+  const id=Number(item.id);
+  if(!Number.isSafeInteger(id)||id<=0)return '';
+  const esc=escapeHtml, state=managedItemState(item), name=esc(item.nome||'—');
+  const prepared=item.tipoItem==='PREPARADO_SOB_DEMANDA';
+  const price=item.precoVenda!=null&&String(item.precoVenda).trim()!==''&&Number.isFinite(Number(item.precoVenda))?'R$ '+formatarNumero(item.precoVenda):'—';
+  const type=prepared?'Sob demanda':item.tipoItem==='ESTOQUE_DIRETO'?'Estoque direto':'Tipo não informado';
+  const typeMeta=prepared?'Preparo sob demanda':item.produtoVinculadoNome?'Vinculado a '+item.produtoVinculadoNome:'Sem produto vinculado';
+  const order=categoryOrderValue(item.ordemExibicao);
+  const button=(action,label,extra='')=>'<button type="button" data-item-action="'+action+'" '+extra+'>'+label+'</button>';
+  return '<tr data-menu-item-id="'+id+'">'+
+    '<td><div class="stockos-menu-item-identity"><strong>'+name+'</strong><small>'+esc(item.categoriaNomeExibicao||'—')+(item.categoriaAtiva?'':' · categoria inativa')+' · '+esc(item.codigo||'—')+'</small>'+
+    (item.descricaoCurta?'<span>'+esc(item.descricaoCurta)+'</span>':'')+'</div></td>'+
+    '<td class="stockos-menu-item-price">'+price+'</td>'+
+    '<td><div class="stockos-menu-item-type"><strong>'+type+'</strong><small>'+esc(typeMeta)+'</small></div></td>'+
+    '<td><div class="stockos-menu-item-availability"><span class="stockos-menu-item-status" data-state="'+state.group+'"><span aria-hidden="true"></span>'+state.label+'</span><small>'+esc(state.meta)+'</small>'+
+    (state.note?'<small>'+esc(state.note)+'</small>':'')+'</div></td>'+
+    '<td><div class="stockos-menu-item-order"><input class="compact-control compact-control--order" id="item-ordem-'+id+'" type="number" min="0" max="2147483647" step="1" value="'+(order??'')+'" aria-label="Ordem de '+name+'">'+button('order','Salvar','disabled')+'</div></td>'+
+    '<td><div class="stockos-menu-item-actions">'+button('edit','Editar')+button('availability',item.disponivelParaVenda?'Pausar venda':'Liberar venda','data-tone="'+(item.disponivelParaVenda?'warning':'success')+'"')+button('active',item.ativo?'Inativar':'Ativar','data-tone="'+(item.ativo?'danger':'success')+'"')+'</div></td></tr>';
+}
+let itemMutationPending=false;
+function bindManagedItems(tbody){
+  for(const row of tbody.querySelectorAll('[data-menu-item-id]')){
+    const id=Number(row.dataset.menuItemId),item=cardapioItens.find(i=>Number(i.id)===id);
+    if(!item)continue;
+    const field=row.querySelector('input'),save=row.querySelector('[data-item-action="order"]');
+    const original=categoryOrderValue(item.ordemExibicao);
+    const update=()=>{const n=categoryOrderValue(field.value);field.setAttribute('aria-invalid',String(n==null));save.disabled=itemMutationPending||n==null||n===original;};
+    field.disabled=itemMutationPending;field.oninput=update;update();
+    field.onkeydown=e=>{if(e.key==='Enter'&&!save.disabled){e.preventDefault();save.click();}};
+    const edit=row.querySelector('[data-item-action="edit"]'),available=row.querySelector('[data-item-action="availability"]'),active=row.querySelector('[data-item-action="active"]');
+    [edit,available,active].forEach(b=>b.disabled=itemMutationPending);
+    save.onclick=()=>void salvarOrdemItem(id);
+    edit.onclick=()=>{if(!itemMutationPending)abrirModalItem(id);};
+    available.onclick=()=>{if(!itemMutationPending)void alternarDisponibilidadeItem(id,!item.disponivelParaVenda);};
+    active.onclick=()=>{if(!itemMutationPending&&(!item.ativo||confirm('Inativar o item "'+item.nome+'"? Ele deixará de ser listado no PDV.')))void alternarItemAtivo(id,!item.ativo);};
+  }
+}
+async function executarMutacaoItem(url,payload,message){
+  if(itemMutationPending)return;
+  itemMutationPending=true;
+  const tbody=document.getElementById('tabela-itens');
+  const controls=[...tbody.querySelectorAll('button,input')].map(el=>[el,el.disabled]);
+  controls.forEach(([el])=>el.disabled=true);
+  try{await atualizarToggle(url,payload,message);}
+  finally{
+    itemMutationPending=false;
+    controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
+    if(document.getElementById('tabela-itens')===tbody)bindManagedItems(tbody);
+  }
+}
+
 function aplicarFiltrosItens() {
   const busca = normalizarTexto(document.getElementById('item-search').value || '');
   const categoriaId = document.getElementById('item-category-filter').value;
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  const statusFilter=document.getElementById('item-status-filter');
+  statusFilter.hidden=!managed;
+  const state=managed?statusFilter.value:'';
 
   cardapioItensVisiveis = cardapioItens.filter(function (item) {
     const matchCategoria = !categoriaId || String(item.categoriaId) === String(categoriaId);
@@ -269,7 +343,7 @@ function aplicarFiltrosItens() {
       item.categoriaNomeExibicao
     ].filter(Boolean).join(' '));
     const matchBusca = !busca || indiceBusca.includes(busca);
-    return matchCategoria && matchBusca;
+    return matchCategoria && matchBusca && (!state || managedItemState(item).group===state);
   });
 
   renderItens();
@@ -278,7 +352,10 @@ function aplicarFiltrosItens() {
 function renderItens() {
   const tbody = document.getElementById('tabela-itens');
   const countEl = document.getElementById('itens-count');
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  document.getElementById('item-second-heading').textContent=managed?'Preço':'Categoria';
   countEl.textContent = cardapioItensVisiveis.length + ' item' + (cardapioItensVisiveis.length === 1 ? '' : 's');
+  if(managed&&cardapioItensVisiveis.length!==cardapioItens.length)countEl.textContent=cardapioItensVisiveis.length+' de '+cardapioItens.length+' itens';
 
   if (!cardapioItensVisiveis.length) {
     if (!cardapioItens.length) {
@@ -296,6 +373,11 @@ function renderItens() {
     return;
   }
 
+  if(managed){
+    tbody.innerHTML=cardapioItensVisiveis.map(managedItemRow).join('');
+    bindManagedItems(tbody);
+    return;
+  }
   tbody.innerHTML = cardapioItensVisiveis.map(function (item) {
     const disponibilidade = resolverDisponibilidadeItem(item);
     const statusAtivo = item.ativo
@@ -738,11 +820,11 @@ async function executarMutacaoCategoria(url,payload,message){
 }
 
 async function alternarItemAtivo(id, ativo) {
-  await atualizarToggle('/api/cardapio/admin/itens/' + id + '/ativo', { ativo: ativo }, ativo ? 'Item ativado.' : 'Item inativado.');
+  await executarMutacaoItem('/api/cardapio/admin/itens/' + id + '/ativo', { ativo: ativo }, ativo ? 'Item ativado.' : 'Item inativado.');
 }
 
 async function alternarDisponibilidadeItem(id, disponivelParaVenda) {
-  await atualizarToggle(
+  await executarMutacaoItem(
     '/api/cardapio/admin/itens/' + id + '/disponibilidade',
     { disponivelParaVenda: disponivelParaVenda },
     disponivelParaVenda ? 'Item liberado para venda.' : 'Item pausado manualmente.'
@@ -759,12 +841,12 @@ async function salvarOrdemCategoria(id) {
 }
 
 async function salvarOrdemItem(id) {
-  const valor = parseInt(document.getElementById('item-ordem-' + id).value, 10);
-  if (Number.isNaN(valor) || valor < 0) {
-    showToast('Ordem do item invalida.', 'error');
+  const valor = categoryOrderValue(document.getElementById('item-ordem-' + id).value);
+  if (valor == null) {
+    showToast('Informe uma ordem inteira não negativa.', 'error');
     return;
   }
-  await atualizarToggle('/api/cardapio/admin/itens/' + id + '/ordem', { ordemExibicao: valor }, 'Ordem do item atualizada.');
+  await executarMutacaoItem('/api/cardapio/admin/itens/' + id + '/ordem', { ordemExibicao: valor }, 'Ordem do item atualizada.');
 }
 
 async function atualizarToggle(url, payload, successMessage) {

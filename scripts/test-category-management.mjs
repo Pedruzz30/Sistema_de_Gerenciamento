@@ -72,3 +72,37 @@ assert.match(source,/class="stockos-category-status"[^<]*<span aria-hidden="true
 assert.match(layout,/#categoria-context-state-text \{display:inline;width:auto;height:auto;background:none;/);
 assert.match(layout,/#categoria-context-state \{flex:0 0 auto;white-space:nowrap;/);
 console.log('PASS category status regression: only decorative dot is sized, label remains inline.');
+
+const itemHelpers=source.slice(source.indexOf('function managedItemState('),source.indexOf('let itemMutationPending'));
+const itemResolver=source.slice(source.indexOf('function resolverDisponibilidadeItem('),source.indexOf('function normalizarDisponibilidadeCardapio('));
+const menuApi=vm.runInNewContext(itemResolver+'\n'+itemHelpers+'\n({managedItemState,managedItemRow});',{
+ categoryOrderValue:api.categoryOrderValue,formatarNumero:n=>Number(n).toFixed(2),
+ escapeHtml:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),
+ primeiroAlertaCardapio:()=>null,capacidadeCardapio:()=>5,resumoOperacionalCardapio:()=> 'Falta de ingrediente.'
+});
+const menuItem={id:1,nome:'Hambúrguer da casa',codigo:'BURGER',categoriaNomeExibicao:'Pratos',categoriaAtiva:true,ativo:true,disponivelParaVenda:true,tipoItem:'PREPARADO_SOB_DEMANDA',precoVenda:32.9,ordemExibicao:1};
+assert.equal(menuApi.managedItemState(menuItem).group,'unverified');
+assert.equal(menuApi.managedItemState({...menuItem,ativo:false}).group,'inactive');
+assert.equal(menuApi.managedItemState({...menuItem,categoriaAtiva:false}).group,'blocked');
+assert.equal(menuApi.managedItemState({...menuItem,disponivelParaVenda:false}).group,'paused');
+assert.equal(menuApi.managedItemState({...menuItem,disponibilidadeOperacional:{resumo:{itemDisponivel:true}}}).group,'available');
+assert.equal(menuApi.managedItemState({...menuItem,disponibilidadeOperacional:{resumo:{itemDisponivel:false}}}).group,'blocked');
+assert.equal(menuApi.managedItemState({...menuItem,tipoItem:'ESTOQUE_DIRETO',controladoPorEstoque:true,quantidadeAtual:0}).group,'blocked');
+const menuRow=menuApi.managedItemRow(menuItem);
+assert.match(menuRow,/Pratos · BURGER/);
+assert.match(menuRow,/R\$ 32\.90/);
+assert.match(menuRow,/Sem confirmação operacional/);
+assert.match(menuRow,/Pausar venda/);
+assert.match(menuRow,/Inativar/);
+assert.match(menuRow,/data-item-action="order" disabled/);
+assert.match(menuApi.managedItemRow({...menuItem,nome:'<script>',precoVenda:null}),/&lt;script>/);
+assert.doesNotMatch(menuApi.managedItemRow({...menuItem,precoVenda:null}),/R\$ 0\.00/);
+assert.match(menuApi.managedItemRow({...menuItem,disponivelParaVenda:false,ativo:false}),/Liberar venda/);
+assert.match(source,/managedItemState\(item\)\.group===state/);
+assert.match(source,/if\(itemMutationPending\)return/);
+assert.match(editorHtml,/id="item-status-filter"/);
+assert.match(layout,/stockos-menu-item-status>span\[aria-hidden="true"\]/);
+const itemWidths=[...layout.matchAll(/\.cardapio-items-table :is\(th,td\):nth-child\([1-6]\)\{width:(\d+)%;\}/g)].map(m=>Number(m[1]));
+assert.equal(itemWidths.length,6);
+assert.equal(itemWidths.reduce((a,b)=>a+b,0),100);
+console.log('PASS menu items: operational distinctions, escaped content, prices, filters and proportional columns.');
