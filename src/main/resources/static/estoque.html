@@ -59,11 +59,11 @@
     </header>
 
     <div class="main-body content">
-    <div class="categoria-summary-grid fade-up" id="categoria-summary"></div>
+    <section class="categoria-summary-grid fade-up" id="categoria-summary" aria-label="Indicadores de todo o estoque"></section>
 
     <div class="toolbar fade-up stockos-stock-filters">
       <div class="search-wrap">
-        <input class="input input-search" type="text" id="busca" aria-label="Buscar produto em estoque" placeholder="Buscar produto..." oninput="filtrarProdutos()">
+        <input class="input input-search" type="text" id="busca" aria-label="Buscar produto em estoque" placeholder="Buscar nome ou ID do produto..." oninput="filtrarProdutos()">
       </div>
       <div class="stockos-filter-row">
       <span class="stockos-filter-label" id="stockos-stock-level-label">Nível de estoque</span>
@@ -82,27 +82,25 @@
         <button class="filter-btn" onclick="filtrarCategoria('SECO', this)">Estoque seco</button>
         <button class="filter-btn" onclick="filtrarCategoria('FRIO', this)">Estoque frio</button>
         <button class="filter-btn" onclick="filtrarCategoria('CONGELADO', this)">Estoque congelado</button>
+        <button class="filter-btn" onclick="filtrarCategoria('sem-categoria', this)">Não definida</button>
       </div>
       </div>
     </div>
 
     <div class="table-card fade-up fade-up-1">
-      <div class="chart-card">
-        <div class="chart-header">
-          <span class="table-title">Produtos por Categoria</span>
-          <span class="chart-sub">Baseado nas linhas visíveis</span>
-        </div>
+      <details class="chart-card stock-category-details">
+        <summary class="chart-header"><span class="table-title">Distribuição por categoria</span><span class="chart-sub">Resultados filtrados · expandir</span></summary>
         <div class="categoria-chart" id="categoria-chart"></div>
-      </div>
-
+      </details>
       <div class="table-header">
         <span class="table-title">Produtos em Estoque</span>
         <div class="table-header-actions">
           <button class="btn btn-secondary" id="btn-exportar-csv" onclick="exportarCsvProdutos()">Exportar CSV</button>
-          <span class="table-count" id="table-count">-</span>
+          <span class="table-count" id="table-count" role="status">-</span>
         </div>
       </div>
 
+      <div class="stock-list-controls"><button type="button" class="btn btn-secondary" onclick="resetarFiltrosEstoque()">Limpar filtros</button><div><label for="stock-sort">Ordenar</label><select id="stock-sort"><option value="original">Ordem do catálogo</option><option value="risk">Prioridade de estoque</option><option value="name">Nome A–Z</option><option value="qty">Menor saldo</option></select><label for="stock-size">Por página</label><select id="stock-size"><option>15</option><option selected>25</option><option>50</option><option>60</option></select></div></div>
       <div class="table-wrap">
         <table class="table">
           <thead>
@@ -161,26 +159,27 @@
 <!-- ── Modal: Bebida rápida (cadastro com leitor de código de barras) ──
      Não fecha ao clicar fora: é usado em sequência, com a mão no leitor. -->
 <div class="modal-overlay" id="modal-revenda">
-  <div class="modal" onkeydown="teclaRevenda(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="revenda-title" onkeydown="teclaRevenda(event)">
     <div class="modal-header">
-      <h3 class="modal-title">Bebida rápida</h3>
+      <div class="product-create-heading"><span class="product-create-icon" data-icon="barcode" aria-hidden="true"></span><div><h3 class="modal-title" id="revenda-title">Bebida rápida</h3><p>Cadastro em sequência para estoque e venda.</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-revenda')">×</button>
     </div>
     <div class="modal-body">
       <div class="alert-modal" id="alert-revenda" role="status" aria-live="polite"></div>
-      <div class="field form-group">
-        <label for="r-ean">Bipe aqui o código de barras da unidade</label>
+      <div class="revenda-workspace"><div class="revenda-main"><section class="product-create-section"><div class="product-section-title"><strong>01 · Identificação</strong><span>Leitor ou código manual</span></div><div class="field form-group revenda-scan-field">
+        <label for="r-ean">Código de barras da unidade</label>
         <input class="input revenda-bipe" type="text" id="r-ean" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Passe o leitor na lata ou garrafa">
         <p class="inline-note" id="r-ean-status">Sem código? Deixe vazio ou digite um código curto, como 101.</p>
       </div>
       <div class="field form-group">
         <label for="r-nome">Nome do produto</label>
-        <input class="input" type="text" id="r-nome" placeholder="Ex.: Skol lata 350ml">
+        <input class="input" type="text" id="r-nome" maxlength="120" placeholder="Ex.: Skol lata 350ml">
       </div>
       <div class="field form-group">
         <label for="r-categoria">Categoria</label>
         <select class="select" id="r-categoria"></select>
       </div>
+      </section><section class="product-create-section"><div class="product-section-title"><strong>02 · Preços e custo</strong></div>
       <div class="form-row-2">
         <div class="field form-group">
           <label for="r-preco-gelado">Preço gelada (R$)</label>
@@ -191,20 +190,18 @@
           <input class="input" type="number" id="r-preco" step="0.01" min="0.01" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
-      <div class="form-row-2">
-        <div class="field form-group">
+      <div class="field form-group">
           <label for="r-custo">Custo da unidade (R$)</label>
           <input class="input" type="number" id="r-custo" step="0.01" min="0.01" inputmode="decimal" placeholder="Quanto você paga">
-        </div>
-        <div class="field form-group">
+      </div></section><section class="product-create-section"><div class="product-section-title"><strong>03 · Estoque</strong><span>Unidades</span></div><div class="form-row-2"><div class="field form-group">
           <label for="r-qtd">Estoque agora (unidades)</label>
           <input class="input" type="number" id="r-qtd" step="1" min="0" inputmode="numeric" placeholder="0">
         </div>
-      </div>
       <div class="field form-group">
         <label for="r-min">Avisar quando chegar a (unidades)</label>
         <input class="input" type="number" id="r-min" step="1" min="0" inputmode="numeric" placeholder="0">
       </div>
+      </div></section></div><aside class="revenda-side">
       <fieldset class="revenda-fardo">
         <legend>Fardo ou caixa fechada (opcional)</legend>
         <div class="form-row-2">
@@ -222,80 +219,37 @@
           <input class="input revenda-bipe" type="text" id="r-fardo-ean" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Passe o leitor no plástico do fardo">
           <p class="inline-note" id="r-fardo-ean-status"></p>
         </div>
-      </fieldset>
+      </fieldset><section class="revenda-preview product-create-section" aria-live="polite"><div class="product-section-title"><strong>Prévia comercial</strong></div><div id="revenda-preview-values"></div><small>Margem bruta estimada, sem impostos, taxas ou outras despesas.</small></section></aside></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" type="button" onclick="fecharModal('modal-revenda')">Fechar</button>
-      <button class="btn btn-primary" type="button" id="btn-salvar-revenda" onclick="salvarRevenda()">Salvar e cadastrar outra (Ctrl+Enter)</button>
+      <span class="product-create-footer-note">Enter: próximo campo · Ctrl+Enter: salvar</span><button class="btn btn-secondary" type="button" onclick="fecharModal('modal-revenda')">Fechar</button>
+      <button class="btn btn-primary" type="button" id="btn-salvar-revenda" onclick="salvarRevenda()">Salvar e cadastrar outra</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-edicao" onclick="fecharModalSeClicouFora(event, 'modal-edicao')">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title">Editar Produto</h3>
-      <button class="modal-close" onclick="fecharModal('modal-edicao')">×</button>
-    </div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="stock-edit-title">
+    <div class="modal-header"><div class="product-create-heading"><span class="product-create-icon" data-icon="edit" aria-hidden="true"></span><div><h3 class="modal-title" id="stock-edit-title">Editar produto</h3><p>Atualize o cadastro sem alterar o saldo físico.</p></div></div><button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-edicao')">×</button></div>
     <div class="modal-body">
-      <div class="field form-group">
-        <label>Nome do produto</label>
-        <input class="input" type="text" id="e-nome">
-      </div>
-      <div class="field form-group">
-        <label>Categoria de estoque</label>
-        <select class="select" id="e-categoria"></select>
-      </div>
-      <div class="form-row-2">
-        <div class="field form-group">
-          <label>Quantidade mínima</label>
-          <input class="input" type="number" id="e-qtd-minima" min="0">
-        </div>
-        <div class="field form-group">
-          <label>Preço unitário (R$)</label>
-          <input class="input" type="number" id="e-preco" step="0.01" min="0">
-        </div>
-      </div>
-      <div class="alert-modal" id="alert-edicao"></div>
+      <div class="stock-modal-context"><div><span>Produto</span><strong id="stock-edit-id">—</strong></div><div><span>Saldo atual</span><strong id="stock-edit-current">—</strong></div></div>
+      <section class="product-create-section"><div class="product-section-title"><strong>Identificação</strong></div><div class="field form-group"><label for="e-nome">Nome do produto</label><input class="input" type="text" id="e-nome" maxlength="120"></div><div class="field form-group"><label for="e-categoria">Categoria de estoque</label><select class="select" id="e-categoria"></select></div></section>
+      <section class="product-create-section"><div class="product-section-title"><strong>Parâmetros de estoque e preço</strong></div><div class="product-create-grid"><div class="field form-group"><label for="e-qtd-minima">Quantidade mínima</label><input class="input" type="number" id="e-qtd-minima" min="0" max="2147483647" step="1" inputmode="numeric"></div><div class="field form-group"><label for="e-preco">Preço unitário (R$)</label><input class="input" type="number" id="e-preco" step="0.01" min="0" inputmode="decimal"></div></div><div class="stock-modal-context" aria-live="polite"><div><span>Nível previsto</span><strong id="stock-edit-level">—</strong></div><div><span>Preço anterior</span><strong id="stock-edit-price">—</strong></div></div></section>
+      <div class="alert-modal" id="alert-edicao" role="alert"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="fecharModal('modal-edicao')">Cancelar</button>
-      <button class="btn btn-primary" onclick="atualizarProduto()">Salvar</button>
-    </div>
+    <div class="modal-footer"><span class="product-create-footer-note">Entradas e saídas são registradas separadamente.</span><div class="product-create-actions"><button class="btn btn-secondary" type="button" onclick="fecharModal('modal-edicao')">Cancelar</button><button class="btn btn-primary" id="stock-edit-save" type="button" onclick="atualizarProduto()" disabled>Salvar alterações</button></div></div>
   </div>
 </div>
-
 <div class="modal-overlay" id="modal-mov" onclick="fecharModalSeClicouFora(event, 'modal-mov')">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title" id="modal-mov-titulo">Movimentação</h3>
-      <button class="modal-close" onclick="fecharModal('modal-mov')">×</button>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-mov-titulo">
+    <div class="modal-header"><div class="product-create-heading"><span class="product-create-icon" data-icon="box" aria-hidden="true"></span><div><h3 class="modal-title" id="modal-mov-titulo">Movimentação</h3><p>Registre a alteração do saldo físico.</p></div></div><button type="button" class="modal-close" aria-label="Fechar janela" onclick="fecharModal('modal-mov')">×</button></div>
+    <div class="modal-body"><div class="stock-movement-person"><strong id="mov-produto-nome">—</strong><small id="mov-produto-qtd">—</small></div>
+      <div class="tipo-toggle" role="group" aria-label="Tipo de movimentação"><button type="button" class="tipo-btn entrada active" id="btn-entrada" onclick="setTipo('ENTRADA')">+ Entrada</button><button type="button" class="tipo-btn saida" id="btn-saida" onclick="setTipo('SAIDA')">− Saída</button></div>
+      <div class="field form-group"><label for="mov-qtd">Quantidade (unidades)</label><input class="input" type="number" id="mov-qtd" placeholder="0" min="1" max="2147483647" step="1" inputmode="numeric"><small id="stock-mov-help">Informe uma quantidade inteira positiva.</small></div>
+      <section class="stock-movement-preview" aria-live="polite"><div><span>Saldo atual</span><strong id="stock-mov-before">—</strong></div><div><span>Movimentação</span><strong id="stock-mov-delta">—</strong></div><div><span>Saldo previsto</span><strong id="stock-mov-after">—</strong></div></section>
+      <p class="stock-mov-note" id="stock-mov-level">O saldo final será validado pelo servidor.</p><div class="alert-modal" id="alert-mov" role="alert"></div>
     </div>
-    <div class="modal-body">
-      <div class="produto-info-card" id="produto-info-card">
-        <div class="produto-info-nome" id="mov-produto-nome">-</div>
-        <div class="produto-info-qtd">
-          Estoque atual: <strong id="mov-produto-qtd">-</strong>
-        </div>
-      </div>
-      <div class="tipo-toggle">
-        <button class="tipo-btn entrada active" id="btn-entrada" onclick="setTipo('ENTRADA')">
-          Entrada
-        </button>
-        <button class="tipo-btn saida" id="btn-saida" onclick="setTipo('SAIDA')">
-          Saída
-        </button>
-      </div>
-      <div class="field form-group">
-        <label>Quantidade</label>
-        <input class="input" type="number" id="mov-qtd" placeholder="0" min="1">
-      </div>
-      <div class="alert-modal" id="alert-mov"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="fecharModal('modal-mov')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-confirmar-mov" onclick="confirmarMovimentacao()">Confirmar</button>
-    </div>
+    <div class="modal-footer"><span class="product-create-footer-note">Confira o saldo previsto antes de confirmar.</span><div class="product-create-actions"><button class="btn btn-secondary" type="button" onclick="fecharModal('modal-mov')">Cancelar</button><button class="btn btn-primary" type="button" id="btn-confirmar-mov" onclick="confirmarMovimentacao()" disabled>Confirmar movimentação</button></div></div>
   </div>
 </div>
 

@@ -5,7 +5,8 @@
 
 let todosOsProdutos = [];
 let produtosVisiveis = [];
-const PRODUTOS_POR_PAGINA = 60;
+let PRODUTOS_POR_PAGINA = 25;
+let stockSort="original",stockLoadVersion=0;
 let paginaEstoque = 1;
 let filtroNivelAtivo = 'todos';
 let filtroCategoriaAtiva = 'todas';
@@ -30,6 +31,9 @@ async function iniciarEstoqueSPA() {
     if (btnRevenda) btnRevenda.hidden = true;
   }
 
+  filtroNivelAtivo='todos';filtroCategoriaAtiva='todas';paginaEstoque=1;stockSort='original';PRODUTOS_POR_PAGINA=25;
+  document.getElementById('stock-sort').onchange=e=>{stockSort=e.target.value;paginaEstoque=1;renderTabela();};
+  document.getElementById('stock-size').onchange=e=>{PRODUTOS_POR_PAGINA=[15,25,50,60].includes(Number(e.target.value))?Number(e.target.value):25;paginaEstoque=1;renderTabela();};
   preencherSelectCategorias('c-categoria');
   preencherSelectCategorias('e-categoria');
   // Link do Dashboard apenas filtra a listagem; não movimenta estoque.
@@ -87,17 +91,25 @@ window.StockOSPages.estoque = {
 document.addEventListener('DOMContentLoaded', iniciarEstoqueSPA);
 
 async function carregarProdutos() {
+  const tbody=document.getElementById('tabela-produtos'),version=++stockLoadVersion;
+  if(!tbody)return;
+  const current=()=>paginaAtual()==='estoque'&&document.getElementById('tabela-produtos')===tbody&&version===stockLoadVersion;
   try {
     const res = await fetch('/api/produtos');
     if (!res.ok) throw new Error('Falha ao carregar produtos');
     const produtos = await res.json();
-    if (paginaAtual() !== 'estoque') return;
+    if (!current()) return;
+    if(!Array.isArray(produtos))throw Error('Resposta inválida');
     todosOsProdutos = produtos;
     renderTabela();
   } catch (e) {
-    if (paginaAtual() !== 'estoque') return;
-    document.getElementById('tabela-produtos').innerHTML =
-      '<tr><td colspan="7" class="empty">Erro ao carregar produtos. Verifique a conexão.</td></tr>';
+    if (!current()) return;
+    todosOsProdutos=[];produtosVisiveis=[];atualizarEstadoExportacao();
+    document.getElementById('categoria-summary').textContent='Indicadores indisponíveis';
+    document.getElementById('categoria-chart').textContent='Distribuição indisponível';
+    document.getElementById('table-count').textContent='—';
+    document.getElementById('paginacao-estoque')?.remove();
+    tbody.innerHTML='<tr><td colspan="7" class="empty">Erro ao carregar produtos. <button type="button" class="btn btn-secondary" onclick="carregarProdutos()">Tentar novamente</button></td></tr>';
   }
 }
 
@@ -176,83 +188,68 @@ async function cadastrarProduto(){
   }
 }
 
-async function atualizarProduto() {
-  if (!produtoEmEdicao) return;
-
-  const nome = document.getElementById('e-nome').value.trim();
-  const qtdMinima = parseInt(document.getElementById('e-qtd-minima').value, 10);
-  const preco = parseFloat(document.getElementById('e-preco').value);
-  const categoriaEstoque = document.getElementById('e-categoria').value || null;
-  const alertEl = document.getElementById('alert-edicao');
-
-  if (!nome) return mostrarAlertaModal(alertEl, 'error', 'Nome do produto é obrigatório.');
-  if (isNaN(qtdMinima) || qtdMinima < 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade mínima inválida.');
-  if (isNaN(preco) || preco < 0) return mostrarAlertaModal(alertEl, 'error', 'Preço inválido.');
-
-  try {
-    const res = await fetch(`/api/produtos/${produtoEmEdicao.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nome,
-        quantidadeMinima: qtdMinima,
-        precoUnitario: preco,
-        categoriaEstoque
-      })
-    });
-
-    if (!res.ok) {
-      const err = await safeReadErrorMessage(res, 'Erro ao atualizar produto.');
-      throw new Error(err);
-    }
-
-    mostrarAlertaModal(alertEl, 'success', `"${nome}" atualizado com sucesso!`);
-    await carregarProdutos();
-    setTimeout(() => fecharModal('modal-edicao'), 1000);
-  } catch (e) {
-    mostrarAlertaModal(alertEl, 'error', e.message);
-  }
+let stockMutationPending=false,stockMutationUncertain=false;
+function stockMovementModel(product,type,raw){
+  const qtd=productCreateQuantity(raw),before=Number(product?.quantidadeAtual);
+  if(!product||!Number.isSafeInteger(before)||before<0||qtd==null||qtd===0||!['ENTRADA','SAIDA'].includes(type))return null;
+  const delta=type==='ENTRADA'?qtd:-qtd,after=before+delta;
+  if(after<0||after>2147483647)return null;
+  return {qtd,before,delta,after,level:productCreateStock(after,Number(product.quantidadeMinima))?.level};
 }
-
-async function confirmarMovimentacao() {
-  const qtd = parseInt(document.getElementById('mov-qtd').value, 10);
-  const alertEl = document.getElementById('alert-mov');
-
-  if (!produtoSelecionado) return;
-  if (isNaN(qtd) || qtd <= 0) return mostrarAlertaModal(alertEl, 'error', 'Quantidade deve ser maior que zero.');
-
-  if (tipoMovAtual === 'SAIDA' && qtd > produtoSelecionado.quantidadeAtual) {
-      return mostrarAlertaModal(
-        alertEl,
-        'error',
-        `Estoque insuficiente. Disponível: ${produtoSelecionado.quantidadeAtual} unidades.`
-      );
-  }
-
-  try {
-    const res = await fetch('/api/movimentacoes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        idProduto: produtoSelecionado.id,
-        quantidade: qtd,
-        tipo: tipoMovAtual
-      })
-    });
-
-    if (!res.ok) {
-      const err = await safeReadErrorMessage(res, 'Erro ao registrar movimentação.');
-      throw new Error(err);
+function stockEditPayload(){
+  const get=productCreateGet;
+  if(!produtoEmEdicao)return null;
+  const data=productCreateInput({nome:get('e-nome').value,initial:'0',minimum:get('e-qtd-minima').value,price:get('e-preco').value,category:get('e-categoria').value});
+  if(!data)return null;
+  const {quantidadeInicial,...payload}=data;
+  return payload;
+}
+function updateStockEdit(){
+  const get=productCreateGet,p=produtoEmEdicao,payload=stockEditPayload();
+  if(!p)return;
+  const changed=payload&&(payload.nome!==p.nome||payload.quantidadeMinima!==Number(p.quantidadeMinima)||Number(payload.precoUnitario)!==Number(p.precoUnitario)||payload.categoriaEstoque!==(p.categoriaEstoque||null));
+  get('stock-edit-level').textContent=payload?nivelLabel(productCreateStock(Number(p.quantidadeAtual),payload.quantidadeMinima).level):'—';
+  get('stock-edit-save').disabled=stockMutationPending||stockMutationUncertain||!changed||!temPermissao(PERMISSOES.EDITAR_ESTOQUE);
+}
+function updateStockMovement(){
+  const get=productCreateGet,p=produtoSelecionado;if(!p)return;
+  const raw=get('mov-qtd').value,model=stockMovementModel(p,tipoMovAtual,raw),format=v=>v.toLocaleString('pt-BR')+' un.';
+  get('stock-mov-before').textContent=format(Number(p.quantidadeAtual));
+  get('stock-mov-delta').textContent=model?(model.delta>0?'+':'−')+format(Math.abs(model.delta)):'—';
+  get('stock-mov-after').textContent=model?format(model.after):'—';
+  get('stock-mov-help').textContent=raw&&!model?'Quantidade inválida ou saldo fora do limite.':'Informe uma quantidade inteira positiva.';
+  get('stock-mov-level').textContent=model?'Nível previsto: '+nivelLabel(model.level)+'. O saldo final depende da validação do servidor.':'O saldo final será validado pelo servidor.';
+  get('btn-confirmar-mov').textContent=tipoMovAtual==='ENTRADA'?'Confirmar entrada':'Confirmar saída';
+  get('btn-confirmar-mov').disabled=stockMutationPending||stockMutationUncertain||!model||!temPermissao(PERMISSOES.EDITAR_ESTOQUE);
+}
+async function stockMutation(id,alertId,url,method,payload,productId,update){
+  if(stockMutationPending||stockMutationUncertain||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  const get=productCreateGet,modal=get(id),alert=get(alertId);if(!modal?.classList.contains('open'))return;
+  const current=()=>get(id)===modal&&modal.classList.contains('open');
+  const controls=[...modal.querySelectorAll('input,select,button')].map(el=>[el,el.disabled]);
+  stockMutationPending=true;controls.forEach(([el])=>el.disabled=true);alert.className='alert-modal';
+  try{
+    const res=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!current())return;
+    if(!res.ok){
+      if(res.status>=500||res.status===409)throw Error('Resultado incerto');
+      const message=await safeReadErrorMessage(res,'Não foi possível concluir a operação.');if(current())mostrarAlertaModal(alert,'error',message);return;
     }
-
-    const sinal = tipoMovAtual === 'ENTRADA' ? '+' : '-';
-    mostrarAlertaModal(alertEl, 'success', `${sinal}${qtd} unidades registradas com sucesso!`);
-
-    await carregarProdutos();
-    setTimeout(() => fecharModal('modal-mov'), 1000);
-  } catch (e) {
-    mostrarAlertaModal(alertEl, 'error', e.message);
-  }
+    const result=await res.json();if(!current())return;
+    if(!result||Number(result.id)!==Number(productId)||!Number.isInteger(result.quantidadeAtual))throw Error('Resposta inesperada');
+    modal.classList.remove('open');showToast(method==='PUT'?'Produto atualizado.':'Movimentação registrada.','success');await carregarProdutos();
+  }catch{
+    if(current()){stockMutationUncertain=true;mostrarAlertaModal(alert,'error','Resultado não confirmado. Feche esta janela e confira o estoque atualizado antes de repetir a operação.');}
+  }finally{stockMutationPending=false;controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});if(current())update();}
+}
+async function atualizarProduto(){
+  const payload=stockEditPayload();if(!payload||!produtoEmEdicao||productCreateGet('stock-edit-save').disabled)return;
+  await stockMutation('modal-edicao','alert-edicao','/api/produtos/'+encodeURIComponent(produtoEmEdicao.id),'PUT',payload,produtoEmEdicao.id,updateStockEdit);
+}
+async function confirmarMovimentacao(){
+  const model=stockMovementModel(produtoSelecionado,tipoMovAtual,productCreateGet('mov-qtd').value);
+  if(!model||!produtoSelecionado)return;
+  await stockMutation('modal-mov','alert-mov','/api/movimentacoes','POST',{idProduto:produtoSelecionado.id,quantidade:model.qtd,tipo:tipoMovAtual},produtoSelecionado.id,updateStockMovement);
 }
 
 function renderTabela() {
@@ -268,9 +265,9 @@ function renderTabela() {
   const inicio = (paginaEstoque - 1) * PRODUTOS_POR_PAGINA;
   const itensPagina = produtos.slice(inicio, inicio + PRODUTOS_POR_PAGINA);
 
-  countEl.textContent = `${produtos.length} produto${produtos.length !== 1 ? 's' : ''}`;
+  countEl.textContent = produtos.length.toLocaleString('pt-BR')+' de '+todosOsProdutos.length.toLocaleString('pt-BR')+' produtos';
   atualizarEstadoExportacao();
-  renderResumoCategorias(produtos);
+  renderResumoCategorias(todosOsProdutos);
   renderGraficoCategorias(produtos);
 
   if (produtos.length === 0) {
@@ -302,12 +299,12 @@ function renderTabela() {
       <td data-label="Nível">
         <div class="nivel-wrap nivel-${p.nivelEstoque}">
           <div class="nivel-bar">
-            <div class="nivel-bar-fill"></div>
+            <div class="nivel-bar-fill" style="width:${stockCoverage(p.quantidadeAtual,p.quantidadeMinima)}%"></div>
           </div>
           <span class="nivel-badge">${nivelLabel(p.nivelEstoque)}</span>
         </div>
       </td>
-      <td data-label="Preço">R$ ${p.precoUnitario.toFixed(2)}</td>
+      <td data-label="Preço">${stockMoney(p.precoUnitario)}</td>
       <td data-label="Ações">
           <div class="acoes">
             ${podeEditar ? `<button class="btn-acao editar" onclick="abrirModalEdicao(${p.id})">Editar</button>` : ''}
@@ -318,7 +315,7 @@ function renderTabela() {
         </td>
       </tr>
   `).join('');
-  if (paginas > 1) {
+  if (produtos.length > 0) {
     const nav = document.createElement('div');
     nav.id = 'paginacao-estoque';
     nav.className = 'table-pagination';
@@ -327,7 +324,7 @@ function renderTabela() {
     anterior.type = 'button'; anterior.textContent = 'Anterior'; anterior.disabled = paginaEstoque <= 1;
     anterior.addEventListener('click', () => { paginaEstoque--; renderTabela(); });
     const info = document.createElement('span');
-    info.textContent = 'Página ' + paginaEstoque + ' de ' + paginas;
+    info.textContent = (inicio+1)+'–'+(inicio+itensPagina.length)+' de '+produtos.length+' · Página '+paginaEstoque+' de '+paginas;
     const proximo = document.createElement('button');
     proximo.type = 'button'; proximo.textContent = 'Próxima'; proximo.disabled = paginaEstoque >= paginas;
     proximo.addEventListener('click', () => { paginaEstoque++; renderTabela(); });
@@ -352,21 +349,22 @@ function getProdutosVisiveis() {
     .replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const busca = normalizarBusca(document.getElementById('busca').value);
 
-  return todosOsProdutos.filter(p => {
+  const result = todosOsProdutos.filter(p => {
     const nome = normalizarBusca(p.nome);
     const categoria = p.categoriaEstoque || '';
 
-    const matchBusca = nome.includes(busca);
+    const matchBusca = nome.includes(busca) || (busca!=='' && /^#?\d+$/.test(busca) && String(p.id)===busca.replace(/^#/,''));
     const matchNivel =
       filtroNivelAtivo === 'todos' ? true :
       filtroNivelAtivo === 'critico' ? p.nivelEstoque === 'CRITICO' || p.nivelEstoque === 'SEM_ESTOQUE' :
       filtroNivelAtivo === 'baixo' ? p.nivelEstoque === 'BAIXO' || p.nivelEstoque === 'MODERADO' :
       filtroNivelAtivo === 'adequado' ? p.nivelEstoque === 'ADEQUADO' :
       true;
-    const matchCategoria = filtroCategoriaAtiva === 'todas' ? true : categoria === filtroCategoriaAtiva;
+    const matchCategoria = filtroCategoriaAtiva === 'todas' ? true : filtroCategoriaAtiva==='sem-categoria'?!categoria:categoria === filtroCategoriaAtiva;
 
     return matchBusca && matchNivel && matchCategoria;
   });
+  return stockSortRows(result,stockSort);
 }
 
 function categoriaLabel(categoria) {
@@ -389,35 +387,33 @@ function calcularMetricasCategorias(produtos) {
     BEBIDAS: 0,
     SECO: 0,
     FRIO: 0,
-    CONGELADO: 0
+    CONGELADO: 0,
+    INDEFINIDA: 0
   };
 
   produtos.forEach(p => {
-    if (metricas[p.categoriaEstoque] !== undefined) {
-      metricas[p.categoriaEstoque] += 1;
-    }
+    const key=['BEBIDAS','SECO','FRIO','CONGELADO'].includes(p.categoriaEstoque)?p.categoriaEstoque:'INDEFINIDA';
+    metricas[key]++;
   });
 
   return metricas;
 }
 
+function stockMoney(value){return value!=null&&value!==''&&Number.isFinite(Number(value))?Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'—';}
+function stockCoverage(q,m){return Number(m)>0?Math.max(0,Math.min(100,Number(q)*100/Number(m))):Number(q)>0?100:0;}
+function stockMetrics(rows){
+  return {total:rows.length,empty:rows.filter(p=>p.nivelEstoque==='SEM_ESTOQUE').length,attention:rows.filter(p=>['CRITICO','BAIXO','MODERADO'].includes(p.nivelEstoque)).length,adequate:rows.filter(p=>p.nivelEstoque==='ADEQUADO').length};
+}
+function stockSortRows(rows,sort){
+  const rank=['SEM_ESTOQUE','CRITICO','BAIXO','MODERADO','ADEQUADO'],risk=p=>rank.includes(p.nivelEstoque)?rank.indexOf(p.nivelEstoque):rank.length;
+  if(sort==='risk')return rows.slice().sort((a,b)=>risk(a)-risk(b)||Number(a.quantidadeAtual)-Number(b.quantidadeAtual));
+  if(sort==='name')return rows.slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome),'pt-BR'));
+  if(sort==='qty')return rows.slice().sort((a,b)=>Number(a.quantidadeAtual)-Number(b.quantidadeAtual));
+  return rows;
+}
 function renderResumoCategorias(produtos) {
-  const metricas = calcularMetricasCategorias(produtos);
-  const cards = [
-    { key: 'BEBIDAS', label: 'Bebidas' },
-    { key: 'SECO', label: 'Estoque seco' },
-    { key: 'FRIO', label: 'Estoque frio' },
-    { key: 'CONGELADO', label: 'Estoque congelado' }
-  ];
-
-  const container = document.getElementById('categoria-summary');
-  container.innerHTML = cards.map(card => `
-    <div class="categoria-summary-card">
-      <div class="categoria-summary-label">${card.label}</div>
-      <div class="categoria-summary-value">${metricas[card.key]}</div>
-      <div class="categoria-summary-sub">produto(s) visíveis</div>
-    </div>
-  `).join('');
+  const m=stockMetrics(produtos),cards=[['Produtos cadastrados',m.total,'Catálogo carregado','neutral'],['Sem estoque',m.empty,'Saldo zerado','bad'],['Em atenção',m.attention,'Crítico, baixo ou moderado','warn'],['Adequados',m.adequate,'Nível saudável','ok']];
+  document.getElementById('categoria-summary').innerHTML=cards.map(([label,value,sub,tone])=>'<div class="categoria-summary-card" data-tone="'+tone+'"><div class="categoria-summary-label">'+label+'</div><div class="categoria-summary-value">'+value.toLocaleString('pt-BR')+'</div><div class="categoria-summary-sub">'+sub+'</div></div>').join('');
 }
 
 function renderGraficoCategorias(produtos) {
@@ -426,9 +422,10 @@ function renderGraficoCategorias(produtos) {
     { key: 'BEBIDAS', label: 'Bebidas' },
     { key: 'SECO', label: 'Estoque seco' },
     { key: 'FRIO', label: 'Estoque frio' },
-    { key: 'CONGELADO', label: 'Estoque congelado' }
+    { key: 'CONGELADO', label: 'Estoque congelado' },
+    { key: 'INDEFINIDA', label: 'Não definida' }
   ];
-  const maximo = Math.max(1, ...categorias.map(c => metricas[c.key]));
+  const maximo = Math.max(1, produtos.length);
   const container = document.getElementById('categoria-chart');
 
   container.innerHTML = categorias.map(cat => {
@@ -440,7 +437,7 @@ function renderGraficoCategorias(produtos) {
         <div class="categoria-chart-bar">
           <div class="categoria-chart-fill categoria-${cat.key}" data-width="${largura}"></div>
         </div>
-        <div class="categoria-chart-value">${valor}</div>
+        <div class="categoria-chart-value">${valor.toLocaleString('pt-BR')} · ${Number(largura).toLocaleString('pt-BR',{maximumFractionDigits:1})}%</div>
       </div>
     `;
   }).join('');
@@ -542,6 +539,8 @@ function abrirModalCadastro() {
 }
 
 function abrirModalEdicao(idProduto) {
+  if(stockMutationPending||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  stockMutationUncertain=false;
   produtoEmEdicao = todosOsProdutos.find(p => p.id === idProduto);
   if (!produtoEmEdicao) return;
 
@@ -550,10 +549,17 @@ function abrirModalEdicao(idProduto) {
   document.getElementById('e-preco').value = produtoEmEdicao.precoUnitario;
   document.getElementById('e-categoria').value = produtoEmEdicao.categoriaEstoque || '';
   document.getElementById('alert-edicao').className = 'alert-modal';
-  document.getElementById('modal-edicao').classList.add('open');
+  const get=productCreateGet;
+  get('stock-edit-id').textContent='#'+produtoEmEdicao.id;
+  get('stock-edit-current').textContent=produtoEmEdicao.quantidadeAtual.toLocaleString('pt-BR')+' un.';
+  get('stock-edit-price').textContent=stockMoney(produtoEmEdicao.precoUnitario);
+  ['e-nome','e-qtd-minima','e-preco'].forEach(id=>get(id).oninput=updateStockEdit);get('e-categoria').onchange=updateStockEdit;
+  updateStockEdit();get('modal-edicao').classList.add('open');get('e-nome').focus();
 }
 
 function abrirModalMov(idProduto, tipo) {
+  if(stockMutationPending||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  stockMutationUncertain=false;
   produtoSelecionado = todosOsProdutos.find(p => p.id === idProduto);
   if (!produtoSelecionado) return;
 
@@ -565,14 +571,19 @@ function abrirModalMov(idProduto, tipo) {
   setTipo(tipo);
   document.getElementById('modal-mov-titulo').textContent =
     tipo === 'ENTRADA' ? 'Registrar Entrada' : 'Registrar Saída';
-  document.getElementById('modal-mov').classList.add('open');
+  document.getElementById('mov-qtd').oninput=updateStockMovement;
+  updateStockMovement();document.getElementById('modal-mov').classList.add('open');document.getElementById('mov-qtd').focus();
 }
 
 function fecharModal(id) {
   if(id==='modal-cadastro'&&productCreatePending)return;
+  if((id==='modal-edicao'||id==='modal-mov')&&stockMutationPending)return;
+  if(id==='modal-revenda'&&revendaSalvando)return;
   const modal = document.getElementById(id);
   if (modal) modal.classList.remove('open');
   if(id==='modal-cadastro'&&productCreateUncertain){productCreateUncertain=false;void carregarProdutos();}
+  if((id==='modal-edicao'||id==='modal-mov')&&stockMutationUncertain){stockMutationUncertain=false;void carregarProdutos();}
+  if(id==='modal-revenda'&&revendaUncertain){revendaUncertain=false;void carregarProdutos();}
 }
 
 function fecharModalSeClicouFora(event, id) {
@@ -580,9 +591,14 @@ function fecharModalSeClicouFora(event, id) {
 }
 
 function setTipo(tipo) {
+  if(stockMutationPending||stockMutationUncertain||!['ENTRADA','SAIDA'].includes(tipo))return;
   tipoMovAtual = tipo;
+  document.getElementById('modal-mov-titulo').textContent=tipo==='ENTRADA'?'Registrar entrada':'Registrar saída';
+  document.getElementById('btn-entrada').setAttribute('aria-pressed',String(tipo==='ENTRADA'));
+  document.getElementById('btn-saida').setAttribute('aria-pressed',String(tipo==='SAIDA'));
   document.getElementById('btn-entrada').classList.toggle('active', tipo === 'ENTRADA');
   document.getElementById('btn-saida').classList.toggle('active', tipo === 'SAIDA');
+  updateStockMovement();
 }
 
 function limparFormCadastro() {
@@ -607,10 +623,15 @@ const REVENDA_CATEGORIAS_PADRAO = [
   { codigo: 'petiscos', nome: 'Petiscos' }
 ];
 const REVENDA_MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-let revendaSalvando = false;
+let revendaSalvando = false,revendaUncertain=false;
 
 async function abrirModalRevenda() {
+  if(revendaSalvando||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  revendaUncertain=false;
   limparFormRevenda();
+  REVENDA_ORDEM.forEach(id=>document.getElementById(id).oninput=updateRevendaPreview);
+  document.getElementById('btn-salvar-revenda').disabled=false;
+  updateRevendaPreview();
   document.getElementById('alert-revenda').className = 'alert-modal';
   document.getElementById('modal-revenda').classList.add('open');
   document.getElementById('r-ean').focus();
@@ -702,7 +723,8 @@ async function conferirCodigoRevenda(campoId) {
 }
 
 async function teclaRevenda(event) {
-  if (event.key !== 'Enter' || event.target.tagName === 'BUTTON') return;
+  if (event.isComposing||event.key !== 'Enter' || event.target.tagName === 'BUTTON') return;
+  if(revendaSalvando||revendaUncertain){event.preventDefault();return;}
   event.preventDefault();
   if (event.ctrlKey) { salvarRevenda(); return; }
   const id = event.target.id;
@@ -713,7 +735,8 @@ async function teclaRevenda(event) {
 
 function numeroRevenda(id) {
   const texto = document.getElementById(id).value.trim().replace(',', '.');
-  return texto === '' ? null : Number(texto);
+  if(texto==='')return null;
+  return productCreatePrice(texto)===null?NaN:Number(texto);
 }
 
 function montarCadastroRevenda() {
@@ -726,12 +749,16 @@ function montarCadastroRevenda() {
   const fardoCodigo = normalizarCodigoRevenda(document.getElementById('r-fardo-ean').value);
   const select = document.getElementById('r-categoria');
 
-  if (!nome) return { erro: 'Informe o nome do produto.', campo: 'r-nome' };
+  if (!nome||nome.length>120) return { erro: 'Informe o nome do produto (até 120 caracteres).', campo: 'r-nome' };
+  for(const id of ['r-qtd','r-min']){
+    const raw=document.getElementById(id).value;
+    if(raw!==''&&productCreateQuantity(raw)===null)return {erro:'Informe uma quantidade inteira não negativa.',campo:id};
+  }
   if (!(precoVenda > 0)) return { erro: 'Informe o preço de venda.', campo: 'r-preco' };
   if (precoGelado !== null && !(precoGelado > 0)) return { erro: 'Preço da gelada inválido.', campo: 'r-preco-gelado' };
   if (!(custoUnitario > 0)) return { erro: 'Informe o custo da unidade: o caixa não vende produto sem custo.', campo: 'r-custo' };
   const temFardo = fardoQtd !== null || fardoPreco !== null || fardoCodigo !== '';
-  if (temFardo && !(Number.isInteger(fardoQtd) && fardoQtd >= 2)) return { erro: 'Informe quantas unidades vêm no fardo.', campo: 'r-fardo-qtd' };
+  if (temFardo && !(Number.isInteger(fardoQtd) && fardoQtd >= 2 && fardoQtd <= 2147483647)) return { erro: 'Informe quantas unidades vêm no fardo.', campo: 'r-fardo-qtd' };
   if (temFardo && !(fardoPreco > 0)) return { erro: 'Informe o preço do fardo.', campo: 'r-fardo-preco' };
 
   const codigo = select.value || 'bebidas';
@@ -745,47 +772,50 @@ function montarCadastroRevenda() {
       precoVenda,
       precoGelado,
       custoUnitario,
-      quantidadeInicial: Math.max(0, Math.trunc(numeroRevenda('r-qtd') || 0)),
-      quantidadeMinima: Math.max(0, Math.trunc(numeroRevenda('r-min') || 0)),
+      quantidadeInicial: productCreateQuantity(document.getElementById('r-qtd').value||'0'),
+      quantidadeMinima: productCreateQuantity(document.getElementById('r-min').value||'0'),
       fardo: temFardo ? { quantidadeUnidades: fardoQtd, preco: fardoPreco, codigoBarras: fardoCodigo } : null
     }
   };
 }
 
-async function salvarRevenda() {
-  if (revendaSalvando) return;
-  const alerta = document.getElementById('alert-revenda');
-  const montagem = montarCadastroRevenda();
-  if (montagem.erro) {
-    mostrarAlertaModal(alerta, 'error', montagem.erro);
-    document.getElementById(montagem.campo).focus();
-    return;
-  }
-  if (!(await conferirCodigoRevenda('r-ean'))) return;
-  if (!(await conferirCodigoRevenda('r-fardo-ean'))) return;
-
-  revendaSalvando = true;
-  document.getElementById('btn-salvar-revenda').disabled = true;
-  try {
-    const resp = await fetch('/api/produtos/revenda', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(montagem.dados)
-    });
-    if (!resp.ok) throw new Error(await safeReadErrorMessage(resp, 'Erro ao cadastrar o produto.'));
-    const criado = await resp.json();
-    const resumo = (criado.variacoes || [])
-      .map(v => `${v.nome} ${REVENDA_MOEDA.format(Number(v.precoVenda))}`)
-      .join(' · ');
-    mostrarAlertaModal(alerta, 'success', `${criado.nome} cadastrado: ${resumo}. Pode bipar o próximo.`);
-    limparFormRevenda();
-    await carregarProdutos();
-    document.getElementById('r-ean').focus();
-  } catch (e) {
-    mostrarAlertaModal(alerta, 'error', e.message);
-  } finally {
-    revendaSalvando = false;
-    document.getElementById('btn-salvar-revenda').disabled = false;
+function revendaMargin(price,cost){
+  return Number.isFinite(price)&&Number.isFinite(cost)&&price>0&&cost>0?{profit:price-cost,margin:(price-cost)/price*100}:null;
+}
+function updateRevendaPreview(){
+  const el=document.getElementById('revenda-preview-values');if(!el)return;
+  const cost=numeroRevenda('r-custo'),n=numeroRevenda('r-fardo-qtd'),rows=[['Natural / unidade',numeroRevenda('r-preco'),cost],['Gelada',numeroRevenda('r-preco-gelado'),cost],['Fardo',numeroRevenda('r-fardo-preco'),Number.isInteger(n)&&n>=2&&cost>0?n*cost:null]];
+  el.innerHTML=rows.map(([label,price,c])=>{const model=revendaMargin(price,c);return '<div><span>'+label+'</span><strong>'+stockMoney(price)+'</strong><small>'+(model?stockMoney(model.profit)+' de margem bruta · '+model.margin.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%':'Margem —')+'</small></div>';}).join('');
+}
+async function salvarRevenda(){
+  if(revendaSalvando||revendaUncertain||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+  const get=productCreateGet,modal=get('modal-revenda'),alerta=get('alert-revenda');
+  if(!modal?.classList.contains('open'))return;
+  const montagem=montarCadastroRevenda();
+  if(montagem.erro){mostrarAlertaModal(alerta,'error',montagem.erro);get(montagem.campo).focus();return;}
+  const current=()=>get('modal-revenda')===modal&&modal.classList.contains('open');
+  const controls=[...modal.querySelectorAll('input,select,button')].map(el=>[el,el.disabled]);
+  revendaSalvando=true;controls.forEach(([el])=>el.disabled=true);
+  let submitted=false,focusId='r-ean';
+  try{
+    if(!(await conferirCodigoRevenda('r-ean')))return;
+    if(!current())return;
+    if(!(await conferirCodigoRevenda('r-fardo-ean'))){focusId='r-fardo-ean';return;}
+    if(!current()||!temPermissao(PERMISSOES.EDITAR_ESTOQUE))return;
+    submitted=true;
+    const resp=await fetch('/api/produtos/revenda',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(montagem.dados)});
+    if(!current())return;
+    if(!resp.ok){if(resp.status>=500)throw Error('Resultado incerto');const msg=await safeReadErrorMessage(resp,'Erro ao cadastrar o produto.');if(current())mostrarAlertaModal(alerta,'error',msg);return;}
+    const criado=await resp.json();if(!current())return;
+    if(!criado||!Number.isInteger(Number(criado.produtoId))||Number(criado.produtoId)<=0||!Array.isArray(criado.variacoes))throw Error('Resposta inesperada');
+    const resumo=criado.variacoes.map(v=>v.nome+' '+REVENDA_MOEDA.format(Number(v.precoVenda))).join(' · ');
+    mostrarAlertaModal(alerta,'success',criado.nome+' cadastrado: '+resumo+'. Pode bipar o próximo.');
+    limparFormRevenda();updateRevendaPreview();await carregarProdutos();
+  }catch{
+    if(current()){revendaUncertain=submitted;mostrarAlertaModal(alerta,'error',submitted?'Cadastro não confirmado. Feche e confira o estoque antes de repetir.':'Não foi possível conferir os códigos. Tente novamente.');}
+  }finally{
+    revendaSalvando=false;controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
+    if(current()){get('btn-salvar-revenda').disabled=revendaUncertain;if(!revendaUncertain)get(focusId).focus();}
   }
 }
 
