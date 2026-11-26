@@ -476,3 +476,32 @@ assert.match(caixasSource,/const autorizacao=lerAutorizacao\('mov'\)/);
 assert.match(caixasSource,/state\.amount\/100/);
 assert.match(css,/stockos-mov-preview-total/);
 console.log('PASS movement preview: exact cent arithmetic, amount validation, balance and existing authorization.');
+
+const extractApi=vm.runInNewContext(extract(caixasSource,'const EXTRACT_TYPES=','function renderCashExtract(')+'\n cashExtractModel;',{});
+const extractSample=[
+ {tipo:'VENDA',valor:12.35,descricao:'Café',operador:'João',formaPagamento:'PIX',dataHora:'2026-11-26T14:30:00',vendaId:10},
+ {tipo:'VENDA',valor:7.65,descricao:'Café',operador:'João',formaPagamento:'DINHEIRO',dataHora:'2026-11-26T14:30:00',vendaId:10},
+ {tipo:'SANGRIA',valor:5,descricao:'Depósito',dataHora:'2026-11-26T15:00:00'},
+ {tipo:'SUPRIMENTO',valor:10,dataHora:'2026-11-25T10:00:00'},
+ {tipo:'ESTORNO_VENDA',valor:2,formaPagamento:'PIX'},
+ {tipo:'DESPESA',valor:3}
+];
+const extractAll=extractApi(extractSample);
+assert.equal(extractAll.totals.sales,2000);
+assert.equal(extractAll.totals.withdrawals,500);
+assert.equal(extractAll.totals.supplies,1000);
+assert.equal(extractAll.totals.refunds,200);
+assert.equal(extractAll.rows[0].type,'SANGRIA');
+assert.equal(extractAll.counts.VENDA,2);
+assert.equal(extractApi(extractSample,'VENDA','cafe','PIX').count,1);
+assert.equal(extractApi(extractSample,'all','joao').count,2);
+assert.equal(extractApi(extractSample,'other').count,1);
+assert.equal(extractApi(extractSample,'all','','none').count,3);
+assert.equal(extractApi(extractSample,'all','','all',99,2).page,3);
+assert.equal(extractApi(extractSample,'all','','all',99,2).from,5);
+assert.equal(extractApi(null),null);
+assert.equal(extractApi([{tipo:'VENDA',valor:null}]).totals.sales,null);
+assert.equal(extractApi([{tipo:'FUTURO',valor:3}]).rows[0].direction,0);
+assert.match(caixasSource,/version===cashExtractVersion/);
+assert.match(css,/stockos-extract-table/);
+console.log('PASS cash extract: exact totals, chronology, filters, pagination, unknown values and response ordering.');

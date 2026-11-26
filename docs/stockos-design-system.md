@@ -108,3 +108,7 @@ Saldo físico e vendas acumuladas por sessão em destaque. Fundo inicial, pagame
 ## Movimentação manual de caixa
 
 Sangria e suprimento compartilham o formulário, com identidade semântica por operação, motivo contextual e previsão do saldo físico em centavos. O saldo é uma fotografia da abertura, não uma garantia; a autorização e validação atuais do servidor permanecem obrigatórias. Bloqueio de envio simultâneo no cliente; resposta perdida exige conferência antes de repetir, sem promessa de idempotência no backend.
+
+## Extrato de caixa
+
+Movimentações da sessão em ordem cronológica decrescente, data e hora, operador, forma de pagamento, tipo e valor. Resumo de vendas brutas registradas, suprimentos, sangrias e estornos em centavos; não confundir com saldo físico. Filtros locais, pesquisa sem acentos e paginação de oito registros. Resumo por operador recolhível; no mock calculado pelos registros da sessão, sem inventar descontos. Ignorar respostas de sessões antigas.

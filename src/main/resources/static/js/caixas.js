@@ -542,16 +542,116 @@ async function confirmarEncerrar() {
 
 // ── Modal: Movimentações do caixa ─────────────────────────────────────────
 
+
+const EXTRACT_TYPES={
+  VENDA:{label:'Venda',direction:1},SUPRIMENTO:{label:'Suprimento',direction:1},
+  ENTRADA:{label:'Entrada',direction:1},SANGRIA:{label:'Sangria',direction:-1},
+  DESPESA:{label:'Despesa',direction:-1},ESTORNO_VENDA:{label:'Estorno',direction:-1}
+};
+function cashExtractModel(records,filter='all',query='',payment='all',page=1,pageSize=8) {
+  if(!Array.isArray(records))return null;
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const rows=records.map((m,index)=>{
+    const type=String(m?.tipo||'');
+    const kind=Object.prototype.hasOwnProperty.call(EXTRACT_TYPES,type)?EXTRACT_TYPES[type]:{label:type||'Não informado',direction:0};
+    const amount=m?.valor!=null&&String(m.valor).trim()!==''?Math.round(Number(m.valor)*100):null;
+    const cents=Number.isSafeInteger(amount)&&amount>=0?amount:null;
+    const date=new Date(m?.dataHora||'');
+    return {index,type,label:kind.label,direction:kind.direction,cents,date:Number.isFinite(date.getTime())?date:null,
+      description:String(m?.descricao||'Sem descrição'),operator:String(m?.operador||'—'),payment:String(m?.formaPagamento||''),
+      sale:m?.vendaId==null?'':String(m.vendaId)};
+  }).sort((a,b)=>(b.date?.getTime()??-Infinity)-(a.date?.getTime()??-Infinity)||a.index-b.index);
+  const sum=items=>items.every(r=>r.cents!=null)&&Number.isSafeInteger(items.reduce((s,r)=>s+r.cents,0))?items.reduce((s,r)=>s+r.cents,0):null;
+  const totals={sales:sum(rows.filter(r=>r.type==='VENDA')),refunds:sum(rows.filter(r=>r.type==='ESTORNO_VENDA')),
+    supplies:sum(rows.filter(r=>r.type==='SUPRIMENTO')),withdrawals:sum(rows.filter(r=>r.type==='SANGRIA'))};
+  const counts={all:rows.length,VENDA:0,SUPRIMENTO:0,SANGRIA:0,ESTORNO_VENDA:0,other:0};
+  for(const r of rows){if(['VENDA','SUPRIMENTO','SANGRIA','ESTORNO_VENDA'].includes(r.type))counts[r.type]++;else counts.other++;}
+  const term=norm(query);
+  const filtered=rows.filter(r=>(filter==='all'||(filter==='other'? !['VENDA','SUPRIMENTO','SANGRIA','ESTORNO_VENDA'].includes(r.type):r.type===filter))&&
+    (payment==='all'||(payment==='none'?!r.payment:r.payment===payment))&&norm([r.description,r.operator,r.sale,r.label].join(' ')).includes(term));
+  const size=Math.max(1,Math.floor(Number(pageSize)||8)),pages=Math.max(1,Math.ceil(filtered.length/size));
+  const current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {totals,counts,payments:[...new Set(rows.map(r=>r.payment).filter(Boolean))].sort(),
+    hasNoPayment:rows.some(r=>!r.payment),count:filtered.length,pages,page:current,
+    from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),
+    rows:filtered.slice((current-1)*size,current*size)};
+}
+function renderCashExtract(records) {
+  const summary=document.getElementById('stockos-extract-summary'),tools=document.getElementById('stockos-extract-tools'),
+    container=document.getElementById('movs-lista'),pages=document.getElementById('stockos-extract-pages');
+  const search=document.getElementById('extract-search'),payment=document.getElementById('extract-payment');
+  const prev=document.getElementById('extract-prev'),next=document.getElementById('extract-next'),range=document.getElementById('extract-range');
+  const buttons=[...tools.querySelectorAll('[data-extract-type]')];
+  const initial=cashExtractModel(records);
+  if(!initial){container.textContent='Não foi possível carregar as movimentações.';return;}
+  const money=v=>v==null?'—':moeda(v/100);
+  const esc=escapeHtml;
+  summary.innerHTML=[
+    ['Vendas registradas',initial.totals.sales,'neutral','Antes dos estornos'],
+    ['Suprimentos',initial.totals.supplies,'in','Entradas de dinheiro'],
+    ['Sangrias',initial.totals.withdrawals,'out','Retiradas de dinheiro'],
+    ['Estornos',initial.totals.refunds,'out','Devoluções registradas']
+  ].map(([label,value,state,note])=>'<div class="stockos-extract-metric" data-state="'+state+'"><span>'+label+'</span><strong>'+money(value)+'</strong><small>'+note+'</small></div>').join('');
+  summary.hidden=false;tools.hidden=pages.hidden=initial.count===0;
+  search.value='';payment.replaceChildren();
+  const addOption=(value,label)=>{const option=document.createElement('option');option.value=value;option.textContent=label;payment.appendChild(option);};
+  addOption('all','Todas as formas');
+  initial.payments.forEach(p=>addOption(p,ROTULOS_FORMA[p]||p));
+  if(initial.hasNoPayment)addOption('none','Sem forma informada');
+  payment.value='all';
+  let filter='all',page=1;
+  function draw(){
+    const model=cashExtractModel(records,filter,search.value,payment.value,page);
+    page=model.page;
+    buttons.forEach(b=>{const key=b.dataset.extractType;b.setAttribute('aria-pressed',String(key===filter));b.textContent=({all:'Todas',VENDA:'Vendas',SUPRIMENTO:'Suprimentos',SANGRIA:'Sangrias',ESTORNO_VENDA:'Estornos',other:'Outras'}[key])+' · '+model.counts[key];});
+    range.textContent=model.count?model.from+'–'+model.to+' de '+model.count+' registros':'0 registros';
+    prev.disabled=page<=1;next.disabled=page>=model.pages;
+    if(!model.rows.length){container.innerHTML='<div class="stockos-extract-empty">'+(initial.count?'Nenhuma movimentação corresponde aos filtros.':'Nenhuma movimentação registrada nesta sessão.')+'</div>';return;}
+    container.innerHTML='<div class="stockos-extract-table-wrap"><table class="stockos-extract-table"><caption class="stockos-extract-caption">Movimentações da sessão, da mais recente à mais antiga</caption><thead><tr><th scope="col">Movimentação</th><th scope="col">Operador</th><th scope="col">Pagamento</th><th scope="col">Data / hora</th><th scope="col">Valor</th></tr></thead><tbody>'+
+    model.rows.map(r=>{
+      const state=r.direction===1?'in':r.direction===-1?'out':'neutral';
+      const date=r.date?r.date.toLocaleDateString('pt-BR'):'—',time=r.date?r.date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
+      return '<tr><td><span class="stockos-extract-kind" data-state="'+state+'">'+esc(r.label)+'</span><strong class="stockos-extract-desc">'+esc(r.description)+'</strong>'+
+        (r.sale?'<small>Venda #'+esc(r.sale)+'</small>':'')+'</td><td>'+esc(r.operator)+'</td><td>'+esc(ROTULOS_FORMA[r.payment]||r.payment||'—')+'</td><td><span>'+esc(date)+'</span><small>'+esc(time)+'</small></td><td class="stockos-extract-value" data-state="'+state+'">'+(r.cents==null?'—':(r.direction===1?'+':r.direction===-1?'−':'')+money(r.cents))+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+  }
+  buttons.forEach(b=>b.onclick=()=>{filter=b.dataset.extractType;page=1;draw();});
+  search.oninput=payment.onchange=()=>{page=1;draw();};
+  prev.onclick=()=>{page--;draw();};next.onclick=()=>{page++;draw();};draw();
+}
+let cashExtractVersion=0;
+
 async function abrirModalMovsLista(caixaId, numeroCaixa) {
+  const version=++cashExtractVersion;
+  const compact=!!document.querySelector('.app.stockos-shell-v2');
+  const operators=document.getElementById('stockos-extract-operators');
+  const operatorContent=document.getElementById('movs-operadores');
+  const containerInitial=document.getElementById('movs-lista');
+  const current=()=>version===cashExtractVersion&&document.getElementById('movs-lista')===containerInitial;
+  ['stockos-extract-summary','stockos-extract-tools','stockos-extract-pages'].forEach(id=>document.getElementById(id).hidden=true);
+  operators.hidden=!compact;operators.open=false;
+  if(compact)operators.appendChild(operatorContent);else operators.after(operatorContent);
+  operatorContent.innerHTML='';
   document.getElementById('modal-movs-titulo').textContent =
-    `Movimentações — Caixa ${numeroCaixa} (Sessao ${caixaId})`;
+    `Extrato de caixa — Caixa ${numeroCaixa} · Sessão ${caixaId}`;
   document.getElementById('movs-lista').innerHTML = '<div class="loading">Carregando</div>';
   abrirModal('modal-movs-lista');
-  preencherResumoOperadores('movs-operadores', caixaId);
+  if(compact){
+    operators.ontoggle=()=>{
+      if(operators.open&&current()&&!operatorContent.dataset.loaded){
+        operatorContent.dataset.loaded='true';
+        void preencherResumoOperadores('movs-operadores',caixaId,current);
+      }
+    };
+    delete operatorContent.dataset.loaded;
+  }else void preencherResumoOperadores('movs-operadores',caixaId,current);
   try {
     const resp = await fetch(`/api/caixas/sessoes/${caixaId}/movimentacoes`);
     if (!resp.ok) throw new Error();
     const movs      = await resp.json();
+    if(!current())return;
+    if(!Array.isArray(movs))throw Error('Invalid movements');
+    if(compact){renderCashExtract(movs);return;}
     const container = document.getElementById('movs-lista');
     if (movs.length === 0) {
       container.innerHTML = '<div class="empty">Nenhuma movimentação registrada.</div>';
@@ -573,6 +673,7 @@ async function abrirModalMovsLista(caixaId, numeroCaixa) {
         </div>`;
     }).join('');
   } catch {
+    if(!current())return;
     document.getElementById('movs-lista').innerHTML =
       '<div class="empty">Erro ao carregar movimentações.</div>';
   }
@@ -613,14 +714,15 @@ function tabelaResumoOperadores(linhas) {
     <p class="inline-note">Venda conta para quem finalizou; cancelamento e sangria, para quem fez. "Vendido" é antes dos cancelamentos.</p>`;
 }
 
-async function preencherResumoOperadores(destinoId, caixaId) {
+async function preencherResumoOperadores(destinoId, caixaId, current=()=>true) {
   const destino = document.getElementById(destinoId);
   if (!destino) return;
   destino.innerHTML = '<div class="loading">Carregando</div>';
   try {
-    destino.innerHTML = tabelaResumoOperadores(await carregarResumoOperadores(caixaId));
+    const linhas=await carregarResumoOperadores(caixaId);
+    if(current()&&document.getElementById(destinoId)===destino)destino.innerHTML=tabelaResumoOperadores(linhas);
   } catch (error) {
-    destino.innerHTML = `<p class="inline-note">${escapeHtml(error.message)}</p>`;
+    if(current()&&document.getElementById(destinoId)===destino)destino.innerHTML='<p class="inline-note">'+escapeHtml(error.message)+'</p>';
   }
 }
 

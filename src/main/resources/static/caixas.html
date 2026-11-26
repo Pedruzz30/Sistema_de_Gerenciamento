@@ -168,8 +168,28 @@
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-movs-lista')">✕</button>
     </div>
     <div class="modal-body modal-body--scroll">
+      <section id="stockos-extract-summary" class="stockos-extract-summary" hidden aria-label="Resumo das movimentações"></section>
+      <section id="stockos-extract-tools" class="stockos-extract-tools" hidden aria-label="Filtros do extrato">
+        <div class="stockos-extract-tabs" role="group" aria-label="Tipo de movimentação">
+          <button type="button" data-extract-type="all" aria-pressed="true">Todas</button>
+          <button type="button" data-extract-type="VENDA" aria-pressed="false">Vendas</button>
+          <button type="button" data-extract-type="SUPRIMENTO" aria-pressed="false">Suprimentos</button>
+          <button type="button" data-extract-type="SANGRIA" aria-pressed="false">Sangrias</button>
+          <button type="button" data-extract-type="ESTORNO_VENDA" aria-pressed="false">Estornos</button>
+          <button type="button" data-extract-type="other" aria-pressed="false">Outras</button>
+        </div>
+        <div class="stockos-extract-search">
+          <input class="input" type="search" id="extract-search" aria-label="Pesquisar movimentações" placeholder="Buscar descrição, operador ou número da venda">
+          <select class="input" id="extract-payment" aria-label="Filtrar forma de pagamento"></select>
+        </div>
+      </section>
+      <div class="mov-caixa-list" id="movs-lista" aria-live="polite"></div>
+      <div id="stockos-extract-pages" class="stockos-extract-pages" hidden>
+        <span id="extract-range" role="status"></span>
+        <div><button type="button" id="extract-prev">Anterior</button><button type="button" id="extract-next">Próxima</button></div>
+      </div>
+      <details id="stockos-extract-operators" class="stockos-extract-operators" hidden><summary>Resumo por operador</summary></details>
       <div class="movs-operadores" id="movs-operadores"></div>
-      <div class="mov-caixa-list" id="movs-lista"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="fecharModal('modal-movs-lista')">Fechar</button>

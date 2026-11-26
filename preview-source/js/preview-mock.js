@@ -364,6 +364,25 @@
       db.movimentacoesCaixa.unshift({id:Date.now(),caixaId:c.id,numeroCaixa:c.numeroCaixa,tipo:tipo.toUpperCase(),valor,descricao:String(body.descricao||'Operação fictícia'),dataHora:new Date().toISOString(),operador:'Admin Demo',formaPagamento:tipo==='venda'?'DINHEIRO':null});
       save();return respond(c);
     }
+    const operatorSummary=path.match(/^\/api\/caixas\/sessoes\/(\d+)\/resumo-operadores$/);
+    if(operatorSummary&&method==='GET'){
+      const id=Number(operatorSummary[1]);
+      if(!db.caixas.some(c=>Number(c.id)===id))return respond({erro:'Sessão não encontrada.'},404);
+      const rows=new Map();
+      db.movimentacoesCaixa.filter(m=>Number(m.caixaId)===id).forEach((m,i)=>{
+        const name=m.operador||'—',value=Math.round(Number(m.valor)*100);
+        if(!Number.isSafeInteger(value)||value<0)return;
+        if(!rows.has(name))rows.set(name,{operador:name,vendas:new Set(),cancelamentos:new Set(),vendido:0,dinheiro:0,pixECartoes:0,cancelado:0,sangrias:0,suprimentos:0});
+        const a=rows.get(name),key=m.vendaId!=null?'sale:'+m.vendaId:'movement:'+(m.id??i);
+        if(m.tipo==='VENDA'){a.vendas.add(key);a.vendido+=value;if(!m.formaPagamento||m.formaPagamento==='DINHEIRO')a.dinheiro+=value;else a.pixECartoes+=value;}
+        else if(m.tipo==='ESTORNO_VENDA'){a.cancelamentos.add(key);a.cancelado+=value;}
+        else if(m.tipo==='SANGRIA')a.sangrias+=value;
+        else if(m.tipo==='SUPRIMENTO')a.suprimentos+=value;
+      });
+      return respond([...rows.values()].map(a=>({operador:a.operador,vendas:a.vendas.size,cancelamentos:a.cancelamentos.size,
+        vendido:a.vendido/100,dinheiro:a.dinheiro/100,pixECartoes:a.pixECartoes/100,cancelado:a.cancelado/100,
+        sangrias:a.sangrias/100,suprimentos:a.suprimentos/100,descontos:null})).sort((a,b)=>b.vendido-a.vendido||a.operador.localeCompare(b.operador,'pt-BR')));
+    }
     const cashMov=path.match(/^\/api\/caixas\/sessoes\/(\d+)\/movimentacoes$/);
     if(cashMov && method==='GET')return respond(db.movimentacoesCaixa.filter(m=>m.caixaId===Number(cashMov[1])));
     // Never pretend that unsupported workflows succeeded.

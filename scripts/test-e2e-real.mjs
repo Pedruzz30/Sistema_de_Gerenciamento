@@ -357,6 +357,16 @@ try {
     assert.equal(await cardDoCaixa(admin,1).locator('.stockos-cash-card-metrics .caixa-detail-row').count(),2);
     assert.ok(await cardDoCaixa(admin,1).locator('.stockos-cash-card-session').isVisible());
     assert.equal(await cardDoCaixa(admin,1).locator('button:has-text("Movimentações")').count(),1);
+    await cardDoCaixa(admin,1).locator('button:has-text("Movimentações")').click();
+    await admin.waitForSelector('#stockos-extract-summary:not([hidden])');
+    assert.equal(await admin.locator('.stockos-extract-metric').count(),4);
+    if(await admin.locator('#stockos-extract-tools').isVisible()){
+      await admin.locator('#extract-search').fill('__stockos_sem_resultado__');
+      await esperarTexto(admin,'#movs-lista','Nenhuma movimentação corresponde aos filtros.');
+      await admin.locator('#extract-search').fill('');
+      assert.ok(await admin.locator('.stockos-extract-table tbody tr').count()<=8);
+    }
+    await admin.evaluate(()=>fecharModal('modal-movs-lista'));
     assert.ok(await admin.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Caixas sem rolagem horizontal do documento');
   });
 
