@@ -235,7 +235,54 @@ async function avancarStep1() {
   }
 }
 
+function noteItemNumber(value,integer=false){
+  if(value==null||String(value).trim()==='')return null;
+  const n=Number(value);
+  if(!Number.isFinite(n)||n<0)return null;
+  if(integer)return Number.isInteger(n)&&n<=2147483647?n:null;
+  const cents=Math.round(n*100);
+  return Number.isSafeInteger(cents)&&Math.abs(n*100-cents)<1e-6?cents/100:null;
+}
+function noteItemMatches(products,linked,query,limit=6){
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const term=norm(query),ids=new Set((linked||[]).map(p=>String(p.id)));
+  return (Array.isArray(products)?products:[]).filter(p=>Number.isSafeInteger(Number(p.id))&&Number(p.id)>0&&(!term||norm([p.nome,p.id,p.codigoBarras].join(' ')).includes(term)))
+    .sort((a,b)=>Number(ids.has(String(b.id)))-Number(ids.has(String(a.id)))||String(a.nome).localeCompare(String(b.nome),'pt-BR')||Number(a.id)-Number(b.id)).slice(0,limit);
+}
+let noteItemPending=false,noteItemUncertain=false;
+function updateNoteItemComposer(){
+  const get=id=>document.getElementById(id),input=get('s2-produto-busca'),matches=get('note-item-matches');
+  if(!input||!matches)return;
+  const managed=!!document.querySelector('.app.stockos-shell-v2'),creating=!get('painel-novo-produto').hidden;
+  const selected=creating?null:resolveProdutoSelecionado();
+  input.disabled=creating||noteItemPending||noteItemUncertain;
+  if(managed)input.removeAttribute('list');else input.setAttribute('list','s2-produtos-list');
+  const qty=noteItemNumber(get('s2-qtd').value,true),price=noteItemNumber(get('s2-preco').value);
+  const subtotal=qty>0&&price!=null?noteItemNumber(qty*price):null;
+  get('note-item-estimate').textContent=noteDetailMoney(subtotal);
+  get('note-item-selection').textContent=creating?'':selected?(produtoVinculadoAoFornecedor(selected.id)?'Produto selecionado · já vinculado':'Produto selecionado · vínculo automático ao salvar'):'Escolha um produto do catálogo.';
+  get('btn-adicionar-item').disabled=noteItemPending||noteItemUncertain||!notaAtual||!(qty>0)||price==null||(creating?!get('s2-novo-nome').value.trim():!selected);
+  get('btn-step2-avancar').disabled=noteItemPending||noteItemUncertain||!notaAtual?.itens?.length;
+  get('note-item-discard').disabled=noteItemPending;
+  matches.hidden=!managed||creating||!!selected||noteItemPending||noteItemUncertain||!input.value.trim();
+  if(matches.hidden){matches.replaceChildren();return;}
+  const rows=noteItemMatches(todosOsProdutos,fornecedorAtual()?.produtos,input.value);
+  matches.replaceChildren();
+  if(!rows.length){matches.textContent='Nenhum produto encontrado. Refine a busca ou cadastre um novo.';return;}
+  for(const p of rows){
+    const button=document.createElement('button');button.type='button';
+    const name=document.createElement('strong');name.textContent=p.nome;
+    const meta=document.createElement('small');meta.textContent='#'+p.id+(produtoVinculadoAoFornecedor(p.id)?' · Vinculado':' · Vínculo ao salvar');
+    button.append(name,meta);button.onclick=()=>{input.value=formatarProdutoBusca(p);atualizarAvisoVinculo();get('s2-qtd').focus();};
+    matches.appendChild(button);
+  }
+}
+function bindNoteItemComposer(){
+  ['s2-qtd','s2-preco'].forEach(id=>document.getElementById(id).oninput=updateNoteItemComposer);
+}
+
 function prepararStep2() {
+  bindNoteItemComposer();
   document.getElementById('s2-fornecedor-badge').textContent = notaAtual.fornecedorNome;
   atualizarAutocompleteProdutos();
   atualizarAvisoVinculo();
@@ -284,7 +331,7 @@ function resolveProdutoSelecionado() {
   const valor = document.getElementById('s2-produto-busca').value.trim();
   if (!valor) return null;
 
-  const matchId = valor.match(/\(ID\s*(\d+)\)/i) || valor.match(/^(\d+)\s*[-:]/);
+  const matchId = valor.match(/\(ID\s*(\d+)\)$/i) || valor.match(/^(\d+)\s*[-:]/) || valor.match(/^(\d+)$/);
   if (matchId) {
     const id = parseInt(matchId[1], 10);
     return todosOsProdutos.find((produto) => produto.id === id) || null;
@@ -306,6 +353,7 @@ function toggleNovoProduto(forceOpen) {
     : painel.hidden;
 
   painel.hidden = !abrir;
+  botao.setAttribute('aria-expanded',String(abrir));
   botao.innerHTML = abrir
     ? 'Usar Produto Existente'
     : '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>Novo Produto';
@@ -321,6 +369,7 @@ function toggleNovoProduto(forceOpen) {
 }
 
 function atualizarAvisoVinculo() {
+  updateNoteItemComposer();
   limparAlert('alert-s2-link');
 
   if (!notaAtual) return;
@@ -347,25 +396,17 @@ function atualizarAvisoVinculo() {
   }
 }
 
-function renderItensStep2() {
-  const lista = document.getElementById('itens-lista');
-  if (!notaAtual || notaAtual.itens.length === 0) {
-    lista.innerHTML = '<div class="empty">Nenhum item adicionado.</div>';
-    document.getElementById('s2-total').textContent = 'R$0,00';
-    document.getElementById('btn-step2-avancar').disabled = true;
-    return;
-  }
-
-  lista.innerHTML = notaAtual.itens.map((item) => `
-    <div class="item-nota-row">
-      <span class="item-nota-nome">${escapeHtml(item.produtoNome)}</span>
-      <span class="item-nota-qty">${item.quantidade} un.</span>
-      <span class="item-nota-preco">× R$${Number(item.precoUnitario).toFixed(2)}</span>
-      <span class="item-nota-subtotal">R$${Number(item.subtotal).toFixed(2)}</span>
-    </div>`).join('');
-
-  document.getElementById('s2-total').textContent = `R$${Number(notaAtual.total).toFixed(2)}`;
-  document.getElementById('btn-step2-avancar').disabled = false;
+function renderItensStep2(){
+  const lista=document.getElementById('itens-lista'),get=id=>document.getElementById(id),esc=escapeHtml;
+  const model=noteDetailModel(notaAtual);
+  const items=Array.isArray(notaAtual?.itens)?notaAtual.itens:[];
+  get('note-item-count').textContent=items.length+' '+(items.length===1?'item':'itens');
+  get('note-item-lines').textContent=items.length;
+  get('note-item-units').textContent=model?noteDetailQuantity(model.units):'0';
+  get('note-item-draft-id').textContent=notaAtual?'#'+notaAtual.id:'—';
+  get('s2-total').textContent=noteDetailMoney(model?model.total:0);
+  lista.innerHTML=items.length?'<table class="note-detail-table note-item-table"><thead><tr><th scope="col">Produto</th><th scope="col">Qtd.</th><th scope="col">Preço unitário</th><th scope="col">Subtotal</th></tr></thead><tbody>'+items.map(item=>'<tr><td><strong>'+esc(item.produtoNome||'—')+'</strong></td><td>'+noteDetailQuantity(noteDetailNumber(item.quantidade))+'</td><td>'+noteDetailMoney(noteDetailNumber(item.precoUnitario))+'</td><td>'+noteDetailMoney(noteDetailNumber(item.subtotal))+'</td></tr>').join('')+'</tbody></table>':'<div class="empty"><strong>Nenhum item lançado</strong><span>Selecione um produto acima, informe a quantidade e o preço de compra.</span></div>';
+  updateNoteItemComposer();
 }
 
 function limparFormularioNovoProduto() {
@@ -396,26 +437,26 @@ function construirNovoProdutoPayload() {
 
   return {
     nome,
-    quantidadeMinima: minimoBruto === '' ? 0 : parseInt(minimoBruto, 10),
-    precoUnitarioBase: precoBaseBruto === '' ? null : parseFloat(precoBaseBruto),
+    quantidadeMinima: minimoBruto === '' ? 0 : (noteItemNumber(minimoBruto,true)??-1),
+    precoUnitarioBase: precoBaseBruto === '' ? null : (noteItemNumber(precoBaseBruto)??-1),
     categoriaEstoque: categoria || null
   };
 }
 
 async function adicionarItem() {
   const btn = document.getElementById('btn-adicionar-item');
-  const quantidade = parseInt(document.getElementById('s2-qtd').value, 10);
-  const preco = parseFloat(document.getElementById('s2-preco').value);
-  const usandoNovoProduto = !document.getElementById('painel-novo-produto').hidden
-    && document.getElementById('s2-novo-nome').value.trim() !== '';
-  const produtoExistente = resolveProdutoSelecionado();
+  if(noteItemPending||noteItemUncertain||!notaAtual||stepAtual!==2)return;
+  const quantidade = noteItemNumber(document.getElementById('s2-qtd').value,true);
+  const preco = noteItemNumber(document.getElementById('s2-preco').value);
+  const usandoNovoProduto = !document.getElementById('painel-novo-produto').hidden;
+  const produtoExistente = usandoNovoProduto?null:resolveProdutoSelecionado();
 
   if (!quantidade || quantidade <= 0) {
-    mostrarAlert('alert-s2', 'Quantidade deve ser maior que zero.', 'error');
+    mostrarAlert('alert-s2', 'Informe uma quantidade inteira maior que zero.', 'error');
     return;
   }
 
-  if (Number.isNaN(preco) || preco < 0) {
+  if (preco == null) {
     mostrarAlert('alert-s2', 'Informe um preço unitário válido.', 'error');
     return;
   }
@@ -436,9 +477,14 @@ async function adicionarItem() {
     return;
   }
 
+  if(novoProduto&&(noteItemNumber(novoProduto.quantidadeMinima,true)==null||(novoProduto.precoUnitarioBase!=null&&noteItemNumber(novoProduto.precoUnitarioBase)==null))){
+    mostrarAlert('alert-s2-novo','Confira o estoque mínimo e o preço base.','error');return;
+  }
   const produtoPrecisavaVinculo = produtoExistente && !produtoVinculadoAoFornecedor(produtoExistente.id);
-
-  setLoading(btn, true);
+  const originalNote=notaAtual, current=()=>document.getElementById('btn-adicionar-item')===btn&&notaAtual?.id===originalNote.id;
+  const controls=[...document.querySelectorAll('#painel-step2 .nota-inline-card input,#painel-step2 .nota-inline-card select,#btn-toggle-novo-produto')].map(el=>[el,el.disabled]);
+  noteItemPending=true;controls.forEach(([el])=>el.disabled=true);
+  setLoading(btn, true);updateNoteItemComposer();
   try {
     const payload = {
       produtoId: usandoNovoProduto ? null : produtoExistente.id,
@@ -453,7 +499,9 @@ async function adicionarItem() {
       body: JSON.stringify(payload)
     });
 
+    if(!current())return;
     if (!resp.ok) {
+      if(resp.status>=500)throw Error('Resultado incerto');
       const mensagem = await safeReadErrorMessage(resp, 'Erro ao adicionar item.');
       if (usandoNovoProduto) {
         mostrarAlert('alert-s2-novo', mensagem, 'error');
@@ -463,8 +511,12 @@ async function adicionarItem() {
       return;
     }
 
-    notaAtual = await resp.json();
+    const result=await resp.json();
+    if(!current())return;
+    if(!result||String(result.id)!==String(originalNote.id)||!Array.isArray(result.itens))throw Error('Resposta inválida');
+    notaAtual=result;
     await Promise.all([carregarFornecedores(), carregarTodosProdutos()]);
+    if(!current())return;
     renderItensStep2();
     limparFormularioItem();
 
@@ -473,12 +525,21 @@ async function adicionarItem() {
     } else if (produtoPrecisavaVinculo) {
       showToast('Item adicionado. O vínculo com o fornecedor foi criado automaticamente.', 'success');
     }
+  } catch {
+    if(current()){
+      noteItemUncertain=true;
+      mostrarAlert('alert-s2','Não foi possível confirmar o lançamento. Confira o rascunho em Todas as notas antes de repetir a operação.','error');
+    }
   } finally {
+    noteItemPending=false;
+    controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
     setLoading(btn, false);
+    if(current())updateNoteItemComposer();
   }
 }
 
 async function avancarStep2() {
+  if(noteItemPending||noteItemUncertain)return;
   if (!notaAtual || notaAtual.itens.length === 0) {
     mostrarAlert('alert-s2', 'Adicione pelo menos um item antes de continuar.', 'error');
     return;
@@ -488,6 +549,7 @@ async function avancarStep2() {
 }
 
 async function descartarRascunho() {
+  if(noteItemPending)return;
   if (!notaAtual) {
     resetWizard();
     return;
@@ -511,6 +573,8 @@ async function descartarRascunho() {
 }
 
 function resetWizard() {
+  if(noteItemPending)return;
+  noteItemUncertain=false;
   notaAtual = null;
   irParaStep(1);
   document.getElementById('s1-fornecedor').value = '';
@@ -602,7 +666,7 @@ function irParaStep(step) {
 }
 
 function abrirAba(abaId) {
-  if(noteOpening)return;
+  if(noteOpening||noteItemPending)return;
   if(abaId==='aba-lista'&&noteOpeningUncertain)void carregarNotas();
   document.querySelectorAll('.tab-panel').forEach((painel) => painel.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach((botao) => botao.classList.remove('active'));
@@ -613,7 +677,7 @@ function abrirAba(abaId) {
 }
 
 function iniciarNovaNota() {
-  if(noteOpening)return;
+  if(noteOpening||noteItemPending)return;
   if(noteOpeningUncertain&&document.getElementById('aba-nova').classList.contains('active')){
     mostrarAlert('alert-s1','Confira Todas as Notas antes de reiniciar a abertura.','error');return;
   }

@@ -154,15 +154,17 @@
 
       <div class="nota-panel fade-up fade-up-1" id="painel-step2" hidden>
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 2 - Adicionar Itens</span>
+          <div><span class="nota-panel-title">Adicionar itens</span><p class="note-item-subtitle">Registre os produtos e os valores de compra da nota.</p></div>
           <span class="badge badge-purple" id="s2-fornecedor-badge">—</span>
         </div>
 
+        <div class="note-item-workspace">
+        <div class="note-item-main">
         <div class="nota-inline-card">
           <div class="nota-inline-head">
             <div>
-              <div class="nota-inline-title">Entrada autônoma da nota</div>
-              <div class="nota-inline-sub">Pesquise um produto existente ou crie um novo sem sair desta tela.</div>
+              <div class="nota-inline-title">Lançar produto</div>
+              <div class="nota-inline-sub">Selecione um produto do catálogo ou cadastre um novo.</div>
             </div>
             <button class="btn-secondary" type="button" id="btn-toggle-novo-produto" onclick="toggleNovoProduto()">
               <span class="btn-inline-icon" data-icon="plus"></span>
@@ -172,18 +174,20 @@
 
           <div class="actions-inline notes-item-composer">
             <div class="form-group notes-item-composer__search">
-              <label>Buscar produto existente</label>
+              <label for="s2-produto-busca">Produto existente</label>
               <input type="text" id="s2-produto-busca" list="s2-produtos-list"
                       placeholder="Digite nome ou ID do produto"
                       oninput="atualizarAvisoVinculo()">
               <datalist id="s2-produtos-list"></datalist>
+              <div id="note-item-matches" class="note-item-matches" hidden></div>
+              <small id="note-item-selection" class="note-item-selection" aria-live="polite"></small>
             </div>
             <div class="form-group notes-item-composer__qty">
-              <label>Quantidade</label>
-              <input type="number" id="s2-qtd" placeholder="0" min="1">
+              <label for="s2-qtd">Quantidade</label>
+              <input type="number" id="s2-qtd" placeholder="0" min="1" max="2147483647" step="1" inputmode="numeric">
             </div>
             <div class="form-group notes-item-composer__price">
-              <label>Preço Unit. (R$)</label>
+              <label for="s2-preco">Preço unitário de compra (R$)</label>
               <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
             </div>
             <button class="btn-primary notes-item-composer__submit" id="btn-adicionar-item" onclick="adicionarItem()">
@@ -223,24 +227,24 @@
             <div class="alert-modal" id="alert-s2-novo"></div>
           </div>
 
-          <div class="alert-modal" id="alert-s2"></div>
+          <div class="note-item-estimate"><span>Subtotal deste lançamento</span><strong id="note-item-estimate">—</strong></div>
+          <div class="alert-modal" id="alert-s2" role="alert"></div>
         </div>
 
-        <div class="itens-nota-list notes-items-list" id="itens-lista">
-          <div class="empty">
-            Nenhum item adicionado.
-          </div>
+        <section class="note-item-directory" aria-label="Itens lançados">
+          <div class="note-item-directory-head"><strong>Itens lançados</strong><span id="note-item-count" role="status">0 itens</span></div>
+          <div class="itens-nota-list notes-items-list" id="itens-lista"><div class="empty">Nenhum item adicionado.</div></div>
+        </section>
         </div>
-
-        <div class="actions-inline actions-inline--between notes-footer-actions">
-          <div class="actions-inline">
-            <span class="notes-total-label">Total: <strong id="s2-total" class="notes-total-value">R$0,00</strong></span>
-            <button class="btn-secondary btn-secondary--compact" onclick="descartarRascunho()">Descartar Rascunho</button>
-          </div>
-          <button class="btn-primary" onclick="avancarStep2()" id="btn-step2-avancar" disabled>
-            Confirmar Nota
-            <span class="btn-inline-icon" data-icon="arrowRight"></span>
-          </button>
+        <aside class="note-item-summary" aria-label="Resumo da nota">
+          <div class="note-item-summary-head"><strong>Resumo da nota</strong><span id="note-item-draft-id">—</span></div>
+          <div class="note-item-summary-state">Pendente · em lançamento</div>
+          <div class="note-item-summary-metrics"><div><span>Itens lançados</span><strong id="note-item-lines">0</strong></div><div><span>Unidades</span><strong id="note-item-units">0</strong></div></div>
+          <div class="note-item-summary-total"><span>Total registrado</span><strong id="s2-total" class="notes-total-value">R$ 0,00</strong></div>
+          <p class="note-item-next">Revise os itens na próxima etapa. O estoque só é atualizado na confirmação.</p>
+          <button type="button" class="btn-primary" onclick="avancarStep2()" id="btn-step2-avancar" disabled>Revisar nota <span class="btn-inline-icon" data-icon="arrowRight"></span></button>
+          <button type="button" class="btn-secondary" id="note-item-discard" onclick="descartarRascunho()">Descartar rascunho</button>
+        </aside>
         </div>
       </div>
 

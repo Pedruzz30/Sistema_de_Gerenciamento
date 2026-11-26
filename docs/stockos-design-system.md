@@ -168,3 +168,7 @@ Resumo global de registros, pendentes, valores confirmados não pagos e pagos; c
 ### Refinamento da seleção de fornecedor
 
 Listagem compacta de cinco registros, paginação explícita e resumo de abertura com ações e mensagem de erro no mesmo painel. Os mesmos nós de ação são movidos entre o resumo no shell novo e a posição original no shell legado. Nenhum novo endpoint ou alteração na abertura da nota.
+
+## Nova nota — lançamento de itens
+
+Formulário compacto, sugestões de catálogo priorizando vínculos, subtotal previsto, tabela de itens e resumo com total do servidor. Validação inteira e monetária no cliente, prevenção de envio simultâneo e bloqueio de repetição quando a resposta é incerta. Mantidos endpoint e payload, inclusive criação inline e vínculos automáticos; sem alteração nas regras de estoque ou nova exclusão individual de itens.
