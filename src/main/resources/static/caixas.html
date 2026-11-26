@@ -98,23 +98,35 @@
 <div class="modal-overlay" id="modal-abrir" onclick="fecharModalSeClicouFora(event,'modal-abrir')">
   <div class="modal">
     <div class="modal-header">
-      <h3 class="modal-title">Abrir Caixa</h3>
+      <div class="stockos-open-heading"><span class="stockos-open-icon" aria-hidden="true" data-icon="wallet"></span><div><h3 class="modal-title">Abrir Caixa</h3><p class="stockos-open-subtitle">Iniciar uma nova sessão de vendas</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-abrir')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="stockos-open-operator"><span>Operador da sessão</span><strong id="abrir-operador">—</strong></div>
       <div class="field form-group">
-        <label>Número do Caixa</label>
-        <input class="input" type="number" id="abrir-numero" placeholder="Ex: 1" min="1">
+        <label for="abrir-numero">Número do caixa</label>
+        <input class="input" type="number" id="abrir-numero" placeholder="Ex: 1" min="1" max="2147483647" step="1" inputmode="numeric" aria-describedby="abrir-status">
+        <div id="abrir-sugestoes" class="stockos-open-suggestions" role="group" aria-label="Sugestões de número"></div>
+        <small id="abrir-status" class="stockos-open-hint" aria-live="polite">Escolha o número do caixa.</small>
       </div>
       <div class="field form-group">
-        <label>Saldo Inicial (R$)</label>
-        <input class="input" type="number" id="abrir-saldo" placeholder="0,00" step="0.01" min="0">
+        <label for="abrir-saldo">Fundo de troco inicial (R$)</label>
+        <div class="stockos-close-amount stockos-open-amount"><span aria-hidden="true">R$</span><input class="input" type="number" id="abrir-saldo" placeholder="0,00" step="0.01" min="0" inputmode="decimal" aria-describedby="abrir-saldo-note"></div>
+        <small id="abrir-saldo-note" class="stockos-open-hint">Informe apenas o dinheiro físico disponível na gaveta. Digite zero se estiver vazia.</small>
       </div>
+      <details class="stockos-close-counter" id="abrir-counter" hidden>
+        <summary>Contar por cédulas e moedas <span>Opcional</span></summary>
+        <p>Informe a quantidade de cada valor para calcular o fundo de troco.</p>
+        <div class="stockos-close-denoms" id="abrir-denoms"></div>
+        <div class="stockos-close-counter-total"><span>Total da contagem</span><strong id="abrir-denom-total" aria-live="polite">R$ 0,00</strong></div>
+        <button type="button" class="btn btn-secondary" id="abrir-usar-contagem">Usar total contado</button>
+      </details>
+      <div class="stockos-open-summary" aria-live="polite"><div><span>Sessão a iniciar</span><strong id="abrir-resumo-caixa">—</strong></div><div><span>Fundo de troco</span><strong id="abrir-resumo-saldo">—</strong></div></div>
       <div class="alert-modal" id="alert-abrir"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="fecharModal('modal-abrir')">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmarAbrirCaixa()">Abrir</button>
+      <button class="btn btn-primary" id="btn-confirmar-abrir" onclick="confirmarAbrirCaixa()">Confirmar abertura</button>
     </div>
   </div>
 </div>

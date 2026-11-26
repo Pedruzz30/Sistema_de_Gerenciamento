@@ -331,7 +331,9 @@
     if(path==='/api/caixas/consolidado')return respond({data:today(),resumo:'Relatório de demonstração — valores fictícios.'});
     if(path==='/api/caixas/abrir' && method==='POST'){
       const numero=Number(body.numeroCaixa);
-      if(!Number.isInteger(numero)||numero<=0)return respond({erro:'Número do caixa inválido.'},400);
+      if(!Number.isInteger(numero)||numero<=0||numero>2147483647)return respond({erro:'Número do caixa inválido.'},400);
+      const initial=Number(body.saldoInicial);
+      if(body.saldoInicial==null||String(body.saldoInicial).trim()===''||!Number.isFinite(initial)||initial<0||!Number.isSafeInteger(Math.round(initial*100))||Math.abs(initial*100-Math.round(initial*100))>1e-7)return respond({erro:'Fundo de troco inválido.'},400);
       if(db.caixas.some(c=>c.numeroCaixa===numero&&c.status==='ABERTO'))return respond({erro:'Caixa já aberto.'},409);
       const id=Math.max(0,...db.caixas.map(c=>c.id))+1;
       const c={id,caixaId:id,numeroCaixa:numero,status:'ABERTO',totalVendas:0,totalEntradas:0,totalSaidas:0,saldoInicial:Number(body.saldoInicial)||0,saldoAtual:Number(body.saldoInicial)||0,nomeOperador:'Admin Demo',dataAbertura:new Date().toISOString()};

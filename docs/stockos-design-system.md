@@ -116,3 +116,7 @@ Movimentações da sessão em ordem cronológica decrescente, data e hora, opera
 ## Encerramento de caixa
 
 Preservar contagem cega no formulário: valor esperado não é mostrado nem usado no contador de denominações. Total manual ou calculado exclusivamente pelas quantidades informadas. Zero explícito é válido. Autorização, confirmação de comandas abertas e resposta de fechamento permanecem do servidor. Bloqueio de envio concorrente no cliente; falha ambígua pede verificação da sessão e não é repetida automaticamente. Não representa idempotência do backend nem impede acesso ao saldo em outras áreas autorizadas.
+
+## Abertura de caixa
+
+Identificação do usuário autenticado, número inteiro positivo e sugestões baseadas na última consulta (não reserva de caixa). Fundo de troco físico explícito, inclusive zero; contador de denominações compartilhado com o fechamento e resumo antes do envio. Validação em centavos, proteção contra envio simultâneo e orientação para consultar a sessão em caso de resultado incerto. Servidor continua responsável por autorização e disponibilidade.

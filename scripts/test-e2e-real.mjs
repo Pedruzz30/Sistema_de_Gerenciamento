@@ -349,7 +349,12 @@ try {
     await admin.goto(`${BASE}/caixas.html`);
     await admin.click('button:has-text("Abrir Caixa")');
     await admin.fill('#abrir-numero', '1');
-    await admin.fill('#abrir-saldo', '100');
+    await admin.click('#modal-abrir .btn-primary');
+    await esperarTexto(admin,'#alert-abrir','Informe o fundo de troco');
+    await admin.locator('#abrir-counter summary').click();
+    await admin.locator('#abrir-denoms input').nth(1).fill('1');
+    await admin.click('#abrir-usar-contagem');
+    assert.equal(Number(await admin.inputValue('#abrir-saldo')),100);
     await admin.click('#modal-abrir .btn-primary');
     await cardDoCaixa(admin, 1).waitFor();
     assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 100,00');

@@ -322,31 +322,78 @@ function renderResumo() {
 
 // ── Modal: Abrir Caixa ────────────────────────────────────────────────────
 
+let openSending=false,openUncertain=false;
+function openingCashModel(records,rawNumber,rawAmount){
+  const n=String(rawNumber??'').trim();
+  const number=/^\d+$/.test(n)&&Number.isSafeInteger(Number(n))&&Number(n)>0&&Number(n)<=2147483647?Number(n):null;
+  const cents=countedCashCents(rawAmount);
+  const known=new Set(),active=new Set();
+  if(Array.isArray(records))for(const c of records){
+    const id=Number(c?.numeroCaixa);
+    if(Number.isInteger(id)&&id>0&&id<=2147483647){known.add(id);if(c.status==='ABERTO')active.add(id);}
+  }
+  const suggestions=[...known].filter(id=>!active.has(id)).sort((a,b)=>a-b).slice(0,4);
+  let next=1;while(known.has(next))next++;
+  if(next<=2147483647)suggestions.push(next);
+  return {number,cents,active:number!=null&&active.has(number),known:number!=null&&known.has(number),suggestions};
+}
+function atualizarPreviaAbertura(){
+  const model=openingCashModel(caixas,document.getElementById('abrir-numero').value,document.getElementById('abrir-saldo').value);
+  const status=document.getElementById('abrir-status');
+  status.textContent=model.number==null?'Escolha um número inteiro positivo.':model.active?'Este número consta como aberto na última consulta. O servidor confirmará a disponibilidade.':model.known?'Caixa já utilizado em sessões anteriores.':'Novo número de caixa nesta consulta.';
+  status.dataset.state=model.active?'warning':'normal';
+  document.getElementById('abrir-resumo-caixa').textContent=model.number==null?'—':'Caixa '+model.number;
+  document.getElementById('abrir-resumo-saldo').textContent=model.cents==null?'—':moeda(model.cents/100);
+  return model;
+}
 function abrirModalAbrirCaixa() {
   if (!PODE_OPERAR_CAIXA) { showToast(mensagemSemPermissao('abrir'), 'error'); return; }
+  if(openSending)return;
+  openUncertain=false;
   limparAlert('alert-abrir');
-  document.getElementById('abrir-numero').value = '';
-  document.getElementById('abrir-saldo').value  = '';
+  const number=document.getElementById('abrir-numero'),saldo=document.getElementById('abrir-saldo');
+  number.value='';saldo.value='';
+  const button=document.getElementById('btn-confirmar-abrir');
+  button.disabled=false;button.textContent='Confirmar abertura';
+  document.getElementById('abrir-operador').textContent=typeof usuario!=='undefined'&&usuario?[usuario.nome,usuario.sobrenome].filter(Boolean).join(' ')||'—':'—';
+  const suggestions=document.getElementById('abrir-sugestoes');suggestions.replaceChildren();
+  openingCashModel(caixas,'','').suggestions.forEach(id=>{
+    const b=document.createElement('button');b.type='button';b.textContent='Caixa '+id;
+    b.onclick=()=>{number.value=String(id);atualizarPreviaAbertura();saldo.focus();};suggestions.appendChild(b);
+  });
+  number.oninput=saldo.oninput=atualizarPreviaAbertura;
+  prepararContadorDinheiro('abrir','abrir-saldo',atualizarPreviaAbertura);
+  atualizarPreviaAbertura();
   abrirModal('modal-abrir');
 }
 
 async function confirmarAbrirCaixa() {
+  if(openSending||openUncertain)return;
   if (!PODE_OPERAR_CAIXA) {
     mostrarAlert('alert-abrir', mensagemSemPermissao('abrir'), 'error'); return;
   }
-  const numero = parseInt(document.getElementById('abrir-numero').value, 10);
-  const saldo  = parseFloat(document.getElementById('abrir-saldo').value) || 0;
-  if (!numero || numero <= 0) {
-    mostrarAlert('alert-abrir', 'Informe um número de caixa válido.', 'error'); return;
+  const {number,cents}=atualizarPreviaAbertura();
+  if(number==null){mostrarAlert('alert-abrir','Informe um número de caixa inteiro e válido.','error');return;}
+  if(cents==null){mostrarAlert('alert-abrir','Informe o fundo de troco com até duas casas decimais. Digite 0 se a gaveta estiver vazia.','error');return;}
+  const button=document.getElementById('btn-confirmar-abrir');
+  openSending=true;button.disabled=true;button.textContent='Abrindo…';
+  try{
+    const resp=await abrirCaixa(number,cents/100);
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      mostrarAlert('alert-abrir',await safeReadErrorMessage(resp,'Erro ao abrir caixa.'),'error');return;
+    }
+    openSending=false;
+    fecharModal('modal-abrir');
+    showToast('Caixa '+number+' aberto com sucesso.','success');
+    await carregarCaixas();
+  }catch(error){
+    openUncertain=true;
+    mostrarAlert('alert-abrir','Não foi possível confirmar o resultado. Confira a situação do caixa antes de iniciar outra sessão.','error');
+    await carregarCaixas();
+  }finally{
+    openSending=false;button.disabled=openUncertain;button.textContent=openUncertain?'Verifique a situação do caixa':'Confirmar abertura';
   }
-  const resp = await abrirCaixa(numero, saldo);
-  if (!resp.ok) {
-    mostrarAlert('alert-abrir', await safeReadErrorMessage(resp, 'Erro ao abrir caixa.'), 'error');
-    return;
-  }
-  fecharModal('modal-abrir');
-  showToast(`Caixa ${numero} aberto com sucesso.`, 'success');
-  await carregarCaixas();
 }
 
 // ── Modal: Movimentação manual (sangria / suprimento) ─────────────────────
@@ -474,10 +521,13 @@ function denominationTotal(entries){
   return total;
 }
 function prepararContadorEncerramento(){
-  const details=document.getElementById('encerrar-counter');
-  const grid=document.getElementById('encerrar-denoms');
-  const total=document.getElementById('encerrar-denom-total');
-  const use=document.getElementById('encerrar-usar-contagem');
+  prepararContadorDinheiro('encerrar','encerrar-valor-contado');
+}
+function prepararContadorDinheiro(prefix,fieldId,onUse=()=>{}){
+  const details=document.getElementById(prefix+'-counter');
+  const grid=document.getElementById(prefix+'-denoms');
+  const total=document.getElementById(prefix+'-denom-total');
+  const use=document.getElementById(prefix+'-usar-contagem');
   details.hidden=!document.querySelector('.app.stockos-shell-v2');details.open=false;
   grid.replaceChildren();
   const fields=CLOSE_DENOMINATIONS.map(denom=>{
@@ -490,7 +540,7 @@ function prepararContadorEncerramento(){
   const read=()=>denominationTotal(fields.map(([d,input])=>[d,input.validity.badInput?'invalid':input.value]));
   const update=()=>{const cents=read();total.textContent=cents==null?'Contagem inválida':moeda(cents/100);use.disabled=cents==null;};
   fields.forEach(([,input])=>input.oninput=update);
-  use.onclick=()=>{const cents=read();if(cents==null)return;const counted=document.getElementById('encerrar-valor-contado');counted.value=(cents/100).toFixed(2);details.open=false;counted.focus();};
+  use.onclick=()=>{const cents=read();if(cents==null)return;const counted=document.getElementById(fieldId);counted.value=(cents/100).toFixed(2);details.open=false;onUse();counted.focus();};
   update();
 }
 let closeSending=false,closeUncertain=false,closeVersion=0;
@@ -862,6 +912,7 @@ function mostrarFechamento(data, erroMsg) {
 
 function abrirModal(id)  { document.getElementById(id).classList.add('open');    }
 function fecharModal(id) {
+  if(id==='modal-abrir'&&openSending)return;
   document.getElementById(id).classList.remove('open');
   if (id === 'modal-abrir') limparAlert('alert-abrir');
   if (id === 'modal-mov')   limparAlert('alert-mov');
