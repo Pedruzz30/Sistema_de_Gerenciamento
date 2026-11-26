@@ -181,7 +181,10 @@ async function fazerBackupAgora() {
   }
 }
 
+let dashboardLoadVersion = 0;
+
 async function carregarDados() {
+  const version = ++dashboardLoadVersion;
   carregarSituacaoBackup();
   carregarCelular();
   iniciarRelogioLoja();
@@ -203,12 +206,12 @@ async function carregarDados() {
   const [produtos, caixas, movimentacoes, metricas] = await Promise.all([
     PODE_VER_ESTOQUE_DASH ? pedir('/api/produtos', null) : Promise.resolve([]),
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas', null) : Promise.resolve([]),
-    PODE_VER_ESTOQUE_DASH ? pedir('/api/movimentacoes', []) : Promise.resolve([]),
+    PODE_VER_ESTOQUE_DASH ? pedir('/api/movimentacoes', null) : Promise.resolve([]),
     PODE_VER_FINANCEIRO_DASH ? pedir('/api/caixas/metricas/hoje', null) : Promise.resolve(null)
   ]);
 
-  // Response may arrive after the user has navigated to another view.
-  if (paginaAtual() !== 'dashboard') return;
+  // Ignore old requests and responses after navigation.
+  if (version !== dashboardLoadVersion || paginaAtual() !== 'dashboard') return;
   const produtosDisponiveis = Array.isArray(produtos);
   const caixasDisponiveis = Array.isArray(caixas);
   const produtosAtuais = produtosDisponiveis ? produtos : [];
@@ -221,15 +224,15 @@ async function carregarDados() {
     const content = document.querySelector('.main-body.content');
     if (devicePanel && content) content.appendChild(devicePanel);
     if (PODE_VER_RENTABILIDADE_DASH && !window.STOCKOS_PREVIEW) {
-      void carregarRelatorioDashboard(pedir);
+      void carregarRelatorioDashboard(pedir, version);
     }
   }
   renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
-  renderAlertas(produtosAtuais);
+  renderAlertas(produtos);
   renderMovimentacoes(movimentacoes);
   renderFinanceiro(caixasAtuais, metricas);
   window._dadosProdutos = produtosAtuais;
-  window._dadosMov = movimentacoes;
+  window._dadosMov = Array.isArray(movimentacoes) ? movimentacoes : [];
   window._dadosCaixas = caixasAtuais;
   window._dadosRentabilidade = null;
   window._graficosRendered = false;
@@ -438,13 +441,13 @@ function renderDashboardOverview(caixas, metricas, disponivel) {
 }
 
 // Read-only report, same permission as the real report page. Never block first paint.
-async function carregarRelatorioDashboard(pedir) {
+async function carregarRelatorioDashboard(pedir, version) {
   const movements = document.getElementById('section-movimentacoes');
   const alerts = document.getElementById('section-alertas');
   if (!movements || !alerts) return;
   const current = document.querySelector('.main-body.content');
   const report = await pedir('/api/relatorios/dia', null);
-  if (paginaAtual() !== 'dashboard' || current !== document.querySelector('.main-body.content')) return;
+  if (version !== dashboardLoadVersion || paginaAtual() !== 'dashboard' || current !== document.querySelector('.main-body.content')) return;
   const previous = current.querySelectorAll('.stockos-daily-report-panel');
   previous.forEach(panel => panel.remove());
   const el = (tag, cls, value) => {
@@ -606,9 +609,15 @@ function renderPermissionSections() {
 
 // ── Alertas de estoque ─────────────────────────────────────
 function renderAlertas(produtos) {
-  var alertas = obterAlertasEstoque(produtos);
   var list = document.getElementById('alerta-list');
   var badge = document.getElementById('alerta-count');
+  if (!list) return;
+  if (!Array.isArray(produtos)) {
+    if (badge) badge.textContent = '—';
+    list.innerHTML = emptyStateMarkup({ icon: 'box', title: 'Alertas indisponíveis', copy: 'Não foi possível consultar o estoque. Atualize a página para tentar novamente.', compact: true });
+    return;
+  }
+  var alertas = obterAlertasEstoque(produtos);
   if (badge) badge.textContent = alertas.length + (alertas.length === 1 ? ' alerta' : ' alertas');
 
   if (alertas.length === 0) {
@@ -638,6 +647,10 @@ function renderAlertas(produtos) {
 function renderMovimentacoes(movimentacoes) {
   var list = document.getElementById('mov-list');
   if (!list) return;
+  if (!Array.isArray(movimentacoes)) {
+    list.innerHTML = emptyStateMarkup({ icon: 'box', title: 'Movimentações indisponíveis', copy: 'Não foi possível carregar o histórico. Atualize a página para tentar novamente.', compact: true });
+    return;
+  }
   // Histórico preservado no banco: na visão geral entram apenas os registros de hoje.
   var hoje = dataLocalHojeIso();
   var recentesHoje = (movimentacoes || [])

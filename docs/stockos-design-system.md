@@ -60,3 +60,7 @@ Executar `npm run test:shell-redesign`, `npm run test:preview`, `npm run test:de
 ### Matriz visual real
 
 O E2E autenticado verifica os 10 módulos com App Shell em 1366 × 650, 768 × 1024 e 390 × 844. Cada combinação exige conteúdo dentro da área útil, ausência de rolagem horizontal do documento, rota ativa correta e abertura/fechamento acessíveis do menu no mobile/tablet. Capturas ficam nos artefatos de CI; não substituem inspeção visual humana.
+
+### Consistência de atualização e CSS
+
+O dashboard distingue falha de consulta de estoque/movimentações de listas vazias e ignora respostas de atualizações anteriores. Consolidadas regras sobrescritas do próprio redesign (ícones, colunas de gráfico e ordem do cabeçalho); mantida a especificidade necessária contra CSS legado. Evitar uma refatoração ampla antes da matriz de navegador passar.

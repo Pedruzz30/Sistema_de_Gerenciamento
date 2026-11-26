@@ -3939,7 +3939,7 @@ body .app.stockos-shell-v2 .sidebar .nav-item {display:flex;align-items:center;g
 body .app.stockos-shell-v2 .sidebar .nav-item:hover {background:var(--paper-sunk);color:var(--ink);}
 body .app.stockos-shell-v2 .sidebar .nav-item.active {background:var(--paper-sunk);color:var(--ink);font-weight:650;border-color:transparent;box-shadow:none;}
 body .app.stockos-shell-v2 .sidebar .nav-item.active::before {left:0;width:3px;top:13px;bottom:13px;background:var(--accent);}
-body .app.stockos-shell-v2 .sidebar .nav-icon {width:19px;height:19px;flex:0 0 19px;}
+body .app.stockos-shell-v2 .sidebar .nav-icon {width:23px;height:23px;flex:0 0 23px;display:grid;place-items:center;}
 body .app.stockos-shell-v2 .sidebar .nav-item:focus-visible,
 body .app.stockos-shell-v2 .stockos-collapse:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
 .stockos-nav-group {min-width:0;}
@@ -3967,7 +3967,7 @@ body .app.stockos-shell-v2 .stockos-header-profile {display:flex;align-items:cen
 body .app.stockos-shell-v2 .stockos-header-profile .user-meta {display:flex;max-width:135px;}
 body .app.stockos-shell-v2 .stockos-header-profile .avatar {width:34px;height:34px;}
 body .app.stockos-shell-v2 .main.page > .topbar.header {gap:12px;background:var(--paper-raised);min-height:78px;padding:14px clamp(16px,2vw,28px);border-bottom:1px solid var(--rule);border-radius:0;box-shadow:none;}
-body .app.stockos-shell-v2 .topbar .header-main {flex:1 1 auto;min-width:0;}
+body .app.stockos-shell-v2 .topbar .header-main {flex:1 1 auto;min-width:0;order:0;}
 body .app.stockos-shell-v2 .topbar .page-title {font-family:var(--font-ui,inherit);font-weight:700;letter-spacing:-.04em;}
 body .app.stockos-shell-v2 .topbar .topbar-right {min-width:0;flex-wrap:wrap;}
 @media(max-width:1200px) {body .app.stockos-shell-v2 .stockos-header-profile .user-meta {display:none;}}
@@ -3980,11 +3980,6 @@ body .app.stockos-shell-v2 .topbar .topbar-right {min-width:0;flex-wrap:wrap;}
   body .app.stockos-shell-v2 .sidebar-toggle {display:inline-flex;}
   body .app.stockos-shell-v2 .stockos-header-profile {border:0;padding:0;}
   body .app.stockos-shell-v2 .topbar.header {flex-wrap:wrap;}
-}
-@media(max-width:720px) {
-  body .app.stockos-shell-v2 .topbar .header-main {order:0;flex:1 1 65%;}
-  body .app.stockos-shell-v2 .stockos-header-profile {order:1;}
-  body .app.stockos-shell-v2 .topbar .topbar-right {order:2;flex:1 1 100%;}
 }
 @media(prefers-reduced-motion:reduce) {.stockos-nav-chevron,body .app.stockos-shell-v2 > .sidebar {transition:none;}}
 
@@ -4005,7 +4000,7 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-sales-panel {display:flex;fle
 .stockos-sales-sub {margin:5px 0;color:var(--ink-3);font-size:12px;}
 .stockos-sales-total {font-size:clamp(22px,2.7vw,32px);font-weight:700;letter-spacing:-.045em;color:var(--ink);font-variant-numeric:tabular-nums;margin:8px 0 10px;overflow-wrap:anywhere;}
 .stockos-sales-chart {display:flex;align-items:stretch;gap:14px;min-height:160px;overflow-x:auto;padding:5px 1px 4px;}
-.stockos-sales-column {display:grid;grid-template-rows:18px minmax(80px,1fr) 24px;gap:5px;align-items:end;justify-items:center;flex:1 0 72px;min-width:0;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.stockos-sales-column {display:grid;grid-template-rows:minmax(20px,auto) minmax(90px,1fr) minmax(24px,auto);gap:5px;align-items:end;justify-items:center;flex:1 0 94px;min-width:0;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
 .stockos-sales-track {display:flex;align-items:flex-end;height:100%;width:min(32px,75%);background:var(--paper-sunk);border-radius:5px;overflow:hidden;}
 .stockos-sales-bar {width:100%;height:var(--bar-height,0%);background:var(--accent);border-radius:5px 5px 0 0;}
 .stockos-sales-empty {color:var(--ink-3);font-size:13px;margin:auto 0;}
@@ -4016,7 +4011,6 @@ body.dashboard-page .app.stockos-shell-v2 .main-grid .card {border-radius:10px;b
 
 /* Distinguish daily metrics from the accumulated per-register totals. */
 .stockos-sales-caption {margin:0 0 8px;color:var(--ink-3);font-size:11px;line-height:1.45;}
-.stockos-sales-column {grid-template-rows:minmax(20px,auto) minmax(90px,1fr) minmax(24px,auto);flex-basis:94px;}
 .stockos-sales-value {max-width:100%;overflow-wrap:anywhere;text-align:center;line-height:1.25;}
 .stockos-sales-chart--signed .stockos-sales-track {position:relative;}
 .stockos-sales-chart--signed .stockos-sales-track::after {content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--rule-strong);}
@@ -4026,7 +4020,6 @@ body.dashboard-page .app.stockos-shell-v2 .main-grid .card {border-radius:10px;b
 
 /* Shell search and operational shortcuts, shared by the existing SPA routes. */
 body .app.stockos-shell-v2 .stockos-module-search {position:relative;flex:0 1 245px;min-width:140px;max-width:280px;order:1;}
-body .app.stockos-shell-v2 .topbar .header-main {order:0;}
 body .app.stockos-shell-v2 .topbar .topbar-right {order:2;}
 body .app.stockos-shell-v2 .stockos-alert-shortcut {order:3;}
 body .app.stockos-shell-v2 .stockos-header-profile {order:4;}
@@ -4077,7 +4070,6 @@ body.dashboard-page .app.stockos-shell-v2 .operations-item__action {white-space:
 @media(max-width:980px) {
   body .app.stockos-shell-v2:not(.is-collapsed) {grid-template-columns:minmax(0,1fr);grid-template-areas:"main";}
 }
-body .app.stockos-shell-v2 .sidebar .nav-icon {width:23px;height:23px;flex-basis:23px;display:grid;place-items:center;}
 body .app.stockos-shell-v2 .sidebar .nav-icon svg {width:23px;height:23px;stroke-width:1.85;}
 body .app.stockos-shell-v2 .sidebar .btn-logout svg {width:21px;height:21px;}
 body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger {justify-content:center;padding:10px 0;}

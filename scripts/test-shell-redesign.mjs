@@ -222,3 +222,22 @@ tabPending[2].resolve({ok:true,json:async()=>({numero:22})});
 await tabOlder;
 assert.equal(tabRendered.join(','),'20,21');
 console.log('PASS tab primary action and out-of-order detail responses.');
+
+assert.match(dashboard,/version !== dashboardLoadVersion \|\| paginaAtual\(\) !== 'dashboard'/);
+assert.match(dashboard,/carregarRelatorioDashboard\(pedir, version\)/);
+const dashboardAlertList={innerHTML:''},dashboardAlertBadge={textContent:''},dashboardMovList={innerHTML:''};
+const dashboardStates=vm.runInNewContext(
+  dashboard.slice(dashboard.indexOf('function renderAlertas('),dashboard.indexOf('// ── Resumo financeiro'))+'\n({renderAlertas,renderMovimentacoes})',
+  {document:{getElementById:id=>({'alerta-list':dashboardAlertList,'alerta-count':dashboardAlertBadge,'mov-list':dashboardMovList}[id])},
+   emptyStateMarkup:options=>options.title,obterAlertasEstoque:()=>[],iconMarkup:()=>'',dataLocalHojeIso:()=> '2026-11-26'}
+);
+dashboardStates.renderAlertas(null);
+assert.equal(dashboardAlertList.innerHTML,'Alertas indisponíveis');
+assert.equal(dashboardAlertBadge.textContent,'—');
+dashboardStates.renderAlertas([]);
+assert.match(dashboardAlertList.innerHTML,/Todos os produtos estão em nível adequado/);
+dashboardStates.renderMovimentacoes(null);
+assert.equal(dashboardMovList.innerHTML,'Movimentações indisponíveis');
+dashboardStates.renderMovimentacoes([]);
+assert.equal(dashboardMovList.innerHTML,'Nenhuma movimentação hoje');
+console.log('PASS dashboard request ordering and honest unavailable states.');
