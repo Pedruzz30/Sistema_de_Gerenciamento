@@ -4616,3 +4616,43 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-dashboard-utilities:not([hidd
 .stockos-rank-concentration {font-size:11px;color:var(--ink-3);}
 @media(max-width:1250px) and (min-width:981px) {.stockos-rank-meter {display:none;}.stockos-ranking-table .stockos-rank-share {min-width:58px;width:auto;}}
 @media(max-width:600px) {.stockos-rank-meter {display:none;}.stockos-ranking-table .stockos-rank-share {min-width:58px;width:auto;}.stockos-ranking-table .stockos-product-mark {display:none;}.stockos-ranking-table :is(th,td) {padding-inline:5px;}.stockos-ranking-table .stockos-rank-position {font-size:10px;}}
+
+
+/* Operational priorities: actionable cards, not duplicate KPI counters. */
+.stockos-priority-description-heading {display:none;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions {
+  border-radius:10px;padding:16px;margin-bottom:14px;
+}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .operations-heading {align-items:center;margin:0 0 12px;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions :is(.operations-kicker,.operations-description) {display:none;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-description-heading {display:block;font-size:11px;line-height:1.4;color:var(--ink-3);margin:4px 0 0;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .operations-count {background:transparent;color:var(--ink-3);font-size:11px;font-weight:550;padding:0;min-height:0;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .operations-list {grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:10px;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item {
+ display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:5px;
+ min-height:0;padding:12px 14px;background:var(--paper-raised);border:1px solid var(--rule);border-radius:8px;
+ transition:background 150ms ease,border-color 150ms ease;
+}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item:hover {background:var(--paper-sunk);border-color:var(--rule-strong);}
+.stockos-priority-top {display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:3px;}
+.stockos-priority-icon {display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:7px;color:var(--ok);background:var(--ok-soft);}
+.stockos-priority-icon svg {width:16px;height:16px;}
+.stockos-priority-status {display:flex;align-items:center;gap:5px;color:var(--ink-3);font-size:10px;font-weight:600;}
+.stockos-priority-status > span {width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 6px;}
+.stockos-priority-item.operations-item--critical .stockos-priority-icon {color:var(--bad);background:var(--bad-soft);}
+.stockos-priority-item.operations-item--critical .stockos-priority-status {color:var(--bad);}
+.stockos-priority-item.operations-item--warning .stockos-priority-icon {color:var(--warn);background:var(--warn-soft);}
+.stockos-priority-item.operations-item--warning .stockos-priority-status {color:var(--warn);}
+.stockos-priority-item[data-operation="cash-open"] .stockos-priority-status,.stockos-priority-item[data-operation="stock-ok"] .stockos-priority-status {color:var(--ok);}
+.stockos-priority-item[data-operation="cash-closed"] .stockos-priority-icon {color:var(--ink-3);background:var(--paper-sunk);}
+.stockos-priority-title {font-size:12px;font-weight:650;color:var(--ink-2);}
+.stockos-priority-number {font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.035em;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-priority-number small {font-size:11px;font-weight:500;letter-spacing:0;color:var(--ink-3);}
+.stockos-priority-description {font-size:11px;line-height:1.4;color:var(--ink-3);overflow-wrap:anywhere;}
+.stockos-priority-action {display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:9px;margin-top:5px;border-top:1px solid var(--rule);font-size:11px;font-weight:650;color:var(--accent-ink);}
+.stockos-priority-action svg {width:14px;height:14px;}
+@media(max-width:600px) {
+ body.dashboard-page .app.stockos-shell-v2 #daily-actions {padding:12px;}
+ body.dashboard-page .app.stockos-shell-v2 #daily-actions .stockos-priority-item {padding:12px;}
+}
+@media(prefers-reduced-motion:reduce) {.stockos-priority-item {transition:none!important;}}

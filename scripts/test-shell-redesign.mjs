@@ -349,3 +349,31 @@ assert.equal(distributionsApi.referenceDonutModel([{value:0}]).entries[0].share,
 assert.equal(distributionsApi.referenceDonutModel(null),null);
 assert.match(css,/stockos-donut-percent/);
 console.log('PASS distribution panel: semantic inventory levels, stable payment colors, exact totals, shares and signed values.');
+
+const priorityNodes={'daily-actions':{hidden:true},'daily-actions-list':{innerHTML:''},'daily-actions-count':{textContent:''}};
+const priorityContext={
+ document:{getElementById:id=>priorityNodes[id],querySelector:()=>({})},
+ PODE_VER_ESTOQUE_DASH:true,PODE_VER_FINANCEIRO_DASH:true,
+ obterAlertasEstoque:arr=>arr.filter(p=>p.ativo!==false&&['CRITICO','SEM_ESTOQUE','BAIXO','MODERADO'].includes(p.nivelEstoque)),
+ escapeHtml:String,iconMarkup:()=>'<svg></svg>'
+};
+const priorityCode=extract(dashboard,'function renderAcoesOperacionais(','// ── Seções por permissão');
+const priorityRender=vm.runInNewContext(priorityCode+'\nrenderAcoesOperacionais;',priorityContext);
+priorityRender([{nivelEstoque:'SEM_ESTOQUE'},{nivelEstoque:'BAIXO'}],[{numeroCaixa:1,status:'ABERTO'},{numeroCaixa:1,status:'ABERTO'}],{produtosDisponiveis:true,caixasDisponiveis:true});
+assert.equal(priorityNodes['daily-actions-count'].textContent,'2 prioridades pendentes');
+assert.match(priorityNodes['daily-actions-list'].innerHTML,/data-operation="critical"/);
+assert.match(priorityNodes['daily-actions-list'].innerHTML,/data-operation="low"/);
+assert.match(priorityNodes['daily-actions-list'].innerHTML,/data-operation="cash-open"/);
+assert.match(priorityNodes['daily-actions-list'].innerHTML,/1 <small>caixa<\/small>/);
+assert.ok(priorityNodes['daily-actions-list'].innerHTML.indexOf('data-operation="critical"')<priorityNodes['daily-actions-list'].innerHTML.indexOf('data-operation="low"'));
+priorityRender([],[],{produtosDisponiveis:true,caixasDisponiveis:true});
+assert.equal(priorityNodes['daily-actions-count'].textContent,'Nenhuma prioridade pendente');
+assert.match(priorityNodes['daily-actions-list'].innerHTML,/Nenhum caixa em operação/);
+priorityRender([],[],{produtosDisponiveis:false,caixasDisponiveis:false});
+assert.equal(priorityNodes['daily-actions-count'].textContent,'2 prioridades pendentes');
+assert.doesNotMatch(priorityNodes['daily-actions-list'].innerHTML,/Sem alertas|data-operation="cash-closed"/);
+priorityContext.PODE_VER_ESTOQUE_DASH=false;
+vm.runInNewContext(priorityCode+'\nrenderAcoesOperacionais([],[],{produtosDisponiveis:false,caixasDisponiveis:true});',priorityContext);
+assert.doesNotMatch(priorityNodes['daily-actions-list'].innerHTML,/estoque\.html/);
+assert.match(css,/stockos-priority-action/);
+console.log('PASS operational priorities: semantic urgency, unique open registers, unavailable states and permissions.');

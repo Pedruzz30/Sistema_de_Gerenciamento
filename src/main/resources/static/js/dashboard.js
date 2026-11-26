@@ -1031,11 +1031,12 @@ function renderAcoesOperacionais(produtos, caixas, status) {
     return;
   }
 
+  const compact = !!document.querySelector?.('.app.stockos-shell-v2');
   const tarefas = [];
   if (podeEstoque) {
     if (!status.produtosDisponiveis) {
       tarefas.push({
-        prioridade: 'warning', titulo: 'Estoque indisponível',
+        prioridade: 'warning', tipo: 'connection', titulo: 'Estoque indisponível',
         detalhe: 'Não foi possível consultar os níveis. Confira a conexão antes de movimentar produtos.',
         acao: 'Consultar estoque', href: '/estoque.html'
       });
@@ -1044,17 +1045,17 @@ function renderAcoesOperacionais(produtos, caixas, status) {
       const criticos = alertas.filter(p => p.nivelEstoque === 'SEM_ESTOQUE' || p.nivelEstoque === 'CRITICO');
       const baixos = alertas.filter(p => p.nivelEstoque === 'BAIXO' || p.nivelEstoque === 'MODERADO');
       if (criticos.length) tarefas.push({
-        prioridade: 'critical', titulo: criticos.length === 1 ? '1 produto em situação crítica' : criticos.length + ' produtos em situação crítica',
+        prioridade: 'critical', tipo: 'critical', quantidade: criticos.length, titulo: criticos.length === 1 ? '1 produto em situação crítica' : criticos.length + ' produtos em situação crítica',
         detalhe: 'Revise primeiro os itens sem estoque ou com nível crítico.',
         acao: 'Ver críticos', href: '/estoque.html?filtro=critico'
       });
       if (baixos.length) tarefas.push({
-        prioridade: 'warning', titulo: baixos.length === 1 ? '1 produto precisa de atenção' : baixos.length + ' produtos precisam de atenção',
+        prioridade: 'warning', tipo: 'low', quantidade: baixos.length, titulo: baixos.length === 1 ? '1 produto precisa de atenção' : baixos.length + ' produtos precisam de atenção',
         detalhe: 'Confira a reposição dos itens com estoque baixo ou moderado.',
         acao: 'Ver baixos', href: '/estoque.html?filtro=baixo'
       });
       if (!alertas.length) tarefas.push({
-        prioridade: 'normal', titulo: 'Estoque sem alertas',
+        prioridade: 'normal', tipo: 'stock-ok', titulo: 'Estoque sem alertas',
         detalhe: 'Nenhum item cadastrado apresenta nível de atenção no momento.',
         acao: 'Consultar produtos', href: '/estoque.html'
       });
@@ -1064,25 +1065,52 @@ function renderAcoesOperacionais(produtos, caixas, status) {
   if (podeCaixas) {
     if (!status.caixasDisponiveis) {
       tarefas.push({
-        prioridade: 'warning', titulo: 'Caixas indisponíveis',
+        prioridade: 'warning', tipo: 'connection', titulo: 'Caixas indisponíveis',
         detalhe: 'Não foi possível consultar o estado dos caixas. Verifique a conexão.',
         acao: 'Consultar caixas', href: '/caixas.html'
       });
     } else {
-      const abertos = caixas.filter(c => c.status === 'ABERTO').length;
+      const abertos = new Set(caixas.filter(c => c.status === 'ABERTO').map(c => c.numeroCaixa)).size;
       if (!abertos) tarefas.push({
-        prioridade: 'normal', titulo: 'Nenhum caixa aberto',
+        prioridade: 'normal', tipo: 'cash-closed', quantidade: 0, titulo: 'Nenhum caixa aberto',
         detalhe: 'Confira o início do turno antes de registrar vendas.',
         acao: 'Ir para caixas', href: '/caixas.html'
       });
       else tarefas.push({
-        prioridade: 'normal', titulo: abertos === 1 ? '1 caixa em operação' : abertos + ' caixas em operação',
+        prioridade: 'normal', tipo: 'cash-open', quantidade: abertos, titulo: abertos === 1 ? '1 caixa em operação' : abertos + ' caixas em operação',
         detalhe: 'Acesse um caixa aberto para consultar ou registrar vendas.',
         acao: 'Ver caixas', href: '/caixas.html'
       });
     }
   }
 
+  if (compact) {
+    const priorityOrder = {critical:0,warning:1,normal:2};
+    const ordered = tarefas.slice().sort((a,b)=>priorityOrder[a.prioridade]-priorityOrder[b.prioridade]);
+    const pending = ordered.filter(t=>t.prioridade!=='normal').length;
+    const styles = {
+      critical:{label:'Prioridade alta',icon:'alertTriangle',title:'Estoque crítico',unit:'produtos',detail:'Sem estoque ou em nível crítico',action:'Revisar estoque'},
+      low:{label:'Atenção',icon:'box',title:'Reposição de estoque',unit:'produtos',detail:'Estoque baixo ou moderado',action:'Conferir reposição'},
+      'cash-open':{label:'Em operação',icon:'wallet',title:'Caixas abertos',unit:'caixas',detail:'Disponíveis para atendimento',action:'Acessar caixas'},
+      'cash-closed':{label:'Turno',icon:'wallet',title:'Caixas abertos',unit:'caixas',detail:'Nenhum caixa em operação',action:'Consultar caixas'},
+      'stock-ok':{label:'Sem alertas',icon:'box',title:'Estoque',detail:'Nenhum alerta de estoque identificado',action:'Consultar produtos'},
+      connection:{label:'Consulta indisponível',icon:'refresh'}
+    };
+    list.innerHTML=ordered.map(t=>{
+      const view=styles[t.tipo];
+      const title=view.title||t.titulo;
+      return '<a class="operations-item stockos-priority-item operations-item--'+t.prioridade+'" data-operation="'+t.tipo+'" href="'+t.href+'">'+
+        '<span class="stockos-priority-top"><span class="stockos-priority-icon" aria-hidden="true">'+iconMarkup(view.icon)+'</span>'+
+        '<span class="stockos-priority-status"><span aria-hidden="true"></span>'+escapeHtml(view.label)+'</span></span>'+
+        '<span class="stockos-priority-title">'+escapeHtml(title)+'</span>'+
+        (t.quantidade!=null?'<span class="stockos-priority-number">'+t.quantidade+' <small>'+escapeHtml(t.tipo==='cash-open'||t.tipo==='cash-closed'?(t.quantidade===1?'caixa':'caixas'):(t.quantidade===1?'produto':'produtos'))+'</small></span>':'')+
+        '<span class="stockos-priority-description">'+escapeHtml(view.detail||t.detalhe)+'</span>'+
+        '<span class="stockos-priority-action">'+escapeHtml(view.action||t.acao)+iconMarkup('arrowRight')+'</span></a>';
+    }).join('');
+    if(count)count.textContent=pending===0?'Nenhuma prioridade pendente':pending===1?'1 prioridade pendente':pending+' prioridades pendentes';
+    panel.hidden=false;
+    return;
+  }
   list.innerHTML = tarefas.map(tarefa => {
     return '<a class="operations-item operations-item--' + tarefa.prioridade + '" href="' + tarefa.href + '">' +
       '<span class="operations-item__indicator" aria-hidden="true"></span>' +

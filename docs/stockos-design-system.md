@@ -84,3 +84,7 @@ Top 5 com posição, ordenação por quantidade ou receita, participação na re
 ## Distribuição da operação
 
 Pagamentos por valor líquido, ordenados, com percentual, cores fixas por forma e indicação de maior concentração. Estoque ativo separado em adequado, baixo/moderado, crítico/sem estoque e sem classificação quando necessário; verde/âmbar/vermelho semântico e links para filtros existentes. Sem percentual ou anel para valores líquidos negativos ou total não positivo; preservar valores exatos e estados indisponíveis. Sem novos endpoints.
+
+## Próximas ações
+
+Fila compacta ordenada por urgência. A contagem representa grupos de prioridades pendentes (alertas e consultas indisponíveis), não o número de produtos nem os caixas abertos. Caixas em operação e estoque sem alertas são atalhos informativos. Preservar filtros e permissões existentes.
