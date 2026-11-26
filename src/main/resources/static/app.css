@@ -4069,3 +4069,37 @@ body.dashboard-page .app.stockos-shell-v2 .operations-list {grid-template-column
 body.dashboard-page .app.stockos-shell-v2 .operations-item {align-items:flex-start;min-width:0;flex-wrap:wrap;}
 body.dashboard-page .app.stockos-shell-v2 .operations-item__action {white-space:normal;}
 @media(max-width:480px) {.stockos-movements-table th,.stockos-movements-table td {padding:10px 6px;font-size:11px;} .stockos-movements-table .mov-badge {font-size:9px;}}
+
+/* Final alignment after reviewing the actual browser capture. */
+@media(min-width:981px) {
+  body .app.stockos-shell-v2:not(.is-collapsed) {grid-template-columns:240px minmax(0,1fr);}
+}
+@media(max-width:980px) {
+  body .app.stockos-shell-v2:not(.is-collapsed) {grid-template-columns:minmax(0,1fr);grid-template-areas:"main";}
+}
+body .app.stockos-shell-v2 .sidebar .nav-icon {width:23px;height:23px;flex-basis:23px;display:grid;place-items:center;}
+body .app.stockos-shell-v2 .sidebar .nav-icon svg {width:23px;height:23px;stroke-width:1.85;}
+body .app.stockos-shell-v2 .sidebar .btn-logout svg {width:21px;height:21px;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger {justify-content:center;padding:10px 0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger > span:nth-child(2),
+body .app.stockos-shell-v2.is-collapsed .sidebar .stockos-quick-trigger kbd {display:none;}
+body .app.stockos-shell-v2 > .main.page > .topbar.header {flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {order:6;flex:1 1 100%;width:100%;justify-content:flex-end;gap:10px;padding-top:4px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:1;flex:0 1 245px;max-width:280px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-daily-report-panel {padding:18px;min-width:0;border-radius:10px;background:var(--paper-raised);border:1px solid var(--rule);}
+.stockos-report-link {display:inline-flex;align-items:center;min-height:32px;margin-top:8px;color:var(--accent-ink);font-size:12px;font-weight:650;text-decoration:none;}
+.stockos-report-link:hover {text-decoration:underline;}
+.stockos-payment-list {display:grid;gap:12px;margin-top:14px;}
+.stockos-payment-label {display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--ink-2);font-size:12px;}
+.stockos-payment-label strong {font-variant-numeric:tabular-nums;color:var(--ink);}
+.stockos-payment-track {height:7px;border-radius:5px;background:var(--paper-sunk);margin-top:5px;overflow:hidden;}
+.stockos-payment-bar {height:100%;border-radius:5px;background:var(--accent);}
+.stockos-payment-bar.negative {background:var(--bad);}
+body.dashboard-page .app.stockos-shell-v2 .celular-painel {margin-top:18px;margin-bottom:0;}
+@media(max-width:980px) {
+ body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:5;flex:1 1 100%;max-width:none;}
+}
+@media(max-width:600px) {
+ body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+ body.dashboard-page .app.stockos-shell-v2 .celular-painel {flex-direction:column;align-items:flex-start;}
+}

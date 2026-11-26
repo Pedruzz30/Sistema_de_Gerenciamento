@@ -1491,6 +1491,39 @@ try {
     await naTela(dono, '#relogio-loja');
   });
 
+  await passo(dono, 'Redesign: ranking real, pesquisa e menu recolhível', async () => {
+    await dono.waitForSelector('#stockos-daily-ranking tbody tr');
+    await esperarTexto(dono, '#stockos-daily-ranking', 'Skol lata 350ml');
+    await dono.waitForSelector('#stockos-daily-payments .stockos-payment-row');
+    await dono.locator('.stockos-module-input').fill('cotacao');
+    await dono.waitForSelector('#stockos-module-results a');
+    assert.equal(await dono.locator('#stockos-module-results a').count(), 1);
+    assert.match(await dono.locator('#stockos-module-results a').textContent(), /Cotações/);
+    await dono.keyboard.press('Escape');
+    assert.equal(await dono.locator('#stockos-module-results').isVisible(), false);
+    await dono.locator('.stockos-collapse').click();
+    assert.equal(await dono.locator('.app.is-collapsed').count(), 1);
+    await dono.waitForFunction(() => document.querySelector('.sidebar').getBoundingClientRect().width <= 74);
+    await dono.locator('.stockos-collapse').click();
+    await dono.waitForFunction(() => document.querySelector('.sidebar').getBoundingClientRect().width >= 230);
+    assert.ok(await dono.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Desktop shell overflow');
+    await dono.evaluate(() => window.scrollTo(0,0));
+  });
+  await passo(dono, 'Redesign: dashboard mobile e menu acessível', async () => {
+    await dono.setViewportSize({width:390,height:844});
+    try {
+      await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await dono.locator('.sidebar-toggle').click();
+      await dono.waitForSelector('.sidebar.open');
+      await dono.locator('.sidebar-close').click();
+      await dono.waitForFunction(() => !document.querySelector('.sidebar').classList.contains('open'));
+      await dono.evaluate(() => window.scrollTo(0,0));
+      await print(dono,'redesign-dashboard-mobile');
+    } finally {
+      await dono.setViewportSize({width:1366,height:650});
+    }
+  });
+
   await passo(dono, 'Comandas: o menu mostra as abertas e cobra no caixa', async () => {
     await dono.locator('#nav-items a', { hasText: 'Comandas' }).click();
     await dono.waitForURL('**/comandas.html');

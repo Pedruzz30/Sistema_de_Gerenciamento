@@ -45,6 +45,7 @@
     trigger.type = 'button';
     trigger.id = 'stockos-quick-trigger';
     trigger.className = 'stockos-quick-trigger';
+    trigger.setAttribute('aria-label', 'Abrir ações rápidas');
     trigger.setAttribute('aria-haspopup', 'dialog');
     trigger.setAttribute('aria-keyshortcuts', 'Control+K Meta+K');
     trigger.innerHTML = '<span aria-hidden="true">' + window.iconMarkup('search') + '</span><span>Ações rápidas</span><kbd>Ctrl K</kbd>';

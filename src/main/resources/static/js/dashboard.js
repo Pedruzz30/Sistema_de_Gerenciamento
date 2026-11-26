@@ -205,6 +205,15 @@ async function carregarDados() {
   const caixasAtuais = caixasDisponiveis ? caixas : [];
   renderSummaryCards(produtosAtuais, caixasAtuais, metricas, { produtosDisponiveis, caixasDisponiveis });
   renderDashboardOverview(caixasAtuais, metricas, caixasDisponiveis);
+  if (document.querySelector('.app.stockos-shell-v2')) {
+    // Keep backup warnings prominent; move the optional device setup below the operation.
+    const devicePanel = document.getElementById('celular-painel');
+    const content = document.querySelector('.main-body.content');
+    if (devicePanel && content) content.appendChild(devicePanel);
+    if (PODE_VER_RENTABILIDADE_DASH && !window.STOCKOS_PREVIEW) {
+      void carregarRelatorioDashboard(pedir);
+    }
+  }
   renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
   renderAlertas(produtosAtuais);
   renderMovimentacoes(movimentacoes);
@@ -416,6 +425,83 @@ function renderDashboardOverview(caixas, metricas, disponivel) {
     panel.appendChild(chart);
   }
   overview.prepend(panel);
+}
+
+// Read-only report, same permission as the real report page. Never block first paint.
+async function carregarRelatorioDashboard(pedir) {
+  const movements = document.getElementById('section-movimentacoes');
+  const alerts = document.getElementById('section-alertas');
+  if (!movements || !alerts) return;
+  const current = document.querySelector('.main-body.content');
+  const report = await pedir('/api/relatorios/dia', null);
+  if (paginaAtual() !== 'dashboard' || current !== document.querySelector('.main-body.content')) return;
+  const previous = current.querySelectorAll('.stockos-daily-report-panel');
+  previous.forEach(panel => panel.remove());
+  const el = (tag, cls, value) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (value != null) node.textContent = value;
+    return node;
+  };
+  const makePanel = (title, subtitle) => {
+    const panel = el('section', 'card stockos-daily-report-panel');
+    panel.append(el('h2', 'stockos-sales-title', title), el('p', 'stockos-sales-sub', subtitle));
+    return panel;
+  };
+  const rank = makePanel('Produtos mais vendidos', 'Hoje · ordenados por quantidade vendida');
+  rank.id = 'stockos-daily-ranking';
+  const products = Array.isArray(report?.produtos) ? report.produtos.filter(p => p && p.nome &&
+    p.quantidade != null && Number.isFinite(Number(p.quantidade)) && Number(p.quantidade) > 0 &&
+    p.valor != null && Number.isFinite(Number(p.valor))) : [];
+  products.sort((a,b) => Number(b.quantidade) - Number(a.quantidade) || String(a.nome).localeCompare(String(b.nome),'pt-BR'));
+  if (!products.length) {
+    rank.appendChild(el('p', 'stockos-sales-empty', report && Array.isArray(report.produtos) ? 'Nenhum produto vendido hoje.' : 'Relatório de vendas indisponível.'));
+  } else {
+    const wrap = el('div', 'stockos-movements-wrap');
+    const table = el('table','stockos-movements-table');
+    table.setAttribute('aria-label','Produtos mais vendidos hoje');
+    const head = el('thead'), row = el('tr');
+    ['Produto','Qtd.','Vendido'].forEach(label => {const th=el('th','',label); th.scope='col'; row.appendChild(th);});
+    head.appendChild(row);
+    const body = el('tbody');
+    products.slice(0,5).forEach(p => {
+      const tr=el('tr');
+      tr.append(el('td','',String(p.nome)),el('td','',Number(p.quantidade).toLocaleString('pt-BR')),el('td','',formatarMoedaBR(Number(p.valor))));
+      body.appendChild(tr);
+    });
+    table.append(head,body);
+    wrap.appendChild(table);
+    rank.appendChild(wrap);
+  }
+  const link = el('a','stockos-report-link','Ver relatório completo →');
+  link.href='/relatorios.html';
+  rank.appendChild(link);
+  movements.before(rank);
+
+  const payments = makePanel('Formas de pagamento','Hoje · valores líquidos do relatório');
+  payments.id='stockos-daily-payments';
+  const forms = Array.isArray(report?.porForma) ? report.porForma.filter(p => p && p.rotulo &&
+    p.valor != null && Number.isFinite(Number(p.valor)) && Number(p.valor) !== 0) : [];
+  const max=forms.reduce((value,p)=>Math.max(value,Math.abs(Number(p.valor))),1);
+  if (!forms.length) {
+    payments.appendChild(el('p','stockos-sales-empty',report && Array.isArray(report.porForma)?'Nenhum pagamento registrado hoje.':'Dados de pagamento indisponíveis.'));
+  } else {
+    const list=el('div','stockos-payment-list');
+    forms.forEach(p=>{
+      const item=el('div','stockos-payment-row');
+      const labels=el('div','stockos-payment-label');
+      labels.append(el('span','',String(p.rotulo)),el('strong','',formatarMoedaBR(Number(p.valor))));
+      const track=el('div','stockos-payment-track');
+      track.setAttribute('aria-hidden','true');
+      const bar=el('div',Number(p.valor)<0?'stockos-payment-bar negative':'stockos-payment-bar');
+      bar.style.width=(Math.abs(Number(p.valor))/max*100)+'%';
+      track.appendChild(bar);
+      item.append(labels,track);
+      list.appendChild(item);
+    });
+    payments.appendChild(list);
+  }
+  alerts.after(payments);
 }
 
 function renderAcoesOperacionais(produtos, caixas, status) {
