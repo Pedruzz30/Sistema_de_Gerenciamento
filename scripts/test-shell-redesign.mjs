@@ -126,3 +126,11 @@ assert.equal(moveRow.children[2].textContent,'−2 un.');
 assert.equal(moveRow.children[3].textContent,'10:35');
 assert.match(css,/stockos-module-results\[hidden\]/);
 console.log('PASS module search authorization and normalization, semantic movement table and literal product text.');
+
+assert.match(css,/--stockos-panel-radius:\s*10px/);
+assert.match(css,/--stockos-control-height:\s*40px/);
+assert.match(css,/stockos-filter-row/);
+assert.match(dashboard,/atalho\.onclick = \(\) =>/);
+assert.match(dashboard,/painel\.scrollIntoView\(/);
+assert.match(dashboard,/painel\.focus\(\{ preventScroll: true \}\)/);
+console.log('PASS shared management visual tokens and reachable device configuration.');

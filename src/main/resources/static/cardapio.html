@@ -45,7 +45,7 @@
           <span class="cur">Cardápio</span>
         </div>
         <h1 class="page-title header-title" id="header-title">Gestão de Cardápio</h1>
-        <p class="page-sub header-sub" id="header-sub">Categorias e itens vendidos no PDV sem depender apenas do seed.</p>
+        <p class="page-sub header-sub" id="header-sub">Organize categorias, itens, disponibilidade e modificadores do PDV.</p>
       </div>
       <div class="topbar-right header-right header-right--cardapio">
         <button class="btn btn-secondary" type="button" onclick="abrirModalCategoria()">
@@ -100,9 +100,9 @@
           </div>
           <div class="toolbar toolbar--cardapio">
             <div class="search-wrap">
-              <input class="input input-search" type="text" id="item-search" placeholder="Buscar por nome, codigo ou texto..." oninput="aplicarFiltrosItens()">
+              <input class="input input-search" type="text" id="item-search" aria-label="Buscar itens do cardápio" placeholder="Buscar por nome, código ou texto..." oninput="aplicarFiltrosItens()">
             </div>
-            <select class="compact-control compact-control--select" id="item-category-filter" onchange="aplicarFiltrosItens()">
+            <select class="compact-control compact-control--select" id="item-category-filter" aria-label="Filtrar itens por categoria" onchange="aplicarFiltrosItens()">
               <option value="">Todas as categorias</option>
             </select>
           </div>

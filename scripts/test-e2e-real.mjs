@@ -328,6 +328,23 @@ try {
     assert.equal(corpo.find(p => p.nome === 'Skol lata 350ml').quantidadeAtual, 48);
   });
 
+  await passo(admin, 'Redesign: estoque responsivo e filtros preservados', async () => {
+    await admin.locator('#busca').fill('Skol');
+    await esperarTexto(admin, '#tabela-produtos', 'Skol lata 350ml');
+    await admin.setViewportSize({width:390,height:844});
+    try {
+      await admin.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+      await admin.locator('#busca').scrollIntoViewIfNeeded();
+      await naTela(admin, '#busca');
+      assert.equal(await admin.locator('[data-filter-group="nivel"] button').count(), 4);
+      assert.equal(await admin.locator('[data-filter-group="categoria"] button').count(), 5);
+      await print(admin, 'redesign-estoque-mobile');
+    } finally {
+      await admin.setViewportSize({width:1366,height:650});
+      await admin.locator('#busca').fill('');
+    }
+  });
+
   await passo(admin, 'Abrir o caixa', async () => {
     await admin.goto(`${BASE}/caixas.html`);
     await admin.click('button:has-text("Abrir Caixa")');
@@ -1230,7 +1247,12 @@ try {
       await dono.goto(`${BASE}/dashboard.html`);
       await dono.waitForSelector('#celular-painel:not([hidden]) #celular-qr svg');
       await esperarTexto(dono, '#celular-url', `:${new URL(CELULAR).port}/`);
+      await dono.waitForSelector('#btn-celular-painel');
+      await naTela(dono, '#btn-celular-painel');
+      await dono.click('#btn-celular-painel');
+      await dono.waitForFunction(() => document.activeElement?.id === 'celular-painel');
       await naTela(dono, '#celular-painel');
+      await dono.evaluate(() => window.scrollTo(0, 0));
     });
 
     await passo(cel, 'Celular: pela rede so abre a tela de comanda', async () => {

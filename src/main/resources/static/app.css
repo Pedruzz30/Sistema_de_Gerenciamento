@@ -4103,3 +4103,130 @@ body.dashboard-page .app.stockos-shell-v2 .celular-painel {margin-top:18px;margi
  body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
  body.dashboard-page .app.stockos-shell-v2 .celular-painel {flex-direction:column;align-items:flex-start;}
 }
+
+
+/* StockOS design system — shared primitives for management views.
+   Existing color tokens remain the source of truth; shell v2 only.
+   Keep operational sizing, responsive table/card switching and modal mechanics intact. */
+body:has(> .app.stockos-shell-v2) {
+  --stockos-panel-radius: 10px;
+  --stockos-control-radius: 8px;
+  --stockos-dialog-radius: 14px;
+  --stockos-panel-gap: 14px;
+  --stockos-panel-padding: 18px;
+  --stockos-control-height: 40px;
+  --stockos-section-title-size: 15px;
+  --stockos-table-heading-size: 11px;
+  --stockos-table-text-size: 13px;
+}
+body .app.stockos-shell-v2 .stockos-device-shortcut[hidden] {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 #celular-painel {scroll-margin:16px;}
+body.dashboard-page .app.stockos-shell-v2 #celular-painel:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+/* Apply the same surface hierarchy to standard management tables, not the PDV. */
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body.content {
+  padding:20px clamp(16px,2vw,28px) 32px;
+  max-width:1680px;margin-inline:auto;min-width:0;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 :is(.table-card,.categoria-summary-card,.cardapio-summary-card,.toolbar:not(.toolbar--cardapio)) {
+  border-radius:var(--stockos-panel-radius);
+  box-shadow:none!important;
+  border:1px solid var(--rule);
+  background:var(--paper-raised);
+  min-width:0;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table-header {
+  background:var(--paper-raised);
+  padding:var(--stockos-panel-padding);
+  gap:12px;
+  flex-wrap:wrap;
+  min-width:0;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table-title {
+  font-family:var(--font-ui,inherit);font-size:var(--stockos-section-title-size);
+  font-weight:650;letter-spacing:-.025em;line-height:1.35;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table thead th {
+  font-size:var(--stockos-table-heading-size);
+  text-transform:none;letter-spacing:0;font-weight:600;
+  color:var(--ink-3);background:var(--paper-sunk);
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table tbody td {
+  font-size:var(--stockos-table-text-size);font-variant-numeric:tabular-nums;
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body :is(.input,.select,.compact-control--select),
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .topbar .btn {
+  min-height:var(--stockos-control-height);border-radius:var(--stockos-control-radius);
+}
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .topbar .topbar-right {
+  order:6;flex:1 1 100%;width:100%;flex-direction:row;flex-wrap:wrap;
+  align-items:center;justify-content:flex-end;
+}
+body:is(.estoque-page,.cardapio-page):has(> .app.stockos-shell-v2) .modal-overlay > .modal {
+  border-radius:var(--stockos-dialog-radius);
+}
+body:is(.estoque-page,.cardapio-page):has(> .app.stockos-shell-v2) .modal-title {
+  font-size:17px;font-weight:650;letter-spacing:-.025em;
+}
+body:is(.estoque-page,.cardapio-page):has(> .app.stockos-shell-v2) .modal :is(button,input,select,textarea):focus-visible,
+body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body :is(button,a,input,select,summary):focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+/* Stock: filter groups remain operational and can wrap independently. */
+body.estoque-page .app.stockos-shell-v2 .toolbar.stockos-stock-filters {
+  display:grid;grid-template-columns:minmax(0,1fr);
+  padding:14px;gap:12px;
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-filter-row {
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-width:0;
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-filter-row .seg {
+  min-width:0;max-width:100%;width:auto;flex:0 1 auto;
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-filter-label {
+  flex:0 0 auto;font-size:11px;font-weight:650;color:var(--ink-3);
+}
+body.estoque-page .app.stockos-shell-v2 .stockos-stock-filters .input-search {
+  background-color:var(--paper-sunk);border-color:var(--rule);
+  padding-left:14px;
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-summary-grid {
+  gap:var(--stockos-panel-gap);margin-bottom:var(--stockos-panel-gap);
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-summary-card,
+body.cardapio-page .app.stockos-shell-v2 .cardapio-summary-card {
+  min-height:104px;padding:14px 16px;
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-summary-label,
+body.cardapio-page .app.stockos-shell-v2 .cardapio-summary-card .page-summary-label {
+  text-transform:none;letter-spacing:0;font-size:12px;font-weight:550;
+}
+body.estoque-page .app.stockos-shell-v2 .table-card > .chart-card {
+  padding:14px 18px;
+}
+body.estoque-page .app.stockos-shell-v2 .categoria-chart {gap:8px;}
+/* Cardápio: preserve full-width tables on ordinary notebooks, give both panels
+   space on wide workstations without cutting action columns. */
+body.cardapio-page .app.stockos-shell-v2 .cardapio-layout {gap:var(--stockos-panel-gap);}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--items .toolbar--cardapio {
+  background:transparent;border:0;padding:0;box-shadow:none;min-width:0;
+}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-help {
+  border-radius:var(--stockos-control-radius);
+}
+@media (min-width:1880px) {
+  body.cardapio-page .app.stockos-shell-v2 .cardapio-layout {
+    grid-template-columns:minmax(610px, .8fr) minmax(800px, 1.2fr);
+  }
+}
+@media (max-width:740px) {
+  body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .main-body.content {padding:16px 14px 28px;}
+  body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .topbar .topbar-right {justify-content:flex-start;}
+  body:is(.estoque-page,.cardapio-page) .app.stockos-shell-v2 .table-header {padding:14px;}
+  body.estoque-page .app.stockos-shell-v2 .stockos-filter-row {display:grid;grid-template-columns:minmax(0,1fr);gap:6px;}
+  body.estoque-page .app.stockos-shell-v2 .stockos-filter-row .seg {width:100%;}
+  body.estoque-page .app.stockos-shell-v2 .stockos-stock-filters .filter-btn {min-height:44px;}
+  body.estoque-page .app.stockos-shell-v2 .table-card > .chart-card {padding:14px;}
+}
+/* Original design comparison: wrappers are transparent to legacy layout. */
+body.estoque-page .app:not(.stockos-shell-v2) .stockos-filter-row {display:contents;}
+body.estoque-page .app:not(.stockos-shell-v2) .stockos-filter-label {display:none;}

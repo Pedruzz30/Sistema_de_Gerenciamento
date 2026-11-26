@@ -52,6 +52,7 @@
             </div>
             <div class="topbar-right header-right">
                 <a class="btn btn-secondary btn-sm" href="/relatorios.html" id="btn-relatorio-dia" hidden>Relatório do dia</a>
+                <button type="button" class="btn btn-secondary btn-sm stockos-device-shortcut" id="btn-celular-painel" aria-controls="celular-painel" hidden>Celular do atendente</button>
                 <div class="relogio-loja" id="relogio-loja" title="Hora da loja, pelo relógio do sistema">
                     <span class="relogio-loja__hora" id="relogio-hora">--:--:--</span>
                     <span class="relogio-loja__data" id="relogio-data"></span>
@@ -66,7 +67,7 @@
         <div class="main-body content">
 
         <div class="backup-painel" id="backup-painel" hidden></div>
-        <div class="celular-painel" id="celular-painel" hidden></div>
+        <div class="celular-painel" id="celular-painel" tabindex="-1" hidden></div>
 
         <!-- Cards de resumo (sempre visíveis acima das abas) -->
         <div class="summary-grid" id="summary-grid"></div>

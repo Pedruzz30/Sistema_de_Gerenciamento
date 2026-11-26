@@ -61,22 +61,28 @@
     <div class="main-body content">
     <div class="categoria-summary-grid fade-up" id="categoria-summary"></div>
 
-    <div class="toolbar fade-up">
+    <div class="toolbar fade-up stockos-stock-filters">
       <div class="search-wrap">
-        <input class="input input-search" type="text" id="busca" placeholder="Buscar produto..." oninput="filtrarProdutos()">
+        <input class="input input-search" type="text" id="busca" aria-label="Buscar produto em estoque" placeholder="Buscar produto..." oninput="filtrarProdutos()">
       </div>
-      <div class="seg filter-group" data-filter-group="nivel">
+      <div class="stockos-filter-row">
+      <span class="stockos-filter-label" id="stockos-stock-level-label">Nível de estoque</span>
+      <div class="seg filter-group" data-filter-group="nivel" role="group" aria-labelledby="stockos-stock-level-label">
         <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
         <button class="filter-btn" onclick="filtrar('critico', this)">Crítico</button>
         <button class="filter-btn" onclick="filtrar('baixo', this)">Baixo</button>
         <button class="filter-btn" onclick="filtrar('adequado', this)">Adequado</button>
       </div>
-      <div class="seg filter-group" data-filter-group="categoria">
+      </div>
+      <div class="stockos-filter-row">
+      <span class="stockos-filter-label" id="stockos-stock-category-label">Categoria</span>
+      <div class="seg filter-group" data-filter-group="categoria" role="group" aria-labelledby="stockos-stock-category-label">
         <button class="filter-btn active" onclick="filtrarCategoria('todas', this)">Todas</button>
         <button class="filter-btn" onclick="filtrarCategoria('BEBIDAS', this)">Bebidas</button>
         <button class="filter-btn" onclick="filtrarCategoria('SECO', this)">Estoque seco</button>
         <button class="filter-btn" onclick="filtrarCategoria('FRIO', this)">Estoque frio</button>
         <button class="filter-btn" onclick="filtrarCategoria('CONGELADO', this)">Estoque congelado</button>
+      </div>
       </div>
     </div>
 

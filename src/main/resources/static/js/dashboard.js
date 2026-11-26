@@ -119,7 +119,9 @@ async function carregarSituacaoBackup() {
 async function carregarCelular() {
   if (!PODE_VER_RENTABILIDADE_DASH) return;
   const painel = document.getElementById('celular-painel');
+  const atalho = document.getElementById('btn-celular-painel');
   if (!painel) return;
+  if (atalho) atalho.hidden = true;
   let situacao = null;
   try {
     const resp = await fetch('/api/sistema/celular');
@@ -127,6 +129,7 @@ async function carregarCelular() {
   } catch {
     situacao = null;
   }
+  if (painel !== document.getElementById('celular-painel') || paginaAtual() !== 'dashboard') return;
   if (!situacao || !situacao.ativo || !(situacao.enderecos || []).length) { painel.hidden = true; return; }
   const principal = situacao.enderecos[0];
   const outros = situacao.enderecos.slice(1);
@@ -137,6 +140,13 @@ async function carregarCelular() {
     + (outros.length ? '<br><small>Outras redes deste notebook: ' + outros.map(e => escapeHtml(e.url) + ' (' + escapeHtml(e.rede) + ')').join(', ') + '</small>' : '')
     + '<br><small>Primeira vez no celular: toque em "Primeira vez neste celular?" na tela que abrir. Se o celular não abrir, rode uma vez "Liberar celular" na pasta do StockOS.</small></div>';
   painel.hidden = false;
+  if (atalho && document.querySelector('.app.stockos-shell-v2')) {
+    atalho.hidden = false;
+    atalho.onclick = () => {
+      painel.scrollIntoView({ block: 'center', behavior: 'instant' });
+      painel.focus({ preventScroll: true });
+    };
+  }
   try {
     if (!window.ZXing) {
       await new Promise((resolve, reject) => {
