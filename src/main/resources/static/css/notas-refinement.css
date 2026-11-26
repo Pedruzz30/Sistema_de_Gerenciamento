@@ -494,3 +494,61 @@ body.notas-page #modal-detalhe .modal-body>*{flex-shrink:0;}
 .note-detail-total>strong{font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
 .note-detail-difference{grid-column:1/-1;margin:0;color:var(--warn);font-size:11px;line-height:1.4;}
 @media(max-width:540px){.note-detail-identity{grid-template-columns:1fr;}.note-detail-status{align-items:flex-start;text-align:left;}.note-detail-metrics strong{font-size:16px;}.note-detail-metrics>div{padding:9px 7px;}.note-detail-total{grid-template-columns:minmax(0,1fr);}.note-detail-pagination button{min-height:44px;}}
+
+/* Purchase directory */
+body.notas-page .topbar .topbar-right{display:none!important;}
+body.notas-page .app.stockos-shell-v2 .main.page>.topbar.header{min-height:70px;padding:12px clamp(14px,2vw,28px);gap:10px;}
+body.notas-page .app.stockos-shell-v2 .topbar .crumbs{display:none;}
+body.notas-page .app.stockos-shell-v2 .topbar .page-title{font-size:23px;line-height:1.2;}
+body.notas-page .app.stockos-shell-v2 .topbar .page-sub{font-size:11px;line-height:1.4;}
+body.notas-page .app.stockos-shell-v2 .main-body.content{padding-top:14px;}
+body.notas-page .main-body.content>.note-list-navigation{width:100%;max-width:none;min-height:0;padding:0;border:0;background:transparent;gap:8px;margin:0 0 12px;flex-wrap:wrap;align-items:center;overflow:visible;}
+body.notas-page .main-body.content>.note-list-navigation>.tab-btn{min-height:36px;height:auto;border-radius:7px;}
+.note-list-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;}
+.note-list-actions .btn{min-height:36px;padding:8px 12px;font-size:12px;white-space:nowrap;box-shadow:none;}
+body.notas-page .notes-demo-banner{min-height:0;margin-bottom:12px!important;padding:8px 12px!important;box-shadow:none;}
+.note-list-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 12px;border:1px solid var(--rule);border-radius:10px;background:var(--paper-raised);overflow:hidden;}
+.note-list-summary>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px 14px;}
+.note-list-summary>div+div{border-left:1px solid var(--rule);}
+.note-list-summary span{font-size:11px;font-weight:600;color:var(--ink-2);}
+.note-list-summary strong{font-size:clamp(17px,1.65vw,25px);line-height:1.2;letter-spacing:-.025em;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.note-list-summary small{font-size:11px;color:var(--ink-3);line-height:1.3;}
+.note-list-summary>div[data-tone="success"] strong{color:var(--ok);}
+body.notas-page #aba-lista .table-header.note-list-title{min-height:0;padding:12px 14px;border-bottom:0;flex-wrap:wrap;}
+.note-list-title>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+body.notas-page #aba-lista .note-list-title .table-count{border:0;border-radius:6px;background:var(--paper-sunk);}
+.note-list-filters{display:grid;grid-template-columns:minmax(160px,1.5fr) minmax(150px,1fr) minmax(120px,.8fr) minmax(120px,.8fr) auto;align-items:end;gap:8px;padding:0 14px 12px;border-bottom:1px solid var(--rule);}
+.note-list-filters>div{display:grid;gap:4px;min-width:0;}
+.note-list-filters label,.note-list-pagination label{font-size:11px;color:var(--ink-3);}
+.note-list-filters :is(input,select),.note-list-pagination select{min-width:0;width:100%;height:36px;padding:6px 8px;border:1px solid var(--rule-strong);border-radius:7px;background:var(--paper-raised);color:var(--ink);font:inherit;font-size:12px;}
+.note-list-filters button,.note-list-title button,.note-list-pagination button{min-height:36px;padding:6px 10px;font-size:11px;}
+#note-list-filter-error{margin:0;padding:8px 14px;font-size:12px;color:var(--bad);}
+#note-list-filter-error[hidden]{display:none!important;}
+body.notas-page #aba-lista .table{table-layout:fixed;min-width:860px;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(1){width:10%;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(2){width:22%;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(3){width:13%;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(4){width:6%;text-align:center;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(5){width:14%;text-align:right;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(6){width:15%;}
+body.notas-page #aba-lista .table :is(th,td):nth-child(7){width:20%;}
+body.notas-page #aba-lista .table :is(th,td){padding:9px 11px;white-space:normal;overflow-wrap:anywhere;}
+body.notas-page #aba-lista .table thead th{font-size:11px;letter-spacing:0;text-transform:none;}
+.note-list-id,.note-list-supplier{font-weight:650;color:var(--ink);}
+#tabela-notas td small{display:block;margin-top:3px;font-size:10px;color:var(--ink-3);}
+.note-list-state{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink-3);}
+.note-list-state>span[aria-hidden="true"]{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:currentColor;}
+.note-list-state[data-tone="success"]{color:var(--ok);}
+.note-list-state[data-tone="warning"]{color:var(--warn);}
+.note-list-state[data-tone="info"]{color:var(--ink-2);}
+.note-list-money{font-weight:650;font-variant-numeric:tabular-nums;color:var(--ink);}
+.note-list-date{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.note-list-row-actions{display:flex;flex-wrap:wrap;gap:5px;}
+body.notas-page #aba-lista .note-list-row-actions .btn-acao{min-height:32px;padding:5px 8px;font-size:11px;white-space:normal;}
+.note-list-pagination{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 14px;color:var(--ink-3);font-size:11px;}
+.note-list-pagination>div{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.note-list-pagination select{width:auto;}
+#aba-lista button:disabled{opacity:.5;cursor:default;}
+@media(max-width:1250px){.note-list-filters{grid-template-columns:repeat(2,minmax(0,1fr));}.note-list-filters button{justify-self:start;}}
+@media(max-width:1000px){.note-list-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.note-list-summary>div:nth-child(3){border-left:0;}.note-list-summary>div:nth-child(n+3){border-top:1px solid var(--rule);}}
+@media(max-width:540px){.note-list-actions{width:100%;margin-left:0;}.note-list-actions .btn{flex:1;min-height:44px;}.note-list-filters>div:first-child{grid-column:1/-1;}.note-list-filters button,.note-list-pagination button{min-height:44px;}.note-list-summary>div{padding:10px;}}

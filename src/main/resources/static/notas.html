@@ -48,37 +48,37 @@
         <p class="page-sub header-sub" id="header-sub">Acompanhe notas fiscais, importações e entradas no estoque.</p>
       </div>
       <div class="topbar-right header-right">
-        <button class="btn btn-secondary" onclick="abrirModalXml()" id="btn-importar-nfe">Importar XML</button>
-        <button class="btn btn-accent btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">
-          <span class="btn-inline-icon" data-icon="plus"></span>
-          Nova Nota
-        </button>
       </div>
     </header>
 
     <div class="main-body content">
-    <div class="tabs fade-up">
-      <button class="tab-btn active" id="tab-lista" onclick="abrirAba('aba-lista')">Todas as Notas</button>
-      <button class="tab-btn" id="tab-nova" onclick="abrirAba('aba-nova')">Nova Nota</button>
+    <div class="tabs fade-up note-list-navigation">
+      <button class="tab-btn active" id="tab-lista" onclick="abrirAba('aba-lista')">Todas as notas</button>
+      <button class="tab-btn" id="tab-nova" onclick="abrirAba('aba-nova')">Entrada manual</button>
+      <div class="note-list-actions">        <button class="btn btn-secondary" onclick="abrirModalXml()" id="btn-importar-nfe">Importar XML</button>
+        <button class="btn btn-accent btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">
+          <span class="btn-inline-icon" data-icon="plus"></span>
+          Nova Nota
+        </button>
+</div>
     </div>
 
     <div class="tab-panel active" id="aba-lista">
+      <section class="note-list-summary" id="note-list-summary" aria-label="Resumo de todas as notas"></section>
       <div class="table-card">
-        <div class="table-header">
-          <span class="table-title">Notas Fiscais</span>
-          <span class="table-count" id="notas-count">-</span>
-        </div>
+        <div class="table-header note-list-title"><div><span class="table-title">Notas cadastradas</span><span class="table-count" id="notas-count" role="status">—</span></div><button type="button" class="btn-secondary" id="note-list-refresh">Atualizar</button></div>
+        <div class="note-list-filters">
+          <div><label for="note-list-search">Pesquisar</label><input type="search" id="note-list-search" placeholder="Fornecedor, nota ou NF-e..." autocomplete="off"></div>
+          <div><label for="note-list-status">Situação</label><select id="note-list-status"><option value="">Todas as situações</option><option value="PENDENTE">Pendentes</option><option value="CONFIRMADA">Confirmadas, não pagas</option><option value="PAGA">Pagas</option><option value="CANCELADA">Canceladas</option><option value="UNKNOWN">Outras situações</option></select></div>
+          <div><label for="note-list-from">Emissão de</label><input type="date" id="note-list-from"></div>
+          <div><label for="note-list-to">Até</label><input type="date" id="note-list-to"></div>
+          <button type="button" class="btn-secondary" id="note-list-clear">Limpar</button>
+        </div><p id="note-list-filter-error" role="status" hidden></p>
         <div class="table-wrap">
           <table class="table">
             <thead>
             <tr>
-              <th>#</th>
-              <th>Fornecedor</th>
-              <th>Status</th>
-              <th>Itens</th>
-              <th>Total</th>
-              <th>Emissao</th>
-              <th>Ações</th>
+              <th scope="col">Nota</th><th scope="col">Fornecedor</th><th scope="col">Situação</th><th scope="col">Itens</th><th scope="col">Valor total</th><th scope="col">Emissão</th><th scope="col">Ações</th>
             </tr>
             </thead>
             <tbody id="tabela-notas">
@@ -86,6 +86,7 @@
             </tbody>
           </table>
         </div>
+        <div class="note-list-pagination"><span id="note-list-range" role="status"></span><div><label for="note-list-size">Por página</label><select id="note-list-size"><option>10</option><option>25</option><option>50</option></select><button type="button" class="btn-secondary" id="note-list-prev">Anterior</button><button type="button" class="btn-secondary" id="note-list-next">Próxima</button></div></div>
       </div>
     </div>
 

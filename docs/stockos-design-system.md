@@ -160,3 +160,7 @@ Lista pesquisável de fornecedores ativos com CNPJ, contagem de produtos vincula
 ## Detalhes da nota de compra
 
 Modal somente de consulta com fornecedor, emissão, status real, número/chave NF-e quando presentes, quantidade de linhas e unidades, total registrado pelo servidor. Tabela paginada de oito itens com pesquisa sem acentos e formatação BRL. Total não muda ao filtrar. Divergência entre subtotais e total é informativa quando os valores são representáveis em centavos, sem substituir o total oficial. Respostas atrasadas são ignoradas. Sem ações de pagamento, confirmação ou alteração novas.
+
+## Listagem de notas fiscais
+
+Resumo global de registros, pendentes, valores confirmados não pagos e pagos; canceladas excluídas dos valores. Busca por fornecedor, ID e NF-e, situação, intervalo de emissão local, paginação local 10/25/50. Valores inválidos não viram zero. Confirmação de pagamento já realizado, bloqueio de mutações concorrentes e releitura. Endpoints e assistente de entrada preservados.

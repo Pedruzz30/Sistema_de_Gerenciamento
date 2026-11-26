@@ -15,15 +15,49 @@ async function stockOSMount_notas() {
     ]);
 }
 
-async function carregarNotas() {
-  try {
-    const resp = await fetch('/api/notas');
-    const notas = await resp.json();
-    renderTabelaNotas(notas);
-  } catch {
-    document.getElementById('tabela-notas').innerHTML =
-      '<tr><td colspan="7" class="empty">Erro ao carregar notas.</td></tr>';
-  }
+const NOTE_LIST_STATUS=['PENDENTE','CONFIRMADA','PAGA','CANCELADA'];
+function noteListModel(records,filters={},page=1,pageSize=10){
+  if(!Array.isArray(records))return null;
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const cents=v=>{
+    if(v==null||!['number','string'].includes(typeof v)||String(v).trim()==='')return null;
+    const n=Number(v),c=Math.round(n*100);
+    return Number.isFinite(n)&&n>=0&&Number.isSafeInteger(c)&&Math.abs(n*100-c)<1e-6?c:null;
+  };
+  const dateKey=v=>{
+    if(typeof v!=='string'||!v)return '';
+    const d=new Date(v);if(!Number.isFinite(d.getTime()))return '';
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  };
+  const all=records.map(n=>({id:String(n.id),supplier:String(n.fornecedorNome||'—'),status:NOTE_LIST_STATUS.includes(n.status)?n.status:'UNKNOWN',items:Array.isArray(n.itens)?n.itens.length:null,cents:cents(n.total),date:n.dataEmissao,dateKey:dateKey(n.dataEmissao),nfe:String(n.numeroNfe||''),key:String(n.chaveAcesso||'')}));
+  const groups=Object.fromEntries([...NOTE_LIST_STATUS,'UNKNOWN'].map(s=>[s,{count:0,cents:0}]));
+  for(const n of all){const g=groups[n.status];g.count++;g.cents=g.cents==null||n.cents==null||!Number.isSafeInteger(g.cents+n.cents)?null:g.cents+n.cents;}
+  const {query='',status='',from='',to=''}=filters,invalid=!!(from&&to&&from>to),term=norm(query);
+  const filtered=invalid?[]:all.filter(n=>(!status||n.status===status)&&(!from||n.dateKey&&n.dateKey>=from)&&(!to||n.dateKey&&n.dateKey<=to)&&norm([n.id,'#'+n.id,n.supplier,n.nfe,n.key].join(' ')).includes(term))
+    .sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)||b.id.localeCompare(a.id,'pt-BR',{numeric:true}));
+  const size=[10,25,50].includes(Number(pageSize))?Number(pageSize):10,pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  return {total:all.length,groups,invalid,count:filtered.length,page:current,pages,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+let noteListRecords=null,noteListVersion=0,noteListPage=1,noteListLoading=false,noteListFailed=false,noteListMutation=false,noteListUncertain=false;
+function bindNoteListControls(){
+  const get=id=>document.getElementById(id);
+  get('note-list-search').oninput=()=>{noteListPage=1;drawNoteList();};
+  ['note-list-status','note-list-from','note-list-to','note-list-size'].forEach(id=>get(id).onchange=()=>{noteListPage=1;drawNoteList();});
+  get('note-list-prev').onclick=()=>{noteListPage--;drawNoteList();};
+  get('note-list-next').onclick=()=>{noteListPage++;drawNoteList();};
+  get('note-list-clear').onclick=()=>{['note-list-search','note-list-status','note-list-from','note-list-to'].forEach(id=>get(id).value='');noteListPage=1;drawNoteList();};
+  get('note-list-refresh').onclick=()=>void carregarNotas();
+}
+async function carregarNotas(){
+  const tbody=document.getElementById('tabela-notas');if(!tbody)return false;
+  const version=++noteListVersion,current=()=>version===noteListVersion&&document.getElementById('tabela-notas')===tbody;
+  noteListLoading=true;noteListFailed=false;bindNoteListControls();drawNoteList();
+  try{
+    const resp=await fetch('/api/notas');if(!resp.ok)throw Error('Falha na consulta');
+    const notas=await resp.json();if(!Array.isArray(notas)||notas.some(n=>!n||!(/^\d+$/.test(String(n.id)))))throw Error('Resposta inválida');
+    if(!current())return false;noteListRecords=notas;noteListUncertain=false;return true;
+  }catch{if(current()){noteListRecords=null;noteListFailed=true;}return false;}
+  finally{if(current()){noteListLoading=false;drawNoteList();}}
 }
 
 function noteSupplierModel(records,query='',page=1,pageSize=5){
@@ -130,69 +164,36 @@ async function carregarTodosProdutos() {
   }
 }
 
-function renderTabelaNotas(notas) {
-  document.getElementById('notas-count').textContent = `${notas.length} nota(s)`;
-  const tbody = document.getElementById('tabela-notas');
-
-  if (notas.length === 0) {
-    tbody.innerHTML = `
-      <tr><td colspan="7" class="table-empty-cell">
-        ${emptyStateMarkup({
-          icon: 'receipt',
-          title: 'Nenhuma nota fiscal registrada',
-          copy: 'Crie uma nova nota para registrar compras de fornecedores e entrada de estoque.',
-          actions: '<button class="btn-primary" onclick="iniciarNovaNota(); abrirAba(\'aba-nova\')">' +
-            '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>' +
-            'Nova Nota</button>'
-        })}
-      </td></tr>`;
-    return;
-  }
-
-  const statusBadge = {
-    PENDENTE: 'badge-amber',
-    CONFIRMADA: 'badge-cyan',
-    PAGA: 'badge-green',
-    CANCELADA: 'badge-gray'
-  };
-
-  const statusLabel = {
-    PENDENTE: 'Pendente',
-    CONFIRMADA: 'Confirmada',
-    PAGA: 'Paga',
-    CANCELADA: 'Cancelada'
-  };
-
-  tbody.innerHTML = notas.map((nota) => {
-    const data = new Date(nota.dataEmissao).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    return `
-      <tr>
-        <td><strong>#${nota.id}</strong></td>
-        <td>${escapeHtml(nota.fornecedorNome)}</td>
-        <td><span class="badge ${statusBadge[nota.status] || 'badge-gray'}">${statusLabel[nota.status] || nota.status}</span></td>
-        <td>${nota.itens.length} item(ns)</td>
-        <td class="table-cell-success">R$${Number(nota.total).toFixed(2)}</td>
-        <td class="table-cell-subtle">${data}</td>
-        <td>
-          <div class="acoes">
-            <button class="btn-acao" onclick="verDetalhe(${nota.id})">Ver</button>
-            ${nota.status === 'CONFIRMADA'
-              ? `<button class="btn-acao entrada" onclick="pagarNota(${nota.id})">Pagar</button>`
-              : ''}
-            ${nota.status === 'PENDENTE'
-              ? `<button class="btn-acao saida" onclick="confirmarCancelarNota(${nota.id})">Cancelar</button>`
-              : ''}
-          </div>
-        </td>
-      </tr>`;
+function renderTabelaNotas(notas){noteListRecords=Array.isArray(notas)?notas:null;noteListFailed=!noteListRecords;drawNoteList();}
+function drawNoteList(){
+  const get=id=>document.getElementById(id),tbody=get('tabela-notas');if(!tbody)return;
+  const model=noteListModel(noteListRecords,{query:get('note-list-search').value,status:get('note-list-status').value,from:get('note-list-from').value,to:get('note-list-to').value},noteListPage,get('note-list-size').value);
+  const ready=!!model&&!noteListLoading&&!noteListFailed,money=c=>c==null?'—':noteDetailMoney(c/100);
+  const metrics=ready?[
+    ['Notas cadastradas',model.total,'Toda a base · '+model.groups.CANCELADA.count+' canceladas','neutral'],
+    ['Aguardando confirmação',model.groups.PENDENTE.count,'Rascunhos pendentes','warning'],
+    ['Confirmadas, não pagas',money(model.groups.CONFIRMADA.cents),model.groups.CONFIRMADA.count+' notas','warning'],
+    ['Pagamentos registrados',money(model.groups.PAGA.cents),model.groups.PAGA.count+' notas pagas','success']
+  ]:[['Notas cadastradas','—','Toda a base','neutral'],['Aguardando confirmação','—','Rascunhos pendentes','warning'],['Confirmadas, não pagas','—','Valor registrado','warning'],['Pagamentos registrados','—','Valor registrado','success']];
+  get('note-list-summary').innerHTML=metrics.map(([label,value,note,tone])=>'<div data-tone="'+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+note+'</small></div>').join('');
+  get('notas-count').textContent=ready?model.count+' de '+model.total+' notas':'—';
+  get('note-list-refresh').disabled=noteListLoading||noteListMutation;
+  get('note-list-prev').disabled=!ready||model.page<=1;get('note-list-next').disabled=!ready||model.page>=model.pages;
+  get('note-list-range').textContent=ready?(model.count?model.from+'–'+model.to+' de '+model.count+' notas':'0 resultados'):'';
+  const err=get('note-list-filter-error');err.hidden=!(ready&&model.invalid);err.textContent=err.hidden?'':'A data inicial não pode ser posterior à data final.';
+  if(!ready){tbody.innerHTML='<tr><td colspan="7" class="empty">'+(noteListLoading?'Carregando notas…':'Não foi possível carregar as notas. Use Atualizar.')+'</td></tr>';return;}
+  noteListPage=model.page;
+  if(!model.rows.length){tbody.innerHTML='<tr><td colspan="7" class="empty">'+(model.total?'Nenhuma nota corresponde aos filtros.':'Nenhuma nota fiscal registrada.')+'</td></tr>';return;}
+  const esc=escapeHtml,disabled=noteListMutation||noteListUncertain?' disabled':'';
+  tbody.innerHTML=model.rows.map(n=>{
+    const state=NOTE_DETAIL_STATES[n.status]||{label:'Não informado',tone:'neutral'};
+    return '<tr><td><strong class="note-list-id">#'+esc(n.id)+'</strong>'+(n.nfe?'<small>NF-e '+esc(n.nfe)+'</small>':'')+'</td><td><strong class="note-list-supplier">'+esc(n.supplier)+'</strong></td><td><span class="note-list-state" data-tone="'+state.tone+'"><span aria-hidden="true"></span>'+state.label+'</span></td><td>'+(n.items??'—')+'</td><td class="note-list-money">'+money(n.cents)+'</td><td class="note-list-date">'+esc(noteDetailDate(n.date))+'</td><td><div class="acoes note-list-row-actions"><button type="button" class="btn-acao" data-note-view="'+esc(n.id)+'">Detalhes</button>'+
+    (n.status==='CONFIRMADA'?'<button type="button" class="btn-acao entrada" data-note-pay="'+esc(n.id)+'"'+disabled+'>Registrar pagamento</button>':'')+
+    (n.status==='PENDENTE'?'<button type="button" class="btn-acao saida" data-note-cancel="'+esc(n.id)+'"'+disabled+'>Cancelar</button>':'')+'</div></td></tr>';
   }).join('');
+  tbody.querySelectorAll('[data-note-view]').forEach(b=>b.onclick=()=>void verDetalhe(b.dataset.noteView));
+  tbody.querySelectorAll('[data-note-pay]').forEach(b=>b.onclick=()=>void pagarNota(b.dataset.notePay));
+  tbody.querySelectorAll('[data-note-cancel]').forEach(b=>b.onclick=()=>void confirmarCancelarNota(b.dataset.noteCancel));
 }
 
 async function avancarStep1() {
@@ -615,20 +616,29 @@ function iniciarNovaNota() {
   carregarNotas();
 }
 
-async function confirmarCancelarNota(id) {
-  if (!confirm('Cancelar esta nota fiscal? Esta ação não pode ser desfeita.')) return;
-  try {
-    const resp = await fetch(`/api/notas/${id}/cancelar`, { method: 'POST' });
-    if (!resp.ok) {
-      showToast(await safeReadErrorMessage(resp, 'Erro ao cancelar nota.'), 'error');
-      return;
+async function mutateListedNote(id,action){
+  if(noteListMutation||noteListUncertain||noteListLoading||noteListFailed)return;
+  const note=noteListRecords?.find(n=>String(n.id)===String(id)),payment=action==='pagamento';
+  if(!note||note.status!==(payment?'CONFIRMADA':'PENDENTE')){showToast('Atualize a listagem antes de continuar.','error');return;}
+  const value=noteDetailNumber(note.total);
+  if(payment&&value==null){showToast('Valor da nota indisponível. Confira os detalhes.','error');return;}
+  const message=payment?'Registrar o pagamento da nota #'+note.id+' ('+noteDetailMoney(value)+') de '+note.fornecedorNome+'? Confirme apenas se o pagamento já foi realizado. O StockOS não efetua transferências.':'Cancelar a nota #'+note.id+'? Esta ação não pode ser desfeita.';
+  if(!confirm(message))return;
+  const tbody=document.getElementById('tabela-notas'),current=()=>document.getElementById('tabela-notas')===tbody;
+  noteListMutation=true;drawNoteList();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(String(id))+'/'+action,{method:'POST'});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      showToast(await safeReadErrorMessage(resp,payment?'Erro ao registrar pagamento.':'Erro ao cancelar nota.'),'error');await carregarNotas();return;
     }
-    showToast('Nota cancelada com sucesso.', 'success');
-    await carregarNotas();
-  } catch {
-    showToast('Erro ao cancelar nota.', 'error');
-  }
+    showToast(payment?'Pagamento registrado com sucesso.':'Nota cancelada com sucesso.','success');await carregarNotas();
+    if(current()&&noteDetailState?.id===String(id))fecharModal('modal-detalhe');
+  }catch{if(current()){noteListUncertain=true;showToast('Resultado não confirmado. Confira a situação da nota após atualizar a lista.','error');await carregarNotas();}}
+  finally{noteListMutation=false;if(document.getElementById('tabela-notas'))drawNoteList();}
 }
+async function confirmarCancelarNota(id){return mutateListedNote(id,'cancelar');}
 
 const NOTE_DETAIL_STATES={
   PENDENTE:{label:'Pendente',note:'Aguardando confirmação da compra.',tone:'warning'},
@@ -713,22 +723,7 @@ async function verDetalhe(id) {
   }
 }
 
-async function pagarNota(id) {
-  const btn = event?.target ?? null;
-  setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${id}/pagamento`, { method: 'POST' });
-    if (!resp.ok) {
-      showToast(await safeReadErrorMessage(resp, 'Erro ao registrar pagamento.'), 'error');
-      return;
-    }
-    showToast('Pagamento registrado com sucesso.', 'success');
-    await carregarNotas();
-    fecharModal('modal-detalhe');
-  } finally {
-    setLoading(btn, false);
-  }
-}
+async function pagarNota(id){return mutateListedNote(id,'pagamento');}
 
 function abrirModal(id) {
   document.getElementById(id).classList.add('open');
