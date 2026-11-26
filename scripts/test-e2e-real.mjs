@@ -1250,6 +1250,7 @@ try {
       await dono.waitForSelector('#celular-painel:not([hidden]) #celular-qr svg');
       await esperarTexto(dono, '#celular-url', `:${new URL(CELULAR).port}/`);
       await dono.waitForSelector('#btn-celular-painel');
+      await dono.locator('#btn-celular-painel').scrollIntoViewIfNeeded();
       await naTela(dono, '#btn-celular-painel');
       await dono.click('#btn-celular-painel');
       await dono.waitForFunction(() => document.activeElement?.id === 'celular-painel');
@@ -1512,7 +1513,10 @@ try {
     const diferenca = Math.abs(segundos(await dono.textContent('#relogio-hora')) - segundos(brasilia));
     assert.ok(diferenca <= 5 || diferenca >= 86395, `Relógio fora da hora de Brasília: ${await dono.textContent('#relogio-hora')} x ${brasilia}`);
     await esperarTexto(dono, '#relogio-data', 'Horário de Brasília');
+    await dono.locator('#relogio-loja').scrollIntoViewIfNeeded();
     await naTela(dono, '#relogio-loja');
+    assert.equal(await dono.locator('.topbar #relogio-loja').count(), 0);
+    await dono.evaluate(() => window.scrollTo(0, 0));
   });
 
   await passo(dono, 'Redesign: ranking real, pesquisa e menu recolhível', async () => {

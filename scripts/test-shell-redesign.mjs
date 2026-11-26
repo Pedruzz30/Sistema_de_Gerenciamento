@@ -248,3 +248,8 @@ assert.match(dashboard,/rows.every\(r=>Number.isFinite\(r.previous\)\)/);
 
 assert.match(dashboard,/report\.produtosParcial/);
 assert.match(dashboard,/values\.reduce\(\(s,r\)=>s\+r\.value,0\)/);
+
+assert.match(dashboard,/organizarCabecalhoDashboard\(\)/);
+assert.match(dashboard,/slot\.appendChild\(report\)/);
+assert.match(dashboard,/utilities\.appendChild\(node\)/);
+assert.match(css,/\.topbar \.topbar-right \{display:none!important;\}/);

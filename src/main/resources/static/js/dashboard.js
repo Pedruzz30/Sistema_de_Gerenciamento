@@ -106,7 +106,7 @@ function iniciarRelogioLoja() {
 async function carregarSituacaoBackup() {
   if (!PODE_VER_RENTABILIDADE_DASH) return;
   const relatorio = document.getElementById('btn-relatorio-dia');
-  if (relatorio) relatorio.hidden = false;
+  if (relatorio) relatorio.hidden = !!window.STOCKOS_PREVIEW && !!document.querySelector('.app.stockos-shell-v2');
   try {
     const resp = await fetch('/api/sistema/backup');
     if (resp.ok) renderSituacaoBackup(await resp.json());
@@ -257,8 +257,27 @@ async function carregarDados() {
   }
 }
 
+function organizarCabecalhoDashboard() {
+  if (!document.querySelector('.app.stockos-shell-v2')) return;
+  const utilities = document.getElementById('stockos-dashboard-utilities');
+  if (!utilities) return;
+  const report = document.getElementById('btn-relatorio-dia');
+  const slot = document.getElementById('stockos-report-slot');
+  if (report && slot) {
+    slot.appendChild(report);
+    report.className = 'stockos-report-link';
+    report.textContent = 'Ver relatório';
+  }
+  ['relogio-loja', 'btn-celular-painel'].forEach(id => {
+    const node = document.getElementById(id);
+    if (node && node.parentElement !== utilities) utilities.appendChild(node);
+  });
+  utilities.hidden = false;
+}
+
 function iniciarDashboardSPA() {
   if (paginaAtual() !== 'dashboard') return;
+  organizarCabecalhoDashboard();
   renderHeader();
   renderPermissionSections();
   window._dashboardReady = carregarDados();
