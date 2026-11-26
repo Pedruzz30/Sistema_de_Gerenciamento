@@ -255,7 +255,10 @@ function updateNoteItemComposer(){
   if(!input||!matches)return;
   const managed=!!document.querySelector('.app.stockos-shell-v2'),creating=!get('painel-novo-produto').hidden;
   const selected=creating?null:resolveProdutoSelecionado();
+  get('note-item-existing').hidden=creating;
   input.disabled=creating||noteItemPending||noteItemUncertain;
+  get('note-item-reconcile').hidden=!noteItemUncertain;
+  get('note-item-reconcile').disabled=noteItemPending;
   if(managed)input.removeAttribute('list');else input.setAttribute('list','s2-produtos-list');
   const qty=noteItemNumber(get('s2-qtd').value,true),price=noteItemNumber(get('s2-preco').value);
   const subtotal=qty>0&&price!=null?noteItemNumber(qty*price):null;
@@ -279,8 +282,32 @@ function updateNoteItemComposer(){
 }
 function bindNoteItemComposer(){
   ['s2-qtd','s2-preco'].forEach(id=>document.getElementById(id).oninput=updateNoteItemComposer);
+  document.getElementById('note-item-reconcile').onclick=()=>void reconcileNoteItem();
 }
 
+async function reconcileNoteItem(){
+  if(noteItemPending||!noteItemUncertain||!notaAtual||stepAtual!==2)return;
+  const id=String(notaAtual.id),button=document.getElementById('note-item-reconcile');
+  const current=()=>document.getElementById('note-item-reconcile')===button&&String(notaAtual?.id)===id;
+  noteItemPending=true;updateNoteItemComposer();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(id));
+    if(!resp.ok)throw Error('Falha na consulta');
+    const note=await resp.json();
+    if(!current())return;
+    if(!note||String(note.id)!==id||!Array.isArray(note.itens)||note.status!=='PENDENTE')throw Error('Rascunho indisponível');
+    notaAtual=note;
+    await Promise.all([carregarFornecedores(),carregarTodosProdutos()]);
+    if(!current())return;
+    noteItemUncertain=false;
+    limparFormularioItem();renderItensStep2();
+    mostrarAlert('alert-s2','Rascunho atualizado. Confira os itens antes de fazer outro lançamento.','info');
+  }catch{
+    if(current())mostrarAlert('alert-s2','Não foi possível conferir o rascunho pendente. Consulte Todas as notas.','error');
+  }finally{
+    noteItemPending=false;if(current())updateNoteItemComposer();
+  }
+}
 function prepararStep2() {
   bindNoteItemComposer();
   document.getElementById('s2-fornecedor-badge').textContent = notaAtual.fornecedorNome;
@@ -528,7 +555,7 @@ async function adicionarItem() {
   } catch {
     if(current()){
       noteItemUncertain=true;
-      mostrarAlert('alert-s2','Não foi possível confirmar o lançamento. Confira o rascunho em Todas as notas antes de repetir a operação.','error');
+      mostrarAlert('alert-s2','Não foi possível confirmar o lançamento. Use Consultar rascunho e confira os itens antes de repetir.','error');
     }
   } finally {
     noteItemPending=false;

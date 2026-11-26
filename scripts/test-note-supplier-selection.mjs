@@ -145,3 +145,11 @@ assert.equal((html.match(/id="s2-total"/g)||[]).length,1);
 assert.equal((html.match(/id="btn-step2-avancar"/g)||[]).length,1);
 assert.match(css,/\.note-item-workspace\{display:grid;grid-template-columns:minmax\(0,2\.3fr\)/);
 console.log('PASS note item entry: integer and cent validation, catalog ranking, guarded addition and summary structure.');
+
+assert.equal(html.indexOf('id="painel-novo-produto"')<html.indexOf('id="s2-qtd"'),true);
+assert.equal(html.indexOf('id="note-item-estimate"')<html.indexOf('id="btn-adicionar-item"'),true);
+assert.match(source,/get\('note-item-existing'\)\.hidden=creating/);
+assert.match(source,/note\.status!=='PENDENTE'/);
+assert.match(source,/note-item-reconcile'\)\.onclick/);
+assert.match(html,/id="note-item-reconcile" hidden/);
+console.log('PASS note entry mode ordering and read-only reconciliation control.');

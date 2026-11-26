@@ -173,31 +173,15 @@
           </div>
 
           <div class="actions-inline notes-item-composer">
-            <div class="form-group notes-item-composer__search">
+            <div class="form-group notes-item-composer__search" id="note-item-existing">
               <label for="s2-produto-busca">Produto existente</label>
               <input type="text" id="s2-produto-busca" list="s2-produtos-list"
-                      placeholder="Digite nome ou ID do produto"
+                      placeholder="Nome, ID ou código de barras"
                       oninput="atualizarAvisoVinculo()">
               <datalist id="s2-produtos-list"></datalist>
               <div id="note-item-matches" class="note-item-matches" hidden></div>
               <small id="note-item-selection" class="note-item-selection" aria-live="polite"></small>
             </div>
-            <div class="form-group notes-item-composer__qty">
-              <label for="s2-qtd">Quantidade</label>
-              <input type="number" id="s2-qtd" placeholder="0" min="1" max="2147483647" step="1" inputmode="numeric">
-            </div>
-            <div class="form-group notes-item-composer__price">
-              <label for="s2-preco">Preço unitário de compra (R$)</label>
-              <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
-            </div>
-            <button class="btn-primary notes-item-composer__submit" id="btn-adicionar-item" onclick="adicionarItem()">
-              <span class="btn-inline-icon" data-icon="plus"></span>
-              Adicionar Item
-            </button>
-          </div>
-
-          <div class="alert-modal" id="alert-s2-link"></div>
-
           <div id="painel-novo-produto" class="nota-inline-form" hidden>
             <div class="nota-inline-form-title">Novo produto nesta nota</div>
             <div class="nota-inline-grid">
@@ -226,8 +210,23 @@
             </div>
             <div class="alert-modal" id="alert-s2-novo"></div>
           </div>
+            <div class="form-group notes-item-composer__qty">
+              <label for="s2-qtd">Quantidade</label>
+              <input type="number" id="s2-qtd" placeholder="0" min="1" max="2147483647" step="1" inputmode="numeric">
+            </div>
+            <div class="form-group notes-item-composer__price">
+              <label for="s2-preco">Preço unitário de compra (R$)</label>
+              <input type="number" id="s2-preco" placeholder="0,00" step="0.01" min="0">
+            </div>
+            <div class="note-item-estimate"><span>Subtotal deste lançamento</span><strong id="note-item-estimate">—</strong></div>
+            <button type="button" class="btn-primary notes-item-composer__submit" id="btn-adicionar-item" onclick="adicionarItem()">
+              <span class="btn-inline-icon" data-icon="plus"></span>
+              Adicionar Item
+            </button>
+          </div>
 
-          <div class="note-item-estimate"><span>Subtotal deste lançamento</span><strong id="note-item-estimate">—</strong></div>
+          <div class="alert-modal" id="alert-s2-link"></div>
+
           <div class="alert-modal" id="alert-s2" role="alert"></div>
         </div>
 
@@ -243,6 +242,7 @@
           <div class="note-item-summary-total"><span>Total registrado</span><strong id="s2-total" class="notes-total-value">R$ 0,00</strong></div>
           <p class="note-item-next">Revise os itens na próxima etapa. O estoque só é atualizado na confirmação.</p>
           <button type="button" class="btn-primary" onclick="avancarStep2()" id="btn-step2-avancar" disabled>Revisar nota <span class="btn-inline-icon" data-icon="arrowRight"></span></button>
+          <button type="button" class="btn-secondary" id="note-item-reconcile" hidden>Consultar rascunho</button>
           <button type="button" class="btn-secondary" id="note-item-discard" onclick="descartarRascunho()">Descartar rascunho</button>
         </aside>
         </div>

@@ -172,3 +172,5 @@ Listagem compacta de cinco registros, paginação explícita e resumo de abertur
 ## Nova nota — lançamento de itens
 
 Formulário compacto, sugestões de catálogo priorizando vínculos, subtotal previsto, tabela de itens e resumo com total do servidor. Validação inteira e monetária no cliente, prevenção de envio simultâneo e bloqueio de repetição quando a resposta é incerta. Mantidos endpoint e payload, inclusive criação inline e vínculos automáticos; sem alteração nas regras de estoque ou nova exclusão individual de itens.
+
+O modo de novo produto apresenta identificação antes dos dados de compra e oculta a busca de produto existente. Em caso de resultado incerto, consultar o rascunho faz somente GET, confere o ID/status e atualiza os itens; o formulário é limpo para evitar repetição automática.
