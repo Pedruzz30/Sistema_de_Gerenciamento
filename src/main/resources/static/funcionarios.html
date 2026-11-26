@@ -146,32 +146,33 @@
 
 <!-- ── Modal: Mudar Classe ── -->
 <div class="modal-overlay" id="modal-classe" onclick="fecharModalSeClicouFora(event,'modal-classe')">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="employee-class-title">
     <div class="modal-header">
-      <h3 class="modal-title">Alterar Classe</h3>
+      <div class="employee-create-heading"><span class="employee-create-icon" data-icon="shield" aria-hidden="true"></span><div><h3 class="modal-title" id="employee-class-title">Alterar classe de acesso</h3><p>Confira o impacto das mudanças antes de salvar.</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-classe')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="produto-info-card">
-        <div class="produto-info-nome" id="classe-func-nome">Funcionário</div>
-        <div class="produto-info-qtd" id="classe-atual">Classe atual: —</div>
-      </div>
-      <div class="form-group">
-        <label>Nova Classe</label>
-        <select id="nova-classe">
-          <option value="">— Selecione —</option>
+      <div class="employee-class-person"><span class="employee-initials" id="employee-class-initials" aria-hidden="true"></span><div><strong id="classe-func-nome">Funcionário</strong><small id="employee-class-ru">—</small></div><span class="employee-status" data-active="true"><span aria-hidden="true"></span>Ativo</span></div>
+      <section class="employee-class-comparison" aria-label="Classe atual e nova classe">
+        <div><span>Classe atual</span><strong id="classe-atual">—</strong><small id="employee-class-current-count">—</small></div>
+        <span class="employee-class-arrow" data-icon="arrowRight" aria-hidden="true"></span>
+        <div class="form-group"><label for="nova-classe">Nova classe</label><select id="nova-classe" required aria-describedby="employee-class-description">
+          <option value="">Selecione uma classe</option>
           <option value="SUPERIOR">Superior — Acesso total</option>
           <option value="GERENTE_ESTOQUE">Gerente de Estoque</option>
           <option value="ESTOQUISTA">Estoquista</option>
           <option value="CAIXA">Caixa</option>
-        </select>
-      </div>
-      <div class="alert-modal" id="alert-classe"></div>
+        </select><small id="employee-class-description">Escolha o novo nível de acesso.</small></div>
+      </section>
+      <section class="employee-class-impact" aria-labelledby="employee-class-impact-title">
+        <div class="employee-section-title"><strong id="employee-class-impact-title">Impacto nas permissões</strong><span>Previsão da nova classe</span></div>
+        <div id="employee-class-diff" aria-live="polite"></div>
+      </section>
+      <label class="employee-elevated-confirm" id="employee-class-confirm-wrap" hidden><input type="checkbox" id="employee-class-confirm"><span id="employee-class-confirm-text">Confirmo a alteração de acesso.</span></label>
+      <div class="alert-modal" id="alert-classe" role="alert"></div>
+      <button type="button" class="btn-secondary" id="employee-class-reconcile" hidden>Consultar acesso atual</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModal('modal-classe')">Cancelar</button>
-      <button class="btn-primary" onclick="confirmarMudarClasse()">Salvar</button>
-    </div>
+    <div class="modal-footer"><span class="employee-create-footer-note">A classe define as permissões do funcionário.</span><div class="employee-create-actions"><button type="button" class="btn-secondary" onclick="fecharModal('modal-classe')">Cancelar</button><button type="button" class="btn-primary" id="employee-class-save" onclick="confirmarMudarClasse()" disabled>Salvar alteração</button></div></div>
   </div>
 </div>
 

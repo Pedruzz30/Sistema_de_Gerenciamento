@@ -192,30 +192,124 @@ async function cadastrarFuncionario(){
   }
 }
 
-function abrirModalClasse(ru, nomeCompleto, classeAtual) {
-  ruMudarClasse = ru;
-  document.getElementById('classe-func-nome').textContent = nomeCompleto;
-  document.getElementById('classe-atual').textContent = `Classe atual: ${CLASSE_LABEL[classeAtual] || classeAtual || '—'}`;
-  document.getElementById('nova-classe').value = '';
-  limparAlert('alert-classe');
-  abrirModal('modal-classe');
+const EMPLOYEE_PERMISSION_LABELS={
+  VER_ESTOQUE:'Consultar estoque',EDITAR_ESTOQUE:'Editar estoque',VER_COMPRAS:'Compras',VER_VENDAS:'Vendas',VER_FINANCAS:'Finanças',GERENCIAR_FUNCIONARIOS:'Gerenciar funcionários',VER_LOGS:'Logs de auditoria'
+};
+const EMPLOYEE_CLASS_PERMISSIONS={
+  SUPERIOR:Object.keys(EMPLOYEE_PERMISSION_LABELS),
+  GERENTE_ESTOQUE:['VER_ESTOQUE','EDITAR_ESTOQUE','VER_COMPRAS','VER_FINANCAS','GERENCIAR_FUNCIONARIOS','VER_LOGS'],
+  ESTOQUISTA:['VER_ESTOQUE','EDITAR_ESTOQUE'],
+  CAIXA:['VER_VENDAS','VER_ESTOQUE']
+};
+function employeePermissionLabel(code){
+  return Object.prototype.hasOwnProperty.call(EMPLOYEE_PERMISSION_LABELS,code)?EMPLOYEE_PERMISSION_LABELS[code]:code;
 }
-
-async function confirmarMudarClasse() {
-  const nomeClasse = document.getElementById('nova-classe').value;
-  if (!nomeClasse) { mostrarAlert('alert-classe', 'Selecione uma classe.', 'error'); return; }
-
-  const resp = await fetch(`/api/funcionarios/${ruMudarClasse}/classe`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nomeClasse })
-  });
-  if (!resp.ok) {
-    const err = await safeReadErrorMessage(resp, 'Erro ao alterar classe.');
-    mostrarAlert('alert-classe', err, 'error'); return;
+function employeeClassDiff(employee,target,actorRu){
+  if(!employee||employee.ativo!==true||!Array.isArray(employee.permissoes)||employee.permissoes.some(p=>typeof p!=='string')||!Object.prototype.hasOwnProperty.call(EMPLOYEE_CLASS_PERMISSIONS,target)||target===employee.nomeClasse)return null;
+  const before=[...new Set(employee.permissoes)],after=EMPLOYEE_CLASS_PERMISSIONS[target];
+  const added=after.filter(p=>!before.includes(p)),removed=before.filter(p=>!after.includes(p)),kept=after.filter(p=>before.includes(p));
+  const own=String(employee.ru)===String(actorRu),elevated=target==='SUPERIOR'||added.includes('GERENCIAR_FUNCIONARIOS')||added.includes('VER_FINANCAS')||added.includes('VER_LOGS');
+  return {added,removed,kept,own,elevated,requiresConfirmation:own||elevated};
+}
+function employeeClassSnapshotEqual(a,b){
+  if(!a||!b||String(a.ru)!==String(b.ru)||a.nomeClasse!==b.nomeClasse||a.ativo!==b.ativo||!Array.isArray(a.permissoes)||!Array.isArray(b.permissoes))return false;
+  const before=[...new Set(a.permissoes)].sort(),after=[...new Set(b.permissoes)].sort();
+  return before.length===after.length&&before.every((p,i)=>p===after[i]);
+}
+let employeeClassTarget=null,employeeClassPending=false,employeeClassUncertain=false;
+function updateEmployeeClass(){
+  const get=employeeGet,select=get('nova-classe'),target=select.value,person=employeeClassTarget;
+  const model=employeeClassDiff(person,target,usuario?.ru);
+  get('classe-atual').textContent=employeeClassLabel(person?.nomeClasse);
+  get('employee-class-current-count').textContent=Array.isArray(person?.permissoes)?new Set(person.permissoes).size+' permissões atuais':'Permissões não informadas';
+  get('employee-class-description').textContent=Object.prototype.hasOwnProperty.call(EMPLOYEE_ROLE_ACCESS,target)?EMPLOYEE_ROLE_ACCESS[target].description:'Escolha o novo nível de acesso.';
+  const esc=escapeHtml;
+  const group=(title,rows,tone)=>'<div class="employee-class-diff-group" data-tone="'+tone+'"><div><strong>'+title+'</strong><span>'+rows.length+'</span></div>'+(rows.length?'<ul>'+rows.map(p=>'<li>'+esc(employeePermissionLabel(p))+'</li>').join('')+'</ul>':'<p>Nenhuma</p>')+'</div>';
+  get('employee-class-diff').innerHTML=model?'<div class="employee-class-diff-grid">'+group('Adicionadas',model.added,'added')+group('Removidas',model.removed,'removed')+group('Mantidas',model.kept,'kept')+'</div>':'<div class="employee-class-empty">'+(person&&!Array.isArray(person.permissoes)?'Permissões atuais indisponíveis. Atualize a equipe para comparar.':target===person?.nomeClasse?'A classe escolhida é igual à atual.':'Selecione uma nova classe para comparar os acessos.')+'</div>';
+  const check=get('employee-class-confirm');
+  get('employee-class-confirm-wrap').hidden=!model?.requiresConfirmation;
+  if(!model?.requiresConfirmation)check.checked=false;
+  get('employee-class-confirm-text').textContent=model?.own&&model?.elevated?'Confirmo a alteração da minha própria conta e a concessão de acesso administrativo.':model?.own?'Confirmo a alteração da minha própria conta; posso perder acesso a módulos.':'Confirmo a concessão de acesso administrativo ou financeiro para este funcionário.';
+  select.disabled=employeeClassPending||employeeClassUncertain;
+  check.disabled=employeeClassPending||employeeClassUncertain;
+  get('employee-class-save').disabled=employeeClassPending||employeeClassUncertain||!model||(model.requiresConfirmation&&!check.checked);
+  get('employee-class-reconcile').hidden=!employeeClassUncertain;
+  get('employee-class-reconcile').disabled=employeeClassPending;
+}
+function abrirModalClasse(ru,nomeCompleto,classeAtual){
+  if(employeeClassPending||!employeeListReady)return;
+  const person=todosFuncionarios.find(f=>String(f.ru)===String(ru));
+  if(!person||person.ativo!==true){showToast('Atualize a equipe antes de alterar a classe.','error');return;}
+  ruMudarClasse=ru;employeeClassTarget=person;employeeClassUncertain=false;
+  const get=employeeGet,name=[person.nome,person.sobrenome].filter(Boolean).join(' ')||'Funcionário';
+  get('classe-func-nome').textContent=name;
+  get('employee-class-initials').textContent=name.split(/\s+/).slice(0,2).map(x=>Array.from(x)[0]||'').join('').toUpperCase();
+  get('employee-class-ru').textContent='RU #'+person.ru+(String(person.ru)===String(usuario?.ru)?' · Sua conta':'');
+  const select=get('nova-classe');select.value='';
+  for(const option of select.options)option.disabled=!!option.value&&option.value===person.nomeClasse;
+  get('employee-class-confirm').checked=false;
+  select.onchange=()=>{get('employee-class-confirm').checked=false;limparAlert('alert-classe');updateEmployeeClass();};
+  get('employee-class-confirm').onchange=updateEmployeeClass;
+  get('employee-class-reconcile').onclick=()=>void reconcileEmployeeClass();
+  limparAlert('alert-classe');updateEmployeeClass();abrirModal('modal-classe');select.focus();
+}
+async function readEmployeeClass(ru){
+  const resp=await fetch('/api/funcionarios');
+  if(!resp.ok)throw Error('Falha na consulta');
+  const records=await resp.json();
+  if(!Array.isArray(records))throw Error('Resposta inválida');
+  const person=records.find(f=>f&&String(f.ru)===String(ru));
+  if(!person||typeof person.ativo!=='boolean'||!Array.isArray(person.permissoes))throw Error('Acesso indisponível');
+  return person;
+}
+async function reconcileEmployeeClass(){
+  if(employeeClassPending||!employeeClassUncertain||!employeeClassTarget)return;
+  const get=employeeGet,modal=get('modal-classe'),ru=String(employeeClassTarget.ru),current=()=>get('modal-classe')===modal&&modal.classList.contains('open')&&String(employeeClassTarget?.ru)===ru;
+  employeeClassPending=true;updateEmployeeClass();
+  try{
+    const person=await readEmployeeClass(ru);if(!current())return;
+    employeeClassTarget=person;employeeClassUncertain=false;
+    get('nova-classe').value='';for(const o of get('nova-classe').options)o.disabled=!!o.value&&o.value===person.nomeClasse;
+    get('employee-class-confirm').checked=false;
+    mostrarAlert('alert-classe',person.ativo?'Acesso atual consultado. Confira a classe antes de realizar outra alteração.':'O funcionário está inativo. Volte à listagem.','info');
+    await carregarFuncionarios();
+  }catch{if(current())mostrarAlert('alert-classe','Não foi possível consultar o acesso atual. Tente novamente ou volte à listagem.','error');}
+  finally{employeeClassPending=false;if(current())updateEmployeeClass();}
+}
+async function confirmarMudarClasse(){
+  if(employeeClassPending||employeeClassUncertain||!employeeClassTarget)return;
+  const get=employeeGet,modal=get('modal-classe'),target=get('nova-classe').value,person=employeeClassTarget,ru=String(person.ru);
+  const model=employeeClassDiff(person,target,usuario?.ru);
+  if(!model||(model.requiresConfirmation&&!get('employee-class-confirm').checked))return;
+  const current=()=>get('modal-classe')===modal&&modal.classList.contains('open')&&String(employeeClassTarget?.ru)===ru;
+  const controls=[...modal.querySelectorAll('button')].map(el=>[el,el.disabled]);
+  employeeClassPending=true;limparAlert('alert-classe');controls.forEach(([el])=>el.disabled=true);updateEmployeeClass();
+  let submitted=false;
+  try{
+    const latest=await readEmployeeClass(ru);if(!current())return;
+    if(!employeeClassSnapshotEqual(person,latest)){
+      employeeClassUncertain=true;mostrarAlert('alert-classe','O acesso mudou desde a abertura. Consulte a situação atual antes de salvar.','error');return;
+    }
+    submitted=true;
+    const resp=await fetch('/api/funcionarios/'+encodeURIComponent(ru)+'/classe',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nomeClasse:target})});
+    if(!current())return;
+    if(!resp.ok){
+      if(resp.status>=500||resp.status===409)throw Error('Resultado incerto');
+      const message=await safeReadErrorMessage(resp,'Erro ao alterar classe.');
+      if(current())mostrarAlert('alert-classe',message,'error');return;
+    }
+    const result=await resp.json();
+    if(!current())return;
+    if(!result||String(result.ru)!==ru||result.nomeClasse!==target||!Array.isArray(result.permissoes))throw Error('Resposta inesperada');
+    employeeClassTarget=null;modal.classList.remove('open');showToast('Classe alterada.','success');
+    await carregarFuncionarios();
+    if(model.own)showToast('Sua classe foi alterada. Entre novamente para atualizar os acessos.','info');
+  }catch{
+    if(current()){employeeClassUncertain=true;get('employee-class-confirm').checked=false;mostrarAlert('alert-classe',submitted?'Resultado não confirmado. Consulte o acesso atual antes de tentar novamente.':'Não foi possível conferir o acesso atual. Consulte a situação antes de salvar.','error');}
+  }finally{
+    employeeClassPending=false;controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
+    if(current())updateEmployeeClass();
   }
-  fecharModal('modal-classe');
-  await carregarFuncionarios();
 }
 
 async function desativar(ru) {
@@ -260,6 +354,11 @@ function abrirModalCadastro() {
 
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
 function fecharModal(id) {
+  if(id==='modal-classe'){
+    if(employeeClassPending)return;
+    if(employeeClassUncertain)void carregarFuncionarios();
+    employeeClassTarget=null;employeeClassUncertain=false;ruMudarClasse=null;
+  }
   if(id==='modal-cadastro'){
     if(employeeCreatePending)return;
     employeeHidePassword();employeeGet('c-senha').value='';employeeGet('c-cpf').value='';

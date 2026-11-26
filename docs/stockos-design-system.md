@@ -194,3 +194,7 @@ Modal compacto com dados pessoais, credenciais e permissões da classe conforme 
 ### Diretório de funcionários
 
 Indicadores globais de cadastros, ativos, inativos e contas ativas com a permissão GERENCIAR_FUNCIONARIOS. Permissões ausentes são sinalizadas, sem inferência a partir do nome da classe. Classes são extraídas da API, incluindo variantes do preview. Busca por nome/RU, filtros combinados, ordenação por situação e nome e paginação local 10/15/25/50. Ações e endpoints existentes preservados; não altera autorização no servidor.
+
+### Alteração de classe de acesso
+
+Modal com identificação e RU, comparação entre classe atual e pretendida e diferenças de permissões. A origem é o conjunto retornado pela API; o destino é a previsão das classes de FuncionarioController. Não presume equivalência entre nomes legados. Bloqueia a mesma classe, contas inativas e dados de permissão ausentes; confirma concessão administrativa/financeira e alteração da própria conta. Consulta prévia do estado antes de enviar o PUT existente, bloqueio de repetição no cliente e consulta após resultado incerto. A consulta prévia não é controle de concorrência atômico nem substitui autorização no backend. Nenhuma alteração de servidor.
