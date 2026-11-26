@@ -242,7 +242,7 @@ dashboardStates.renderMovimentacoes([]);
 assert.equal(dashboardMovList.innerHTML,'Nenhuma movimentação hoje');
 console.log('PASS dashboard request ordering and honest unavailable states.');
 
-assert.match(dashboard,/referenceSeries\(chart,rows,compare\)/);
+assert.match(dashboard,/referenceSeries\(chart,rows,compare,/);
 assert.match(css,/stockos-reference-grid/);
 assert.match(dashboard,/rows.every\(r=>Number.isFinite\(r.previous\)\)/);
 
@@ -253,3 +253,29 @@ assert.match(dashboard,/organizarCabecalhoDashboard\(\)/);
 assert.match(dashboard,/slot\.appendChild\(report\)/);
 assert.match(dashboard,/utilities\.appendChild\(node\)/);
 assert.match(css,/\.topbar \.topbar-right \{display:none!important;\}/);
+
+const salesChartCode=extract(dashboard,'function referenceScale(','// Immediate offline fallback.');
+const salesChartApi=vm.runInNewContext(salesChartCode+'\n({referenceScale,referenceComparison,referenceChartConfig,referenceAxisMoney})',{
+ formatarMoedaBR:n=>'R$ '+Number(n).toFixed(2)
+});
+const chartRows=[{label:'20/11',date:'2026-11-20',previousDate:'2026-11-13',value:997,previous:500},{label:'21/11',date:'2026-11-21',previousDate:'2026-11-14',value:250,previous:500}];
+const scale=salesChartApi.referenceScale(chartRows,true);
+assert.equal(scale.min,0);assert.equal(scale.max,1000);assert.equal(scale.step,250);
+const signedScale=salesChartApi.referenceScale([{value:-251},{value:999}],false);
+assert.ok(signedScale.min<=-251 && signedScale.max>=999 && signedScale.step>0);
+assert.equal(salesChartApi.referenceComparison(chartRows,true).percent,24.7);
+assert.equal(salesChartApi.referenceComparison([{value:1,previous:0}],true),null);
+assert.equal(salesChartApi.referenceComparison([{value:null,previous:1}],true),null);
+const colors={accent:'#c45120',previous:'#dfb7a4',grid:'#ddd',muted:'#777',ink:'#111',paper:'#fff'};
+const config=salesChartApi.referenceChartConfig(chartRows,true,colors);
+assert.equal(config.type,'bar');assert.equal(config.data.datasets.length,2);
+assert.equal(config.options.scales.x.offset,true);
+assert.equal(config.options.scales.x.ticks.maxRotation,0);
+assert.equal(config.options.scales.y.ticks.stepSize,250);
+assert.equal(config.options.plugins.tooltip.callbacks.title([{dataIndex:0}]),'20/11/2026');
+assert.match(config.options.plugins.tooltip.callbacks.label({dataIndex:0,datasetIndex:1,dataset:config.data.datasets[1],parsed:{y:500}}),/13\/11\/2026.*500\.00/);
+assert.equal(salesChartApi.referenceChartConfig([{label:'09h',value:1}],false,colors).data.datasets.length,1);
+assert.match(dashboard,/destroyReferenceSalesChart\(\)/);
+assert.match(dashboard,/referenceFallback\(rows,compare,plot\)/);
+assert.match(dashboard,/if\(!isCurrent\(\)\|\|!node.isConnected/);
+console.log('PASS sales chart: rounded monetary scales, signed values, centered groups, complete comparisons, exact tooltip dates and offline fallback.');

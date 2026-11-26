@@ -1523,6 +1523,14 @@ try {
     await dono.waitForSelector('#stockos-daily-ranking tbody tr');
     await esperarTexto(dono, '#stockos-daily-ranking', 'Skol lata 350ml');
     await dono.waitForSelector('#stockos-daily-payments .stockos-payment-row');
+    for(const days of [7,30,1]){
+      await dono.locator('[data-stockos-period="'+days+'"]').click();
+      await dono.waitForSelector('#stockos-period-chart .stockos-reference-canvas');
+      await dono.waitForSelector('#stockos-period-chart .stockos-chart-details tbody tr',{state:'attached'});
+      assert.equal(await dono.locator('[data-stockos-period="'+days+'"]').getAttribute('aria-pressed'),'true');
+      assert.ok(await dono.locator('#stockos-period-chart .stockos-reference-canvas').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Gráfico sem overflow');
+    }
+    await dono.locator('[data-stockos-period="7"]').click();
     await dono.locator('.stockos-module-input').fill('cotacao');
     await dono.waitForSelector('#stockos-module-results a');
     assert.equal(await dono.locator('#stockos-module-results a').count(), 1);

@@ -68,3 +68,7 @@ O dashboard distingue falha de consulta de estoque/movimentações de listas vaz
 ## Reconstrução fiel à referência
 
 Quatro painéis explícitos no HTML: evolução de vendas (7/30 dias ou hoje), quatro KPIs, ranking diário, distribuição de pagamentos e estoque. Ações operacionais e ferramentas de demonstração abaixo dos painéis. Comparativo somente quando o período anterior existe; sem inventar séries ausentes. O backend usa os relatórios existentes; a demonstração agrega os registros fictícios já gravados.
+
+## Gráfico principal de vendas
+
+Chart.js existente, carregado após a primeira renderização local SVG. Eixos monetários arredondados, barras agrupadas e centralizadas, rótulos automáticos, tooltip com data exata de ambos os períodos, tabela acessível e fallback sem dependência de rede. Mostrar variação percentual somente quando os períodos têm registros completos e a base anterior é positiva; o dia atual está em andamento. Descartar renderizações atrasadas e destruir a instância ao sair da rota ou alternar período.

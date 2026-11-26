@@ -286,6 +286,7 @@ function iniciarDashboardSPA() {
 window.StockOSPages = window.StockOSPages || {};
 window.StockOSPages.dashboard = {
   mount: iniciarDashboardSPA,
+  deactivate() { ++dashboardLoadVersion; destroyReferenceSalesChart(); },
   activate() {
     Object.assign(window, {
       obterAlertasEstoque,
@@ -516,37 +517,168 @@ function referenceDonut(node, rows, center, unavailable) {
   });
   wrap.appendChild(legend);node.appendChild(wrap);
 }
-function referenceSeries(node, rows, compare) {
+
+let referenceSalesChart = null;
+function destroyReferenceSalesChart() {
+  if (referenceSalesChart) {
+    referenceSalesChart.destroy();
+    referenceSalesChart = null;
+  }
+}
+function referenceScale(rows, compare) {
+  const values=rows.flatMap(r=>compare?[r.value,r.previous]:[r.value]).filter(Number.isFinite);
+  const low=Math.min(0,...values), high=Math.max(0,...values);
+  const raw=(high-low||1)/4;
+  const magnitude=Math.pow(10,Math.floor(Math.log10(raw)));
+  const step=([1,2,2.5,5,10].find(n=>n*magnitude>=raw)||10)*magnitude;
+  return {min:Math.floor(low/step)*step,max:Math.max(step,Math.ceil(high/step)*step),step};
+}
+function referenceAxisMoney(value) {
+  const n=Number(value);
+  return Math.abs(n)>=1000
+    ? 'R$ '+new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1}).format(n)
+    : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2,minimumFractionDigits:0}).format(n);
+}
+function referenceComparison(rows, compare) {
+  if(!compare || !rows.length || !rows.every(r=>Number.isFinite(r.value)&&Number.isFinite(r.previous)))return null;
+  const current=rows.reduce((s,r)=>s+r.value,0), previous=rows.reduce((s,r)=>s+r.previous,0);
+  if(previous<=0)return null;
+  return {current,previous,percent:(current-previous)/previous*100};
+}
+function referenceFullDate(date) {
+  if(!date)return '';
+  const [y,m,d]=date.split('-');
+  return d+'/'+m+'/'+y;
+}
+function referenceRowTitle(row, previous=false) {
+  if(previous&&row.previousDate)return referenceFullDate(row.previousDate);
+  if(row.date)return referenceFullDate(row.date)+(row.hourLabel?' · '+row.hourLabel:'');
+  return row.label;
+}
+function referenceChartColors(node) {
+  const style=getComputedStyle(node);
+  const probe=document.createElement('canvas');probe.width=probe.height=1;
+  const ctx=probe.getContext('2d',{willReadFrequently:true});
+  const color=(token,fallback,opacity=1)=>{
+    const v=style.getPropertyValue(token).trim();
+    if(!v||!ctx)return fallback;
+    // Normalize modern CSS colors (including OKLCH) to sRGB for Chart.js.
+    ctx.clearRect(0,0,1,1);ctx.fillStyle=fallback;ctx.fillStyle=v;ctx.fillRect(0,0,1,1);
+    const [r,g,b,a]=ctx.getImageData(0,0,1,1).data;
+    return a?'rgba('+r+','+g+','+b+','+(a/255*opacity)+')':fallback;
+  };
+  return {accent:color('--accent','#c45120'),previous:color('--accent','#dfb7a4',.28),
+    grid:color('--rule','#e4dfda',.75),muted:color('--ink-3','#817a74'),ink:color('--ink','#25211e'),
+    paper:color('--paper-raised','#fff')};
+}
+function referenceChartConfig(rows,compare,palette) {
+  const scale=referenceScale(rows,compare);
+  const datasets=[{label:'Vendas líquidas',data:rows.map(r=>Number.isFinite(r.value)?r.value:null),
+    backgroundColor:palette.accent,hoverBackgroundColor:palette.accent}];
+  if(compare)datasets.push({label:'Período anterior',data:rows.map(r=>Number.isFinite(r.previous)?r.previous:null),
+    backgroundColor:palette.previous,hoverBackgroundColor:palette.previous});
+  return {type:'bar',data:{labels:rows.map(r=>r.label),datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    animation:typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:250},
+    interaction:{mode:'index',intersect:false,axis:'x'},
+    layout:{padding:{top:4,right:4,bottom:2}},
+    datasets:{bar:{borderRadius:4,borderSkipped:'start',categoryPercentage:rows.length>15?.88:.72,barPercentage:.85,maxBarThickness:34}},
+    plugins:{legend:{display:false},tooltip:{
+      enabled:true,mode:'index',intersect:false,displayColors:true,backgroundColor:palette.ink,titleColor:palette.paper,bodyColor:palette.paper,
+      cornerRadius:8,padding:12,bodySpacing:5,titleMarginBottom:8,
+      callbacks:{
+        title:items=>items.length?referenceRowTitle(rows[items[0].dataIndex]):'',
+        label:item=>{
+          const row=rows[item.dataIndex], prior=item.datasetIndex===1;
+          return item.dataset.label+(prior&&row.previousDate?' ('+referenceFullDate(row.previousDate)+')':'')+': '+formatarMoedaBR(item.parsed.y);
+        }
+      }
+    }},
+    scales:{
+      x:{offset:true,grid:{display:false},border:{display:false},ticks:{color:palette.muted,font:{size:10},autoSkip:true,maxTicksLimit:rows.length>15?7:rows.length,maxRotation:0,minRotation:0,padding:6}},
+      y:{min:scale.min,max:scale.max,grid:{color:palette.grid,drawTicks:false},border:{display:false,dash:[3,4]},
+        ticks:{stepSize:scale.step,color:palette.muted,font:{size:10},padding:8,callback:referenceAxisMoney}}
+    }
+  }};
+}
+// Immediate offline fallback. Uses the same zero baseline and scale as Chart.js,
+// with centered bars, complete labels and native hover descriptions.
+function referenceFallback(rows,compare,plot) {
+  const ns='http://www.w3.org/2000/svg';
+  const width=Math.max(300,Math.round(plot.parentElement?.clientWidth||600)), height=184;
+  const left=72,right=5,top=5,bottom=24,inner=width-left-right,h=height-top-bottom;
+  const {min,max,step}=referenceScale(rows,compare);
+  const y=value=>top+(max-value)/(max-min)*h;
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 '+width+' '+height);
+  svg.setAttribute('role','img');svg.setAttribute('aria-label','Vendas por período; consulte os valores abaixo');
+  const el=(tag,attrs,content,parent=svg)=>{
+    const n=document.createElementNS(ns,tag);
+    for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));
+    if(content!=null)n.textContent=content;parent.appendChild(n);return n;
+  };
+  for(let i=0;i<=Math.round((max-min)/step);i++){
+    const value=min+i*step, yy=y(value);
+    el('line',{x1:left,x2:width-right,y1:yy,y2:yy,stroke:'var(--rule)','stroke-dasharray':'3 4'});
+    el('text',{x:left-8,y:yy+4,'text-anchor':'end',fill:'var(--ink-3)','font-size':10},referenceAxisMoney(value));
+  }
+  const band=inner/rows.length,bar=Math.min(34,band*(compare?.31:.69));
+  const gap=Math.min(4,band*.06);
+  const labelEvery=Math.max(1,Math.ceil(rows.length/Math.max(2,Math.floor(inner/48))));
+  rows.forEach((r,i)=>{
+    const x=left+band*(i+.5), values=compare?[r.value,r.previous]:[r.value];
+    values.forEach((v,j)=>{
+      if(!Number.isFinite(v))return;
+      const bx=compare?x+(j?gap/2:-bar-gap/2):x-bar/2;
+      const rect=el('rect',{x:bx,y:Math.min(y(0),y(v)),width:bar,height:Math.abs(y(v)-y(0)),rx:Math.min(4,bar/3),fill:'var(--accent)',opacity:j?.28:1});
+      el('title',{},referenceRowTitle(r,j===1)+': '+formatarMoedaBR(v),rect);
+    });
+    if(i%labelEvery===0 || i===rows.length-1 && (i%labelEvery)>labelEvery/2)
+      el('text',{x,y:height-5,'text-anchor':'middle',fill:'var(--ink-3)','font-size':10},r.label);
+  });
+  plot.appendChild(svg);return svg;
+}
+function referenceSeries(node, rows, compare, isCurrent=()=>true) {
+  destroyReferenceSalesChart();
   node.replaceChildren();
   if(!rows.length){referenceMessage(node,'Sem dados para o período.');return;}
-  const values=rows.flatMap(r=>compare?[r.value,r.previous]:[r.value]).filter(Number.isFinite);
-  if(!values.length){referenceMessage(node,'Histórico indisponível.');return;}
-  const min=Math.min(0,...values), max=Math.max(1,...values), span=max-min;
-  const zero=(0-min)/span*100;
-  const grid=referenceNode('div','stockos-reference-chart-grid');
-  const axis=referenceNode('div','stockos-reference-axis');
-  for(let i=0;i<=4;i++)axis.appendChild(referenceNode('span','',new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1}).format(max-span*i/4)));
-  const plot=referenceNode('div','stockos-reference-plot');plot.style.setProperty('--series-count',String(rows.length));
-  rows.forEach((r,i)=>{
-    const col=referenceNode('div','stockos-reference-column');
-    const bars=referenceNode('div','stockos-reference-bars');
-    const label=r.label+': '+(Number.isFinite(r.value)?formatarMoedaBR(r.value):'indisponível')+(compare?', anterior: '+(Number.isFinite(r.previous)?formatarMoedaBR(r.previous):'indisponível'):'');
-    col.setAttribute('aria-label',label);col.title=label;
-    [r.value,...(compare?[r.previous]:[])].forEach((v,j)=>{
-      if(!Number.isFinite(v))return;
-      const bar=referenceNode('span','stockos-reference-bar'+(j?' previous':''));
-      bar.style.height=Math.abs(v)/span*100+'%';
-      bar.style.bottom=(v>=0?zero:zero-Math.abs(v)/span*100)+'%';
-      bars.appendChild(bar);
-    });
-    col.append(bars,referenceNode('span','stockos-reference-x',rows.length>15 && i%5!==0 && i!==rows.length-1?'':r.label));
-    plot.appendChild(col);
-  });
-  grid.append(axis,plot);node.appendChild(grid);
+  if(!rows.some(r=>Number.isFinite(r.value)||compare&&Number.isFinite(r.previous))){
+    referenceMessage(node,'Histórico indisponível.');return;
+  }
+  const plot=referenceNode('div','stockos-reference-canvas');
+  node.appendChild(plot);
+  const fallback=referenceFallback(rows,compare,plot);
   const legend=referenceNode('div','stockos-reference-legend');
   legend.append(referenceNode('span','current','Vendas líquidas'));
   if(compare)legend.append(referenceNode('span','previous','Período anterior'));
   node.appendChild(legend);
+  // The values remain keyboard/screen-reader accessible, even without Chart.js.
+  const details=referenceNode('details','stockos-chart-details');
+  details.appendChild(referenceNode('summary','','Ver valores do gráfico'));
+  const wrap=referenceNode('div','stockos-chart-data-wrap'),table=referenceNode('table','stockos-reference-table');
+  const head=referenceNode('thead'),hr=referenceNode('tr');
+  ['Período','Vendas líquidas',...(compare?['Data anterior','Valor anterior']:[])].forEach(name=>{
+    const th=referenceNode('th','',name);th.scope='col';hr.appendChild(th);
+  });
+  head.appendChild(hr);const body=referenceNode('tbody');
+  rows.forEach(r=>{
+    const tr=referenceNode('tr');
+    tr.append(referenceNode('td','',referenceRowTitle(r)),referenceNode('td','',Number.isFinite(r.value)?formatarMoedaBR(r.value):'Indisponível'));
+    if(compare)tr.append(referenceNode('td','',referenceRowTitle(r,true)),referenceNode('td','',Number.isFinite(r.previous)?formatarMoedaBR(r.previous):'Indisponível'));
+    body.appendChild(tr);
+  });
+  table.append(head,body);wrap.appendChild(table);details.appendChild(wrap);node.appendChild(details);
+  // First paint does not depend on CDN availability. Upgrade in place once loaded.
+  void carregarChartJsSobDemanda().then(()=>{
+    if(!isCurrent()||!node.isConnected||plot.parentElement!==node)return;
+    const canvas=referenceNode('canvas','');
+    canvas.setAttribute('role','img');
+    canvas.setAttribute('aria-label','Gráfico de vendas; valores disponíveis na tabela abaixo');
+    const config=referenceChartConfig(rows,compare,referenceChartColors(node));
+    plot.replaceChildren(canvas);
+    try {referenceSalesChart=new Chart(canvas,config);}
+    catch(error){Chart.getChart?.(canvas)?.destroy();plot.replaceChildren(fallback);console.warn('StockOS: gráfico local mantido',error);}
+  }).catch(error=>console.warn('StockOS: gráfico local mantido',error));
 }
 function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
   const chartPanel=document.getElementById('stockos-reference-sales');
@@ -573,6 +705,7 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
   const chart=document.getElementById('stockos-period-chart');
   const total=document.getElementById('stockos-period-total');
   const label=document.getElementById('stockos-period-label');
+  const trend=document.getElementById('stockos-period-trend');
   const buttons=[...chartPanel.querySelectorAll('[data-stockos-period]')];
   const reportPromise=PODE_VER_RENTABILIDADE_DASH?pedir('/api/relatorios/dia',null):Promise.resolve(null);
   const cache=new Map();
@@ -581,18 +714,30 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
     const id=++request;
     buttons.forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.stockosPeriod)===days)));
     label.textContent=days===1?'Hoje · por hora':'Últimos '+days+' dias · incluindo hoje';
+    destroyReferenceSalesChart();
+    trend.hidden=true;trend.textContent='';trend.className='stockos-period-trend';
     total.textContent='—';referenceMessage(chart,'Carregando vendas…');
     if(!PODE_VER_RENTABILIDADE_DASH){
       label.textContent='Totais acumulados por caixa';
       const values=caixas.filter(c=>c.totalVendas!=null&&Number.isFinite(Number(c.totalVendas))).map(c=>({label:'Caixa '+c.numeroCaixa,value:Number(c.totalVendas)}));
       total.textContent=values.length?formatarMoedaBR(values.reduce((s,r)=>s+r.value,0)):'—';
-      referenceSeries(chart,values,false);
+      referenceSeries(chart,values,false,()=>alive()&&id===request);
       buttons.forEach(b=>{b.hidden=true;});return;
     }
     let rows=[],compare=false;
     if(days===1){
       const report=await reportPromise;
-      if(Array.isArray(report?.porHora))rows=report.porHora.map(r=>({label:String(r.hora).padStart(2,'0')+'h',value:Number(r.valor)}));
+      if(Array.isArray(report?.porHora)){
+        const hours=new Map(report.porHora.filter(r=>Number.isInteger(Number(r.hora))&&Number(r.hora)>=0&&Number(r.hora)<=23)
+          .map(r=>[Number(r.hora),r.valor==null?null:Number(r.valor)]));
+        if(hours.size){
+          const first=Math.min(...hours.keys()),last=Math.max(...hours.keys());
+          rows=Array.from({length:last-first+1},(_,i)=>{
+            const h=first+i,hourLabel=String(h).padStart(2,'0')+'h';
+            return {label:hourLabel,hourLabel,date:report.data||referenceDate(0),value:hours.has(h)?hours.get(h):0};
+          });
+        }
+      }
     }else{
       const dates=Array.from({length:days},(_,i)=>referenceDate(i-days+1));
       const previous=Array.from({length:days},(_,i)=>referenceDate(i-2*days+1));
@@ -609,15 +754,27 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
         const day=report.dias.find(v=>v.data===d);
         // Preview history has a finite known window. Missing preview dates are unknown.
         if(!day && window.STOCKOS_PREVIEW)return null;
-        return day?Number(day.liquido):0;
+        return day?(day.liquido==null?null:Number(day.liquido)):0;
       };
-      rows=dates.map((d,i)=>({label:d.slice(8)+'/'+d.slice(5,7),value:value(d),previous:value(previous[i])}));
+      rows=dates.map((d,i)=>({label:d.slice(8)+'/'+d.slice(5,7),date:d,previousDate:previous[i],value:value(d),previous:value(previous[i])}));
       compare=rows.every(r=>Number.isFinite(r.previous));
     }
     if(!alive()||id!==request)return;
     const complete=rows.length&&rows.every(r=>Number.isFinite(r.value));
     total.textContent=complete?formatarMoedaBR(rows.reduce((s,r)=>s+r.value,0)):'—';
-    referenceSeries(chart,rows,compare);
+    const change=referenceComparison(rows,compare);
+    if(change){
+      const pct=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1,signDisplay:'exceptZero'}).format(change.percent)+'%';
+      const direction=change.percent>0?'positive':change.percent<0?'negative':'neutral';
+      const first=rows[0].previousDate,last=rows[rows.length-1].previousDate;
+      trend.classList.add(direction);
+      trend.textContent=pct+' vs. '+referenceFullDate(first)+' a '+referenceFullDate(last)+' · hoje parcial';
+      trend.hidden=false;
+    }else if(days>1 && rows.some(r=>Number.isFinite(r.value))){
+      trend.textContent=complete?'Comparativo indisponível':'Histórico parcial · total indisponível';
+      trend.hidden=false;
+    }
+    referenceSeries(chart,rows,compare,()=>alive()&&id===request);
   }
   buttons.forEach(b=>{b.hidden=false;b.onclick=()=>void period(Number(b.dataset.stockosPeriod));});
   void period(PODE_VER_RENTABILIDADE_DASH?7:1);
