@@ -609,7 +609,8 @@ async function descartarRascunho() {
 }
 
 function resetWizard() {
-  if(noteItemPending)return;
+  if(noteItemPending||noteFinalPending)return;
+  noteFinalUncertain=false;
   noteItemUncertain=false;
   notaAtual = null;
   irParaStep(1);
@@ -620,68 +621,131 @@ function resetWizard() {
   limparAlert('alert-s1');
 }
 
-function renderItensStep3() {
-  document.getElementById('s3-itens-lista').innerHTML = notaAtual.itens.map((item) => `
-    <div class="item-nota-row">
-      <span class="item-nota-nome">${escapeHtml(item.produtoNome)}</span>
-      <span class="item-nota-qty">${item.quantidade} un.</span>
-      <span class="item-nota-preco">× R$${Number(item.precoUnitario).toFixed(2)}</span>
-      <span class="item-nota-subtotal">R$${Number(item.subtotal).toFixed(2)}</span>
-    </div>`).join('');
-
-  document.getElementById('s3-total').textContent = `R$${Number(notaAtual.total).toFixed(2)}`;
+// Receipt and payment are separate server-side state transitions.
+let noteFinalPending=false,noteFinalUncertain=false;
+function noteFinalTarget(status){
+  return status==='PENDENTE'?3:status==='CONFIRMADA'?4:status==='PAGA'?5:null;
 }
-
-async function avancarStep3() {
-  const btn = document.getElementById('btn-step3-avancar');
-  setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${notaAtual.id}/confirmar`, { method: 'POST' });
-    if (!resp.ok) {
-      mostrarAlert('alert-s3', await safeReadErrorMessage(resp, 'Erro ao confirmar nota.'), 'error');
-      return;
-    }
-    notaAtual = await resp.json();
-    limparAlert('alert-s3');
-    irParaStep(4);
-    renderStep4();
-  } finally {
-    setLoading(btn, false);
+function noteFinalResponse(note,id){
+  return !!note&&String(note.id)===String(id)&&Array.isArray(note.itens)&&noteFinalTarget(note.status)!=null;
+}
+function noteFinalValid(note,step){
+  const model=noteDetailModel(note);
+  if(!model||noteFinalTarget(note.status)!==step||model.total==null)return false;
+  if(step===4)return noteItemNumber(model.total)!=null;
+  return model.totalItems>0&&model.units!=null&&model.units>0&&model.difference===0&&note.itens.every(i=>noteItemNumber(i.quantidade,true)>0&&noteItemNumber(i.precoUnitario)!=null&&noteItemNumber(i.subtotal)!=null);
+}
+function noteFinalSummary(note){
+  const model=noteDetailModel(note),esc=escapeHtml;
+  return '<div class="note-final-identity"><div><span>Fornecedor</span><strong>'+esc(note.fornecedorNome||'—')+'</strong></div><div><span>Nota</span><strong>#'+esc(note.id)+'</strong></div><div><span>Emissão</span><strong>'+esc(noteDetailDate(note.dataEmissao))+'</strong></div></div>'+
+    '<div class="note-final-metrics"><div><span>Itens registrados</span><strong>'+model.totalItems+'</strong></div><div><span>Unidades</span><strong>'+noteDetailQuantity(model.units)+'</strong></div></div>'+
+    '<div class="note-final-total"><span>Valor total registrado</span><strong>'+noteDetailMoney(model.total)+'</strong></div>';
+}
+function syncNoteFinalControls(){
+  const get=id=>document.getElementById(id);
+  for(const step of [3,4]){
+    const check=get(step===3?'s3-conferido':'s4-pago'),button=get('btn-step'+step+'-avancar'),refresh=get('s'+step+'-consultar');
+    if(!check||!button||!refresh)continue;
+    check.disabled=noteFinalPending||noteFinalUncertain||!noteFinalValid(notaAtual,step);
+    button.disabled=check.disabled||!check.checked||stepAtual!==step;
+    refresh.hidden=!noteFinalUncertain;refresh.disabled=noteFinalPending;
   }
+  get('s3-voltar').disabled=noteFinalPending||noteFinalUncertain;
+  get('s4-depois').disabled=noteFinalPending;
 }
-
-function renderStep4() {
-  document.getElementById('s4-resumo').innerHTML = `
-    <div class="info-card">
-      <div class="info-label">Fornecedor</div>
-      <div class="table-cell-strong">${escapeHtml(notaAtual.fornecedorNome)}</div>
-    </div>
-    <div class="info-card">
-      <div class="info-label">Itens na Nota</div>
-      <div class="info-value">${notaAtual.itens.length}</div>
-    </div>
-    <div class="info-card">
-      <div class="info-label">Valor Total</div>
-      <div class="info-value green">R$${Number(notaAtual.total).toFixed(2)}</div>
-    </div>`;
+function renderItensStep3(){
+  const get=id=>document.getElementById(id),model=noteDetailModel(notaAtual),esc=escapeHtml;
+  if(!model)return;
+  get('s3-identidade').innerHTML='<div><span>Fornecedor</span><strong>'+esc(notaAtual.fornecedorNome||'—')+'</strong></div><div><span>Nota</span><strong>#'+esc(notaAtual.id)+'</strong></div>';
+  get('s3-contagem').textContent=model.totalItems+' '+(model.totalItems===1?'item':'itens');
+  get('s3-itens-lista').innerHTML='<table class="note-detail-table"><thead><tr><th scope="col">Produto</th><th scope="col">Qtd.</th><th scope="col">Preço unitário</th><th scope="col">Subtotal</th></tr></thead><tbody>'+notaAtual.itens.map(i=>'<tr><td><strong>'+esc(i.produtoNome||'—')+'</strong></td><td>'+noteDetailQuantity(noteDetailNumber(i.quantidade))+'</td><td>'+noteDetailMoney(noteDetailNumber(i.precoUnitario))+'</td><td>'+noteDetailMoney(noteDetailNumber(i.subtotal))+'</td></tr>').join('')+'</tbody></table>';
+  get('s3-metricas').innerHTML='<div><span>Itens</span><strong>'+model.totalItems+'</strong></div><div><span>Unidades</span><strong>'+noteDetailQuantity(model.units)+'</strong></div>';
+  get('s3-total').textContent=noteDetailMoney(model.total);
+  get('s3-conferido').checked=false;
+  get('s3-conferido').onchange=syncNoteFinalControls;
+  get('s3-consultar').onclick=()=>void reconcileNoteFinal();
+  get('s3-voltar').onclick=()=>{if(noteFinalPending||noteFinalUncertain)return;irParaStep(2);renderItensStep2();};
+  limparAlert('alert-s3');
+  if(!noteFinalValid(notaAtual,3))mostrarAlert('alert-s3','Os itens ou valores da nota precisam ser conferidos antes da confirmação.','error');
+  syncNoteFinalControls();
 }
-
-async function avancarStep4() {
-  const btn = document.getElementById('btn-step4-avancar');
-  setLoading(btn, true);
-  try {
-    const resp = await fetch(`/api/notas/${notaAtual.id}/pagamento`, { method: 'POST' });
-    if (!resp.ok) {
-      mostrarAlert('alert-s4', await safeReadErrorMessage(resp, 'Erro ao registrar pagamento.'), 'error');
-      return;
+function renderStep4(){
+  const get=id=>document.getElementById(id);
+  get('s4-resumo').innerHTML=noteFinalSummary(notaAtual);
+  get('s4-total').textContent=noteDetailMoney(noteDetailNumber(notaAtual.total));
+  get('s4-pago').checked=false;get('s4-pago').onchange=syncNoteFinalControls;
+  get('s4-consultar').onclick=()=>void reconcileNoteFinal();
+  get('s4-depois').onclick=()=>{if(noteFinalPending)return;abrirAba('aba-lista');void carregarNotas();};
+  limparAlert('alert-s4');
+  if(!noteFinalValid(notaAtual,4))mostrarAlert('alert-s4','Valor ou situação indisponível. Confira a nota antes de registrar o pagamento.','error');
+  syncNoteFinalControls();
+}
+function renderNoteDone(){
+  document.getElementById('s5-resumo').innerHTML=noteFinalSummary(notaAtual);
+  document.getElementById('s5-detalhes').onclick=()=>void verDetalhe(notaAtual.id);
+}
+function applyNoteFinal(note){
+  notaAtual=note;noteFinalUncertain=false;
+  const target=noteFinalTarget(note.status);
+  irParaStep(target);
+  if(target===3)renderItensStep3();
+  else if(target===4)renderStep4();
+  else renderNoteDone();
+}
+async function mutateNoteFinal(step){
+  if(noteFinalPending||noteFinalUncertain||noteListMutation||stepAtual!==step||!noteFinalValid(notaAtual,step))return;
+  const check=document.getElementById(step===3?'s3-conferido':'s4-pago');
+  if(!check?.checked)return;
+  const btn=document.getElementById('btn-step'+step+'-avancar'),id=String(notaAtual.id),alert='alert-s'+step;
+  const current=()=>document.getElementById(btn.id)===btn&&String(notaAtual?.id)===id;
+  const action=step===3?'confirmar':'pagamento';
+  noteFinalPending=true;limparAlert(alert);setLoading(btn,true);syncNoteFinalControls();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+    if(!current())return;
+    if(!resp.ok){
+      // A conflict or server error may mean another request already changed the note.
+      if(resp.status>=500||resp.status===409)throw Error('Resultado incerto');
+      mostrarAlert(alert,await safeReadErrorMessage(resp,'Não foi possível registrar a operação.'),'error');
+      check.checked=false;return;
     }
-    notaAtual = await resp.json();
-    irParaStep(5);
+    const result=await resp.json();
+    if(!current())return;
+    if(!noteFinalResponse(result,id)||noteFinalTarget(result.status)!==step+1)throw Error('Resposta inesperada');
+    applyNoteFinal(result);
     await carregarNotas();
-  } finally {
-    setLoading(btn, false);
+  }catch{
+    if(current()){
+      noteFinalUncertain=true;check.checked=false;
+      mostrarAlert(alert,'Não foi possível confirmar o resultado. Consulte a situação da nota antes de tentar novamente.','error');
+    }
+  }finally{
+    noteFinalPending=false;setLoading(btn,false);
+    if(current())syncNoteFinalControls();
   }
 }
+async function reconcileNoteFinal(){
+  if(noteFinalPending||!noteFinalUncertain||!notaAtual||![3,4].includes(stepAtual))return;
+  const step=stepAtual,id=String(notaAtual.id),btn=document.getElementById('s'+step+'-consultar'),alert='alert-s'+step;
+  const current=()=>document.getElementById(btn.id)===btn&&String(notaAtual?.id)===id;
+  noteFinalPending=true;syncNoteFinalControls();
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(id));
+    if(!resp.ok)throw Error('Falha na consulta');
+    const result=await resp.json();
+    if(!current())return;
+    if(!noteFinalResponse(result,id)||noteFinalTarget(result.status)<step)throw Error('Situação inesperada');
+    applyNoteFinal(result);
+    if(stepAtual===step)mostrarAlert(alert,'Situação atualizada. Confira os dados e confirme novamente apenas se necessário.','info');
+    await carregarNotas();
+  }catch{
+    if(current())mostrarAlert(alert,'Não foi possível conferir a situação. Consulte Todas as notas antes de continuar.','error');
+  }finally{
+    noteFinalPending=false;if(current())syncNoteFinalControls();
+  }
+}
+async function avancarStep3(){return mutateNoteFinal(3);}
+async function avancarStep4(){return mutateNoteFinal(4);}
 
 function irParaStep(step) {
   stepAtual = step;
@@ -702,7 +766,7 @@ function irParaStep(step) {
 }
 
 function abrirAba(abaId) {
-  if(noteOpening||noteItemPending)return;
+  if(noteOpening||noteItemPending||noteFinalPending)return;
   if(abaId==='aba-lista'&&noteOpeningUncertain)void carregarNotas();
   document.querySelectorAll('.tab-panel').forEach((painel) => painel.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach((botao) => botao.classList.remove('active'));
@@ -713,7 +777,10 @@ function abrirAba(abaId) {
 }
 
 function iniciarNovaNota() {
-  if(noteOpening||noteItemPending)return;
+  if(noteOpening||noteItemPending||noteFinalPending)return;
+  if(noteFinalUncertain&&document.getElementById('aba-nova').classList.contains('active')){
+    mostrarAlert('alert-s'+stepAtual,'Consulte a situação da nota antes de iniciar outra.','error');return;
+  }
   if(noteOpeningUncertain&&document.getElementById('aba-nova').classList.contains('active')){
     mostrarAlert('alert-s1','Confira Todas as Notas antes de reiniciar a abertura.','error');return;
   }
@@ -725,6 +792,7 @@ function iniciarNovaNota() {
 
 async function mutateListedNote(id,action){
   if(noteListMutation||noteListUncertain||noteListLoading||noteListFailed)return;
+  if(noteFinalPending)return;
   const note=noteListRecords?.find(n=>String(n.id)===String(id)),payment=action==='pagamento';
   if(!note||note.status!==(payment?'CONFIRMADA':'PENDENTE')){showToast('Atualize a listagem antes de continuar.','error');return;}
   const value=noteDetailNumber(note.total);

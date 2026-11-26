@@ -178,3 +178,7 @@ O modo de novo produto apresenta identificação antes dos dados de compra e ocu
 ### Cadastro inline compacto
 
 Cabeçalho próprio, sem estilos herdados do preview; identificação do produto separada da compra. Nome em largura total e três campos de cadastro em uma linha quando houver espaço, com quebra responsiva. Preço base permanece opcional, usando o valor da compra se omitido. Validação dos campos opcionais antes de habilitar o lançamento. IDs e payload preservados.
+
+## Recebimento, pagamento e conclusão da nota
+
+Conferência tabular com totais em BRL, resumo lateral e declaração explícita de conferência. Pagamento separado do recebimento, declaração de pagamento já realizado e opção de voltar à listagem. Conclusão mostra identificação, itens e total, com acesso ao detalhe. Operações existentes POST confirmar/pagamento protegidas contra repetição simultânea no cliente; respostas incertas bloqueiam reenvio até consulta GET do status. Nenhuma transferência bancária, alteração de API ou garantia de idempotência no servidor foi adicionada.

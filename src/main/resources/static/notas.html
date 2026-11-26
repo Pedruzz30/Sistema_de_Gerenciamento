@@ -252,44 +252,63 @@
 
       <div class="nota-panel fade-up fade-up-1" id="painel-step3" hidden>
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 3 - Confirmar Recebimento</span>
-          <span class="badge badge-amber">Pendente</span>
+          <div><span class="nota-panel-title">Conferir recebimento</span><p class="note-item-subtitle">Confira os produtos recebidos antes de atualizar o estoque.</p></div>
+          <span class="note-final-state" data-tone="warning">Pendente</span>
         </div>
-        <p class="inline-note">
-          Ao confirmar, os produtos serão automaticamente adicionados ao estoque.
-          Verifique os itens antes de prosseguir.
-        </p>
-        <div class="itens-nota-list notes-items-list" id="s3-itens-lista"></div>
-        <div class="actions-inline actions-inline--between">
-          <span class="notes-total-label">Total: <strong id="s3-total" class="notes-total-value">R$0,00</strong></span>
-          <button class="btn-primary" id="btn-step3-avancar" onclick="avancarStep3()">Confirmar entrada no estoque</button>
+        <div class="note-final-workspace">
+          <section class="note-final-card note-final-review" aria-label="Conferência dos itens">
+            <div class="note-final-identity" id="s3-identidade"></div>
+            <div class="note-final-table-head"><strong>Produtos recebidos</strong><span id="s3-contagem"></span></div>
+            <div class="note-final-table-wrap" id="s3-itens-lista"></div>
+          </section>
+          <aside class="note-final-card note-final-aside" aria-label="Resumo do recebimento">
+            <strong>Resumo do recebimento</strong>
+            <div class="note-final-metrics" id="s3-metricas"></div>
+            <div class="note-final-total"><span>Valor total da compra</span><strong id="s3-total">—</strong></div>
+            <div class="note-final-guidance"><strong>Impacto da confirmação</strong><p>Os itens serão adicionados ao estoque. O pagamento continuará pendente.</p></div>
+            <label class="note-final-check"><input type="checkbox" id="s3-conferido"><span>Conferi os produtos, as quantidades e os valores da compra.</span></label>
+            <div class="alert-modal" id="alert-s3" role="alert"></div>
+            <button type="button" class="btn-primary" id="btn-step3-avancar" onclick="avancarStep3()" disabled>Confirmar entrada no estoque</button>
+            <button type="button" class="btn-secondary" id="s3-consultar" hidden>Consultar situação da nota</button>
+            <button type="button" class="btn-secondary" id="s3-voltar">Voltar aos itens</button>
+          </aside>
         </div>
-        <div class="alert-modal notes-alert-spacing" id="alert-s3"></div>
       </div>
 
       <div class="nota-panel fade-up fade-up-1" id="painel-step4" hidden>
         <div class="nota-panel-header">
-          <span class="nota-panel-title">Etapa 4 - Registrar Pagamento</span>
-          <span class="badge badge-cyan">Confirmada</span>
+          <div><span class="nota-panel-title">Registrar pagamento</span><p class="note-item-subtitle">Registre a quitação da compra após realizar o pagamento.</p></div>
+          <span class="note-final-state" data-tone="neutral">Confirmada · não paga</span>
         </div>
-        <div class="info-grid notes-step-summary" id="s4-resumo"></div>
-        <p class="inline-note">
-          Clique abaixo para registrar o pagamento e encerrar o ciclo desta nota fiscal.
-        </p>
-          <button class="btn-primary" id="btn-step4-avancar" onclick="avancarStep4()">Registrar pagamento</button>
-          <div class="alert-modal notes-alert-spacing" id="alert-s4"></div>
+        <div class="note-final-workspace">
+          <section class="note-final-card note-final-payment" aria-label="Dados da compra">
+            <div id="s4-resumo"></div>
+            <div class="note-final-guidance"><strong>Entrada no estoque confirmada</strong><p>O recebimento já foi registrado. Você pode registrar o pagamento agora ou retornar à listagem para fazê-lo posteriormente.</p></div>
+          </section>
+          <aside class="note-final-card note-final-aside" aria-label="Registro de pagamento">
+            <strong>Pagamento da nota</strong>
+            <div class="note-final-total"><span>Valor total a registrar</span><strong id="s4-total">—</strong></div>
+            <p class="note-final-copy">O StockOS registra a quitação. Não realiza transferências, Pix ou cobranças nesta operação.</p>
+            <label class="note-final-check"><input type="checkbox" id="s4-pago"><span>Confirmo que o pagamento deste valor já foi realizado.</span></label>
+            <div class="alert-modal" id="alert-s4" role="alert"></div>
+            <button type="button" class="btn-primary" id="btn-step4-avancar" onclick="avancarStep4()" disabled>Registrar pagamento</button>
+            <button type="button" class="btn-secondary" id="s4-consultar" hidden>Consultar situação da nota</button>
+            <button type="button" class="btn-secondary" id="s4-depois">Voltar à listagem</button>
+          </aside>
         </div>
+      </div>
 
       <div class="nota-panel fade-up fade-up-1" id="painel-done" hidden>
-        <div class="notes-done-state">
-          <div class="notes-done-icon" data-icon="checkCircle"></div>
-          <div class="nota-panel-title notes-done-title">Nota Fiscal Concluída!</div>
-          <p class="inline-note notes-done-copy">
-            Pagamento registrado. A nota foi encerrada com sucesso.
-          </p>
-          <div class="actions-inline">
-            <button class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">Criar Nova Nota</button>
-            <button class="btn-secondary" onclick="abrirAba('aba-lista')">Ver Todas as Notas</button>
+        <div class="note-final-complete">
+          <div class="note-final-success-heading"><span class="note-final-success-icon" data-icon="checkCircle" aria-hidden="true"></span><div><span class="nota-panel-title">Nota concluída</span><p>Recebimento confirmado e pagamento registrado no StockOS.</p></div><span class="note-final-state" data-tone="success">Paga</span></div>
+          <div class="note-final-complete-grid">
+            <section class="note-final-card note-final-payment" aria-label="Comprovante interno da operação"><div id="s5-resumo"></div><p class="note-final-copy">Resumo interno do registro. Não substitui documento fiscal ou comprovante bancário.</p></section>
+            <section class="note-final-card note-final-aside" aria-label="Próximas ações">
+              <strong>Próximas ações</strong>
+              <button type="button" class="btn-secondary" id="s5-detalhes">Ver detalhes da nota</button>
+              <button type="button" class="btn-primary" onclick="iniciarNovaNota(); abrirAba('aba-nova')">Criar nova nota</button>
+              <button type="button" class="btn-secondary" onclick="abrirAba('aba-lista')">Ver todas as notas</button>
+            </section>
           </div>
         </div>
       </div>
