@@ -96,3 +96,7 @@ Movimentações de hoje com estado vazio compacto e acesso ao estoque; limite de
 ## Central de alertas de estoque
 
 Contagens por grupo, filtros de gravidade, pesquisa sem distinção de acentos, páginas de seis produtos e acesso aos filtros existentes de estoque. Prioridade: sem estoque, crítico, baixo, moderado; dentro do nível, menor cobertura do mínimo primeiro. Déficit = máximo de zero e mínimo menos quantidade atual; valores desconhecidos não viram zero. Percentual representa cobertura do mínimo, não previsão de compra. Superfície neutra, cor restrita à situação. Sem consultas ou permissões novas.
+
+## PDV de demonstração — terminal de vendas
+
+Novo terminal em duas colunas inspirado na referência: busca por nome ou código, categorias reais, cartões de produtos, saldo disponível, carrinho, quantidade, subtotal, pagamento fictício e troco. No celular, painéis Produtos/Pedido. Transação permanece no endpoint atômico da demonstração; retentativas ambíguas preservam o payload. Não altera o PDV real, nem simula desconto, autorização, TEF ou emissão fiscal. O modo original mantém o modal antigo; o caixa completo continua disponível separadamente.
