@@ -634,3 +634,34 @@ body.notas-page #aba-nova #painel-step2 .notes-item-composer__price{grid-column:
   body.notas-page #aba-nova #painel-step2 .notes-item-composer{grid-template-columns:minmax(0,1fr);}
   body.notas-page #aba-nova #painel-step2 :is(.notes-item-composer__qty,.notes-item-composer__price,.note-item-estimate,.notes-item-composer__submit){grid-column:1;}
 }
+
+/* New product mode: independent header and compact identity/purchase groups. */
+body.notas-page #aba-nova #painel-step2 .note-item-composer-header {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:8px 14px;padding:0 0 11px;margin:0 0 12px;border-bottom:1px solid var(--rule);
+  background:transparent;
+}
+.note-item-composer-header>div{min-width:0;flex:1 1 190px;}
+.note-item-composer-header strong{display:block;font-size:14px;line-height:1.3;color:var(--ink);}
+.note-item-composer-header p{margin:4px 0 0;font-size:12px;line-height:1.4;color:var(--ink-3);}
+body.notas-page #aba-nova #painel-step2 #btn-toggle-novo-produto{min-height:36px;padding:7px 11px;font-size:12px;box-shadow:none;}
+body.notas-page #aba-nova #painel-step2 #painel-novo-produto.note-new-product{display:grid;gap:8px;margin:0;padding:0 0 10px;border:0;border-bottom:1px solid var(--rule);}
+.note-item-section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:5px 10px;flex-wrap:wrap;}
+.note-item-section-heading strong{font-size:12px;font-weight:650;color:var(--ink);}
+.note-item-section-heading>span{font-size:11px;color:var(--ink-3);}
+.note-new-product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:8px 10px;align-items:start;}
+.note-new-product-grid .note-new-product-name{grid-column:1/-1;}
+.note-new-product-grid>.form-group{min-width:0;}
+.note-item-optional{font-weight:400;font-size:10px;color:var(--ink-3);}
+.note-new-product-help{margin:0;font-size:11px;line-height:1.45;color:var(--ink-3);}
+.note-item-purchase-heading{grid-column:1/-1;padding-top:2px;}
+body.notas-page #aba-nova #painel-step2 .notes-item-composer .form-group label{font-size:12px;text-transform:none;letter-spacing:0;margin:0 0 5px;line-height:1.3;}
+body.notas-page #aba-nova #painel-step2 .notes-item-composer .form-group :is(input,select){min-width:0;width:100%;height:38px;min-height:38px;padding:7px 10px;font-size:13px;}
+body.notas-page #aba-nova #painel-step2 .note-item-estimate{min-height:38px;padding:7px 10px;}
+body.notas-page #aba-nova #painel-step2 .note-item-summary{gap:9px;}
+body.notas-page #aba-nova #painel-step2 #note-item-discard{border-color:var(--rule);color:var(--ink-3);}
+@media(max-width:540px){
+  .note-new-product-grid{grid-template-columns:minmax(0,1fr);}
+  body.notas-page #aba-nova #painel-step2 .notes-item-composer .form-group :is(input,select){height:44px;min-height:44px;}
+  body.notas-page #aba-nova #painel-step2 #btn-toggle-novo-produto{min-height:44px;}
+}

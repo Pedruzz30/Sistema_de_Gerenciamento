@@ -249,6 +249,9 @@ function noteItemMatches(products,linked,query,limit=6){
   return (Array.isArray(products)?products:[]).filter(p=>Number.isSafeInteger(Number(p.id))&&Number(p.id)>0&&(!term||norm([p.nome,p.id,p.codigoBarras].join(' ')).includes(term)))
     .sort((a,b)=>Number(ids.has(String(b.id)))-Number(ids.has(String(a.id)))||String(a.nome).localeCompare(String(b.nome),'pt-BR')||Number(a.id)-Number(b.id)).slice(0,limit);
 }
+function noteNewProductFieldsValid(name,minimum,basePrice){
+  return !!String(name??'').trim()&&(String(minimum??'').trim()===''||noteItemNumber(minimum,true)!=null)&&(String(basePrice??'').trim()===''||noteItemNumber(basePrice)!=null);
+}
 let noteItemPending=false,noteItemUncertain=false;
 function updateNoteItemComposer(){
   const get=id=>document.getElementById(id),input=get('s2-produto-busca'),matches=get('note-item-matches');
@@ -256,6 +259,8 @@ function updateNoteItemComposer(){
   const managed=!!document.querySelector('.app.stockos-shell-v2'),creating=!get('painel-novo-produto').hidden;
   const selected=creating?null:resolveProdutoSelecionado();
   get('note-item-existing').hidden=creating;
+  get('note-item-mode-title').textContent=creating?'Cadastrar e lançar produto':'Lançar produto';
+  get('note-item-mode-description').textContent=creating?'Preencha o cadastro e os dados da compra em um único lançamento.':'Selecione um produto do catálogo e informe os dados da compra.';
   input.disabled=creating||noteItemPending||noteItemUncertain;
   get('note-item-reconcile').hidden=!noteItemUncertain;
   get('note-item-reconcile').disabled=noteItemPending;
@@ -264,7 +269,8 @@ function updateNoteItemComposer(){
   const subtotal=qty>0&&price!=null?noteItemNumber(qty*price):null;
   get('note-item-estimate').textContent=noteDetailMoney(subtotal);
   get('note-item-selection').textContent=creating?'':selected?(produtoVinculadoAoFornecedor(selected.id)?'Produto selecionado · já vinculado':'Produto selecionado · vínculo automático ao salvar'):'Escolha um produto do catálogo.';
-  get('btn-adicionar-item').disabled=noteItemPending||noteItemUncertain||!notaAtual||!(qty>0)||price==null||(creating?!get('s2-novo-nome').value.trim():!selected);
+  const newFieldsValid=!creating||noteNewProductFieldsValid(get('s2-novo-nome').value,get('s2-novo-minimo').value,get('s2-novo-preco-base').value);
+  get('btn-adicionar-item').disabled=noteItemPending||noteItemUncertain||!notaAtual||!(qty>0)||price==null||(creating?!newFieldsValid:!selected);
   get('btn-step2-avancar').disabled=noteItemPending||noteItemUncertain||!notaAtual?.itens?.length;
   get('note-item-discard').disabled=noteItemPending;
   matches.hidden=!managed||creating||!!selected||noteItemPending||noteItemUncertain||!input.value.trim();
@@ -281,7 +287,7 @@ function updateNoteItemComposer(){
   }
 }
 function bindNoteItemComposer(){
-  ['s2-qtd','s2-preco'].forEach(id=>document.getElementById(id).oninput=updateNoteItemComposer);
+  ['s2-qtd','s2-preco','s2-novo-minimo','s2-novo-preco-base'].forEach(id=>document.getElementById(id).oninput=updateNoteItemComposer);
   document.getElementById('note-item-reconcile').onclick=()=>void reconcileNoteItem();
 }
 
@@ -382,7 +388,7 @@ function toggleNovoProduto(forceOpen) {
   painel.hidden = !abrir;
   botao.setAttribute('aria-expanded',String(abrir));
   botao.innerHTML = abrir
-    ? 'Usar Produto Existente'
+    ? 'Buscar produto existente'
     : '<span class="btn-inline-icon" aria-hidden="true">' + iconMarkup('plus') + '</span>Novo Produto';
 
   if (abrir) {
@@ -393,6 +399,9 @@ function toggleNovoProduto(forceOpen) {
   }
 
   atualizarAvisoVinculo();
+  if(typeof forceOpen!=='boolean'){
+    document.getElementById(abrir?'s2-novo-nome':'s2-produto-busca').focus();
+  }
 }
 
 function atualizarAvisoVinculo() {
