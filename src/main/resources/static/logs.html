@@ -50,51 +50,39 @@
         <p class="page-sub header-sub" id="header-sub">Auditoria de ações realizadas no sistema.</p>
       </div>
       <div class="topbar-right header-right">
-      <button type="button" class="btn btn-secondary btn-secondary--compact" onclick="carregarLogs()">
-        <span class="btn-inline-icon" data-icon="refresh"></span>
-        Atualizar
-      </button>
+      
       </div>
     </header>
 
     <div class="main-body content">
 
-    <div class="page-summary-grid fade-up" id="logs-summary"></div>
-
-    <!-- Histórico e filtro ficam no mesmo painel -->
-    <div class="table-card logs-history-card fade-up fade-up-1">
-      <div class="table-header">
-        <div class="logs-history-heading">
-          <span class="table-title">Histórico de Ações</span>
-          <span class="table-count" id="table-count" aria-live="polite">—</span>
-        </div>
-        <div class="search-wrap logs-history-search">
-          <label class="logs-visually-hidden" for="busca">Buscar por ação, descrição ou usuário</label>
-          <input class="input input-search" type="search" id="busca" placeholder="Buscar por ação, descrição ou RU..." oninput="filtrar()" autocomplete="off">
-        </div>
+    <div class="audit-heading"><div><strong>Trilha de auditoria</strong><p>Até 2.000 eventos mais recentes disponíveis · somente leitura.</p></div><div><span id="audit-refresh-time" role="status">—</span><button type="button" class="btn btn-secondary" id="audit-refresh" onclick="carregarLogs()">Atualizar</button></div></div>
+    <section class="page-summary-grid fade-up" id="logs-summary" aria-label="Indicadores dos registros carregados"></section>
+    <section class="table-card logs-history-card fade-up fade-up-1">
+      <div class="table-header"><div class="logs-history-heading"><span class="table-title">Histórico de ações</span><span class="table-count" id="table-count" aria-live="polite">—</span></div><span class="audit-readonly">Somente leitura</span></div>
+      <div class="audit-filters">
+        <div class="audit-search"><label for="busca">Pesquisar eventos</label><input class="input input-search" type="search" id="busca" placeholder="Ação, descrição, ID ou RU..." oninput="filtrar()" autocomplete="off"></div>
+        <div><label for="audit-action">Tipo de ação</label><select id="audit-action"><option value="">Todas as ações</option></select></div>
+        <div><label for="audit-user">Usuário (RU)</label><select id="audit-user"><option value="">Todos</option></select></div>
+        <div><label for="audit-from">De</label><input type="date" id="audit-from"></div>
+        <div><label for="audit-to">Até</label><input type="date" id="audit-to"></div>
+        <button type="button" class="btn btn-secondary" id="audit-clear">Limpar</button>
       </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Data / Hora</th>
-              <th>Usuário (RU)</th>
-              <th>Ação</th>
-              <th>Descrição</th>
-            </tr>
-          </thead>
-          <tbody id="tabela-logs">
-            <tr><td colspan="5" class="empty">Carregando logs...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
+      <p id="audit-filter-error" class="audit-filter-error" role="alert" hidden></p>
+      <div class="table-wrap"><table class="table"><thead><tr><th scope="col">ID</th><th scope="col">Data e hora</th><th scope="col">Responsável</th><th scope="col">Ação</th><th scope="col">Descrição</th><th scope="col">Detalhes</th></tr></thead><tbody id="tabela-logs"><tr><td colspan="6" class="empty">Carregando logs...</td></tr></tbody></table></div>
+      <div class="audit-pagination"><span id="audit-range" role="status"></span><div><label for="audit-sort">Ordem</label><select id="audit-sort"><option value="new">Mais recentes</option><option value="old">Mais antigos</option></select><label for="audit-size">Por página</label><select id="audit-size"><option>10</option><option selected>15</option><option>25</option><option>50</option></select><button type="button" class="btn btn-secondary" id="audit-prev">Anterior</button><button type="button" class="btn btn-secondary" id="audit-next">Próxima</button></div></div>
+    </section>
     </div>
   </div>
 </div>
 
+<div class="modal-overlay" id="audit-detail" onclick="if(event.target===this) fecharModal('audit-detail')">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
+    <div class="modal-header"><div><h3 class="modal-title" id="audit-detail-title">Detalhes do evento</h3><p class="audit-detail-sub">Registro de auditoria · somente leitura</p></div><button type="button" class="modal-close" aria-label="Fechar janela" onclick="fecharModal('audit-detail')">✕</button></div>
+    <div class="modal-body"><div id="audit-detail-fields" class="audit-detail-fields"></div><div class="audit-detail-description"><strong>Descrição registrada</strong><p id="audit-detail-description"></p></div></div>
+    <div class="modal-footer"><button type="button" class="btn-secondary" onclick="fecharModal('audit-detail')">Fechar</button></div>
+  </div>
+</div>
 <script src="/js/stockos-auth.js"></script>
 <script src="/js/shared.js"></script>
 <script src="/js/logs.js"></script>

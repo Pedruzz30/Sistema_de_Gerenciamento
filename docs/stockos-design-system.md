@@ -198,3 +198,7 @@ Indicadores globais de cadastros, ativos, inativos e contas ativas com a permiss
 ### Alteração de classe de acesso
 
 Modal com identificação e RU, comparação entre classe atual e pretendida e diferenças de permissões. A origem é o conjunto retornado pela API; o destino é a previsão das classes de FuncionarioController. Não presume equivalência entre nomes legados. Bloqueia a mesma classe, contas inativas e dados de permissão ausentes; confirma concessão administrativa/financeira e alteração da própria conta. Consulta prévia do estado antes de enviar o PUT existente, bloqueio de repetição no cliente e consulta após resultado incerto. A consulta prévia não é controle de concorrência atômico nem substitui autorização no backend. Nenhuma alteração de servidor.
+
+## Trilha de auditoria
+
+Consulta somente leitura limitada aos 2.000 registros mais recentes, conforme limite existente da API. Indicadores descrevem apenas dados carregados; última consulta distinta do evento mais recente. Datas brasileiras sem fuso preservam horário informado; ISO com offset é exibido no fuso do navegador. Filtros locais combinados por ação, RU, período e texto, ordenação, paginação e detalhe completo com dados escapados. Sem exportação, exclusão ou mudanças na autorização.
