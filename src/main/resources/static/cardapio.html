@@ -68,7 +68,7 @@
         <div class="table-header">
           <div>
             <span class="table-title">Categorias</span>
-            <div class="inline-note inline-note--spaced">Ative, edite e ordene grupos exibidos no cardapio.</div>
+            <div class="inline-note inline-note--spaced">Organize a exibição dos grupos no cardápio e no PDV.</div>
           </div>
           <span class="table-count" id="categorias-count">-</span>
         </div>
@@ -76,10 +76,11 @@
           <table class="table cardapio-category-table">
             <thead>
             <tr>
-              <th>Ordem</th>
-              <th>Categoria</th>
-              <th>Status</th>
-              <th>Acoes</th>
+              <th scope="col">Ordem</th>
+              <th scope="col">Categoria</th>
+              <th scope="col" id="categoria-itens-heading" hidden>Itens cadastrados</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
             </tr>
             </thead>
             <tbody id="tabela-categorias">

@@ -120,3 +120,7 @@ Preservar contagem cega no formulário: valor esperado não é mostrado nem usad
 ## Abertura de caixa
 
 Identificação do usuário autenticado, número inteiro positivo e sugestões baseadas na última consulta (não reserva de caixa). Fundo de troco físico explícito, inclusive zero; contador de denominações compartilhado com o fechamento e resumo antes do envio. Validação em centavos, proteção contra envio simultâneo e orientação para consultar a sessão em caso de resultado incerto. Servidor continua responsável por autorização e disponibilidade.
+
+## Categorias do cardápio
+
+Ordem explícita com salvamento somente quando alterada, contagem de itens cadastrados e ativos (não equivale à disponibilidade operacional), acesso ao filtro de itens, status textual e ações rotuladas. Desativação exige confirmação na interface nova. Reutilizar endpoints existentes e bloquear mutações simultâneas de ordem/status no cliente. Ordem inteira não negativa dentro do limite de int Java.

@@ -4907,3 +4907,32 @@ body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir .stockos-open-summary{d
 body.caixas-page:has(.app.stockos-shell-v2) #btn-confirmar-abrir{background:var(--ok);border-color:var(--ok);color:white;box-shadow:none;}
 #btn-confirmar-abrir:disabled{opacity:.55;cursor:default;}
 @media(max-width:480px){body.caixas-page:has(.app.stockos-shell-v2) #modal-abrir :is(.modal-header,.modal-footer){padding:12px 14px;}}
+
+/* Menu categories: explicit controls, item counts, compact operational status. */
+#categoria-itens-heading[hidden]{display:none!important;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-panel--categories .table-header{background:var(--paper-raised);gap:12px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table{min-width:660px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):first-child{width:150px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(3){width:150px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):nth-child(4){width:100px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table :is(th,td):last-child{width:175px;}
+body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table tbody td{padding:12px 14px;vertical-align:middle;}
+.stockos-category-order,.stockos-category-actions,.stockos-category-identity{display:flex;align-items:center;gap:7px;min-width:0;}
+.stockos-category-order .compact-control--order{width:52px;min-width:0;text-align:center;}
+.stockos-category-order button,.stockos-category-actions button{font:inherit;font-size:11px;min-height:34px;padding:6px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);cursor:pointer;white-space:nowrap;}
+.stockos-category-order button:not(:disabled){color:var(--accent-ink);border-color:var(--accent);}
+.stockos-category-order button:disabled,.stockos-category-actions button:disabled,.stockos-category-items:disabled{opacity:.45;cursor:default;}
+.stockos-category-identity .table-cell-stack{min-width:0;overflow-wrap:anywhere;}
+.stockos-category-icon{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;background:var(--paper-sunk);border-radius:7px;color:var(--ink-3);}
+.stockos-category-icon svg{width:16px;height:16px;}
+.stockos-category-items{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;border:0;background:none;color:var(--ink-3);font:inherit;padding:3px 0;text-align:left;cursor:pointer;font-size:10px;}
+.stockos-category-items strong{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.stockos-category-items:hover span{text-decoration:underline;}
+.stockos-category-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink-3);}
+.stockos-category-status>span{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.stockos-category-status[data-active="true"]{color:var(--ok);}
+.stockos-category-actions button[data-category-action="toggle"][data-active="true"]{color:var(--bad);}
+.stockos-category-actions button[data-category-action="toggle"][data-active="false"]{color:var(--ok);}
+.stockos-category-actions button:not(:disabled):hover,.stockos-category-order button:not(:disabled):hover{background:var(--paper-sunk);}
+.stockos-category-order input[aria-invalid="true"]{border-color:var(--bad);}
+@media(max-width:600px){body.cardapio-page .app.stockos-shell-v2 .cardapio-category-table tbody td{padding:9px 10px;}.stockos-category-order button,.stockos-category-actions button{min-height:44px;}}

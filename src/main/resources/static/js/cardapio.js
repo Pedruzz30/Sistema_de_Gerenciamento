@@ -67,8 +67,11 @@ async function recarregarDados() {
   } catch (error) {
     console.error('Erro ao carregar gestao de cardapio:', error);
     mostrarAlertaPagina(error.message || 'Nao foi possivel carregar a gestao de cardapio.', 'warning');
+    const managed=!!document.querySelector('.app.stockos-shell-v2');
+    document.getElementById('categoria-itens-heading').hidden=!managed;
+    document.getElementById('categorias-count').textContent='Indisponível';
     document.getElementById('tabela-categorias').innerHTML =
-      '<tr><td colspan="4" class="empty">Erro ao carregar categorias.</td></tr>';
+      '<tr><td colspan="'+(managed?5:4)+'" class="empty">Erro ao carregar categorias.</td></tr>';
     document.getElementById('tabela-itens').innerHTML =
       '<tr><td colspan="6" class="empty">Erro ao carregar itens.</td></tr>';
     const tabelaMod = document.getElementById('tabela-modificadores');
@@ -138,10 +141,78 @@ function actionButton(icon, label, toneClass, onClick) {
     '</button>';
 }
 
+
+function categoryManagementModel(categories,items){
+  const counts=new Map();
+  for(const item of items){
+    if(!item||item.categoriaId==null)continue;
+    const key=String(item.categoriaId);
+    const count=counts.get(key)||{total:0,active:0};
+    count.total++;if(item.ativo===true)count.active++;
+    counts.set(key,count);
+  }
+  return categories.map(c=>({...c,items:counts.get(String(c.id))||{total:0,active:0}}))
+    .sort((a,b)=>Number(a.ordemExibicao)-Number(b.ordemExibicao)||String(a.nomeExibicao).localeCompare(String(b.nomeExibicao),'pt-BR')||Number(a.id)-Number(b.id));
+}
+function categoryOrderValue(raw){
+  const value=String(raw??'').trim();
+  return /^\d+$/.test(value)&&Number.isSafeInteger(Number(value))&&Number(value)<=2147483647?Number(value):null;
+}
+let categoryMutationPending=false;
+function renderManagedCategories(tbody,categories,items){
+  const rows=categoryManagementModel(categories,items);
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="5" class="table-empty-cell">'+emptyStateMarkup({
+      icon:'clipboard',title:'Nenhuma categoria cadastrada',copy:'Crie a primeira categoria para organizar o cardápio.',
+      actions:'<button class="btn-primary" type="button" onclick="abrirModalCategoria()">Nova categoria</button>'
+    })+'</td></tr>';return;
+  }
+  tbody.innerHTML=rows.map(c=>{
+    const id=Number(c.id),order=categoryOrderValue(c.ordemExibicao),name=escapeHtml(c.nomeExibicao),code=escapeHtml(c.codigo);
+    if(!Number.isSafeInteger(id)||id<=0)return '';
+    const state=c.ativo?'Ativa':'Inativa',action=c.ativo?'Desativar':'Ativar';
+    return '<tr data-category-id="'+id+'"><td><div class="stockos-category-order"><input class="compact-control compact-control--order" id="categoria-ordem-'+id+'" type="number" min="0" max="2147483647" step="1" value="'+(order??'')+'" aria-label="Ordem de '+name+'"><button type="button" data-category-action="order" disabled>Salvar</button></div></td>'+
+      '<td><div class="stockos-category-identity"><span class="stockos-category-icon" aria-hidden="true">'+iconMarkup('clipboard')+'</span><div class="table-cell-stack"><span class="table-cell-strong">'+name+'</span><span class="table-cell-caption">'+code+'</span></div></div></td>'+
+      '<td><button type="button" data-category-action="items" class="stockos-category-items"><strong>'+c.items.total+'</strong><span>'+ (c.items.total===1?'item':'itens')+' · '+c.items.active+' '+(c.items.active===1?'ativo':'ativos')+'</span></button></td>'+
+      '<td><span class="stockos-category-status" data-active="'+String(!!c.ativo)+'"><span aria-hidden="true"></span>'+state+'</span></td>'+
+      '<td><div class="stockos-category-actions"><button type="button" data-category-action="edit" aria-label="Editar '+name+'">Editar</button><button type="button" data-category-action="toggle" data-active="'+String(!!c.ativo)+'" aria-label="'+action+' '+name+'">'+action+'</button></div></td></tr>';
+  }).join('');
+  for(const row of tbody.querySelectorAll('[data-category-id]')){
+    const id=Number(row.dataset.categoryId),category=rows.find(c=>Number(c.id)===id);
+    const field=row.querySelector('input'),save=row.querySelector('[data-category-action="order"]');
+    const original=categoryOrderValue(category.ordemExibicao);
+    const update=()=>{const value=categoryOrderValue(field.value);field.setAttribute('aria-invalid',String(value==null));save.disabled=categoryMutationPending||value==null||value===original;};
+    field.oninput=update;update();
+    field.onkeydown=e=>{if(e.key==='Enter'&&!save.disabled){e.preventDefault();save.click();}};
+    save.onclick=()=>void salvarOrdemCategoria(id);
+    row.querySelector('[data-category-action="edit"]').onclick=()=>abrirModalCategoria(id);
+    row.querySelector('[data-category-action="items"]').onclick=()=>{
+      const filter=document.getElementById('item-category-filter'),search=document.getElementById('item-search');
+      if(!filter||!search)return;
+      filter.value=String(id);search.value='';aplicarFiltrosItens();
+      document.querySelector('.cardapio-panel--items')?.scrollIntoView({block:'start'});
+      filter.focus({preventScroll:true});
+    };
+    row.querySelector('[data-category-action="toggle"]').onclick=()=>{
+      if(categoryMutationPending)return;
+      if(category.ativo&&!confirm('Desativar a categoria "'+category.nomeExibicao+'"? Os itens dessa categoria ficarão bloqueados para venda enquanto ela estiver inativa.'))return;
+      void alternarCategoriaAtiva(id,!category.ativo);
+    };
+  }
+}
+
 function renderCategorias() {
   const tbody = document.getElementById('tabela-categorias');
   const countEl = document.getElementById('categorias-count');
+  const managed=!!document.querySelector('.app.stockos-shell-v2');
+  document.getElementById('categoria-itens-heading').hidden=!managed;
   countEl.textContent = cardapioCategorias.length + ' categoria' + (cardapioCategorias.length === 1 ? '' : 's');
+  if(managed){
+    const active=cardapioCategorias.filter(c=>c.ativo).length;
+    countEl.textContent=active+' '+(active===1?'ativa':'ativas')+' · '+(cardapioCategorias.length-active)+' '+(cardapioCategorias.length-active===1?'inativa':'inativas');
+    renderManagedCategories(tbody,cardapioCategorias,cardapioItens);
+    return;
+  }
 
   if (!cardapioCategorias.length) {
     tbody.innerHTML = '<tr><td colspan="4" class="table-empty-cell">' +
@@ -620,7 +691,20 @@ async function salvarItem() {
 }
 
 async function alternarCategoriaAtiva(id, ativo) {
-  await atualizarToggle('/api/cardapio/admin/categorias/' + id + '/ativo', { ativo: ativo }, ativo ? 'Categoria ativada.' : 'Categoria desativada.');
+  await executarMutacaoCategoria('/api/cardapio/admin/categorias/' + id + '/ativo', { ativo: ativo }, ativo ? 'Categoria ativada.' : 'Categoria desativada.');
+}
+async function executarMutacaoCategoria(url,payload,message){
+  if(categoryMutationPending)return;
+  categoryMutationPending=true;
+  const table=document.getElementById('tabela-categorias');
+  const controls=[...table.querySelectorAll('button,input')].map(el=>[el,el.disabled]);
+  controls.forEach(([el])=>el.disabled=true);
+  try{await atualizarToggle(url,payload,message);}
+  finally{
+    categoryMutationPending=false;
+    controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});
+    for(const field of table.querySelectorAll('[data-category-id] input'))field.oninput?.();
+  }
 }
 
 async function alternarItemAtivo(id, ativo) {
@@ -636,12 +720,12 @@ async function alternarDisponibilidadeItem(id, disponivelParaVenda) {
 }
 
 async function salvarOrdemCategoria(id) {
-  const valor = parseInt(document.getElementById('categoria-ordem-' + id).value, 10);
-  if (Number.isNaN(valor) || valor < 0) {
-    showToast('Ordem da categoria invalida.', 'error');
+  const valor = categoryOrderValue(document.getElementById('categoria-ordem-' + id).value);
+  if (valor == null) {
+    showToast('Informe uma ordem inteira não negativa.', 'error');
     return;
   }
-  await atualizarToggle('/api/cardapio/admin/categorias/' + id + '/ordem', { ordemExibicao: valor }, 'Ordem da categoria atualizada.');
+  await executarMutacaoCategoria('/api/cardapio/admin/categorias/' + id + '/ordem', { ordemExibicao: valor }, 'Ordem da categoria atualizada.');
 }
 
 async function salvarOrdemItem(id) {
