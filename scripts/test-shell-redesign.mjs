@@ -51,6 +51,7 @@ class Element {
   constructor(tag) {
     this.tag=tag; this.children=[]; this.attrs={}; this.className='';
     this.style={setProperty:(k,v)=>{this.style[k]=v}};
+    this.classList={add:(name)=>{this.className+=' '+name}};
   }
   append(...nodes) { for(const n of nodes) this.appendChild(n); }
   appendChild(n) { if(n.parent)n.remove(); n.parent=this; this.children.push(n); return n; }
@@ -59,7 +60,7 @@ class Element {
   before(n) { n.parent=this.parent; this.parent.children.splice(this.parent.children.indexOf(this),0,n); }
   closest(sel) { let x=this; while(x){if('.'+x.className===sel)return x;x=x.parent;}return null; }
   querySelector(sel) {
-    for(const n of this.children){if('.'+n.className===sel)return n;const v=n.querySelector(sel);if(v)return v;}
+    for(const n of this.children){if(n.className.split(' ').includes(sel.slice(1)))return n;const v=n.querySelector(sel);if(v)return v;}
     return null;
   }
   setAttribute(k,v) { this.attrs[k]=v; }
@@ -77,8 +78,10 @@ function makeDash(allow=true,enabled=true) {
 const x=makeDash();
 x.fn([{numeroCaixa:1,totalVendas:120,status:'ABERTO'},{numeroCaixa:2,totalVendas:60,status:'ABERTO'},{numeroCaixa:3,totalVendas:null,status:'ABERTO'},{numeroCaixa:4,totalVendas:-10,status:'ABERTO'}],{totalVendas:180},true);
 const panel=x.parent.querySelector('.stockos-sales-panel'),chart=panel.querySelector('.stockos-sales-chart');
-assert.equal(chart.children.length,2);
-assert.equal(chart.children[1].querySelector('.stockos-sales-bar').style['--bar-height'],'50%');
+assert.equal(chart.children.length,3);
+assert.equal(chart.children[1].querySelector('.stockos-sales-bar').style['--bar-height'],'25%');
+assert.match(chart.children[2].querySelector('.stockos-sales-bar').className,/stockos-sales-bar--negative/);
+assert.match(panel.querySelector('.stockos-sales-caption').textContent,/acumuladas por caixa/);
 assert.equal(panel.querySelector('.stockos-sales-total').textContent,'R$ 180.00');
 x.fn([],null,false);
 assert.equal(x.parent.children.length,1);
