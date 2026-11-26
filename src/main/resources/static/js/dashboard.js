@@ -520,32 +520,81 @@ function referenceNode(tag, cls, value) {
 function referenceMessage(node, message) {
   node.replaceChildren(referenceNode('p','stockos-reference-empty',message));
 }
-function referenceDonut(node, rows, center, unavailable) {
+function referenceStockDistribution(products) {
+  if(!Array.isArray(products))return null;
+  const active=products.filter(p=>p&&p.ativo!==false);
+  const rows=[
+    {key:'adequate',label:'Adequado',value:0,color:'var(--ok)'},
+    {key:'attention',label:'Baixo / moderado',value:0,color:'var(--warn)',href:'/estoque.html?filtro=baixo'},
+    {key:'critical',label:'Crítico / sem estoque',value:0,color:'var(--bad)',href:'/estoque.html?filtro=critico'},
+    {key:'unknown',label:'Sem classificação',value:0,color:'var(--ink-4)'}
+  ];
+  active.forEach(p=>{
+    const level=p.nivelEstoque;
+    rows[level==='ADEQUADO'?0:level==='BAIXO'||level==='MODERADO'?1:level==='CRITICO'||level==='SEM_ESTOQUE'?2:3].value++;
+  });
+  return {rows:rows.filter(r=>r.key!=='unknown'||r.value>0),total:active.length,
+    adequate:active.length?rows[0].value/active.length*100:null};
+}
+function referencePaymentDistribution(report) {
+  if(!Array.isArray(report?.porForma))return null;
+  const colors={DINHEIRO:'var(--accent)',PIX:'var(--ok)',CARTAO:'var(--info)',DEBITO:'var(--info)',CREDITO:'#8876ad',CARTAO_DEBITO:'var(--info)',CARTAO_CREDITO:'#8876ad',VOUCHER:'var(--warn)'};
+  const palette=['#8876ad','#a58b66','#708394','#a17e83'];
+  const rows=[];
+  for(const p of report.porForma){
+    if(!p||p.valor==null||!Number.isFinite(Number(p.valor))||!p.rotulo)return null;
+    const key=String(p.forma||p.rotulo).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
+    const value=Number(p.valor);
+    const existing=rows.find(r=>r.key===key);
+    if(existing)existing.value+=value;
+    else rows.push({key,label:String(p.rotulo),value,color:colors[key]||palette[rows.length%palette.length]});
+  }
+  return rows.filter(r=>r.value!==0).sort((a,b)=>b.value-a.value||a.label.localeCompare(b.label,'pt-BR'));
+}
+function referenceDonutModel(rows) {
+  if(!Array.isArray(rows)||rows.some(r=>!Number.isFinite(r.value)))return null;
+  const total=rows.reduce((sum,r)=>sum+r.value,0);
+  const comparable=total>0&&rows.every(r=>r.value>=0);
+  const entries=rows.map(r=>({...r,share:comparable?r.value/total*100:null}));
+  return {total,entries,comparable};
+}
+function referenceDonut(node, rows, format, options={}) {
   node.replaceChildren();
-  if (unavailable) {referenceMessage(node,unavailable);return;}
-  const valid=rows.filter(r=>Number.isFinite(r.value)&&r.value!==0);
-  if(!valid.length){referenceMessage(node,'Sem registros no período.');return;}
-  const total=valid.reduce((sum,r)=>sum+r.value,0);
-  const colors=['var(--accent)','#42866c','#c69b55','#8793a5','#9e766e'];
+  const model=referenceDonutModel(rows);
+  if(!model){referenceMessage(node,options.unavailable||'Dados indisponíveis.');return;}
+  const pct=n=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(n)+'%';
+  if(!model.entries.length||model.entries.every(r=>r.value===0)){
+    referenceMessage(node,options.empty||'Sem registros no período.');return;
+  }
   const wrap=referenceNode('div','stockos-donut-layout');
   const legend=referenceNode('div','stockos-donut-legend');
-  const signed=valid.some(r=>r.value<0);
-  const ring=referenceNode('div','stockos-donut');
-  if(!signed && total>0){
+  if(model.comparable){
+    const ring=referenceNode('div','stockos-donut');
     let position=0;
-    const stops=valid.map((r,i)=>{const from=position;position+=r.value/total*100;return colors[i%colors.length]+' '+from+'% '+position+'%';});
+    const stops=model.entries.filter(r=>r.value>0).map(r=>{
+      const from=position;position+=r.share;
+      return r.color+' '+from+'% '+position+'%';
+    });
     ring.style.background='conic-gradient('+stops.join(',')+')';
     const inner=referenceNode('div','stockos-donut-inner');
-    inner.append(referenceNode('span','','Total'),referenceNode('strong','',center(total)));
-    ring.appendChild(inner);ring.setAttribute('aria-hidden','true');wrap.appendChild(ring);
+    inner.append(referenceNode('strong','',options.centerValue??format(model.total)),referenceNode('span','',options.centerLabel||'Total líquido'));
+    ring.appendChild(inner);
+    ring.setAttribute('aria-hidden','true');
+    wrap.appendChild(ring);
   }
-  valid.forEach((r,i)=>{
-    const line=referenceNode('div','stockos-payment-row stockos-donut-row');
-    const dot=referenceNode('span','stockos-donut-dot');dot.style.background=colors[i%colors.length];
-    line.append(dot,referenceNode('span','',r.label),referenceNode('strong','',center(r.value)));
+  model.entries.forEach(r=>{
+    const line=referenceNode(r.href?'a':'div','stockos-payment-row stockos-donut-row'+(r.href?' stockos-donut-row--link':''));
+    if(r.href)line.href=r.href;
+    const dot=referenceNode('span','stockos-donut-dot');dot.style.background=r.color;dot.setAttribute('aria-hidden','true');
+    const label=referenceNode('span','stockos-donut-label',r.label);
+    const value=referenceNode('strong','stockos-donut-value',format(r.value));
+    line.append(dot,label,value,referenceNode('span','stockos-donut-percent',r.share==null?'—':pct(r.share)));
+    if(r.href)line.setAttribute('aria-label',r.label+': '+format(r.value)+(r.share==null?'':', '+pct(r.share))+'. Ver produtos no estoque');
     legend.appendChild(line);
   });
   wrap.appendChild(legend);node.appendChild(wrap);
+  if(!model.comparable)node.appendChild(referenceNode('p','stockos-reference-note','Percentuais indisponíveis: valores líquidos negativos ou total não positivo.'));
+  else if(options.footer)node.appendChild(referenceNode('p','stockos-donut-footer',options.footer));
 }
 
 let referenceSalesChart = null;
@@ -725,11 +774,13 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
   stockPanel.hidden=!PODE_VER_ESTOQUE_DASH;
   distributions.hidden=paymentPanel.hidden&&stockPanel.hidden;
   if(PODE_VER_ESTOQUE_DASH){
-    const active=Array.isArray(produtos)?produtos.filter(p=>p&&p.ativo!==false):[];
-    const alerts=obterAlertasEstoque(active).length;
-    referenceDonut(document.getElementById('stockos-stock-content'),[
-      {label:'Adequado',value:active.length-alerts},{label:'Atenção',value:alerts}
-    ],n=>String(n),Array.isArray(produtos)?null:'Estoque indisponível.');
+    const stock=referenceStockDistribution(produtos);
+    const percent=stock?.adequate==null?'—':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(stock.adequate)+'%';
+    const stockMeta=document.getElementById('stockos-stock-meta');
+    if(stockMeta)stockMeta.textContent=stock?stock.total+' produtos ativos':'Indisponível';
+    referenceDonut(document.getElementById('stockos-stock-content'),stock?.rows??null,n=>String(n),{
+      centerValue:percent,centerLabel:'Adequado',unavailable:'Estoque indisponível.',empty:'Nenhum produto ativo.'
+    });
   }
   if(!PODE_VER_FINANCEIRO_DASH)return;
   const chart=document.getElementById('stockos-period-chart');
@@ -811,7 +862,13 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
   if(PODE_VER_RENTABILIDADE_DASH)void reportPromise.then(report=>{
     if(!alive())return;
     renderReferenceRanking(rankPanel,report);
-    referenceDonut(document.getElementById('stockos-payment-content'),Array.isArray(report?.porForma)?report.porForma.map(p=>({label:String(p.rotulo),value:Number(p.valor)})):[],formatarMoedaBR,Array.isArray(report?.porForma)?null:'Pagamentos indisponíveis.');
+    const payments=referencePaymentDistribution(report);
+    const model=referenceDonutModel(payments);
+    const leader=model?.comparable?model.entries[0]:null;
+    const footer=leader?leader.label+' concentra '+new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(leader.share)+'% dos recebimentos líquidos.':null;
+    referenceDonut(document.getElementById('stockos-payment-content'),payments,formatarMoedaBR,{
+      centerLabel:'Total líquido',unavailable:'Pagamentos indisponíveis.',empty:'Nenhum pagamento registrado hoje.',footer
+    });
   });
 }
 

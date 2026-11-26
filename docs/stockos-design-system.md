@@ -80,3 +80,7 @@ Grade 2×2 com título e ícone na mesma linha, número central e contexto factu
 ## Ranking diário de produtos
 
 Top 5 com posição, ordenação por quantidade ou receita, participação na receita de todos os produtos informados e total do Top 5. Não confundir receita de itens com recebimentos líquidos do caixa. Ranking parcial identificado; sem percentual quando a base é não positiva ou possui valores negativos. Sem consultas adicionais.
+
+## Distribuição da operação
+
+Pagamentos por valor líquido, ordenados, com percentual, cores fixas por forma e indicação de maior concentração. Estoque ativo separado em adequado, baixo/moderado, crítico/sem estoque e sem classificação quando necessário; verde/âmbar/vermelho semântico e links para filtros existentes. Sem percentual ou anel para valores líquidos negativos ou total não positivo; preservar valores exatos e estados indisponíveis. Sem novos endpoints.

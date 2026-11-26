@@ -4511,17 +4511,37 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .stockos-kpi .
 .stockos-product-cell {display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere;}
 .stockos-product-mark {width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border-radius:50%;background:var(--paper-sunk);color:var(--ink-3);}
 .stockos-product-mark svg {width:15px;height:15px;}
-.stockos-distribution h3 {font-size:12px;font-weight:600;margin:8px 0;}
-.stockos-distribution + .stockos-distribution:not([hidden]) {border-top:1px solid var(--rule);margin-top:12px;padding-top:8px;}
+
+.stockos-distribution-heading {display:flex;align-items:baseline;gap:6px 10px;flex-wrap:wrap;margin:0 0 10px;}
+.stockos-distribution-heading h3 {font-size:12px;font-weight:650;margin:0;color:var(--ink);}
+.stockos-distribution-heading > span {font-size:10px;color:var(--ink-3);margin-left:auto;}
+.stockos-distribution-heading .stockos-report-link {font-size:10px;min-height:0;margin:0;}
+.stockos-distribution + .stockos-distribution:not([hidden]) {border-top:1px solid var(--rule);margin-top:12px;padding-top:12px;}
 .stockos-donut-layout {display:flex;align-items:center;gap:16px;min-width:0;}
-.stockos-donut {width:112px;aspect-ratio:1;flex:0 0 112px;border-radius:50%;display:grid;place-items:center;}
-.stockos-donut-inner {width:77%;aspect-ratio:1;border-radius:50%;background:var(--paper-raised);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;}
+.stockos-donut {width:clamp(96px,8vw,128px);aspect-ratio:1;flex:0 0 clamp(96px,8vw,128px);border-radius:50%;display:grid;place-items:center;}
+.stockos-donut-inner {width:78%;aspect-ratio:1;border-radius:50%;background:var(--paper-raised);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:3px;}
 .stockos-donut-inner span {font-size:10px;color:var(--ink-3);}
-.stockos-donut-inner strong {font-size:11px;max-width:90%;overflow-wrap:anywhere;}
-.stockos-donut-legend {flex:1;min-width:0;display:grid;gap:6px;}
-.stockos-donut-row {display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:6px;font-size:10px;color:var(--ink-2);}
-.stockos-donut-row strong {font-size:10px;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.stockos-donut-dot {height:8px;width:8px;border-radius:2px;}
+.stockos-donut-inner strong {font-size:clamp(11px,1vw,15px);font-weight:700;letter-spacing:-.025em;max-width:92%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+#stockos-stock-content .stockos-donut-inner strong {font-size:clamp(18px,1.6vw,24px);}
+.stockos-donut-legend {flex:1;min-width:0;display:grid;gap:3px;}
+.stockos-donut-row {display:grid;grid-template-columns:8px minmax(0,1fr) auto minmax(34px,auto);align-items:center;gap:7px;padding:6px 0;font-size:11px;color:var(--ink-2);border-bottom:1px solid var(--rule);text-decoration:none;min-width:0;}
+.stockos-donut-row:last-child {border-bottom:0;}
+.stockos-donut-row .stockos-donut-label {line-height:1.3;overflow-wrap:anywhere;}
+.stockos-donut-row strong {font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;color:var(--ink);}
+.stockos-donut-percent {font-size:10px;font-variant-numeric:tabular-nums;color:var(--ink-3);text-align:right;white-space:nowrap;}
+.stockos-donut-dot {height:8px;width:8px;border-radius:3px;}
+.stockos-donut-row--link:hover .stockos-donut-label {text-decoration:underline;color:var(--ink);}
+.stockos-donut-row--link:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+.stockos-donut-footer {font-size:10px;color:var(--ink-3);margin:10px 0 0;line-height:1.4;}
+@media(max-width:1250px) and (min-width:981px) {
+ .stockos-donut-layout {gap:10px;}
+ .stockos-donut-row {grid-template-columns:7px minmax(0,1fr) auto;gap:5px;}
+ .stockos-donut-percent {grid-column:3;}
+}
+@media(max-width:420px) {
+ .stockos-donut-row {grid-template-columns:7px minmax(0,1fr) auto;gap:5px;}
+ .stockos-donut-percent {grid-column:3;}
+}
 .stockos-reference-empty {font-size:12px;color:var(--ink-3);padding:18px 4px;margin:0;}
 body.dashboard-page .app.stockos-shell-v2 #daily-actions {box-shadow:none;padding:14px;margin:0 0 14px;}
 body.dashboard-page .app.stockos-shell-v2 .operations-heading {margin-bottom:10px;}

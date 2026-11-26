@@ -1529,6 +1529,10 @@ try {
     await dono.locator('[data-stockos-rank-order="quantity"]').click();
     assert.equal(await dono.locator('#stockos-daily-ranking th[aria-sort="descending"]').textContent(),'Qtd.');
     await dono.waitForSelector('#stockos-daily-payments .stockos-payment-row');
+    await dono.waitForSelector('#stockos-daily-payments .stockos-donut-percent');
+    await dono.waitForSelector('#stockos-stock-distribution .stockos-donut-row');
+    assert.ok(await dono.locator('#stockos-stock-distribution .stockos-donut-label').allTextContents().then(labels=>labels.includes('Adequado')&&labels.includes('Crítico / sem estoque')));
+    assert.equal(await dono.locator('#stockos-stock-distribution a[href="/estoque.html?filtro=critico"]').count(),1);
     for(const days of [7,30,1]){
       await dono.locator('[data-stockos-period="'+days+'"]').click();
       await dono.waitForSelector('#stockos-period-chart .stockos-reference-canvas');
