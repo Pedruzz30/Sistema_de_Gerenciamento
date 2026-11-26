@@ -1695,6 +1695,37 @@ try {
     await naTela(dono, '#rel-abc-tabela');
   });
 
+  // Use the existing authenticated owner and real data; no mutations or
+  // screenshot-only checks. Exercise every management module at three sizes.
+  for (const rota of ['estoque','cardapio','fornecedores','notas','cotacoes','funcionarios','logs','caixas','comandas','dashboard']) {
+    await passo(dono, 'Redesign responsivo: ' + rota, async () => {
+      await dono.setViewportSize({width:1366,height:650});
+      await dono.goto(`${BASE}/${rota}.html`);
+      await dono.waitForSelector('.app.stockos-shell-v2');
+      await dono.waitForSelector('#nav-items a[aria-current="page"]');
+      assert.equal(await dono.locator('#nav-items a[aria-current="page"]').getAttribute('href'), '/'+rota+'.html');
+      for (const [width,height] of [[1366,650],[768,1024],[390,844]]) {
+        await dono.setViewportSize({width,height});
+        await dono.evaluate(() => window.scrollTo(0,0));
+        await dono.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth + 1);
+        const size = await dono.locator('.main-body.content').boundingBox();
+        assert.ok(size && size.width > 0 && size.x >= -1 && size.x + size.width <= width + 1, 'Conteúdo fora da área útil: '+rota+' '+width);
+        if (width <= 980) {
+          const toggle=dono.locator('.sidebar-toggle');
+          await toggle.waitFor({state:'visible'});
+          await toggle.click();
+          await dono.waitForSelector('.sidebar.open');
+          assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+          await dono.locator('.sidebar-close').click();
+          await dono.waitForFunction(() => !document.querySelector('.sidebar').classList.contains('open'));
+          assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+        }
+        await print(dono,'redesign-'+rota+'-'+width);
+      }
+    });
+  }
+  await dono.setViewportSize({width:1366,height:650});
+
   await passo(dono, 'Sair encerra a sessao', async () => {
     await dono.goto(`${BASE}/estoque.html`);
     // Sair troca de página: chamar depois de responder evita disputar com a navegação.

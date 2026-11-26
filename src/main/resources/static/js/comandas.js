@@ -115,8 +115,10 @@ async function carregarDetalhe(numero) {
     const resp = await fetch(`/api/comandas/${numero}`);
     if (numero !== selecionada || versao !== detalheVersao) return;
     if (!resp.ok) {
+      const mensagem = await lerErro(resp, 'Não foi possível carregar esta comanda.');
+      if (numero !== selecionada || versao !== detalheVersao) return;
       mostrarDetalhe(null);
-      mostrarAlert('alert-comandas', await lerErro(resp, 'Não foi possível carregar esta comanda.'), 'error');
+      mostrarAlert('alert-comandas', mensagem, 'error');
       return;
     }
     const detalhe = await resp.json();

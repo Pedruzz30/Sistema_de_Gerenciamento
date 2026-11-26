@@ -56,3 +56,7 @@ Executar `npm run test:shell-redesign`, `npm run test:preview`, `npm run test:de
 
 - Comandas: ação de cobrança antes da lista de itens; compactação para notebooks de baixa altura. Não cobrar com dados de outra comanda ou antes de confirmar o detalhe selecionado. Respostas atrasadas de requisições concorrentes são ignoradas.
 - O E2E mantém a exigência de visibilidade da ação principal em 1366 × 650, além dos testes em 390 × 844.
+
+### Matriz visual real
+
+O E2E autenticado verifica os 10 módulos com App Shell em 1366 × 650, 768 × 1024 e 390 × 844. Cada combinação exige conteúdo dentro da área útil, ausência de rolagem horizontal do documento, rota ativa correta e abertura/fechamento acessíveis do menu no mobile/tablet. Capturas ficam nos artefatos de CI; não substituem inspeção visual humana.
