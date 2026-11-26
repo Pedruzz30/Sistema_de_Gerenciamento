@@ -1138,10 +1138,108 @@ function renderPermissionSections() {
 }
 
 // ── Alertas de estoque ─────────────────────────────────────
+
+function referenceAlertModel(products, filter='all', query='', page=1, pageSize=6) {
+  if(!Array.isArray(products))return null;
+  const levels={SEM_ESTOQUE:{order:0,label:'Sem estoque',group:'critical'},CRITICO:{order:1,label:'Crítico',group:'critical'},BAIXO:{order:2,label:'Baixo',group:'attention'},MODERADO:{order:3,label:'Moderado',group:'attention'}};
+  const number=v=>v!=null && String(v).trim()!=='' && Number.isFinite(Number(v))?Number(v):null;
+  const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim();
+  const alerts=products.filter(p=>p&&p.ativo!==false&&Object.prototype.hasOwnProperty.call(levels,p.nivelEstoque)).map(p=>{
+    const current=number(p.quantidadeAtual), minimum=number(p.quantidadeMinima);
+    const valid=current!=null&&minimum!=null&&minimum>=0;
+    return {name:String(p.nome||'Produto sem nome'),level:p.nivelEstoque,...levels[p.nivelEstoque],current,minimum,
+      deficit:valid?Math.max(0,minimum-current):null,
+      coverage:valid&&minimum>0?Math.max(0,Math.min(100,current/minimum*100)):null};
+  }).sort((a,b)=>a.order-b.order||((a.coverage??Infinity)-(b.coverage??Infinity))||a.name.localeCompare(b.name,'pt-BR'));
+  const counts={all:alerts.length,critical:alerts.filter(p=>p.group==='critical').length,attention:alerts.filter(p=>p.group==='attention').length};
+  const term=normalize(query);
+  const filtered=alerts.filter(p=>(filter==='all'||p.group===filter)&&normalize(p.name).includes(term));
+  const size=Math.max(1,Math.floor(Number(pageSize)||6));
+  const pages=Math.max(1,Math.ceil(filtered.length/size));
+  const currentPage=Math.max(1,Math.min(pages,Math.floor(Number(page)||1)));
+  return {counts,total:filtered.length,page:currentPage,pages,from:filtered.length?(currentPage-1)*size+1:0,to:Math.min(currentPage*size,filtered.length),
+    rows:filtered.slice((currentPage-1)*size,currentPage*size)};
+}
+function renderReferenceAlerts(list,products) {
+  const panel=list.closest('#section-alertas');
+  const toolbar=panel.querySelector('#stockos-alert-tools');
+  const filters=[...toolbar.querySelectorAll('[data-stockos-alert-filter]')];
+  const search=toolbar.querySelector('input');
+  const footer=panel.querySelector('#stockos-alert-footer');
+  const range=footer.querySelector('#stockos-alert-range');
+  const previous=footer.querySelector('[data-alert-page="previous"]');
+  const next=footer.querySelector('[data-alert-page="next"]');
+  const destination=toolbar.querySelector('#stockos-alert-destination');
+  let filter=filters.find(b=>b.getAttribute('aria-pressed')==='true')?.dataset.stockosAlertFilter||'all';
+  let page=Number(footer.dataset.page)||1;
+  const quantity=v=>v==null?'—':v.toLocaleString('pt-BR',{maximumFractionDigits:3});
+  function draw(){
+    const model=referenceAlertModel(products,filter,search.value,page);
+    list.replaceChildren();
+    if(!model){
+      toolbar.hidden=true;footer.hidden=true;
+      referenceMessage(list,'Não foi possível consultar o estoque. Atualize a página para tentar novamente.');
+      return;
+    }
+    toolbar.hidden=model.counts.all===0;
+    footer.hidden=model.counts.all===0;
+    filters.forEach(b=>{
+      b.setAttribute('aria-pressed',String(b.dataset.stockosAlertFilter===filter));
+      b.querySelector('strong').textContent=model.counts[b.dataset.stockosAlertFilter];
+    });
+    destination.href='/estoque.html'+(filter==='critical'?'?filtro=critico':filter==='attention'?'?filtro=baixo':'');
+    destination.textContent=filter==='critical'?'Ver críticos no estoque':filter==='attention'?'Ver baixos no estoque':'Abrir estoque';
+    page=model.page;footer.dataset.page=String(page);
+    range.textContent=model.total?model.from+'–'+model.to+' de '+model.total:'0 resultados';
+    previous.disabled=page<=1;
+    next.disabled=page>=model.pages;
+    if(!model.rows.length){
+      referenceMessage(list,model.counts.all===0?'Nenhum alerta de estoque identificado.':'Nenhum produto corresponde aos filtros.');
+      return;
+    }
+    const rows=referenceNode('ul','stockos-alert-rows');
+    rows.setAttribute('aria-label','Produtos que precisam de atenção');
+    model.rows.forEach(p=>{
+      const item=referenceNode('li','stockos-alert-row');
+      item.dataset.level=p.level;
+      const identity=referenceNode('div','stockos-alert-identity');
+      const status=referenceNode('span','stockos-alert-status',p.label);
+      const dot=referenceNode('span','stockos-alert-dot');dot.setAttribute('aria-hidden','true');
+      status.prepend(dot);
+      identity.append(referenceNode('strong','stockos-alert-product',p.name),status);
+      const numbers=referenceNode('div','stockos-alert-numbers');
+      const balance=referenceNode('div','stockos-alert-balance');
+      balance.append(referenceNode('strong','',quantity(p.current)),referenceNode('span','',' / '+quantity(p.minimum)));
+      balance.setAttribute('aria-label','Quantidade atual: '+quantity(p.current)+', mínimo: '+quantity(p.minimum));
+      numbers.appendChild(balance);
+      if(p.coverage!=null){
+        const track=referenceNode('div','stockos-alert-track');
+        track.setAttribute('aria-hidden','true');
+        const fill=referenceNode('span','');fill.style.width=p.coverage+'%';track.appendChild(fill);numbers.appendChild(track);
+      }
+      const detail=p.deficit==null?'Déficit indisponível':p.deficit>0?'Faltam '+quantity(p.deficit)+' un.':'Mínimo atingido';
+      numbers.appendChild(referenceNode('small','stockos-alert-deficit',detail));
+      item.append(identity,numbers);rows.appendChild(item);
+    });
+    list.appendChild(rows);
+  }
+  filters.forEach(b=>b.onclick=()=>{filter=b.dataset.stockosAlertFilter;page=1;draw();});
+  search.oninput=()=>{page=1;draw();};
+  previous.onclick=()=>{page--;draw();};
+  next.onclick=()=>{page++;draw();};
+  draw();
+}
+
 function renderAlertas(produtos) {
   var list = document.getElementById('alerta-list');
   var badge = document.getElementById('alerta-count');
   if (!list) return;
+  if (document.querySelector?.('.app.stockos-shell-v2') && list.closest?.('#section-alertas')?.querySelector('#stockos-alert-tools')) {
+    const model=referenceAlertModel(produtos);
+    if(badge)badge.textContent=model?model.counts.all+(model.counts.all===1?' alerta':' alertas'):'—';
+    renderReferenceAlerts(list,produtos);
+    return;
+  }
   if (!Array.isArray(produtos)) {
     if (badge) badge.textContent = '—';
     list.innerHTML = emptyStateMarkup({ icon: 'box', title: 'Alertas indisponíveis', copy: 'Não foi possível consultar o estoque. Atualize a página para tentar novamente.', compact: true });

@@ -4690,3 +4690,40 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-movements-table td {padding-b
  .stockos-cash-table :is(th,td) {padding-inline:5px;font-size:11px;}
  .stockos-cash-table .stockos-cash-identity {min-width:96px;}
 }
+
+
+/* Inventory exception center: quiet surface, explicit urgency, real deficit. */
+#stockos-alert-tools[hidden],#stockos-alert-footer[hidden] {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 #section-alertas {padding:16px;border-radius:10px;box-shadow:none!important;min-width:0;}
+body.dashboard-page .app.stockos-shell-v2 #section-alertas .card-header {margin-bottom:12px;gap:8px;flex-wrap:wrap;}
+body.dashboard-page .app.stockos-shell-v2 #section-alertas .card-title {font-size:15px;font-weight:650;}
+body.dashboard-page .app.stockos-shell-v2 #alerta-count {font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;background:var(--paper-sunk);border:0;color:var(--ink-2);}
+.stockos-alert-tools {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;}
+.stockos-alert-filters {grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--paper-sunk);border-radius:8px;padding:4px;}
+.stockos-alert-filters button {display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:34px;padding:5px 3px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink-3);font:inherit;font-size:11px;cursor:pointer;}
+.stockos-alert-filters button[aria-pressed=true] {background:var(--paper-raised);border-color:var(--rule);color:var(--ink);font-weight:650;}
+.stockos-alert-filters strong {font-size:10px;font-variant-numeric:tabular-nums;}
+.stockos-alert-filters [data-stockos-alert-filter="critical"] strong {color:var(--bad);}
+.stockos-alert-filters [data-stockos-alert-filter="attention"] strong {color:var(--warn);}
+.stockos-alert-search {grid-column:1/-1;width:100%;min-width:0;min-height:36px;border:1px solid var(--rule);border-radius:7px;background:var(--paper-raised);color:var(--ink);padding:8px 10px;font:inherit;font-size:12px;}
+#stockos-alert-destination {grid-column:1/-1;grid-row:3;justify-self:end;}
+.stockos-alert-head {grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;padding:7px 0 4px;border-bottom:1px solid var(--rule);font-size:10px;color:var(--ink-3);}
+.stockos-alert-rows {padding:0;margin:0;list-style:none;}
+.stockos-alert-row {--stock-alert-color:var(--warn);display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,auto);align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);min-width:0;}
+.stockos-alert-row[data-level="SEM_ESTOQUE"],.stockos-alert-row[data-level="CRITICO"] {--stock-alert-color:var(--bad);}
+.stockos-alert-identity,.stockos-alert-numbers {display:flex;flex-direction:column;gap:4px;min-width:0;}
+.stockos-alert-product {font-size:12px;font-weight:650;line-height:1.4;color:var(--ink);overflow-wrap:anywhere;}
+.stockos-alert-status {display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--stock-alert-color);}
+.stockos-alert-dot {width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 6px;}
+.stockos-alert-numbers {text-align:right;align-items:flex-end;font-variant-numeric:tabular-nums;}
+.stockos-alert-balance {font-size:11px;color:var(--ink-3);}
+.stockos-alert-balance strong {font-size:13px;color:var(--ink);font-weight:700;}
+.stockos-alert-track {width:76px;height:4px;background:var(--paper-sunk);border-radius:3px;overflow:hidden;}
+.stockos-alert-track span {display:block;height:100%;background:var(--stock-alert-color);border-radius:3px;}
+.stockos-alert-deficit {font-size:10px;color:var(--stock-alert-color);line-height:1.3;}
+.stockos-alert-footer {display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;font-size:10px;color:var(--ink-3);}
+.stockos-alert-pagination {display:flex;gap:5px;}
+.stockos-alert-pagination button {min-height:32px;padding:5px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--paper-raised);color:var(--ink-2);font:inherit;cursor:pointer;}
+.stockos-alert-pagination button:disabled {opacity:.45;cursor:default;}
+.stockos-alert-filters button:focus-visible,.stockos-alert-pagination button:focus-visible,.stockos-alert-search:focus-visible {outline:2px solid var(--accent);outline-offset:1px;}
+@media(max-width:600px) {body.dashboard-page .app.stockos-shell-v2 #section-alertas {padding:12px;}.stockos-alert-pagination button {min-height:40px;}}

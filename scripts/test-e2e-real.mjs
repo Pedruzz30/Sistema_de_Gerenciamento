@@ -1531,6 +1531,22 @@ try {
     await dono.waitForSelector('#stockos-daily-payments .stockos-payment-row');
     await dono.waitForSelector('#stockos-daily-payments .stockos-donut-percent');
     await dono.waitForSelector('#stockos-stock-distribution .stockos-donut-row');
+    const alertTools=dono.locator('#stockos-alert-tools');
+    if(await alertTools.isVisible()){
+      await dono.locator('[data-stockos-alert-filter="critical"]').click();
+      assert.equal(await dono.locator('[data-stockos-alert-filter="critical"]').getAttribute('aria-pressed'),'true');
+      assert.ok((await dono.locator('#stockos-alert-destination').getAttribute('href')).includes('filtro=critico'));
+      await dono.locator('.stockos-alert-search').fill('___sem_resultado_stockos___');
+      await esperarTexto(dono,'#alerta-list','Nenhum produto corresponde aos filtros.');
+      await dono.locator('.stockos-alert-search').fill('');
+      await dono.locator('[data-stockos-alert-filter="all"]').click();
+      assert.ok(await dono.locator('.stockos-alert-row').count()<=6);
+      if(await dono.locator('[data-alert-page="next"]').isEnabled()){
+        await dono.locator('[data-alert-page="next"]').click();
+        assert.equal(await dono.locator('#stockos-alert-footer').getAttribute('data-page'),'2');
+        await dono.locator('[data-alert-page="previous"]').click();
+      }
+    }
     assert.ok(await dono.locator('#stockos-stock-distribution .stockos-donut-label').allTextContents().then(labels=>labels.includes('Adequado')&&labels.includes('Crítico / sem estoque')));
     assert.equal(await dono.locator('#stockos-stock-distribution a[href="/estoque.html?filtro=critico"]').count(),1);
     for(const days of [7,30,1]){

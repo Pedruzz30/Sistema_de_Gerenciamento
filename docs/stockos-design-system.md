@@ -92,3 +92,7 @@ Fila compacta ordenada por urgência. A contagem representa grupos de prioridade
 ## Detalhes operacionais secundários
 
 Movimentações de hoje com estado vazio compacto e acesso ao estoque; limite de 10 registros recentes. Resumo repetido substituído na experiência nova por sessões de caixa abertas ou com abertura/encerramento hoje. Até oito sessões, operador, estado, contagem de vendas e total líquido acumulado por sessão, não vendas de hoje. Dados ausentes permanecem indisponíveis. Preservar modo original e permissões.
+
+## Central de alertas de estoque
+
+Contagens por grupo, filtros de gravidade, pesquisa sem distinção de acentos, páginas de seis produtos e acesso aos filtros existentes de estoque. Prioridade: sem estoque, crítico, baixo, moderado; dentro do nível, menor cobertura do mínimo primeiro. Déficit = máximo de zero e mínimo menos quantidade atual; valores desconhecidos não viram zero. Percentual representa cobertura do mínimo, não previsão de compra. Superfície neutra, cor restrita à situação. Sem consultas ou permissões novas.

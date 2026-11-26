@@ -398,3 +398,34 @@ assert.equal(cashSessionsApi([{numeroCaixa:1,status:'ENCERRADO',dataAbertura:'20
 assert.match(dashboard,/renderFinanceiro\(caixasAtuais, metricas, caixasDisponiveis\)/);
 assert.match(css,/stockos-cash-table/);
 console.log('PASS secondary dashboard: relevant cash sessions, no historical mislabeling, nullable data and open register counts.');
+
+const alertModelApi=vm.runInNewContext(extract(dashboard,'function referenceAlertModel(','function renderReferenceAlerts(')+'\nreferenceAlertModel;',{});
+const alertsSample=[
+ {nome:'Café',nivelEstoque:'SEM_ESTOQUE',quantidadeAtual:0,quantidadeMinima:20},
+ {nome:'Chá',nivelEstoque:'CRITICO',quantidadeAtual:2,quantidadeMinima:10},
+ {nome:'Água',nivelEstoque:'BAIXO',quantidadeAtual:5,quantidadeMinima:10},
+ {nome:'Leite',nivelEstoque:'MODERADO',quantidadeAtual:8,quantidadeMinima:10},
+ {nome:'Inativo',nivelEstoque:'SEM_ESTOQUE',ativo:false},
+ {nome:'Adequado',nivelEstoque:'ADEQUADO'},
+ {nome:'Desconhecido',nivelEstoque:'CRITICO',quantidadeAtual:null,quantidadeMinima:10}
+];
+const alertsAll=alertModelApi(alertsSample);
+assert.equal(alertsAll.counts.all,5);
+assert.equal(alertsAll.counts.critical,3);
+assert.equal(alertsAll.counts.attention,2);
+assert.equal(alertsAll.rows[0].name,'Café');
+assert.equal(alertsAll.rows[0].deficit,20);
+assert.equal(alertsAll.rows[1].coverage,20);
+assert.equal(alertsAll.rows[2].deficit,null);
+assert.equal(alertModelApi(alertsSample,'attention','AGUA').rows[0].name,'Água');
+assert.equal(alertModelApi(alertsSample,'critical','água').total,0);
+assert.equal(alertModelApi(alertsSample,'all','',99,2).page,3);
+assert.equal(alertModelApi(alertsSample,'all','',99,2).from,5);
+assert.equal(alertModelApi(alertsSample,'all','',99,2).to,5);
+assert.equal(alertModelApi(null),null);
+assert.equal(alertModelApi([], 'all').total,0);
+assert.equal(alertModelApi([{nome:'X',nivelEstoque:'BAIXO',quantidadeAtual:3,quantidadeMinima:0}]).rows[0].coverage,null);
+assert.equal(alertModelApi([{nome:'X',nivelEstoque:'BAIXO',quantidadeAtual:'',quantidadeMinima:10}]).rows[0].deficit,null);
+assert.match(css,/stockos-alert-filters/);
+assert.match(dashboard,/renderReferenceAlerts\(list,produtos\)/);
+console.log('PASS stock alerts: severity, coverage, deficit, search, pagination and unknown quantities.');

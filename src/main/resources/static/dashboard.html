@@ -160,7 +160,24 @@
                             <span class="card-title">Alertas de Estoque</span>
                             <span class="card-badge" id="alerta-count">—</span>
                         </div>
+                        <div id="stockos-alert-tools" class="stockos-alert-tools" hidden>
+                            <div class="stockos-alert-filters" role="group" aria-label="Gravidade dos alertas">
+                                <button type="button" data-stockos-alert-filter="all" aria-pressed="true">Todos <strong>0</strong></button>
+                                <button type="button" data-stockos-alert-filter="critical" aria-pressed="false">Críticos <strong>0</strong></button>
+                                <button type="button" data-stockos-alert-filter="attention" aria-pressed="false">Atenção <strong>0</strong></button>
+                            </div>
+                            <input type="search" placeholder="Buscar produto..." aria-label="Buscar produto nos alertas" autocomplete="off" class="stockos-alert-search">
+                            <div class="stockos-alert-head"><span>Produto / situação</span><span>Atual / mínimo</span></div>
+                            <a id="stockos-alert-destination" href="/estoque.html" class="stockos-secondary-link">Abrir estoque</a>
+                        </div>
                         <div class="alert-list" id="alerta-list"></div>
+                        <div class="stockos-alert-footer" id="stockos-alert-footer" hidden>
+                            <span id="stockos-alert-range" role="status"></span>
+                            <div class="stockos-alert-pagination">
+                                <button type="button" data-alert-page="previous" aria-label="Página anterior de alertas">Anterior</button>
+                                <button type="button" data-alert-page="next" aria-label="Próxima página de alertas">Próxima</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
