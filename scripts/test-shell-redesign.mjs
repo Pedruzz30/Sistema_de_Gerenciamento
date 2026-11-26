@@ -455,3 +455,24 @@ assert.doesNotMatch(cashCardApi.renderCompactCashDetails({},'—','—',''),/R\$
 assert.match(caixasSource,/shellNovo \? renderCompactCashDetails/);
 assert.match(css,/stockos-cash-card-metrics/);
 console.log('PASS cash card: separate physical/electronic/session balances, honest missing values and compact layout.');
+
+const movementApi=vm.runInNewContext(extract(caixasSource,'function movementPreviewModel(','function atualizarPreviaMovimentacao(')+'\nmovementPreviewModel;',{});
+let movement=movementApi('sangria',525,'125.25');
+assert.equal(movement.amount,12525);
+assert.equal(movement.balance,52500);
+assert.equal(movement.after,39975);
+assert.equal(movement.insufficient,false);
+assert.equal(movementApi('sangria',525,'526').insufficient,true);
+assert.equal(movementApi('suprimento',525,'100').after,62500);
+assert.equal(movementApi('suprimento',0,'0.01').after,1);
+assert.equal(movementApi('sangria',525,'525').after,0);
+assert.equal(movementApi('sangria',null,'1').after,null);
+assert.equal(movementApi('sangria',null,'1').insufficient,false);
+assert.equal(movementApi('sangria',0,'1').insufficient,true);
+for(const invalid of ['0','-1','1.001','1e3','Infinity','99999999999999999999'])assert.equal(movementApi('sangria',525,invalid).amount,null);
+assert.equal(movementApi('sangria',525,'').invalid,false);
+assert.match(caixasSource,/if\(movEnviando\)return/);
+assert.match(caixasSource,/const autorizacao=lerAutorizacao\('mov'\)/);
+assert.match(caixasSource,/state\.amount\/100/);
+assert.match(css,/stockos-mov-preview-total/);
+console.log('PASS movement preview: exact cent arithmetic, amount validation, balance and existing authorization.');

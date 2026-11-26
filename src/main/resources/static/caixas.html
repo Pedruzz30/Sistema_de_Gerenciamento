@@ -123,7 +123,7 @@
 <div class="modal-overlay" id="modal-mov" onclick="fecharModalSeClicouFora(event,'modal-mov')">
   <div class="modal">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-mov-titulo">Registrar Movimentação</h3>
+      <div class="stockos-mov-heading"><span class="stockos-mov-symbol" id="mov-symbol" aria-hidden="true"></span><div><h3 class="modal-title" id="modal-mov-titulo">Registrar Movimentação</h3><p class="stockos-mov-subtitle" id="mov-subtitle"></p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-mov')">✕</button>
     </div>
     <div class="modal-body">
@@ -132,12 +132,17 @@
         <div class="produto-info-qtd">Dinheiro na gaveta: <strong id="mov-saldo-atual">—</strong></div>
       </div>
       <div class="field form-group">
-        <label>Valor (R$)</label>
-        <input class="input" type="number" id="mov-valor" placeholder="0,00" step="0.01" min="0.01">
+        <label for="mov-valor">Valor da movimentação (R$)</label>
+        <div class="stockos-mov-amount"><span class="stockos-mov-currency" aria-hidden="true">R$</span><input class="input" type="number" id="mov-valor" placeholder="0,00" step="0.01" min="0.01" inputmode="decimal" aria-describedby="mov-preview-note"></div>
       </div>
       <div class="field form-group">
-        <label>Descrição (opcional)</label>
-        <input class="input" type="text" id="mov-descricao" placeholder="Ex: Venda 3 laranjas">
+        <label for="mov-descricao">Descrição (opcional)</label>
+        <input class="input" type="text" id="mov-descricao" placeholder="Ex: Retirada para depósito">
+      </div>
+      <div class="stockos-mov-preview" id="mov-preview" aria-live="polite">
+        <div class="stockos-mov-preview-row"><span id="mov-preview-label">Movimentação</span><strong id="mov-preview-delta">—</strong></div>
+        <div class="stockos-mov-preview-row stockos-mov-preview-total"><span>Saldo previsto na gaveta</span><strong id="mov-preview-total">—</strong></div>
+        <p id="mov-preview-note">Estimativa antes da confirmação.</p>
       </div>
       <fieldset class="field form-group autorizacao-gerente" id="mov-autorizacao" hidden>
         <legend>Autorização do gerente</legend>

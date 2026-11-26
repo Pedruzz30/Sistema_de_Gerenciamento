@@ -748,6 +748,8 @@ try {
     await admin.waitForSelector('#modal-mov.open');
     assert.equal(await admin.locator('#mov-autorizacao').isVisible(), true, 'A Ana precisa da autorização do gerente');
     await admin.fill('#mov-valor', '50');
+    assert.equal(limpar(await admin.locator('#mov-preview-total').textContent()),'R$ 110,40');
+    assert.equal(await admin.locator('#mov-preview').getAttribute('data-state'),'normal');
     await admin.fill('#mov-gerente-nome', 'Admin');
     await admin.fill('#mov-gerente-sobrenome', 'Superior');
     await admin.fill('#mov-gerente-senha', 'errada');

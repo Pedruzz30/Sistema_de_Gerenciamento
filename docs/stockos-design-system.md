@@ -104,3 +104,7 @@ Novo terminal em duas colunas inspirado na referência: busca por nome ou códig
 ## Cartões de caixa
 
 Saldo físico e vendas acumuladas por sessão em destaque. Fundo inicial, pagamentos eletrônicos (incluindo voucher quando existente), quantidade de vendas e ticket médio separados. Operador, abertura e ações existentes preservados. Dados ausentes não viram zero; sem alteração do fluxo financeiro.
+
+## Movimentação manual de caixa
+
+Sangria e suprimento compartilham o formulário, com identidade semântica por operação, motivo contextual e previsão do saldo físico em centavos. O saldo é uma fotografia da abertura, não uma garantia; a autorização e validação atuais do servidor permanecem obrigatórias. Bloqueio de envio simultâneo no cliente; resposta perdida exige conferência antes de repetir, sem promessa de idempotência no backend.

@@ -4763,3 +4763,40 @@ body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-ac
   body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card {padding:12px;}
   body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm {min-height:44px;}
 }
+
+
+/* Shared manual cash movement form — visual preview only, server remains authoritative. */
+body.caixas-page #modal-mov .stockos-mov-symbol,body.caixas-page #modal-mov .stockos-mov-subtitle,
+body.caixas-page #modal-mov .stockos-mov-currency,body.caixas-page #modal-mov .stockos-mov-preview {display:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov > .modal {width:min(100%,520px);border-radius:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-header {background:var(--paper-raised);padding:16px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-heading {display:flex;align-items:center;gap:12px;min-width:0;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-symbol {display:grid;place-items:center;width:40px;height:40px;flex:0 0 40px;border-radius:9px;background:var(--ok-soft);color:var(--ok);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov[data-operation="sangria"] .stockos-mov-symbol {background:var(--bad-soft);color:var(--bad);}
+.stockos-mov-symbol svg {width:20px;height:20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-subtitle {display:block;font-size:11px;line-height:1.4;color:var(--ink-3);margin:3px 0 0;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .produto-info-card {display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;box-shadow:none!important;padding:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .produto-info-qtd {display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:11px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .produto-info-qtd strong {font-size:19px;letter-spacing:-.025em;font-weight:700;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .field label {font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-2);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-amount {position:relative;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-currency {display:block;position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:14px;pointer-events:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov #mov-valor {height:49px;padding-left:40px;font-size:20px;font-weight:650;font-variant-numeric:tabular-nums;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .stockos-mov-preview {display:grid;gap:9px;border:1px solid var(--rule);border-radius:8px;padding:12px;}
+.stockos-mov-preview-row {display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-3);}
+.stockos-mov-preview-row strong {font-weight:650;color:var(--ok);font-variant-numeric:tabular-nums;}
+#modal-mov[data-operation="sangria"] #mov-preview-delta {color:var(--bad);}
+.stockos-mov-preview-total {border-top:1px solid var(--rule);padding-top:9px;font-weight:600;color:var(--ink-2);}
+.stockos-mov-preview-total strong {font-size:19px;color:var(--ink);}
+#mov-preview-note {font-size:10px;line-height:1.4;color:var(--ink-3);margin:0;}
+#mov-preview[data-state="error"] :is(#mov-preview-note,#mov-preview-total) {color:var(--bad);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-footer {background:var(--paper-raised);padding:12px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-footer .btn {min-height:42px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov[data-operation="sangria"] #btn-confirmar-mov {background:var(--bad);color:white;border-color:var(--bad);box-shadow:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-mov[data-operation="suprimento"] #btn-confirmar-mov {background:var(--ok);color:white;border-color:var(--ok);box-shadow:none;}
+body.caixas-page #modal-mov #btn-confirmar-mov:disabled {opacity:.55;cursor:wait;}
+@media(max-width:480px) {
+ body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-header,
+ body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-footer {padding:12px 14px;}
+ body.caixas-page:has(.app.stockos-shell-v2) #modal-mov .modal-body {padding:14px;gap:12px;}
+}

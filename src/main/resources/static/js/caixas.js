@@ -242,10 +242,10 @@ function renderCaixas() {
     const botoesAbertos = [
       shellNovo ? '' : botaoPDV,
       PODE_OPERAR_CAIXA
-        ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('minus')}Sangria</button>`
+        ? `<button class="btn-sm" onclick="abrirModalMov('sangria', ${c.numeroCaixa}, ${c.dinheiroNaGaveta ?? c.saldoAtual ?? 'null'})">${buttonIcon('minus')}Sangria</button>`
         : '',
       PODE_OPERAR_CAIXA
-        ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('plus')}Suprimento</button>`
+        ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.dinheiroNaGaveta ?? c.saldoAtual ?? 'null'})">${buttonIcon('plus')}Suprimento</button>`
         : '',
       `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}${shellNovo ? 'Movimentações' : 'Ver movs'}</button>`,
       PODE_OPERAR_CAIXA
@@ -351,41 +351,102 @@ async function confirmarAbrirCaixa() {
 
 // ── Modal: Movimentação manual (sangria / suprimento) ─────────────────────
 
+
+let saldoMovSnapshot = null;
+let movEnviando = false;
+function movementPreviewModel(tipo, saldo, rawValue) {
+  const text=String(rawValue??'').trim();
+  const valid=/^\d+(?:\.\d{1,2})?$/.test(text);
+  const cents=valid?Math.round(Number(text)*100):null;
+  const amount=Number.isSafeInteger(cents)&&cents>0?cents:null;
+  const balance=saldo!=null&&String(saldo).trim()!==''&&Number.isFinite(Number(saldo))?Math.round(Number(saldo)*100):null;
+  const known=Number.isSafeInteger(balance);
+  const direction=tipo==='sangria'?-1:1;
+  const after=known&&amount!=null?balance+direction*amount:null;
+  return {amount,balance:known?balance:null,after:Number.isSafeInteger(after)?after:null,
+    insufficient:tipo==='sangria'&&known&&amount!=null&&amount>balance,
+    invalid:text!==''&&amount==null,direction};
+}
+function atualizarPreviaMovimentacao() {
+  const input=document.getElementById('mov-valor');
+  const state=movementPreviewModel(tipoMovAtual,saldoMovSnapshot,input.value);
+  const preview=document.getElementById('mov-preview');
+  if(!preview)return state;
+  const format=v=>v==null?'—':moeda(v/100);
+  document.getElementById('mov-preview-delta').textContent=state.amount==null?'—':(state.direction<0?'− ':'+ ')+format(state.amount);
+  document.getElementById('mov-preview-total').textContent=format(state.after);
+  const note=document.getElementById('mov-preview-note');
+  note.textContent=state.invalid?'Informe um valor positivo com até duas casas decimais.':state.insufficient?'O valor informado supera o dinheiro disponível na gaveta.':state.balance==null?'Saldo atual indisponível; a confirmação depende do servidor.':'Estimativa antes da confirmação. O saldo pode mudar.';
+  preview.dataset.state=state.insufficient||state.invalid?'error':'normal';
+  input.setAttribute('aria-invalid',String(state.insufficient||state.invalid));
+  // The server still validates permissions and the current balance atomically.
+  // Do not reject a valid request merely because its cached balance is unknown.
+  return state;
+}
 function abrirModalMov(tipo, numero, saldoAtual) {
+  if (movEnviando) return;
   if (!podeExecutarMovimentacao(tipo)) { showToast(mensagemSemPermissao(tipo), 'error'); return; }
-  tipoMovAtual     = tipo;
-  numeroCaixaAtual = numero;
+  tipoMovAtual=tipo;
+  numeroCaixaAtual=numero;
+  saldoMovSnapshot=saldoAtual;
   limparAlert('alert-mov');
-  document.getElementById('mov-valor').value     = '';
-  document.getElementById('mov-descricao').value = '';
-  const titulos = { venda: 'Registrar Venda', sangria: 'Sangria', suprimento: 'Suprimento' };
-  document.getElementById('modal-mov-titulo').textContent = titulos[tipo] || 'Movimentação';
-  document.getElementById('mov-caixa-info').textContent   = `Caixa ${numero}`;
+  const field=document.getElementById('mov-valor'),desc=document.getElementById('mov-descricao');
+  field.value='';desc.value='';
+  const titulos={venda:'Registrar Venda',sangria:'Sangria',suprimento:'Suprimento'};
+  const labels={sangria:'Retirada de dinheiro da gaveta',suprimento:'Entrada de dinheiro na gaveta',venda:'Entrada de venda em dinheiro'};
+  const examples={sangria:'Ex: Retirada para depósito',suprimento:'Ex: Reforço de troco',venda:'Ex: Venda em dinheiro'};
+  const overlay=document.getElementById('modal-mov');
+  overlay.dataset.operation=tipo;
+  document.getElementById('modal-mov-titulo').textContent=titulos[tipo]||'Movimentação';
+  document.getElementById('mov-caixa-info').textContent='Caixa '+numero;
+  document.getElementById('mov-symbol').innerHTML=iconMarkup(tipo==='sangria'?'minus':'plus');
+  document.getElementById('mov-subtitle').textContent=labels[tipo]||'Movimentação de caixa';
+  document.getElementById('mov-preview-label').textContent=tipo==='sangria'?'Retirada':'Entrada';
+  desc.placeholder=examples[tipo]||'Motivo da movimentação';
+  const snapshot=movementPreviewModel(tipo,saldoAtual,'');
+  document.getElementById('mov-saldo-atual').textContent=snapshot.balance==null?'—':moeda(snapshot.balance/100);
+  const confirm=document.getElementById('btn-confirmar-mov');
+  confirm.textContent=tipo==='sangria'?'Confirmar sangria':tipo==='suprimento'?'Confirmar suprimento':'Confirmar venda';
+  confirm.disabled=false;
   prepararAutorizacao('mov');
-  document.getElementById('mov-saldo-atual').textContent  = `${moeda(saldoAtual)}`;
+  field.oninput=atualizarPreviaMovimentacao;
+  atualizarPreviaMovimentacao();
   abrirModal('modal-mov');
 }
-
 async function confirmarMovimentacao() {
+  if(movEnviando)return;
   if (!podeExecutarMovimentacao(tipoMovAtual)) {
     mostrarAlert('alert-mov', mensagemSemPermissao(tipoMovAtual), 'error'); return;
   }
-  const valor     = parseFloat(document.getElementById('mov-valor').value);
-  const descricao = document.getElementById('mov-descricao').value.trim();
-  if (!valor || valor <= 0) {
-    mostrarAlert('alert-mov', 'Informe um valor maior que zero.', 'error'); return;
+  const state=atualizarPreviaMovimentacao();
+  const descricao=document.getElementById('mov-descricao').value.trim();
+  if(state.amount==null){
+    mostrarAlert('alert-mov','Informe um valor maior que zero, com até duas casas decimais.','error');return;
   }
-  const autorizacao = lerAutorizacao('mov');
-  if (autorizacao === undefined) {
-    mostrarAlert('alert-mov', 'Peça ao gerente para digitar nome e senha para autorizar.', 'error'); return;
+  if(state.insufficient){
+    mostrarAlert('alert-mov','O valor supera o saldo físico informado. Atualize os dados do caixa se necessário.','error');return;
   }
-  const resp = await registrarMovimentacao(tipoMovAtual, numeroCaixaAtual, valor, descricao, autorizacao);
-  if (!resp.ok) {
-    mostrarAlert('alert-mov', await safeReadErrorMessage(resp, 'Erro ao registrar movimentação.'), 'error');
-    return;
+  const autorizacao=lerAutorizacao('mov');
+  if(autorizacao===undefined){
+    mostrarAlert('alert-mov','Peça ao gerente para digitar nome e senha para autorizar.','error');return;
   }
-  fecharModal('modal-mov');
-  await carregarCaixas();
+  const button=document.getElementById('btn-confirmar-mov');
+  const label=button.textContent;
+  movEnviando=true;button.disabled=true;button.textContent='Registrando…';
+  try {
+    const resp=await registrarMovimentacao(tipoMovAtual,numeroCaixaAtual,state.amount/100,descricao,autorizacao);
+    if(!resp.ok){
+      mostrarAlert('alert-mov',await safeReadErrorMessage(resp,'Erro ao registrar movimentação.'),'error');return;
+    }
+    fecharModal('modal-mov');
+    await carregarCaixas();
+  }catch(error){
+    // A lost response may have committed. Do not automatically repeat a money movement.
+    mostrarAlert('alert-mov','Não foi possível confirmar o resultado. Confira as movimentações do caixa antes de tentar novamente.','error');
+    await carregarCaixas();
+  }finally{
+    movEnviando=false;button.disabled=false;button.textContent=label;
+  }
 }
 
 // ── Modal: Encerrar Caixa ─────────────────────────────────────────────────
