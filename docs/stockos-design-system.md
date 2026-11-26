@@ -202,3 +202,7 @@ Modal com identificação e RU, comparação entre classe atual e pretendida e d
 ## Trilha de auditoria
 
 Consulta somente leitura limitada aos 2.000 registros mais recentes, conforme limite existente da API. Indicadores descrevem apenas dados carregados; última consulta distinta do evento mais recente. Datas brasileiras sem fuso preservam horário informado; ISO com offset é exibido no fuso do navegador. Filtros locais combinados por ação, RU, período e texto, ordenação, paginação e detalhe completo com dados escapados. Sem exportação, exclusão ou mudanças na autorização.
+
+## Ações rápidas
+
+Paleta compacta com grupos operacionais, busca sem acentos, priorização do nome pesquisado e todos os atalhos autorizados (sem corte de dez). Seleção por teclado com rolagem, combobox/listbox e foco restaurado ao fechar. Mantém rotas, efeitos e permissões existentes; revalida autorização antes e depois da navegação, bloqueia execução concorrente e preserva isolamento Supabase. Sem persistir histórico de busca.
