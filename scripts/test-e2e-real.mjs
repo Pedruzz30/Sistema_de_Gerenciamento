@@ -781,7 +781,10 @@ try {
     await admin.waitForFunction(() => document.activeElement && document.activeElement.id === 'encerrar-valor-contado');
     assert.equal(await admin.inputValue('#encerrar-valor-contado'), '', 'O campo começa vazio');
     assert.ok(!limpar(await admin.locator('#modal-encerrar .modal-body').textContent()).includes('110,40'), 'Não pode mostrar o valor esperado');
-    await admin.fill('#encerrar-valor-contado', '100');
+    await admin.locator('#encerrar-counter summary').click();
+    await admin.locator('#encerrar-denoms input').nth(1).fill('1');
+    await admin.click('#encerrar-usar-contagem');
+    assert.equal(Number(await admin.inputValue('#encerrar-valor-contado')),100);
     await admin.fill('#encerrar-gerente-nome', 'Admin');
     await admin.fill('#encerrar-gerente-sobrenome', 'Superior');
     await admin.fill('#encerrar-gerente-senha', SENHA_ADMIN);

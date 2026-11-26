@@ -112,3 +112,7 @@ Sangria e suprimento compartilham o formulário, com identidade semântica por o
 ## Extrato de caixa
 
 Movimentações da sessão em ordem cronológica decrescente, data e hora, operador, forma de pagamento, tipo e valor. Resumo de vendas brutas registradas, suprimentos, sangrias e estornos em centavos; não confundir com saldo físico. Filtros locais, pesquisa sem acentos e paginação de oito registros. Resumo por operador recolhível; no mock calculado pelos registros da sessão, sem inventar descontos. Ignorar respostas de sessões antigas.
+
+## Encerramento de caixa
+
+Preservar contagem cega no formulário: valor esperado não é mostrado nem usado no contador de denominações. Total manual ou calculado exclusivamente pelas quantidades informadas. Zero explícito é válido. Autorização, confirmação de comandas abertas e resposta de fechamento permanecem do servidor. Bloqueio de envio concorrente no cliente; falha ambígua pede verificação da sessão e não é repetida automaticamente. Não representa idempotência do backend nem impede acesso ao saldo em outras áreas autorizadas.

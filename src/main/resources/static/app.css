@@ -4841,3 +4841,39 @@ body.caixas-page:has(.app.stockos-shell-v2) #modal-movs-lista .modal-body {gap:1
 #modal-movs-lista [hidden] {display:none!important;}
 .stockos-extract-tabs button:focus-visible,.stockos-extract-pages button:focus-visible,.stockos-extract-operators summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
 @media(max-width:600px){.stockos-extract-summary {grid-template-columns:repeat(2,minmax(0,1fr));}.stockos-extract-search {grid-template-columns:1fr;}.stockos-extract-tabs button,.stockos-extract-pages button {min-height:44px;}.stockos-extract-table {min-width:580px;}}
+
+/* Blind close: physical count only, optional denomination calculator. */
+.stockos-close-icon,.stockos-close-subtitle,.stockos-close-blind,.stockos-close-amount>span,.stockos-close-count-note {display:none;}
+#encerrar-counter[hidden] {display:none!important;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar > .modal {width:min(100%,560px);border-radius:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar :is(.modal-header,.modal-footer) {background:var(--paper-raised);padding:14px 20px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-heading {display:flex;align-items:center;gap:10px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-icon {display:grid;place-items:center;width:38px;height:38px;border-radius:9px;background:var(--paper-sunk);color:var(--ink-2);}
+.stockos-close-icon svg {width:18px;height:18px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-subtitle {display:block;font-size:11px;color:var(--ink-3);margin:3px 0 0;}
+body.caixas-page:has(.app.stockos-shell-v2) #alert-encerrar-warn {font-size:11px;line-height:1.45;padding:9px 12px;border-radius:7px;background:var(--warn-soft);color:var(--warn);border-color:var(--rule);margin:0;}
+.stockos-close-session {display:flex;justify-content:space-between;align-items:center;gap:8px;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-session {padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-sunk);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-blind {display:inline;font-size:10px;color:var(--ink-3);}
+.stockos-close-instructions {font-size:12px;color:var(--ink-2);line-height:1.45;}
+.stockos-close-instructions strong {font-size:12px;color:var(--ink);}
+.stockos-close-instructions p {margin:4px 0;}
+.stockos-close-instructions small {font-size:11px;color:var(--ink-3);}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .field label {font-size:12px;letter-spacing:0;text-transform:none;}
+.stockos-close-amount {position:relative;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-amount>span {display:block;position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none;}
+body.caixas-page:has(.app.stockos-shell-v2) #encerrar-valor-contado {padding-left:40px;font-size:22px;font-weight:650;min-height:48px;font-variant-numeric:tabular-nums;}
+body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar .stockos-close-count-note {display:block;font-size:10px;color:var(--ink-3);}
+.stockos-close-counter {border:1px solid var(--rule);border-radius:8px;padding:10px 12px;}
+.stockos-close-counter summary {font-size:12px;font-weight:600;cursor:pointer;color:var(--ink);}
+.stockos-close-counter summary span {float:right;font-size:10px;font-weight:400;color:var(--ink-3);}
+.stockos-close-counter p {font-size:11px;color:var(--ink-3);margin:10px 0;}
+.stockos-close-denoms {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.stockos-close-denoms label {display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;font-size:10px;white-space:nowrap;}
+#modal-encerrar .stockos-close-denoms .input {width:58px;min-width:0;min-height:34px;padding:5px;font-size:12px;}
+.stockos-close-counter-total {display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:12px;}
+.stockos-close-counter-total strong {font-size:16px;font-variant-numeric:tabular-nums;}
+#encerrar-usar-contagem {width:100%;min-height:36px;font-size:12px;}
+body.caixas-page:has(.app.stockos-shell-v2) #btn-confirmar-encerrar {background:var(--bad);border-color:var(--bad);color:white;box-shadow:none;}
+#btn-confirmar-encerrar:disabled {opacity:.55;cursor:default;}
+@media(max-width:480px){.stockos-close-denoms {grid-template-columns:repeat(2,minmax(0,1fr));}body.caixas-page:has(.app.stockos-shell-v2) #modal-encerrar :is(.modal-header,.modal-footer) {padding:12px 14px;}}

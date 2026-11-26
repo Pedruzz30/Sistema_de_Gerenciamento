@@ -451,15 +451,65 @@ async function confirmarMovimentacao() {
 
 // ── Modal: Encerrar Caixa ─────────────────────────────────────────────────
 
+
+const CLOSE_DENOMINATIONS=[20000,10000,5000,2000,1000,500,200,100,50,25,10,5,1];
+function countedCashCents(raw){
+  const value=String(raw??'').trim().replace(',','.');
+  if(!/^\d+(?:\.\d{1,2})?$/.test(value))return null;
+  const [whole,fraction='']=value.split('.');
+  const cents=Number(whole)*100+Number(fraction.padEnd(2,'0'));
+  return Number.isSafeInteger(cents)&&cents>=0?cents:null;
+}
+function denominationTotal(entries){
+  let total=0;
+  for(const [denom,raw] of entries){
+    if(!CLOSE_DENOMINATIONS.includes(denom))return null;
+    const s=String(raw??'').trim();
+    if(s==='')continue;
+    if(!/^\d+$/.test(s))return null;
+    const qty=Number(s);
+    if(!Number.isSafeInteger(qty)||!Number.isSafeInteger(total+qty*denom))return null;
+    total+=qty*denom;
+  }
+  return total;
+}
+function prepararContadorEncerramento(){
+  const details=document.getElementById('encerrar-counter');
+  const grid=document.getElementById('encerrar-denoms');
+  const total=document.getElementById('encerrar-denom-total');
+  const use=document.getElementById('encerrar-usar-contagem');
+  details.hidden=!document.querySelector('.app.stockos-shell-v2');details.open=false;
+  grid.replaceChildren();
+  const fields=CLOSE_DENOMINATIONS.map(denom=>{
+    const label=document.createElement('label'),text=document.createElement('span'),input=document.createElement('input');
+    text.textContent=moeda(denom/100);input.type='number';input.min='0';input.step='1';input.inputMode='numeric';
+    input.placeholder='0';input.setAttribute('aria-label','Quantidade de '+moeda(denom/100));input.className='input';
+    label.append(text,input);grid.appendChild(label);
+    return [denom,input];
+  });
+  const read=()=>denominationTotal(fields.map(([d,input])=>[d,input.validity.badInput?'invalid':input.value]));
+  const update=()=>{const cents=read();total.textContent=cents==null?'Contagem inválida':moeda(cents/100);use.disabled=cents==null;};
+  fields.forEach(([,input])=>input.oninput=update);
+  use.onclick=()=>{const cents=read();if(cents==null)return;const counted=document.getElementById('encerrar-valor-contado');counted.value=(cents/100).toFixed(2);details.open=false;counted.focus();};
+  update();
+}
+let closeSending=false,closeUncertain=false,closeVersion=0;
+
 function abrirModalEncerrar(numero) {
   if (!PODE_OPERAR_CAIXA) { showToast(mensagemSemPermissao('encerrar'), 'error'); return; }
+  if(closeSending)return;
+  ++closeVersion;
+  closeUncertain=false;
   numeroCaixaEncerrar = numero;
   limparAlert('alert-encerrar');
+  const button=document.getElementById('btn-confirmar-encerrar');
+  button.disabled=false;button.textContent='Confirmar encerramento';
   document.getElementById('encerrar-caixa-num').textContent = `Caixa ${numero}`;
   // Fechamento cego: o valor esperado NÃO aparece e o campo começa vazio.
   // A diferença só é mostrada depois de encerrar.
   document.getElementById('encerrar-valor-contado').value = '';
   document.getElementById('encerrar-observacao').value = '';
+  prepararContadorEncerramento();
   prepararAutorizacao('encerrar');
   prepararAvisoComandas();
   abrirModal('modal-encerrar');
@@ -468,6 +518,7 @@ function abrirModalEncerrar(numero) {
 
 // Comanda aberta é cliente que ainda não pagou: o fechamento avisa e pede confirmação.
 async function prepararAvisoComandas(lista) {
+  const version=closeVersion;
   const aviso = document.getElementById('encerrar-comandas');
   document.getElementById('encerrar-deixar-comandas').checked = false;
   let abertas = lista;
@@ -480,6 +531,7 @@ async function prepararAvisoComandas(lista) {
       abertas = [];
     }
   }
+  if(version!==closeVersion)return;
   aviso.hidden = abertas.length === 0;
   if (!abertas.length) return;
   const total = abertas.reduce((soma, c) => soma + Number(c.total || 0), 0)
@@ -491,6 +543,7 @@ async function prepararAvisoComandas(lista) {
 }
 
 async function confirmarEncerrar() {
+  if(closeSending||closeUncertain)return;
   if (!PODE_OPERAR_CAIXA) {
     mostrarFechamento(null, mensagemSemPermissao('encerrar')); return;
   }
@@ -499,10 +552,10 @@ async function confirmarEncerrar() {
     mostrarAlert('alert-encerrar', 'Conte o dinheiro da gaveta e digite o valor.', 'error');
     return;
   }
-  const valorContado = parseFloat(campoContado.replace(',', '.'));
+  const cents=countedCashCents(campoContado);
   const observacao = document.getElementById('encerrar-observacao').value.trim();
-  if (Number.isNaN(valorContado) || valorContado < 0) {
-    mostrarAlert('alert-encerrar', 'Informe um valor contado valido.', 'error');
+  if (cents==null) {
+    mostrarAlert('alert-encerrar', 'Informe um valor não negativo com até duas casas decimais.', 'error');
     return;
   }
   const autorizacao = lerAutorizacao('encerrar');
@@ -517,27 +570,36 @@ async function confirmarEncerrar() {
     avisoComandas.scrollIntoView({ block: 'nearest' });
     return;
   }
-  const resp = await encerrarCaixa(numeroCaixaEncerrar, valorContado, observacao, autorizacao, deixarComandas);
-  if (resp.status === 409) {
-    // Abriram uma comanda depois que esta janela abriu.
-    const corpo = await resp.json().catch(() => ({}));
-    await prepararAvisoComandas(corpo.comandasAbertas || []);
-    mostrarAlert('alert-encerrar', corpo.erro || 'Há comandas abertas.', 'error');
-    document.getElementById('encerrar-comandas').scrollIntoView({ block: 'nearest' });
-    return;
+  const button=document.getElementById('btn-confirmar-encerrar');
+  const label=button.textContent;
+  closeSending=true;button.disabled=true;button.textContent='Encerrando…';
+  try {
+    const resp=await encerrarCaixa(numeroCaixaEncerrar,cents/100,observacao,autorizacao,deixarComandas);
+    if(resp.status===409){
+      const corpo=await resp.json().catch(()=>({}));
+      await prepararAvisoComandas(corpo.comandasAbertas||[]);
+      mostrarAlert('alert-encerrar',corpo.erro||'Há comandas abertas.','error');
+      document.getElementById('encerrar-comandas').scrollIntoView({block:'nearest'});
+      return;
+    }
+    if(resp.status===403){
+      mostrarAlert('alert-encerrar',await safeReadErrorMessage(resp,'Autorização recusada.'),'error');return;
+    }
+    if(!resp.ok){
+      if(resp.status>=500)throw Error('Resultado incerto');
+      mostrarAlert('alert-encerrar',await safeReadErrorMessage(resp,'Erro ao encerrar caixa.'),'error');return;
+    }
+    const fechamento=await resp.json();
+    fecharModal('modal-encerrar');
+    mostrarFechamento(fechamento);
+    await carregarCaixas();
+  }catch(error){
+    closeUncertain=true;
+    mostrarAlert('alert-encerrar','Não foi possível confirmar o resultado. Consulte a situação do caixa antes de tentar novamente.','error');
+    await carregarCaixas();
+  }finally{
+    closeSending=false;button.disabled=closeUncertain;button.textContent=closeUncertain?'Verifique a situação do caixa':label;
   }
-  if (resp.status === 403) {
-    // Senha do gerente errada: mantém o modal aberto para tentar de novo.
-    mostrarAlert('alert-encerrar', await safeReadErrorMessage(resp, 'Autorização recusada.'), 'error');
-    return;
-  }
-  fecharModal('modal-encerrar');
-  if (!resp.ok) {
-    mostrarFechamento(null, await safeReadErrorMessage(resp, 'Erro ao encerrar caixa.'));
-  } else {
-    mostrarFechamento(await resp.json());
-  }
-  await carregarCaixas();
 }
 
 // ── Modal: Movimentações do caixa ─────────────────────────────────────────

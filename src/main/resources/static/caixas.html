@@ -201,7 +201,7 @@
 <div class="modal-overlay" id="modal-encerrar" onclick="fecharModalSeClicouFora(event,'modal-encerrar')">
   <div class="modal">
     <div class="modal-header">
-      <h3 class="modal-title">Encerrar Caixa</h3>
+      <div class="stockos-close-heading"><span class="stockos-close-icon" aria-hidden="true" data-icon="lock"></span><div><h3 class="modal-title">Encerrar Caixa</h3><p class="stockos-close-subtitle">Conferência e fechamento da sessão</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-encerrar')">✕</button>
     </div>
     <div class="modal-body">
@@ -213,24 +213,30 @@
       </div>
       <div class="alert-modal error alert-modal--static" id="alert-encerrar-warn">
         <span class="btn-inline-icon" data-icon="alertTriangle"></span>
-        Tem certeza? Após encerrar, o caixa não poderá receber mais movimentações.
+        Após confirmar, esta sessão não poderá receber novas movimentações.
       </div>
-      <p class="inline-note">
-        Caixa: <strong id="encerrar-caixa-num">—</strong>
-      </p>
-      <p class="inline-note">
-        Conte <strong>só o dinheiro da gaveta</strong> (notas e moedas) e digite o total.
-        Pix e cartões não entram na contagem: confira pelo extrato e pela maquininha.
-        O valor esperado aparece só depois de encerrar.
-      </p>
+      <div class="stockos-close-session"><strong id="encerrar-caixa-num">—</strong><span class="stockos-close-blind">Conferência cega</span></div>
+      <div class="stockos-close-instructions">
+        <strong>Confira o dinheiro físico</strong>
+        <p>Conte apenas notas e moedas da gaveta. Confira Pix e cartões separadamente, pelo extrato e pela maquininha.</p>
+        <small>O valor esperado e a divergência serão exibidos somente após o encerramento.</small>
+      </div>
       <div class="field form-group">
         <label for="encerrar-valor-contado">Dinheiro contado (R$)</label>
-        <input class="input" type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0" inputmode="decimal">
+        <div class="stockos-close-amount"><span aria-hidden="true">R$</span><input class="input" type="number" id="encerrar-valor-contado" placeholder="0,00" step="0.01" min="0" inputmode="decimal" aria-describedby="encerrar-count-note"></div>
+        <small id="encerrar-count-note" class="stockos-close-count-note">Digite o valor contado, inclusive zero se a gaveta estiver vazia.</small>
       </div>
       <div class="field form-group">
-        <label>Observação (opcional)</label>
-        <input class="input" type="text" id="encerrar-observacao" placeholder="Ex: diferença de troco no fechamento">
+        <label for="encerrar-observacao">Observação (opcional)</label>
+        <input class="input" type="text" id="encerrar-observacao" placeholder="Ex: conferência realizada no fim do turno">
       </div>
+      <details class="stockos-close-counter" id="encerrar-counter" hidden>
+        <summary>Contar por cédulas e moedas <span>Opcional</span></summary>
+        <p>Informe a quantidade de cada valor. Nenhuma quantidade é preenchida automaticamente.</p>
+        <div class="stockos-close-denoms" id="encerrar-denoms"></div>
+        <div class="stockos-close-counter-total"><span>Total da contagem</span><strong id="encerrar-denom-total" aria-live="polite">R$ 0,00</strong></div>
+        <button type="button" class="btn btn-secondary" id="encerrar-usar-contagem">Usar total contado</button>
+      </details>
       <fieldset class="field form-group autorizacao-gerente" id="encerrar-autorizacao" hidden>
         <legend>Autorização do gerente</legend>
         <p class="inline-note">Esta operação precisa do gerente. Ele digita o login aqui; você continua logado.</p>
