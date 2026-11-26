@@ -224,7 +224,7 @@ assert.equal(tabRendered.join(','),'20,21');
 console.log('PASS tab primary action and out-of-order detail responses.');
 
 assert.match(dashboard,/version !== dashboardLoadVersion \|\| paginaAtual\(\) !== 'dashboard'/);
-assert.match(dashboard,/carregarRelatorioDashboard\(pedir, version\)/);
+assert.match(dashboard,/renderReferenceDashboard\(produtos, caixasAtuais, metricas, pedir, version\)/);
 const dashboardAlertList={innerHTML:''},dashboardAlertBadge={textContent:''},dashboardMovList={innerHTML:''};
 const dashboardStates=vm.runInNewContext(
   dashboard.slice(dashboard.indexOf('function renderAlertas('),dashboard.indexOf('// ── Resumo financeiro'))+'\n({renderAlertas,renderMovimentacoes})',
@@ -241,3 +241,7 @@ assert.equal(dashboardMovList.innerHTML,'Movimentações indisponíveis');
 dashboardStates.renderMovimentacoes([]);
 assert.equal(dashboardMovList.innerHTML,'Nenhuma movimentação hoje');
 console.log('PASS dashboard request ordering and honest unavailable states.');
+
+assert.match(dashboard,/referenceSeries\(chart,rows,compare\)/);
+assert.match(css,/stockos-reference-grid/);
+assert.match(dashboard,/rows.every\(r=>Number.isFinite\(r.previous\)\)/);

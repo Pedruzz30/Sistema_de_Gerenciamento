@@ -265,6 +265,31 @@
       return respond({totalVendas:Math.round(t*100)/100,caixasAbertos:n,
         totalMovimentacoesVenda:count,ticketMedio:count?Math.round(t/count*100)/100:0});
     }
+    if(method==='GET' && (path==='/api/relatorios/dia'||path==='/api/relatorios/mes')){
+      const sales=Array.isArray(db.vendasPreview)?db.vendasPreview:[];
+      const date=today(), month=new URL(raw,location.href).searchParams.get('mes')||date.slice(0,7);
+      if(path.endsWith('/mes')){
+        const days=new Map();
+        if(db.demoEscala)for(const d of db.demoEscala.dias||[])if(d.data.startsWith(month))days.set(d.data,0);
+        if(date.startsWith(month))days.set(date,0);
+        for(const s of sales){const d=String(s.criadaEm||'').slice(0,10);if(d.startsWith(month))days.set(d,(days.get(d)||0)+Number(s.valor||0));}
+        if(!sales.length&&date.startsWith(month))days.set(date,db.movimentacoesCaixa.filter(m=>m.tipo==='VENDA'&&String(m.dataHora).startsWith(date)).reduce((v,m)=>v+Number(m.valor||0),0));
+        return respond({dias:[...days].map(([data,liquido])=>({data,liquido:+liquido.toFixed(2)}))});
+      }
+      const selected=sales.filter(s=>String(s.criadaEm).startsWith(date));
+      const hours=new Map(), forms=new Map(), products=new Map();
+      const labels={DINHEIRO:'Dinheiro',PIX:'Pix',DEBITO:'Débito',CREDITO:'Crédito',VOUCHER:'Voucher'};
+      for(const s of selected){
+        const h=Number(String(s.criadaEm).slice(11,13));hours.set(h,(hours.get(h)||0)+Number(s.valor||0));
+        const payments=s.pagamentos||[{forma:s.formaPagamento,valor:s.valor}];
+        for(const p of payments)if(labels[p.forma])forms.set(p.forma,(forms.get(p.forma)||0)+Number(p.valor||0));
+        // For historical seeds the sale contains one line and its recorded total.
+        // Multi-line receipts without historical line prices do not invent a split.
+        if(s.itens?.length===1){const item=s.itens[0],prod=db.produtos.find(p=>p.id===item.idProduto);if(prod){const entry=products.get(prod.id)||{nome:prod.nome,quantidade:0,valor:0};entry.quantidade+=Number(item.quantidade||0);entry.valor+=Number(s.valor||0);products.set(prod.id,entry);}}
+      }
+      if(!selected.length)for(const m of db.movimentacoesCaixa.filter(m=>m.tipo==='VENDA'&&String(m.dataHora).startsWith(date))){const h=Number(String(m.dataHora).slice(11,13));hours.set(h,(hours.get(h)||0)+Number(m.valor||0));if(m.formaPagamento&&labels[m.formaPagamento])forms.set(m.formaPagamento,(forms.get(m.formaPagamento)||0)+Number(m.valor||0));}
+      return respond({porHora:[...hours].sort((a,b)=>a[0]-b[0]).map(([hora,valor])=>({hora,valor:+valor.toFixed(2)})),porForma:[...forms].map(([forma,valor])=>({forma,rotulo:labels[forma],valor:+valor.toFixed(2)})),produtos:[...products.values()].map(p=>({...p,valor:+p.valor.toFixed(2)}))});
+    }
     if(path==='/api/rentabilidade/ranking')return respond(db.rentabilidadePreview||[]);
     if(path==='/api/preview/cenario' && method==='GET')return respond(db.demoEscala||{nome:'Demonstração simples',demonstracao:true});
     if(path==='/api/fornecedores' && method==='GET')return respond(db.fornecedores);
@@ -420,6 +445,7 @@
   }
   function mountScaleSummary() {
     if(!db.demoEscala || !/\/dashboard(?:\.html)?\/?$/.test(location.pathname))return;
+    if(window.StockOsDesignReview?.mode!=='original')return;
     const anchor=document.getElementById('summary-grid');
     if(!anchor || document.getElementById('stockos-volume-summary'))return;
     const data=db.demoEscala;
@@ -477,7 +503,14 @@
   window.StockOSPreviewHooks=window.StockOSPreviewHooks||{};
   window.StockOSPreviewHooks.dashboard=mountScaleSummary;
   document.addEventListener('DOMContentLoaded',mountScaleSummary);
-  document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(banner));
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.body.appendChild(banner);
+    if(window.StockOsDesignReview?.mode!=='original'){
+      banner.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 20px;padding:8px 12px;font:12px system-ui;color:var(--ink-3);border:1px solid var(--rule);border-radius:8px;background:var(--paper-raised)';
+      const caption=banner.querySelector('span');if(caption)caption.textContent='Demonstração · dados fictícios';
+      banner.querySelectorAll('select,button').forEach(n=>n.style.cssText='font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:5px 8px');
+    }
+  });
   window.StockOsPreview={
     reset:()=>{try{localStorage.removeItem(KEY);}catch(_){}location.reload();},
     mode:'mock',scenario:mode, getSeedNotes:()=>JSON.parse(JSON.stringify(db.notas))

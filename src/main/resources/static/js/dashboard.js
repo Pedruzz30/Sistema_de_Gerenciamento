@@ -217,14 +217,30 @@ async function carregarDados() {
   const produtosAtuais = produtosDisponiveis ? produtos : [];
   const caixasAtuais = caixasDisponiveis ? caixas : [];
   renderSummaryCards(produtosAtuais, caixasAtuais, metricas, { produtosDisponiveis, caixasDisponiveis });
-  renderDashboardOverview(caixasAtuais, metricas, caixasDisponiveis);
-  if (document.querySelector('.app.stockos-shell-v2')) {
+  const reference = document.getElementById('stockos-reference-sales');
+  const novo = !!document.querySelector('.app.stockos-shell-v2');
+  if (novo && reference) {
+    renderReferenceDashboard(produtos, caixasAtuais, metricas, pedir, version);
+  } else if (!reference) {
+    renderDashboardOverview(caixasAtuais, metricas, caixasDisponiveis);
+  }
+  if (novo) {
     // Keep backup warnings prominent; move the optional device setup below the operation.
     const devicePanel = document.getElementById('celular-painel');
     const content = document.querySelector('.main-body.content');
     if (devicePanel && content) content.appendChild(devicePanel);
-    if (PODE_VER_RENTABILIDADE_DASH && !window.STOCKOS_PREVIEW) {
-      void carregarRelatorioDashboard(pedir, version);
+    if (window.STOCKOS_PREVIEW) {
+      const tools = document.getElementById('stockos-demo-tools');
+      if (tools) {
+        document.querySelectorAll('.comandas-demo-entry,.caixa-completo-entry,.stockos-caixa-completo-entry').forEach(node => tools.appendChild(node));
+        // Keep the mock-only links available even if a build changes their wrapper class.
+        for (const link of content.querySelectorAll('a[href="/caixas-completo.html"],a[href="/caixa-completo.html"],a[href="/comandas-demo.html"]')) {
+          if (link.closest('.stockos-demo-tools')) continue;
+          const wrapper=link.closest('div');
+          if (wrapper && wrapper !== content) tools.appendChild(wrapper);
+        }
+        tools.hidden = !tools.children.length;
+      }
     }
   }
   renderAcoesOperacionais(produtosAtuais, caixasAtuais, { produtosDisponiveis, caixasDisponiveis });
@@ -298,7 +314,7 @@ function renderHeader() {
   const hora = new Date().getHours();
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
   document.getElementById('header-title').textContent =
-    saudacao + ', ' + usuario.nome + ' 👋';
+    document.querySelector('.app.stockos-shell-v2') ? 'Visão geral' : saudacao + ', ' + usuario.nome + ' 👋';
   document.getElementById('header-sub').textContent =
     new Date().toLocaleDateString('pt-BR', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -441,6 +457,173 @@ function renderDashboardOverview(caixas, metricas, disponivel) {
 }
 
 // Read-only report, same permission as the real report page. Never block first paint.
+
+/* Reference layout: explicit HTML slots, truthful period data, no new backend routes. */
+function referenceDate(offset) {
+  const d = new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()+offset);
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+}
+function referenceNode(tag, cls, value) {
+  const n=document.createElement(tag); if(cls)n.className=cls;
+  if(value!=null)n.textContent=String(value); return n;
+}
+function referenceMessage(node, message) {
+  node.replaceChildren(referenceNode('p','stockos-reference-empty',message));
+}
+function referenceDonut(node, rows, center, unavailable) {
+  node.replaceChildren();
+  if (unavailable) {referenceMessage(node,unavailable);return;}
+  const valid=rows.filter(r=>Number.isFinite(r.value)&&r.value!==0);
+  if(!valid.length){referenceMessage(node,'Sem registros no período.');return;}
+  const total=valid.reduce((sum,r)=>sum+r.value,0);
+  const colors=['var(--accent)','#42866c','#c69b55','#8793a5','#9e766e'];
+  const wrap=referenceNode('div','stockos-donut-layout');
+  const legend=referenceNode('div','stockos-donut-legend');
+  const signed=valid.some(r=>r.value<0);
+  const ring=referenceNode('div','stockos-donut');
+  if(!signed && total>0){
+    let position=0;
+    const stops=valid.map((r,i)=>{const from=position;position+=r.value/total*100;return colors[i%colors.length]+' '+from+'% '+position+'%';});
+    ring.style.background='conic-gradient('+stops.join(',')+')';
+    const inner=referenceNode('div','stockos-donut-inner');
+    inner.append(referenceNode('span','','Total'),referenceNode('strong','',center(total)));
+    ring.appendChild(inner);ring.setAttribute('aria-hidden','true');wrap.appendChild(ring);
+  }
+  valid.forEach((r,i)=>{
+    const line=referenceNode('div','stockos-payment-row stockos-donut-row');
+    const dot=referenceNode('span','stockos-donut-dot');dot.style.background=colors[i%colors.length];
+    line.append(dot,referenceNode('span','',r.label),referenceNode('strong','',center(r.value)));
+    legend.appendChild(line);
+  });
+  wrap.appendChild(legend);node.appendChild(wrap);
+}
+function referenceSeries(node, rows, compare) {
+  node.replaceChildren();
+  if(!rows.length){referenceMessage(node,'Sem dados para o período.');return;}
+  const values=rows.flatMap(r=>compare?[r.value,r.previous]:[r.value]).filter(Number.isFinite);
+  if(!values.length){referenceMessage(node,'Histórico indisponível.');return;}
+  const min=Math.min(0,...values), max=Math.max(1,...values), span=max-min;
+  const zero=(0-min)/span*100;
+  const grid=referenceNode('div','stockos-reference-chart-grid');
+  const axis=referenceNode('div','stockos-reference-axis');
+  for(let i=0;i<=4;i++)axis.appendChild(referenceNode('span','',new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1}).format(max-span*i/4)));
+  const plot=referenceNode('div','stockos-reference-plot');plot.style.setProperty('--series-count',String(rows.length));
+  rows.forEach((r,i)=>{
+    const col=referenceNode('div','stockos-reference-column');
+    const bars=referenceNode('div','stockos-reference-bars');
+    const label=r.label+': '+(Number.isFinite(r.value)?formatarMoedaBR(r.value):'indisponível')+(compare?', anterior: '+(Number.isFinite(r.previous)?formatarMoedaBR(r.previous):'indisponível'):'');
+    col.setAttribute('aria-label',label);col.title=label;
+    [r.value,...(compare?[r.previous]:[])].forEach((v,j)=>{
+      if(!Number.isFinite(v))return;
+      const bar=referenceNode('span','stockos-reference-bar'+(j?' previous':''));
+      bar.style.height=Math.abs(v)/span*100+'%';
+      bar.style.bottom=(v>=0?zero:zero-Math.abs(v)/span*100)+'%';
+      bars.appendChild(bar);
+    });
+    col.append(bars,referenceNode('span','stockos-reference-x',rows.length>15 && i%5!==0 && i!==rows.length-1?'':r.label));
+    plot.appendChild(col);
+  });
+  grid.append(axis,plot);node.appendChild(grid);
+  const legend=referenceNode('div','stockos-reference-legend');
+  legend.append(referenceNode('span','current','Vendas líquidas'));
+  if(compare)legend.append(referenceNode('span','previous','Período anterior'));
+  node.appendChild(legend);
+}
+function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
+  const chartPanel=document.getElementById('stockos-reference-sales');
+  const rankPanel=document.getElementById('stockos-daily-ranking');
+  const distributions=document.getElementById('stockos-distributions');
+  const paymentPanel=document.getElementById('stockos-daily-payments');
+  const stockPanel=document.getElementById('stockos-stock-distribution');
+  const alive=()=>version===dashboardLoadVersion && paginaAtual()==='dashboard' && chartPanel===document.getElementById('stockos-reference-sales');
+  chartPanel.hidden=!PODE_VER_FINANCEIRO_DASH;
+  rankPanel.hidden=!PODE_VER_RENTABILIDADE_DASH;
+  paymentPanel.hidden=!PODE_VER_RENTABILIDADE_DASH;
+  stockPanel.hidden=!PODE_VER_ESTOQUE_DASH;
+  distributions.hidden=paymentPanel.hidden&&stockPanel.hidden;
+  if(PODE_VER_ESTOQUE_DASH){
+    const active=Array.isArray(produtos)?produtos.filter(p=>p&&p.ativo!==false):[];
+    const alerts=obterAlertasEstoque(active).length;
+    referenceDonut(document.getElementById('stockos-stock-content'),[
+      {label:'Adequado',value:active.length-alerts},{label:'Atenção',value:alerts}
+    ],n=>String(n),Array.isArray(produtos)?null:'Estoque indisponível.');
+  }
+  if(!PODE_VER_FINANCEIRO_DASH)return;
+  const chart=document.getElementById('stockos-period-chart');
+  const total=document.getElementById('stockos-period-total');
+  const label=document.getElementById('stockos-period-label');
+  const buttons=[...chartPanel.querySelectorAll('[data-stockos-period]')];
+  const reportPromise=PODE_VER_RENTABILIDADE_DASH?pedir('/api/relatorios/dia',null):Promise.resolve(null);
+  const cache=new Map();
+  let request=0;
+  async function period(days) {
+    const id=++request;
+    buttons.forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.stockosPeriod)===days)));
+    label.textContent=days===1?'Hoje · por hora':'Últimos '+days+' dias · incluindo hoje';
+    total.textContent='—';referenceMessage(chart,'Carregando vendas…');
+    if(!PODE_VER_RENTABILIDADE_DASH){
+      label.textContent='Totais acumulados por caixa';
+      total.textContent=metricas?.totalVendas!=null?formatarMoedaBR(Number(metricas.totalVendas)):'—';
+      referenceSeries(chart,caixas.filter(c=>c.totalVendas!=null).map(c=>({label:'Caixa '+c.numeroCaixa,value:Number(c.totalVendas)})),false);
+      buttons.forEach(b=>{b.hidden=true;});return;
+    }
+    let rows=[],compare=false;
+    if(days===1){
+      const report=await reportPromise;
+      if(Array.isArray(report?.porHora))rows=report.porHora.map(r=>({label:String(r.hora).padStart(2,'0')+'h',value:Number(r.valor)}));
+    }else{
+      const dates=Array.from({length:days},(_,i)=>referenceDate(i-days+1));
+      const previous=Array.from({length:days},(_,i)=>referenceDate(i-2*days+1));
+      const months=[...new Set([...dates,...previous].map(d=>d.slice(0,7)))];
+      await Promise.all(months.map(m=>{
+        if(!cache.has(m))cache.set(m,pedir('/api/relatorios/mes?mes='+encodeURIComponent(m),null));
+        return cache.get(m);
+      }));
+      const byMonth=new Map();
+      for(const m of months)byMonth.set(m,await cache.get(m));
+      const value=d=>{
+        const report=byMonth.get(d.slice(0,7));
+        if(!Array.isArray(report?.dias))return null;
+        const day=report.dias.find(v=>v.data===d);
+        // Preview history has a finite known window. Missing preview dates are unknown.
+        if(!day && window.STOCKOS_PREVIEW)return null;
+        return day?Number(day.liquido):0;
+      };
+      rows=dates.map((d,i)=>({label:d.slice(8)+'/'+d.slice(5,7),value:value(d),previous:value(previous[i])}));
+      compare=rows.every(r=>Number.isFinite(r.previous));
+    }
+    if(!alive()||id!==request)return;
+    const complete=rows.length&&rows.every(r=>Number.isFinite(r.value));
+    total.textContent=complete?formatarMoedaBR(rows.reduce((s,r)=>s+r.value,0)):'—';
+    referenceSeries(chart,rows,compare);
+  }
+  buttons.forEach(b=>{b.hidden=false;b.onclick=()=>void period(Number(b.dataset.stockosPeriod));});
+  void period(PODE_VER_RENTABILIDADE_DASH?7:1);
+  if(PODE_VER_RENTABILIDADE_DASH)void reportPromise.then(report=>{
+    if(!alive())return;
+    const rank=document.getElementById('stockos-ranking-content');
+    rank.replaceChildren();
+    const products=Array.isArray(report?.produtos)?report.produtos.filter(p=>p?.nome&&Number(p.quantidade)>0&&Number.isFinite(Number(p.valor))).sort((a,b)=>Number(b.quantidade)-Number(a.quantidade)).slice(0,5):[];
+    if(!products.length)referenceMessage(rank,Array.isArray(report?.produtos)?'Nenhum produto vendido hoje.':'Ranking indisponível.');
+    else{
+      const wrap=referenceNode('div','stockos-movements-wrap');
+      const table=referenceNode('table','stockos-reference-table');
+      const head=referenceNode('thead'),hr=referenceNode('tr');
+      ['Produto','Qtd.','Receita'].forEach(t=>{const th=referenceNode('th','',t);th.scope='col';hr.appendChild(th);});head.appendChild(hr);
+      const body=referenceNode('tbody');
+      products.forEach(p=>{
+        const tr=referenceNode('tr'), name=referenceNode('td');
+        const item=referenceNode('div','stockos-product-cell');
+        const mark=referenceNode('span','stockos-product-mark');mark.innerHTML=iconMarkup('box');
+        item.append(mark,referenceNode('span','',p.nome));name.appendChild(item);
+        tr.append(name,referenceNode('td','',Number(p.quantidade).toLocaleString('pt-BR')),referenceNode('td','',formatarMoedaBR(Number(p.valor))));body.appendChild(tr);
+      });
+      table.append(head,body);wrap.appendChild(table);rank.appendChild(wrap);
+    }
+    referenceDonut(document.getElementById('stockos-payment-content'),Array.isArray(report?.porForma)?report.porForma.map(p=>({label:String(p.rotulo),value:Number(p.valor)})):[],formatarMoedaBR,Array.isArray(report?.porForma)?null:'Pagamentos indisponíveis.');
+  });
+}
+
 async function carregarRelatorioDashboard(pedir, version) {
   const movements = document.getElementById('section-movimentacoes');
   const alerts = document.getElementById('section-alertas');

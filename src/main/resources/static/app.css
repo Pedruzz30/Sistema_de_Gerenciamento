@@ -4415,3 +4415,102 @@ body.comandas-page .app.stockos-shell-v2 .comandas-detalhe:focus-visible {outlin
   body.comandas-page .app.stockos-shell-v2 #comandas-resumo {gap:10px;margin-bottom:10px;}
   body.comandas-page .app.stockos-shell-v2 .comandas-detalhe {padding:14px;}
 }
+
+
+/* Reference reconstruction: explicit four-panel grid, operational details below.
+   Screen design only; the original comparison remains unchanged. */
+.stockos-reference-grid {display:contents;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid {
+ display:grid;grid-template-columns:minmax(0,1.42fr) minmax(0,1fr);gap:12px;align-items:stretch;margin:0 0 16px;
+}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid > [hidden] {display:none!important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid:not(:has(.stockos-reference-sales:not([hidden]))) {grid-template-columns:1fr;}
+body.dashboard-page .app.stockos-shell-v2 .main-body.content {padding:16px clamp(14px,1.5vw,24px) 24px;max-width:none;min-width:0;}
+body.dashboard-page .app.stockos-shell-v2 .main.page > .topbar.header {min-height:70px;padding:10px clamp(14px,1.5vw,24px);gap:10px;flex-wrap:nowrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .crumbs {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .page-title {font-size:22px;line-height:1.15;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .page-sub {font-size:11px;line-height:1.35;margin-top:4px;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .header-main {flex:1 1 180px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:1;flex:0 1 250px;min-width:125px;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {order:2;flex:0 1 auto;width:auto;gap:6px;padding:0;flex-wrap:nowrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right .btn {font-size:11px;min-height:32px;padding:6px 9px;white-space:nowrap;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .live-pill {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja {min-width:0;padding:0;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja__hora {font-size:15px;line-height:1.1;}
+body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja__data {font-size:9px;max-width:120px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-header-profile {order:4;padding-left:8px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-panel {min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--paper-raised);padding:16px;box-shadow:none;}
+.stockos-reference-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.stockos-reference-heading h2 {font-size:15px;line-height:1.4;font-weight:650;margin:0;color:var(--ink);}
+.stockos-reference-heading p {font-size:11px;margin:3px 0 0;color:var(--ink-3);}
+.stockos-reference-total {display:block;font-size:clamp(23px,2.25vw,31px);font-weight:700;line-height:1.15;letter-spacing:-.035em;font-variant-numeric:tabular-nums;margin-bottom:12px;}
+.stockos-period-switch {display:flex;align-items:center;border:1px solid var(--rule);border-radius:6px;overflow:hidden;}
+.stockos-period-switch button {border:0;border-right:1px solid var(--rule);background:transparent;color:var(--ink-3);font:inherit;font-size:11px;padding:6px 9px;cursor:pointer;white-space:nowrap;}
+.stockos-period-switch button:last-child {border-right:0;}
+.stockos-period-switch button[aria-pressed=true] {background:var(--accent-soft);color:var(--accent-ink);font-weight:650;}
+.stockos-period-switch button:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+.stockos-period-chart {min-height:175px;}
+.stockos-reference-chart-grid {display:grid;grid-template-columns:32px minmax(0,1fr);height:152px;gap:5px;}
+.stockos-reference-axis {height:132px;display:flex;flex-direction:column;justify-content:space-between;font-size:9px;color:var(--ink-3);text-align:right;padding-right:3px;}
+.stockos-reference-plot {display:grid;grid-template-columns:repeat(var(--series-count),minmax(0,1fr));gap:clamp(2px,.6vw,8px);min-width:0;background:repeating-linear-gradient(to bottom,var(--rule) 0 1px,transparent 1px 25%);background-size:100% 132px;background-repeat:no-repeat;}
+.stockos-reference-column {display:grid;grid-template-rows:132px 20px;min-width:0;text-align:center;}
+.stockos-reference-bars {position:relative;min-width:0;width:100%;height:132px;}
+.stockos-reference-bar {position:absolute;bottom:0;left:12%;width:34%;max-width:22px;background:var(--accent);border-radius:4px 4px 0 0;}
+.stockos-reference-bar.previous {left:52%;background:#bd9f8d;}
+.stockos-reference-x {font-size:9px;color:var(--ink-3);padding-top:3px;white-space:nowrap;overflow:hidden;}
+.stockos-reference-legend {display:flex;gap:15px;font-size:10px;color:var(--ink-3);margin-top:7px;}
+.stockos-reference-legend span::before {content:'';display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:5px;}
+.stockos-reference-legend .previous::before {background:#bd9f8d;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:1px;margin:0;min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--rule);overflow:hidden;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid:empty {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .summary-card {min-height:0;padding:13px 16px;border:0;border-radius:0;box-shadow:none!important;background:var(--paper-raised);display:flex;flex-direction:column;justify-content:center;gap:5px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-card-top {display:flex;flex-direction:column-reverse;align-items:flex-start;gap:6px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-icon {width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-icon svg {width:16px;height:16px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-label {font-size:12px;font-weight:550;text-transform:none;letter-spacing:0;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-value {font-size:clamp(20px,2.05vw,28px);line-height:1.15;overflow-wrap:anywhere;margin:0;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid .summary-trend {font-size:10px;margin:0;}
+.stockos-reference-ranking .stockos-report-link {margin:0;min-height:24px;font-size:11px;}
+.stockos-reference-table {width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;}
+.stockos-reference-table th {background:var(--paper-sunk);font-size:10px;font-weight:550;text-align:left;color:var(--ink-3);padding:8px 7px;white-space:nowrap;}
+.stockos-reference-table td {padding:9px 7px;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums;vertical-align:middle;}
+.stockos-reference-table tr:last-child td {border:0;}
+.stockos-reference-table :is(th,td):not(:first-child) {text-align:right;white-space:nowrap;}
+.stockos-product-cell {display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere;}
+.stockos-product-mark {width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border-radius:50%;background:var(--paper-sunk);color:var(--ink-3);}
+.stockos-product-mark svg {width:15px;height:15px;}
+.stockos-distribution h3 {font-size:12px;font-weight:600;margin:8px 0;}
+.stockos-distribution + .stockos-distribution:not([hidden]) {border-top:1px solid var(--rule);margin-top:12px;padding-top:8px;}
+.stockos-donut-layout {display:flex;align-items:center;gap:16px;min-width:0;}
+.stockos-donut {width:112px;aspect-ratio:1;flex:0 0 112px;border-radius:50%;display:grid;place-items:center;}
+.stockos-donut-inner {width:77%;aspect-ratio:1;border-radius:50%;background:var(--paper-raised);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;}
+.stockos-donut-inner span {font-size:10px;color:var(--ink-3);}
+.stockos-donut-inner strong {font-size:11px;max-width:90%;overflow-wrap:anywhere;}
+.stockos-donut-legend {flex:1;min-width:0;display:grid;gap:6px;}
+.stockos-donut-row {display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:6px;font-size:10px;color:var(--ink-2);}
+.stockos-donut-row strong {font-size:10px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.stockos-donut-dot {height:8px;width:8px;border-radius:2px;}
+.stockos-reference-empty {font-size:12px;color:var(--ink-3);padding:18px 4px;margin:0;}
+body.dashboard-page .app.stockos-shell-v2 #daily-actions {box-shadow:none;padding:14px;margin:0 0 14px;}
+body.dashboard-page .app.stockos-shell-v2 .operations-heading {margin-bottom:10px;}
+body.dashboard-page .app.stockos-shell-v2 .operations-heading h2 {font-size:16px;}
+body.dashboard-page .app.stockos-shell-v2 .operations-item {padding:10px;}
+body.dashboard-page .app.stockos-shell-v2 .alert-item {padding:9px 10px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-demo-tools {margin-top:14px;padding:12px;border:1px solid var(--rule);border-radius:8px;}
+@media(max-width:1250px) {
+ body.dashboard-page .app.stockos-shell-v2 .topbar .relogio-loja__data {display:none;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid {grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);}
+}
+@media(max-width:980px) {
+ body.dashboard-page .app.stockos-shell-v2 .main.page > .topbar.header {flex-wrap:wrap;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-module-search {order:5;flex:1 1 100%;max-width:none;}
+ body.dashboard-page .app.stockos-shell-v2 .topbar .topbar-right {order:6;flex:1 1 100%;justify-content:flex-start;flex-wrap:wrap;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid {grid-template-columns:minmax(0,1fr);}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid {grid-template-rows:auto;}
+}
+@media(max-width:480px) {
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-panel {padding:12px;}
+ body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid #summary-grid .summary-card {padding:12px;}
+ .stockos-donut {width:94px;flex-basis:94px;}
+ .stockos-donut-layout {gap:10px;}
+}

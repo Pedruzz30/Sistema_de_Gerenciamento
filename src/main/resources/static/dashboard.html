@@ -70,7 +70,30 @@
         <div class="celular-painel" id="celular-painel" tabindex="-1" hidden></div>
 
         <!-- Cards de resumo (sempre visíveis acima das abas) -->
-        <div class="summary-grid" id="summary-grid"></div>
+        <section class="stockos-reference-grid" aria-label="Visão geral do negócio">
+          <section class="stockos-reference-panel stockos-reference-sales" id="stockos-reference-sales" hidden>
+            <div class="stockos-reference-heading">
+              <div><h2>Desempenho de vendas</h2><p id="stockos-period-label">Últimos 7 dias</p></div>
+              <div class="stockos-period-switch" role="group" aria-label="Período das vendas">
+                <button type="button" data-stockos-period="7" aria-pressed="true">7 dias</button>
+                <button type="button" data-stockos-period="30" aria-pressed="false">30 dias</button>
+                <button type="button" data-stockos-period="1" aria-pressed="false">Hoje</button>
+              </div>
+            </div>
+            <strong class="stockos-reference-total" id="stockos-period-total">—</strong>
+            <div id="stockos-period-chart" class="stockos-period-chart" aria-live="polite">Carregando vendas…</div>
+          </section>
+          <div class="summary-grid" id="summary-grid"></div>
+          <section class="stockos-reference-panel stockos-reference-ranking" id="stockos-daily-ranking" hidden>
+            <div class="stockos-reference-heading"><div><h2>Produtos mais vendidos</h2><p>Hoje · por quantidade</p></div><a class="stockos-report-link" href="/relatorios.html">Relatório completo</a></div>
+            <div id="stockos-ranking-content">Carregando produtos…</div>
+          </section>
+          <section class="stockos-reference-panel stockos-reference-distributions" id="stockos-distributions" hidden>
+            <div class="stockos-reference-heading"><h2>Distribuição da operação</h2></div>
+            <section class="stockos-distribution" id="stockos-daily-payments" hidden><h3>Formas de pagamento</h3><div id="stockos-payment-content">Carregando…</div></section>
+            <section class="stockos-distribution" id="stockos-stock-distribution" hidden><h3>Situação do estoque</h3><div id="stockos-stock-content">Carregando…</div></section>
+          </section>
+        </section>
         <section class="operations-panel fade-up" id="daily-actions" aria-labelledby="daily-actions-title" hidden>
           <div class="operations-heading">
             <div>
@@ -270,6 +293,7 @@
 
         </div>
 
+        <section class="stockos-demo-tools" id="stockos-demo-tools" hidden aria-label="Ferramentas da demonstração"></section>
         </div>
     </div>
 

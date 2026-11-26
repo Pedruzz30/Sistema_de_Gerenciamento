@@ -64,3 +64,7 @@ O E2E autenticado verifica os 10 módulos com App Shell em 1366 × 650, 768 × 1
 ### Consistência de atualização e CSS
 
 O dashboard distingue falha de consulta de estoque/movimentações de listas vazias e ignora respostas de atualizações anteriores. Consolidadas regras sobrescritas do próprio redesign (ícones, colunas de gráfico e ordem do cabeçalho); mantida a especificidade necessária contra CSS legado. Evitar uma refatoração ampla antes da matriz de navegador passar.
+
+## Reconstrução fiel à referência
+
+Quatro painéis explícitos no HTML: evolução de vendas (7/30 dias ou hoje), quatro KPIs, ranking diário, distribuição de pagamentos e estoque. Ações operacionais e ferramentas de demonstração abaixo dos painéis. Comparativo somente quando o período anterior existe; sem inventar séries ausentes. O backend usa os relatórios existentes; a demonstração agrega os registros fictícios já gravados.
