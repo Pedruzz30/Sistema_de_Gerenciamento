@@ -337,7 +337,13 @@ try {
       await admin.locator('#busca').scrollIntoViewIfNeeded();
       await naTela(admin, '#busca');
       assert.equal(await admin.locator('[data-filter-group="nivel"] button').count(), 4);
-      assert.equal(await admin.locator('[data-filter-group="categoria"] button').count(), 5);
+      const categorias = admin.locator('[data-filter-group="categoria"] button');
+      assert.equal(await categorias.count(), 6);
+      assert.deepEqual((await categorias.allTextContents()).map(t => t.trim()), ['Todas','Bebidas','Estoque seco','Estoque frio','Estoque congelado','Não definida']);
+      await categorias.filter({hasText:'Não definida'}).click();
+      await admin.waitForFunction(() => document.querySelector('#table-count')?.textContent.startsWith('0 de '));
+      await categorias.filter({hasText:/^Todas$/}).click();
+      await esperarTexto(admin, '#tabela-produtos', 'Skol lata 350ml');
       await print(admin, 'redesign-estoque-mobile');
     } finally {
       await admin.setViewportSize({width:1366,height:650});
