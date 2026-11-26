@@ -136,9 +136,12 @@
       <button class="modal-close" type="button" aria-label="Fechar janela" onclick="fecharModal('modal-vincular')">×</button>
     </div>
     <div class="modal-body">
-      <div class="produto-info-card supplier-link-context">
-        <div><div class="supplier-link-caption">Fornecedor</div><div class="produto-info-nome" id="vincular-fornecedor-nome">Fornecedor —</div></div>
-        <div class="produto-info-qtd" id="vincular-produtos-atuais"></div>
+      <div class="supplier-link-context">
+        <div class="supplier-link-identity">
+          <span class="supplier-link-caption">Fornecedor</span>
+          <strong class="supplier-link-name" id="vincular-fornecedor-nome">Fornecedor —</strong>
+        </div>
+        <span class="supplier-link-count" id="vincular-produtos-atuais" role="status"></span>
       </div>
       <section id="supplier-link-workspace" hidden>
         <div class="supplier-link-tabs" role="group" aria-label="Visualizar produtos">

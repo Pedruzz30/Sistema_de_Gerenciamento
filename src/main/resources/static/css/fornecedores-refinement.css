@@ -690,10 +690,33 @@ body.fornecedores-page:has(.app.stockos-shell-v2) #modal-vincular :is(.modal-hea
 body.fornecedores-page:has(.app.stockos-shell-v2) #modal-vincular .modal-body{padding:16px 18px;gap:12px;}
 body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-link-subtitle{display:block;font-size:11px;color:var(--ink-3);margin:4px 0 0;}
 body.fornecedores-page:has(.app.stockos-shell-v2) .supplier-link-caption{display:block;font-size:10px;color:var(--ink-3);margin-bottom:4px;}
-body.fornecedores-page:has(.app.stockos-shell-v2) #modal-vincular .supplier-link-context{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--paper-sunk);border:1px solid var(--rule);box-shadow:none;}
-.supplier-link-context .produto-info-nome{overflow-wrap:anywhere;font-size:14px;}
-.supplier-link-context .produto-info-qtd{font-size:12px;color:var(--ink-3);}
-#supplier-link-workspace{display:grid;gap:10px;min-width:0;}
+/* Keep the identity at intrinsic height even when the catalog exceeds the dialog. */
+body.fornecedores-page #modal-vincular .supplier-link-context {
+  display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px 16px;min-width:0;min-height:64px;
+  height:auto;max-height:none;overflow:visible;padding:12px 14px;
+  background:var(--paper-raised);border:1px solid var(--rule);border-radius:8px;
+}
+body.fornecedores-page:has(.app.stockos-shell-v2) #modal-vincular .supplier-link-context {
+  background:var(--paper-sunk);box-shadow:none;
+}
+body.fornecedores-page #modal-vincular .supplier-link-identity {
+  display:flex;flex:1 1 220px;min-width:0;flex-direction:column;gap:4px;
+}
+body.fornecedores-page #modal-vincular .supplier-link-caption {
+  display:block;margin:0;font-size:11px;line-height:1.3;color:var(--ink-3);
+}
+body.fornecedores-page #modal-vincular .supplier-link-name {
+  display:block;font-size:15px;line-height:1.4;font-weight:650;color:var(--ink);overflow-wrap:anywhere;
+}
+body.fornecedores-page #modal-vincular .supplier-link-count {
+  display:block;flex:0 1 auto;max-width:100%;font-size:12px;line-height:1.4;color:var(--ink-2);overflow-wrap:anywhere;
+}
+#supplier-link-workspace{display:grid;flex:0 0 auto;gap:10px;min-width:0;}
+@media(max-width:480px){
+  body.fornecedores-page #modal-vincular .supplier-link-context{align-items:flex-start;min-height:0;}
+  body.fornecedores-page #modal-vincular .supplier-link-identity{flex-basis:100%;}
+}
 .supplier-link-tabs{display:flex;gap:6px;border-bottom:1px solid var(--rule);}
 .supplier-link-tabs button{padding:10px 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ink-3);font:inherit;font-size:12px;cursor:pointer;}
 .supplier-link-tabs button[aria-pressed="true"]{border-bottom-color:var(--accent);color:var(--ink);font-weight:650;}

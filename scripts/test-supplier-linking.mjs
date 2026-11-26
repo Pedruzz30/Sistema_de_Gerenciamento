@@ -27,3 +27,15 @@ assert.match(source,/body:JSON\.stringify\(\{produtoId\}\)/);
 assert.match(source,/state\.version===linkVersion/);
 assert.match(source,/await refreshSupplierLinks\(state\)/);
 console.log('PASS supplier links: deduplication, catalog and linked search, category, paging, missing values and guarded single-product API.');
+
+const html=await readFile('src/main/resources/static/fornecedores.html','utf8');
+const css=await readFile('src/main/resources/static/css/fornecedores-refinement.css','utf8');
+assert.match(html,/class="supplier-link-context"/);
+assert.doesNotMatch(html,/class="produto-info-card supplier-link-context"/);
+assert.match(html,/class="supplier-link-name" id="vincular-fornecedor-nome"/);
+assert.match(html,/class="supplier-link-count" id="vincular-produtos-atuais"/);
+assert.match(css,/\.supplier-link-context\s*\{\s*display:flex;flex:0 0 auto;/);
+assert.match(css,/min-height:64px;\s*height:auto;max-height:none;overflow:visible/);
+assert.match(css,/#supplier-link-workspace\{display:grid;flex:0 0 auto;/);
+assert.match(css,/\.supplier-link-name\s*\{[^}]*overflow-wrap:anywhere/);
+console.log('PASS supplier identity: dedicated styles, non-shrinking header and catalog, long name wrapping.');
