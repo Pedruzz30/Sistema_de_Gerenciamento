@@ -278,17 +278,18 @@
       }
       const selected=sales.filter(s=>String(s.criadaEm).startsWith(date));
       const hours=new Map(), forms=new Map(), products=new Map();
-      const labels={DINHEIRO:'Dinheiro',PIX:'Pix',DEBITO:'Débito',CREDITO:'Crédito',VOUCHER:'Voucher'};
+      let produtosParcial=false;
+      const labels={DINHEIRO:'Dinheiro',PIX:'Pix',CARTAO:'Cartão',DEBITO:'Débito',CREDITO:'Crédito',VOUCHER:'Voucher'};
       for(const s of selected){
         const h=Number(String(s.criadaEm).slice(11,13));hours.set(h,(hours.get(h)||0)+Number(s.valor||0));
         const payments=s.pagamentos||[{forma:s.formaPagamento,valor:s.valor}];
         for(const p of payments)if(labels[p.forma])forms.set(p.forma,(forms.get(p.forma)||0)+Number(p.valor||0));
         // For historical seeds the sale contains one line and its recorded total.
         // Multi-line receipts without historical line prices do not invent a split.
-        if(s.itens?.length===1){const item=s.itens[0],prod=db.produtos.find(p=>p.id===item.idProduto);if(prod){const entry=products.get(prod.id)||{nome:prod.nome,quantidade:0,valor:0};entry.quantidade+=Number(item.quantidade||0);entry.valor+=Number(s.valor||0);products.set(prod.id,entry);}}
+        if(s.itens?.length===1){const item=s.itens[0],prod=db.produtos.find(p=>p.id===item.idProduto);if(prod){const entry=products.get(prod.id)||{nome:prod.nome,quantidade:0,valor:0};entry.quantidade+=Number(item.quantidade||0);entry.valor+=Number(s.valor||0);products.set(prod.id,entry);}else produtosParcial=true;}else produtosParcial=true;
       }
       if(!selected.length)for(const m of db.movimentacoesCaixa.filter(m=>m.tipo==='VENDA'&&String(m.dataHora).startsWith(date))){const h=Number(String(m.dataHora).slice(11,13));hours.set(h,(hours.get(h)||0)+Number(m.valor||0));if(m.formaPagamento&&labels[m.formaPagamento])forms.set(m.formaPagamento,(forms.get(m.formaPagamento)||0)+Number(m.valor||0));}
-      return respond({porHora:[...hours].sort((a,b)=>a[0]-b[0]).map(([hora,valor])=>({hora,valor:+valor.toFixed(2)})),porForma:[...forms].map(([forma,valor])=>({forma,rotulo:labels[forma],valor:+valor.toFixed(2)})),produtos:[...products.values()].map(p=>({...p,valor:+p.valor.toFixed(2)}))});
+      return respond({produtosParcial:produtosParcial||(!selected.length&&hours.size>0),porHora:[...hours].sort((a,b)=>a[0]-b[0]).map(([hora,valor])=>({hora,valor:+valor.toFixed(2)})),porForma:[...forms].map(([forma,valor])=>({forma,rotulo:labels[forma],valor:+valor.toFixed(2)})),produtos:[...products.values()].map(p=>({...p,valor:+p.valor.toFixed(2)}))});
     }
     if(path==='/api/rentabilidade/ranking')return respond(db.rentabilidadePreview||[]);
     if(path==='/api/preview/cenario' && method==='GET')return respond(db.demoEscala||{nome:'Demonstração simples',demonstracao:true});

@@ -4514,3 +4514,6 @@ body.dashboard-page .app.stockos-shell-v2 .stockos-demo-tools {margin-top:14px;p
  .stockos-donut {width:94px;flex-basis:94px;}
  .stockos-donut-layout {gap:10px;}
 }
+
+.stockos-reference-note {font-size:11px;color:var(--ink-3);margin:8px 0 0;line-height:1.4;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-reference-grid [hidden] {display:none!important;}

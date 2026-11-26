@@ -538,6 +538,8 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
   const alive=()=>version===dashboardLoadVersion && paginaAtual()==='dashboard' && chartPanel===document.getElementById('stockos-reference-sales');
   chartPanel.hidden=!PODE_VER_FINANCEIRO_DASH;
   rankPanel.hidden=!PODE_VER_RENTABILIDADE_DASH;
+  const reportLink=rankPanel.querySelector('.stockos-report-link');
+  if(reportLink)reportLink.hidden=!!window.STOCKOS_PREVIEW;
   paymentPanel.hidden=!PODE_VER_RENTABILIDADE_DASH;
   stockPanel.hidden=!PODE_VER_ESTOQUE_DASH;
   distributions.hidden=paymentPanel.hidden&&stockPanel.hidden;
@@ -563,8 +565,9 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
     total.textContent='—';referenceMessage(chart,'Carregando vendas…');
     if(!PODE_VER_RENTABILIDADE_DASH){
       label.textContent='Totais acumulados por caixa';
-      total.textContent=metricas?.totalVendas!=null?formatarMoedaBR(Number(metricas.totalVendas)):'—';
-      referenceSeries(chart,caixas.filter(c=>c.totalVendas!=null).map(c=>({label:'Caixa '+c.numeroCaixa,value:Number(c.totalVendas)})),false);
+      const values=caixas.filter(c=>c.totalVendas!=null&&Number.isFinite(Number(c.totalVendas))).map(c=>({label:'Caixa '+c.numeroCaixa,value:Number(c.totalVendas)}));
+      total.textContent=values.length?formatarMoedaBR(values.reduce((s,r)=>s+r.value,0)):'—';
+      referenceSeries(chart,values,false);
       buttons.forEach(b=>{b.hidden=true;});return;
     }
     let rows=[],compare=false;
@@ -604,7 +607,7 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
     const rank=document.getElementById('stockos-ranking-content');
     rank.replaceChildren();
     const products=Array.isArray(report?.produtos)?report.produtos.filter(p=>p?.nome&&Number(p.quantidade)>0&&Number.isFinite(Number(p.valor))).sort((a,b)=>Number(b.quantidade)-Number(a.quantidade)).slice(0,5):[];
-    if(!products.length)referenceMessage(rank,Array.isArray(report?.produtos)?'Nenhum produto vendido hoje.':'Ranking indisponível.');
+    if(!products.length)referenceMessage(rank,report?.produtosParcial?'Vendas registradas sem detalhamento de produtos.':Array.isArray(report?.produtos)?'Nenhum produto vendido hoje.':'Ranking indisponível.');
     else{
       const wrap=referenceNode('div','stockos-movements-wrap');
       const table=referenceNode('table','stockos-reference-table');
@@ -619,6 +622,7 @@ function renderReferenceDashboard(produtos, caixas, metricas, pedir, version) {
         tr.append(name,referenceNode('td','',Number(p.quantidade).toLocaleString('pt-BR')),referenceNode('td','',formatarMoedaBR(Number(p.valor))));body.appendChild(tr);
       });
       table.append(head,body);wrap.appendChild(table);rank.appendChild(wrap);
+      if(report.produtosParcial)rank.appendChild(referenceNode('p','stockos-reference-note','Ranking parcial: alguns registros fictícios não têm preços por item.'));
     }
     referenceDonut(document.getElementById('stockos-payment-content'),Array.isArray(report?.porForma)?report.porForma.map(p=>({label:String(p.rotulo),value:Number(p.valor)})):[],formatarMoedaBR,Array.isArray(report?.porForma)?null:'Pagamentos indisponíveis.');
   });

@@ -245,3 +245,6 @@ console.log('PASS dashboard request ordering and honest unavailable states.');
 assert.match(dashboard,/referenceSeries\(chart,rows,compare\)/);
 assert.match(css,/stockos-reference-grid/);
 assert.match(dashboard,/rows.every\(r=>Number.isFinite\(r.previous\)\)/);
+
+assert.match(dashboard,/report\.produtosParcial/);
+assert.match(dashboard,/values\.reduce\(\(s,r\)=>s\+r\.value,0\)/);
