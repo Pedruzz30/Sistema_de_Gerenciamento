@@ -156,3 +156,7 @@ Consulta de vínculos atualizada ao abrir ou solicitar atualização, tabela com
 ## Nova nota — seleção de fornecedor
 
 Lista pesquisável de fornecedores ativos com CNPJ, contagem de produtos vinculados e paginação de cinco registros. Resumo da seleção em coluna lateral e empilhamento em telas menores. O seletor original mantém o contrato de ID; abertura continua em POST /api/notas. Estados de erro e carregamento distintos, respostas antigas ignoradas, bloqueio de envio concorrente e orientação de conferência da lista em caso de resposta incerta. Nenhuma garantia de idempotência no servidor foi adicionada.
+
+## Detalhes da nota de compra
+
+Modal somente de consulta com fornecedor, emissão, status real, número/chave NF-e quando presentes, quantidade de linhas e unidades, total registrado pelo servidor. Tabela paginada de oito itens com pesquisa sem acentos e formatação BRL. Total não muda ao filtrar. Divergência entre subtotais e total é informativa quando os valores são representáveis em centavos, sem substituir o total oficial. Respostas atrasadas são ignoradas. Sem ações de pagamento, confirmação ou alteração novas.

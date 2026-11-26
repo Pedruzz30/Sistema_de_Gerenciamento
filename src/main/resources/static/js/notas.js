@@ -630,53 +630,86 @@ async function confirmarCancelarNota(id) {
   }
 }
 
+const NOTE_DETAIL_STATES={
+  PENDENTE:{label:'Pendente',note:'Aguardando confirmação da compra.',tone:'warning'},
+  CONFIRMADA:{label:'Confirmada',note:'Compra confirmada; pagamento ainda não registrado.',tone:'info'},
+  PAGA:{label:'Paga',note:'Pagamento registrado no StockOS.',tone:'success'},
+  CANCELADA:{label:'Cancelada',note:'Nota cancelada.',tone:'neutral'}
+};
+function noteDetailNumber(raw){
+  if(raw==null||!['number','string'].includes(typeof raw)||String(raw).trim()==='')return null;
+  const n=Number(raw);
+  return Number.isFinite(n)&&n>=0?n:null;
+}
+function noteDetailModel(note,query='',page=1,pageSize=8){
+  if(!note||!Array.isArray(note.itens))return null;
+  const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const items=note.itens.map((item,index)=>({index,id:item?.produtoId??null,name:String(item?.produtoNome||'Produto não informado'),qty:noteDetailNumber(item?.quantidade),price:noteDetailNumber(item?.precoUnitario),subtotal:noteDetailNumber(item?.subtotal)}));
+  const sumQty=items.every(i=>Number.isSafeInteger(i.qty))?items.reduce((s,i)=>s+i.qty,0):null;
+  const exactCents=n=>n!=null&&Number.isSafeInteger(Math.round(n*100))&&Math.abs(n*100-Math.round(n*100))<1e-6?Math.round(n*100):null;
+  const cents=items.map(i=>exactCents(i.subtotal)),sum=cents.every(n=>n!=null)?cents.reduce((s,n)=>s+n,0):null;
+  const total=noteDetailNumber(note.total),totalCents=exactCents(total);
+  const subtotalSum=Number.isSafeInteger(sum)?sum/100:null;
+  const difference=Number.isSafeInteger(sum)&&totalCents!=null&&Number.isSafeInteger(totalCents-sum)?(totalCents-sum)/100:null;
+  const filtered=items.filter(i=>norm([i.name,i.id??''].join(' ')).includes(norm(query)));
+  const size=Math.max(1,Math.floor(Number(pageSize)||8)),pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1)));
+  const status=Object.prototype.hasOwnProperty.call(NOTE_DETAIL_STATES,note.status)?NOTE_DETAIL_STATES[note.status]:{label:'Não informado',note:'Situação não reconhecida.',tone:'neutral'};
+  return {status,total,subtotalSum,difference,units:Number.isSafeInteger(sumQty)?sumQty:null,totalItems:items.length,count:filtered.length,page:current,pages,from:filtered.length?(current-1)*size+1:0,to:Math.min(current*size,filtered.length),rows:filtered.slice((current-1)*size,current*size)};
+}
+const noteDetailMoney=n=>n==null?'—':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const noteDetailQuantity=n=>n==null?'—':n.toLocaleString('pt-BR');
+function noteDetailDate(raw){
+  if(!raw)return '—';
+  const d=new Date(raw);
+  return Number.isFinite(d.getTime())?d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+}
+let noteDetailState=null;
+function noteDetailCurrent(state){
+  return noteDetailState===state&&document.getElementById('modal-detalhe')===state.modal&&state.modal.classList.contains('open');
+}
+function drawNoteDetail(state){
+  if(!noteDetailCurrent(state))return;
+  const get=id=>document.getElementById(id),esc=escapeHtml,model=noteDetailModel(state.note,state.query,state.page);
+  const info=get('detalhe-info'),items=get('note-detail-items'),total=get('note-detail-total');
+  items.hidden=total.hidden=!model;
+  if(!model){info.textContent=state.loading?'Consultando detalhes da nota…':'Detalhes indisponíveis.';return;}
+  const note=state.note;
+  state.page=model.page;
+  get('modal-detalhe-titulo').textContent='Nota #'+note.id;
+  info.innerHTML='<div class="note-detail-identity"><div><span>Fornecedor</span><strong>'+esc(note.fornecedorNome||'—')+'</strong><small>Emissão: '+esc(noteDetailDate(note.dataEmissao))+'</small></div><div class="note-detail-status" data-tone="'+model.status.tone+'"><span class="note-detail-status-label"><span aria-hidden="true"></span>'+model.status.label+'</span><small>'+model.status.note+'</small></div></div>'+
+    (note.numeroNfe||note.chaveAcesso?'<div class="note-detail-fiscal">'+(note.numeroNfe?'<div><span>Número NF-e</span><strong>'+esc(note.numeroNfe)+'</strong></div>':'')+(note.chaveAcesso?'<div><span>Chave de acesso</span><strong>'+esc(note.chaveAcesso)+'</strong></div>':'')+'</div>':'')+
+    '<div class="note-detail-metrics"><div><span>Itens registrados</span><strong>'+model.totalItems+'</strong></div><div><span>Unidades</span><strong>'+noteDetailQuantity(model.units)+'</strong></div><div><span>Valor total da nota</span><strong>'+noteDetailMoney(model.total)+'</strong></div></div>';
+  get('note-detail-count').textContent=model.totalItems+' '+(model.totalItems===1?'registro':'registros');
+  const results=get('detalhe-itens');
+  results.innerHTML=model.rows.length?'<table class="note-detail-table"><thead><tr><th scope="col">Produto</th><th scope="col">Qtd.</th><th scope="col">Preço unitário</th><th scope="col">Subtotal</th></tr></thead><tbody>'+model.rows.map(i=>'<tr><td><strong>'+esc(i.name)+'</strong>'+(i.id!=null?'<small>#'+esc(i.id)+'</small>':'')+'</td><td>'+noteDetailQuantity(i.qty)+'</td><td>'+noteDetailMoney(i.price)+'</td><td>'+noteDetailMoney(i.subtotal)+'</td></tr>').join('')+'</tbody></table>':'<div class="note-detail-empty">'+(model.totalItems?'Nenhum item corresponde à pesquisa.':'Nenhum item registrado nesta nota.')+'</div>';
+  get('note-detail-range').textContent=model.count?model.from+'–'+model.to+' de '+model.count+' itens':'0 resultados';
+  get('note-detail-prev').disabled=model.page<=1;get('note-detail-next').disabled=model.page>=model.pages;
+  total.innerHTML='<div><span>Total registrado da nota</span><small>Valor informado pelo sistema, incluindo todos os itens.</small></div><strong>'+noteDetailMoney(model.total)+'</strong>'+
+    (model.difference!=null&&model.difference!==0?'<p class="note-detail-difference">A soma dos subtotais ('+noteDetailMoney(model.subtotalSum)+') difere do total registrado. Confira a nota na origem.</p>':'');
+}
 async function verDetalhe(id) {
-  try {
-    const resp = await fetch(`/api/notas/${id}`);
-    const nota = await resp.json();
-    const statusLabel = {
-      PENDENTE: 'Pendente',
-      CONFIRMADA: 'Confirmada',
-      PAGA: 'Paga',
-      CANCELADA: 'Cancelada'
-    };
-    const statusBadge = {
-      PENDENTE: 'badge-amber',
-      CONFIRMADA: 'badge-cyan',
-      PAGA: 'badge-green',
-      CANCELADA: 'badge-gray'
-    };
-
-    document.getElementById('modal-detalhe-titulo').textContent = `Nota #${nota.id}`;
-    document.getElementById('detalhe-info').innerHTML = `
-      <div class="detail-meta">
-        <div class="detail-meta-item">
-          <span class="detail-meta-label">Fornecedor</span>
-          <strong class="detail-meta-value">${escapeHtml(nota.fornecedorNome)}</strong>
-        </div>
-        <div class="detail-meta-item">
-          <span class="detail-meta-label">Status</span>
-          <span class="badge ${statusBadge[nota.status]}">${statusLabel[nota.status]}</span></div>
-        <div class="detail-meta-item">
-          <span class="detail-meta-label">Total</span>
-          <strong class="detail-meta-value detail-meta-value--success">R$${Number(nota.total).toFixed(2)}</strong>
-        </div>
-      </div>`;
-
-    document.getElementById('detalhe-itens').innerHTML = nota.itens.length === 0
-      ? '<div class="empty">Sem itens.</div>'
-      : '<div class="itens-nota-list">' + nota.itens.map((item) => `
-          <div class="item-nota-row">
-            <span class="item-nota-nome">${escapeHtml(item.produtoNome)}</span>
-            <span class="item-nota-qty">${item.quantidade} un.</span>
-            <span class="item-nota-preco">× R$${Number(item.precoUnitario).toFixed(2)}</span>
-            <span class="item-nota-subtotal">R$${Number(item.subtotal).toFixed(2)}</span>
-          </div>`).join('') + '</div>';
-
-    limparAlert('alert-detalhe');
-    abrirModal('modal-detalhe');
-  } catch {
-    showToast('Erro ao carregar detalhes da nota.', 'error');
+  const modal=document.getElementById('modal-detalhe');
+  if(!modal)return;
+  const state={modal,id:String(id),note:null,query:'',page:1,loading:true};
+  noteDetailState=state;
+  const get=id=>document.getElementById(id);
+  get('modal-detalhe-titulo').textContent='Detalhes da nota';
+  get('note-detail-search').value='';
+  get('note-detail-search').oninput=()=>{state.query=get('note-detail-search').value;state.page=1;drawNoteDetail(state);};
+  get('note-detail-prev').onclick=()=>{state.page--;drawNoteDetail(state);};
+  get('note-detail-next').onclick=()=>{state.page++;drawNoteDetail(state);};
+  limparAlert('alert-detalhe');abrirModal('modal-detalhe');drawNoteDetail(state);
+  try{
+    const resp=await fetch('/api/notas/'+encodeURIComponent(state.id));
+    if(!resp.ok)throw Error('Falha na consulta');
+    const note=await resp.json();
+    if(!noteDetailModel(note)||String(note.id)!==state.id)throw Error('Resposta inválida');
+    if(!noteDetailCurrent(state))return;
+    state.note=note;
+  }catch{
+    if(noteDetailCurrent(state))mostrarAlert('alert-detalhe','Não foi possível carregar os detalhes da nota. Feche e tente novamente.','error');
+  }finally{
+    state.loading=false;drawNoteDetail(state);
   }
 }
 
@@ -702,6 +735,7 @@ function abrirModal(id) {
 }
 
 function fecharModal(id) {
+  if(id==='modal-detalhe')noteDetailState=null;
   document.getElementById(id).classList.remove('open');
 }
 

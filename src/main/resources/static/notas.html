@@ -316,15 +316,20 @@
 </div>
 
 <div class="modal-overlay" id="modal-detalhe" onclick="fecharModalSeClicouFora(event,'modal-detalhe')">
-  <div class="modal modal--wide">
+  <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="modal-detalhe-titulo">
     <div class="modal-header">
-      <h3 class="modal-title" id="modal-detalhe-titulo">Nota Fiscal</h3>
+      <div class="note-detail-heading"><span class="note-detail-icon" data-icon="receipt" aria-hidden="true"></span><div><h3 class="modal-title" id="modal-detalhe-titulo">Nota fiscal</h3><p>Detalhes da compra e dos produtos registrados.</p></div></div>
       <button class="modal-close" type="button" aria-label="Fechar detalhes" onclick="fecharModal('modal-detalhe')">✕</button>
     </div>
     <div class="modal-body">
-      <div id="detalhe-info" class="detail-block"></div>
-      <div class="itens-nota-list" id="detalhe-itens"></div>
-      <div class="alert-modal alert-modal--spaced-top" id="alert-detalhe"></div>
+      <div id="detalhe-info" class="note-detail-summary"></div>
+      <section class="note-detail-items" id="note-detail-items" hidden aria-labelledby="note-detail-items-title">
+        <div class="note-detail-items-head"><div><strong id="note-detail-items-title">Itens da nota</strong><span id="note-detail-count"></span></div><input type="search" id="note-detail-search" aria-label="Buscar itens da nota" placeholder="Buscar produto ou ID..."></div>
+        <div id="detalhe-itens" class="note-detail-results"></div>
+        <div class="note-detail-pagination"><span id="note-detail-range" role="status"></span><div><button type="button" class="btn-secondary" id="note-detail-prev">Anterior</button><button type="button" class="btn-secondary" id="note-detail-next">Próxima</button></div></div>
+      </section>
+      <div id="note-detail-total" class="note-detail-total" hidden></div>
+      <div class="alert-modal" id="alert-detalhe" role="alert"></div>
     </div>
     <div class="modal-footer" id="detalhe-acoes">
       <button class="btn-secondary" onclick="fecharModal('modal-detalhe')">Fechar</button>
