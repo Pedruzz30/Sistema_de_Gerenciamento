@@ -354,6 +354,9 @@ try {
     await cardDoCaixa(admin, 1).waitFor();
     assert.equal(await linhaDoCard(admin, 1, 'Dinheiro na gaveta'), 'R$ 100,00');
     await naTela(admin, '#caixas-grid .stockos-pdv-entry');
+    assert.equal(await cardDoCaixa(admin,1).locator('.stockos-cash-card-metrics .caixa-detail-row').count(),2);
+    assert.ok(await cardDoCaixa(admin,1).locator('.stockos-cash-card-session').isVisible());
+    assert.equal(await cardDoCaixa(admin,1).locator('button:has-text("Movimentações")').count(),1);
     assert.ok(await admin.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Caixas sem rolagem horizontal do documento');
   });
 

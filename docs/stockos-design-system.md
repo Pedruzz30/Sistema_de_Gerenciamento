@@ -100,3 +100,7 @@ Contagens por grupo, filtros de gravidade, pesquisa sem distinção de acentos, 
 ## PDV de demonstração — terminal de vendas
 
 Novo terminal em duas colunas inspirado na referência: busca por nome ou código, categorias reais, cartões de produtos, saldo disponível, carrinho, quantidade, subtotal, pagamento fictício e troco. No celular, painéis Produtos/Pedido. Transação permanece no endpoint atômico da demonstração; retentativas ambíguas preservam o payload. Não altera o PDV real, nem simula desconto, autorização, TEF ou emissão fiscal. O modo original mantém o modal antigo; o caixa completo continua disponível separadamente.
+
+## Cartões de caixa
+
+Saldo físico e vendas acumuladas por sessão em destaque. Fundo inicial, pagamentos eletrônicos (incluindo voucher quando existente), quantidade de vendas e ticket médio separados. Operador, abertura e ações existentes preservados. Dados ausentes não viram zero; sem alteração do fluxo financeiro.

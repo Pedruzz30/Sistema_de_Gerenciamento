@@ -4727,3 +4727,39 @@ body.dashboard-page .app.stockos-shell-v2 #alerta-count {font-size:10px;font-wei
 .stockos-alert-pagination button:disabled {opacity:.45;cursor:default;}
 .stockos-alert-filters button:focus-visible,.stockos-alert-pagination button:focus-visible,.stockos-alert-search:focus-visible {outline:2px solid var(--accent);outline-offset:1px;}
 @media(max-width:600px) {body.dashboard-page .app.stockos-shell-v2 #section-alertas {padding:12px;}.stockos-alert-pagination button {min-height:40px;}}
+
+
+/* Cash session cards: focus on the physical balance and sales, not repeated rows. */
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card {padding:16px;min-height:0;border-radius:10px;box-shadow:none!important;gap:0;container-type:inline-size;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+.stockos-cash-card-identity {display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-num {font-size:19px;font-weight:700;letter-spacing:-.03em;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header .badge {padding:5px 8px;font-size:10px;text-transform:none;letter-spacing:0;background:var(--paper-sunk);color:var(--ink-3);border:0;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card.aberto .caixa-card-header .badge {background:var(--ok-soft);color:var(--ok);}
+.stockos-cash-card.aberto .caixa-card-header .badge::before {content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header .stockos-pdv-entry {background:var(--accent);border-color:var(--accent);color:#fff;min-height:42px;padding:8px 14px;flex:0 0 auto;box-shadow:none;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-card-header .stockos-pdv-entry:hover {background:var(--accent);color:#fff;opacity:.9;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-details {display:grid;gap:10px;margin:0 0 12px;}
+.stockos-cash-card-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .stockos-cash-metric {display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;padding:11px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-raised);min-width:0;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .stockos-cash-metric--physical {background:var(--paper-sunk);}
+.stockos-cash-metric .caixa-detail-label {font-size:11px;font-weight:600;line-height:1.25;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-metric .caixa-detail-value {font-size:clamp(19px,2vw,26px);font-weight:700;line-height:1.15;letter-spacing:-.035em;text-align:left;font-family:var(--font-ui);color:var(--ink);}
+.stockos-cash-metric small {font-size:10px;color:var(--ink-3);line-height:1.3;}
+.stockos-cash-card-breakdown,.stockos-cash-card-session {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card :is(.stockos-cash-card-breakdown,.stockos-cash-card-session) .caixa-detail-row {display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:0;border:0;min-width:0;}
+.stockos-cash-card-breakdown .caixa-detail-label,.stockos-cash-card-session .caixa-detail-label {font-size:10px;line-height:1.3;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card :is(.stockos-cash-card-breakdown,.stockos-cash-card-session) .caixa-detail-value {font-size:13px;line-height:1.3;text-align:left;font-family:var(--font-ui);overflow-wrap:anywhere;}
+.stockos-cash-card-session {border-top:1px solid var(--rule);padding-top:9px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:10px;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm {min-width:0;min-height:36px;padding:7px 8px;font-size:11px;white-space:normal;}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm.danger {color:var(--bad);border-color:var(--bad-soft);background:var(--paper-raised);}
+body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm.danger:hover {background:var(--bad-soft);}
+@container (min-width:470px) {
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions {grid-template-columns:repeat(4,minmax(0,1fr));}
+  .stockos-cash-card-breakdown {grid-template-columns:repeat(4,minmax(0,1fr));}
+}
+@media(max-width:600px) {
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card {padding:12px;}
+  body.caixas-page .app.stockos-shell-v2 #caixas-grid .stockos-cash-card .caixa-actions .btn-sm {min-height:44px;}
+}

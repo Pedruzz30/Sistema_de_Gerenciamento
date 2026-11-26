@@ -160,6 +160,46 @@ async function carregarConsolidado() {
 
 // ── Render: grid de caixas ────────────────────────────────────────────────
 
+
+function cashCardMetrics(c) {
+  const number=v=>v!=null&&String(v).trim()!==''&&Number.isFinite(Number(v))?Number(v):null;
+  const forms=c.vendasPorForma;
+  const keys=['PIX','DEBITO','CREDITO','VOUCHER'];
+  const electronic=forms&&typeof forms==='object'&&!Array.isArray(forms)&&keys.every(k=>forms[k]==null||number(forms[k])!=null)
+    ? keys.reduce((sum,k)=>sum+(number(forms[k])??0),0):null;
+  return {cash:number(c.dinheiroNaGaveta??c.saldoAtual),initial:number(c.saldoInicial),sales:number(c.totalVendas),
+    electronic,hasVoucher:(number(forms?.VOUCHER)??0)!==0,count:number(c.quantidadeVendas),ticket:number(c.ticketMedio)};
+}
+function renderCompactCashDetails(c,operador,abertura,detalheFormas) {
+  const m=cashCardMetrics(c);
+  const money=v=>v==null?'—':moeda(v);
+  const number=v=>v==null?'—':v.toLocaleString('pt-BR');
+  const row=(label,value)=>'<div class="caixa-detail-row"><span class="caixa-detail-label">'+label+'</span><span class="caixa-detail-value">'+value+'</span></div>';
+  return `
+    <div class="caixa-details stockos-cash-details">
+      <div class="stockos-cash-card-metrics">
+        <div class="caixa-detail-row stockos-cash-metric stockos-cash-metric--physical">
+          <span class="caixa-detail-label" title="Fundo + vendas em dinheiro + suprimentos − sangrias − devoluções">Dinheiro na gaveta</span>
+          <span class="caixa-detail-value">${money(m.cash)}</span><small>Saldo físico da sessão</small>
+        </div>
+        <div class="caixa-detail-row stockos-cash-metric">
+          <span class="caixa-detail-label">Total Vendas</span>
+          <span class="caixa-detail-value" title="${escapeHtml(detalheFormas||'Detalhamento indisponível')}">${money(m.sales)}</span><small>Acumulado da sessão</small>
+        </div>
+      </div>
+      <div class="stockos-cash-card-breakdown">
+        ${row('Saldo Inicial',money(m.initial))}
+        ${row('Pix e cartões'+(m.hasVoucher?' / voucher':''),money(m.electronic))}
+        ${row('Vendas registradas',number(m.count))}
+        ${row('Ticket médio',money(m.ticket))}
+      </div>
+      <div class="stockos-cash-card-session">
+        ${row('Operador',operador)}
+        ${row('Abertura',escapeHtml(abertura))}
+      </div>
+    </div>`;
+}
+
 function renderCaixas() {
   const grid = document.getElementById('caixas-grid');
 
@@ -207,19 +247,22 @@ function renderCaixas() {
       PODE_OPERAR_CAIXA
         ? `<button class="btn-sm" onclick="abrirModalMov('suprimento', ${c.numeroCaixa}, ${c.saldoAtual})">${buttonIcon('plus')}Suprimento</button>`
         : '',
-      `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}Ver movs</button>`,
+      `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}${shellNovo ? 'Movimentações' : 'Ver movs'}</button>`,
       PODE_OPERAR_CAIXA
         ? `<button class="btn-sm danger" onclick="abrirModalEncerrar(${c.numeroCaixa})">${buttonIcon('lock')}Encerrar</button>`
         : '',
     ].filter(Boolean).join('');
 
     return `
-      <div class="caixa-card ${statusClass}">
+      <div class="caixa-card ${statusClass}${shellNovo ? ' stockos-cash-card' : ''}">
         <div class="caixa-card-header">
+          ${shellNovo ? '<div class="stockos-cash-card-identity">' : ''}
           <span class="caixa-num">Caixa ${c.numeroCaixa}</span>
           <span class="badge ${badgeClass}">${statusLabel}</span>
+          ${shellNovo ? '</div>' : ''}
           ${shellNovo ? botaoPDV : ''}
         </div>
+        ${shellNovo ? renderCompactCashDetails(c, operador, abertura, detalheFormas) : `
         <div class="caixa-details">
           <div class="caixa-detail-row">
             <span class="caixa-detail-label">Operador</span>
@@ -251,11 +294,11 @@ function renderCaixas() {
             <span class="caixa-detail-label">Abertura</span>
             <span class="caixa-detail-value">${abertura}</span>
           </div>
-        </div>
+        </div>`}
         <div class="caixa-actions">
           ${c.status === 'ABERTO'
             ? botoesAbertos
-            : `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}Ver movs</button>`}
+            : `<button class="btn-sm" onclick="abrirModalMovsLista(${caixaId}, ${c.numeroCaixa})">${buttonIcon('clipboard')}${shellNovo ? 'Movimentações' : 'Ver movs'}</button>`}
         </div>
       </div>`;
   }).join('');
