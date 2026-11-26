@@ -3922,3 +3922,94 @@ body.bridge-page .bridge-actions a {
 .comandas-ajuda summary { cursor: pointer; font-weight: 600; }
 .comandas-ajuda li { margin: 6px 0; }
 @media (max-width: 900px) { .comandas-layout { grid-template-columns: 1fr; } .comandas-detalhe { position: static; } }
+
+
+/* App shell v2 — reference-inspired layout. Scoped to opt-in shell; existing palette stays intact. */
+body .app.stockos-shell-v2 {grid-template-columns:240px minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"sidebar main";}
+body .app.stockos-shell-v2.is-collapsed {grid-template-columns:72px minmax(0,1fr);}
+body .app.stockos-shell-v2 > .sidebar {grid-area:sidebar;grid-column:1;grid-row:1;position:sticky;top:0;height:100dvh;min-height:0;overflow-y:auto;overflow-x:hidden;gap:0;padding:18px 12px 12px;background:var(--paper-raised);border-right:1px solid var(--rule);box-shadow:none;}
+body .app.stockos-shell-v2 > .main.page {grid-area:main;grid-column:2;grid-row:1;min-width:0;width:100%;padding:0;}
+body .app.stockos-shell-v2 .sidebar .sidebar-brand {border-bottom:0;margin:0 0 24px;padding:6px 4px 8px;gap:8px;min-width:0;flex-shrink:0;}
+body .app.stockos-shell-v2 .sidebar .brand-text {min-width:0;}
+body .app.stockos-shell-v2 .sidebar .brand-text .name {font-family:var(--font-ui,inherit);font-size:20px;font-weight:750;letter-spacing:-.045em;}
+body .app.stockos-shell-v2 .sidebar .brand-text .sub {font-size:9px;letter-spacing:.07em;}
+body .app.stockos-shell-v2 .sidebar .nav-label {display:none;}
+body .app.stockos-shell-v2 .sidebar .nav {display:flex;flex-direction:column;flex:0 0 auto;gap:4px;min-width:0;}
+body .app.stockos-shell-v2 .sidebar .nav-item {display:flex;align-items:center;gap:11px;min-height:44px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;border:1px solid transparent;box-shadow:none;transform:none;color:var(--ink-2);background:transparent;}
+body .app.stockos-shell-v2 .sidebar .nav-item:hover {background:var(--paper-sunk);color:var(--ink);}
+body .app.stockos-shell-v2 .sidebar .nav-item.active {background:var(--paper-sunk);color:var(--ink);font-weight:650;border-color:transparent;box-shadow:none;}
+body .app.stockos-shell-v2 .sidebar .nav-item.active::before {left:0;width:3px;top:13px;bottom:13px;background:var(--accent);}
+body .app.stockos-shell-v2 .sidebar .nav-icon {width:19px;height:19px;flex:0 0 19px;}
+body .app.stockos-shell-v2 .sidebar .nav-item:focus-visible,
+body .app.stockos-shell-v2 .stockos-collapse:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+.stockos-nav-group {min-width:0;}
+.stockos-nav-summary {list-style:none;cursor:pointer;}
+.stockos-nav-summary::-webkit-details-marker {display:none;}
+.stockos-nav-chevron {margin-left:auto;width:7px;height:7px;border-right:1.5px solid currentColor;border-top:1.5px solid currentColor;transform:rotate(45deg);flex:0 0 7px;transition:transform 180ms ease;}
+.stockos-nav-group[open] .stockos-nav-chevron {transform:rotate(135deg);}
+.stockos-nav-children {padding:3px 0 4px 13px;margin-left:17px;border-left:1px solid var(--rule);}
+body .app.stockos-shell-v2 .sidebar .stockos-nav-children .nav-item {min-height:39px;padding:8px 7px;font-size:12px;gap:8px;}
+body .app.stockos-shell-v2 .stockos-collapse {display:inline-grid;place-items:center;flex:0 0 32px;width:32px;height:34px;padding:0;margin-left:auto;background:var(--paper-sunk);border:1px solid var(--rule);border-radius:7px;color:var(--ink);cursor:pointer;}
+body .app.stockos-shell-v2 .stockos-collapse svg {width:18px;height:18px;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .sidebar-brand {justify-content:center;padding:4px 0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .brand-mark,
+body .app.stockos-shell-v2.is-collapsed .sidebar .brand-text {display:none;}
+body .app.stockos-shell-v2.is-collapsed .stockos-collapse {margin:0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .nav-item {justify-content:center;padding:10px 0;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .nav-item .label,
+body .app.stockos-shell-v2.is-collapsed .stockos-logout-label {display:none;}
+body .app.stockos-shell-v2 .sidebar .sidebar-foot {margin-top:auto;padding-top:14px;border-top:1px solid var(--rule);}
+body .app.stockos-shell-v2 .sidebar .user-chip {padding:0;border:0;box-shadow:none;background:transparent;}
+body .app.stockos-shell-v2 .sidebar .btn-logout {display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:44px;padding:10px 12px;margin:0;border:0;background:transparent;color:var(--ink-2);font-size:13px;}
+body .app.stockos-shell-v2.is-collapsed .sidebar .btn-logout {justify-content:center;padding:10px 0;}
+body .app.stockos-shell-v2 .sidebar .btn-logout:hover {background:var(--paper-sunk);}
+body .app.stockos-shell-v2 .stockos-header-profile {display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0;padding-left:12px;border-left:1px solid var(--rule);}
+body .app.stockos-shell-v2 .stockos-header-profile .user-meta {display:flex;max-width:135px;}
+body .app.stockos-shell-v2 .stockos-header-profile .avatar {width:34px;height:34px;}
+body .app.stockos-shell-v2 .main.page > .topbar.header {gap:12px;background:var(--paper-raised);min-height:78px;padding:14px clamp(16px,2vw,28px);border-bottom:1px solid var(--rule);border-radius:0;box-shadow:none;}
+body .app.stockos-shell-v2 .topbar .header-main {flex:1 1 auto;min-width:0;}
+body .app.stockos-shell-v2 .topbar .page-title {font-family:var(--font-ui,inherit);font-weight:700;letter-spacing:-.04em;}
+body .app.stockos-shell-v2 .topbar .topbar-right {min-width:0;flex-wrap:wrap;}
+@media(max-width:1200px) {body .app.stockos-shell-v2 .stockos-header-profile .user-meta {display:none;}}
+@media(max-width:980px) {
+  body .app.stockos-shell-v2,body .app.stockos-shell-v2.is-collapsed {grid-template-columns:minmax(0,1fr);grid-template-areas:"main";}
+  body .app.stockos-shell-v2 > .main.page {grid-column:1;grid-row:1;}
+  body .app.stockos-shell-v2 > .sidebar {grid-area:auto;position:fixed;inset:0 auto 0 0;width:min(280px,calc(100vw - 36px));height:100dvh;z-index:50;transform:translateX(-100%);visibility:hidden;transition:transform 180ms ease,visibility 180ms;}
+  body .app.stockos-shell-v2 > .sidebar.open {display:flex;transform:translateX(0);visibility:visible;}
+  body .app.stockos-shell-v2 .stockos-collapse {display:none;}
+  body .app.stockos-shell-v2 .sidebar-toggle {display:inline-flex;}
+  body .app.stockos-shell-v2 .stockos-header-profile {border:0;padding:0;}
+  body .app.stockos-shell-v2 .topbar.header {flex-wrap:wrap;}
+}
+@media(max-width:720px) {
+  body .app.stockos-shell-v2 .topbar .header-main {order:0;flex:1 1 65%;}
+  body .app.stockos-shell-v2 .stockos-header-profile {order:1;}
+  body .app.stockos-shell-v2 .topbar .topbar-right {order:2;flex:1 1 100%;}
+}
+@media(prefers-reduced-motion:reduce) {.stockos-nav-chevron,body .app.stockos-shell-v2 > .sidebar {transition:none;}}
+
+/* Dashboard first fold: grouped KPIs beside actual sales-by-register data. */
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid {display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;align-items:stretch;margin-bottom:18px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid > * {min-width:0;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:1px;margin:0;background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-grid:empty {display:none;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card {border:0;border-radius:0;background:var(--paper-raised);min-height:128px;padding:15px;box-shadow:none !important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card:hover {background:var(--paper-sunk);box-shadow:none !important;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card:focus-visible {outline-offset:-3px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-value {font-size:clamp(18px,2vw,27px);overflow-wrap:anywhere;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-label {font-size:11px;letter-spacing:0;text-transform:none;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card-top {flex-direction:column-reverse;align-items:flex-start;gap:8px;}
+body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid:not(:has(.stockos-sales-panel)) {grid-template-columns:minmax(0,1fr);}
+body.dashboard-page .app.stockos-shell-v2 .stockos-sales-panel {display:flex;flex-direction:column;padding:18px;border:1px solid var(--rule);border-radius:10px;background:var(--paper-raised);min-width:0;box-shadow:none;}
+.stockos-sales-title {margin:0;color:var(--ink);font-size:15px;font-weight:650;}
+.stockos-sales-sub {margin:5px 0;color:var(--ink-3);font-size:12px;}
+.stockos-sales-total {font-size:clamp(22px,2.7vw,32px);font-weight:700;letter-spacing:-.045em;color:var(--ink);font-variant-numeric:tabular-nums;margin:8px 0 10px;overflow-wrap:anywhere;}
+.stockos-sales-chart {display:flex;align-items:stretch;gap:14px;min-height:160px;overflow-x:auto;padding:5px 1px 4px;}
+.stockos-sales-column {display:grid;grid-template-rows:18px minmax(80px,1fr) 24px;gap:5px;align-items:end;justify-items:center;flex:1 0 72px;min-width:0;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.stockos-sales-track {display:flex;align-items:flex-end;height:100%;width:min(32px,75%);background:var(--paper-sunk);border-radius:5px;overflow:hidden;}
+.stockos-sales-bar {width:100%;height:var(--bar-height,0%);background:var(--accent);border-radius:5px 5px 0 0;}
+.stockos-sales-empty {color:var(--ink-3);font-size:13px;margin:auto 0;}
+body.dashboard-page .app.stockos-shell-v2 .main-grid {grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;}
+body.dashboard-page .app.stockos-shell-v2 .main-grid .card {border-radius:10px;box-shadow:none;}
+@media(max-width:1150px) {body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid,body.dashboard-page .app.stockos-shell-v2 .main-grid {grid-template-columns:minmax(0,1fr);}}
+@media(max-width:480px) {body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-card {min-height:118px;padding:12px;}body.dashboard-page .app.stockos-shell-v2 .stockos-sales-panel {padding:14px;}body.dashboard-page .app.stockos-shell-v2 .stockos-overview-grid .summary-value {font-size:19px;}}
