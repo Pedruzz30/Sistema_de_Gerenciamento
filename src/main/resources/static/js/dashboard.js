@@ -541,6 +541,7 @@ function renderAlertas(produtos) {
 // ── Movimentações recentes (Improvement 6) ────────────────
 function renderMovimentacoes(movimentacoes) {
   var list = document.getElementById('mov-list');
+  if (!list) return;
   // Histórico preservado no banco: na visão geral entram apenas os registros de hoje.
   var hoje = dataLocalHojeIso();
   var recentesHoje = (movimentacoes || [])
@@ -556,6 +557,10 @@ function renderMovimentacoes(movimentacoes) {
     return;
   }
 
+  if (document.querySelector('.app.stockos-shell-v2')) {
+    renderRecentMovementTable(list, recentesHoje.slice(0, 10));
+    return;
+  }
   list.innerHTML = recentesHoje.slice(0, 10).map(function (m) {
     // Extract HH:mm directly from the LocalDateTime string (e.g. "2025-03-01T10:30:00")
     var hora = '—';
@@ -569,12 +574,51 @@ function renderMovimentacoes(movimentacoes) {
       }
     } catch (e) {}
     return '<div class="mov-item">' +
-           '<span class="mov-badge ' + (m.tipo || '').toLowerCase() + '">' + m.tipo + '</span>' +
-           '<span class="mov-produto">' + m.produto + '</span>' +
-           '<span class="mov-qty">' + (m.tipo === 'ENTRADA' ? '+' : '-') + m.quantidade + ' un.</span>' +
-           '<span class="mov-time">' + hora + '</span>' +
+           '<span class="mov-badge ' + (m.tipo === 'ENTRADA' ? 'entrada' : m.tipo === 'SAIDA' ? 'saida' : '') + '">' + escapeHtml(String(m.tipo || '—')) + '</span>' +
+           '<span class="mov-produto">' + escapeHtml(String(m.produto || '—')) + '</span>' +
+           '<span class="mov-qty">' + (m.tipo === 'ENTRADA' ? '+' : m.tipo === 'SAIDA' ? '-' : '') + escapeHtml(String(m.quantidade ?? '—')) + ' un.</span>' +
+           '<span class="mov-time">' + escapeHtml(hora) + '</span>' +
            '</div>';
   }).join('');
+}
+
+// Render as a real accessible table; do not use stock exits as a sales ranking.
+function renderRecentMovementTable(list, rows) {
+  const wrap = document.createElement('div');
+  wrap.className = 'stockos-movements-wrap';
+  const table = document.createElement('table');
+  table.className = 'stockos-movements-table';
+  table.setAttribute('aria-label', 'Movimentações recentes de hoje');
+  const thead = document.createElement('thead');
+  const header = document.createElement('tr');
+  ['Produto', 'Tipo', 'Quantidade', 'Hora'].forEach(label => {
+    const th = document.createElement('th');
+    th.scope = 'col';
+    th.textContent = label;
+    header.appendChild(th);
+  });
+  thead.appendChild(header);
+  const tbody = document.createElement('tbody');
+  rows.forEach(m => {
+    const tr = document.createElement('tr');
+    const product = document.createElement('td');
+    product.textContent = String(m.produto || '—');
+    const type = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = 'mov-badge ' + (m.tipo === 'ENTRADA' ? 'entrada' : m.tipo === 'SAIDA' ? 'saida' : '');
+    badge.textContent = String(m.tipo || '—');
+    type.appendChild(badge);
+    const qty = document.createElement('td');
+    const amount = m.quantidade != null && Number.isFinite(Number(m.quantidade)) ? Number(m.quantidade) : null;
+    qty.textContent = amount == null ? '—' : (m.tipo === 'ENTRADA' ? '+' : m.tipo === 'SAIDA' ? '−' : '') + amount + ' un.';
+    const time = document.createElement('td');
+    time.textContent = /T\d{2}:\d{2}/.test(String(m.dataHora || '')) ? String(m.dataHora).split('T')[1].slice(0, 5) : '—';
+    tr.append(product, type, qty, time);
+    tbody.appendChild(tr);
+  });
+  table.append(thead, tbody);
+  wrap.appendChild(table);
+  list.replaceChildren(wrap);
 }
 
 // ── Resumo financeiro (BUG 2: correct ticket médio) ───────

@@ -97,3 +97,32 @@ assert.equal(old.parent.children[0],old.grid);
 assert.match(css,/\.app\.stockos-shell-v2\.is-collapsed/);
 assert.match(css,/prefers-reduced-motion:reduce/);
 console.log('PASS shell redesign: permission-aware menu, PIN, collapsed and original modes, financial data and unavailable state.');
+
+function search(query, perms=names, pin=false) {
+  return vm.runInNewContext(navCode+'\nstockosFindModules(query).map(item=>item.id);', {
+    PERMISSOES:permissions,usuario:{viaPin:pin},query,
+    temAlgumaPermissao:arr=>arr.some(p=>perms.includes(p))
+  }).join(',');
+}
+assert.equal(search('funcionarios'),'funcionarios');
+assert.equal(search('COTAÇÃO'),'cotacoes');
+assert.equal(search('vendas caixa'),'caixas');
+assert.equal(search('funcionarios',['VER_ESTOQUE']),'');
+assert.equal(search('estoque',names,true),'');
+assert.equal(search('pdv',names,true),'caixas');
+assert.equal(search('sem correspondencia'),'');
+const moveCode=extract(dashboard,'function renderRecentMovementTable(','// ── Resumo financeiro');
+const list=new Element('div');
+list.replaceChildren=function(...nodes){this.children=[];this.append(...nodes);};
+const renderMoves=vm.runInNewContext(moveCode+'\nrenderRecentMovementTable;',{
+  document:{createElement:t=>new Element(t)}
+});
+renderMoves(list,[{produto:'<img src=x onerror=alert(1)>',tipo:'SAIDA',quantidade:2,dataHora:'2026-11-26T10:35:00'}]);
+const moveTable=list.children[0].children[0];
+assert.equal(moveTable.tag,'table');
+const moveRow=moveTable.children[1].children[0];
+assert.equal(moveRow.children[0].textContent,'<img src=x onerror=alert(1)>');
+assert.equal(moveRow.children[2].textContent,'−2 un.');
+assert.equal(moveRow.children[3].textContent,'10:35');
+assert.match(css,/stockos-module-results\[hidden\]/);
+console.log('PASS module search authorization and normalization, semantic movement table and literal product text.');

@@ -445,16 +445,105 @@ function renderStockosNavigation(nav, items, atual) {
   }).join('') + remaining.map(link).join('');
 }
 
+function stockosAllowedNavigation() {
+  return NAV_ITENS.filter(function (item) {
+    if (usuario.viaPin) return item.id === 'caixas' || item.id === 'comandas';
+    return !item.permsAny || temAlgumaPermissao(item.permsAny);
+  });
+}
+
+function stockosFindModules(query) {
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const aliases = {
+    dashboard: 'visão geral início painel', estoque: 'produtos inventário estoque baixo',
+    cardapio: 'catálogo preço produtos', fornecedores: 'compras fornecedor',
+    notas: 'compras nota fiscal nf', caixas: 'pdv vendas caixa financeiro',
+    comandas: 'pedidos consumo atendimento', cotacoes: 'compras preço cotação',
+    funcionarios: 'equipe usuários colaboradores', logs: 'auditoria histórico'
+  };
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  return stockosAllowedNavigation().filter(item => {
+    const haystack = normalize(item.label + ' ' + (aliases[item.id] || ''));
+    return words.every(word => haystack.includes(word));
+  });
+}
+
+function setupStockosModuleSearch(header) {
+  const form = document.createElement('form');
+  form.className = 'stockos-module-search';
+  form.setAttribute('role', 'search');
+  form.setAttribute('aria-label', 'Pesquisar módulos');
+  form.innerHTML = '<span class="stockos-search-icon" aria-hidden="true">' + iconMarkup('search') +
+    '</span><input type="search" class="stockos-module-input" placeholder="Pesquisar módulos..." ' +
+    'aria-label="Pesquisar módulos do StockOS" aria-controls="stockos-module-results" autocomplete="off">' +
+    '<div class="stockos-module-results" id="stockos-module-results" hidden></div>';
+  const input = form.querySelector('input');
+  const results = form.querySelector('.stockos-module-results');
+  const close = () => { results.hidden = true; };
+  function update() {
+    const matches = stockosFindModules(input.value);
+    results.replaceChildren();
+    const status = document.createElement('p');
+    status.className = 'stockos-search-status';
+    status.setAttribute('role', 'status');
+    status.textContent = matches.length ? matches.length + (matches.length === 1 ? ' módulo disponível' : ' módulos disponíveis') : 'Nenhum módulo encontrado.';
+    results.appendChild(status);
+    matches.forEach(item => {
+      const link = document.createElement('a');
+      link.href = item.href;
+      link.className = 'stockos-search-result';
+      link.innerHTML = '<span aria-hidden="true">' + iconMarkup(item.icon) + '</span>';
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      link.appendChild(label);
+      results.appendChild(link);
+    });
+    results.hidden = false;
+  }
+  input.addEventListener('focus', update);
+  input.addEventListener('input', update);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const first = results.querySelector('a');
+    if (first && !results.hidden) first.click();
+  });
+  form.addEventListener('click', event => {
+    if (event.target.closest('a')) { close(); input.value = ''; input.blur(); }
+  });
+  form.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !results.hidden) {
+      event.stopPropagation();
+      event.preventDefault();
+      close();
+      input.focus();
+      close();
+    }
+  });
+  form.addEventListener('focusout', event => {
+    if (!form.contains(event.relatedTarget)) close();
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!form.contains(event.target)) close();
+  });
+  header.appendChild(form);
+  // Shortcut, not a fake notification feed; route follows the same permission list.
+  if (stockosAllowedNavigation().some(item => item.id === 'estoque')) {
+    const alerts = document.createElement('a');
+    alerts.className = 'stockos-alert-shortcut';
+    alerts.href = '/estoque.html?filtro=critico';
+    alerts.title = 'Ver estoque crítico';
+    alerts.setAttribute('aria-label', 'Ver estoque crítico');
+    alerts.innerHTML = iconMarkup('alertTriangle');
+    header.appendChild(alerts);
+  }
+}
+
 function renderSidebar() {
   const nav = document.getElementById('nav-items');
   if (!nav) return;
   const atual = paginaAtual();
 
-  const permitidos = NAV_ITENS
-    .filter(function (item) {
-      if (usuario.viaPin) return item.id === 'caixas' || item.id === 'comandas';
-      return !item.permsAny || temAlgumaPermissao(item.permsAny);
-    });
+  const permitidos = stockosAllowedNavigation();
   if (stockosNewShellEnabled()) {
     renderStockosNavigation(nav, permitidos, atual);
     return;
@@ -597,6 +686,8 @@ function setupShell() {
     });
     window.addEventListener('resize', syncDesktopSidebar);
     syncDesktopSidebar();
+
+    setupStockosModuleSearch(header);
 
     // The header survives route changes; keep the existing profile nodes and IDs.
     const avatar = document.getElementById('user-avatar');
