@@ -114,6 +114,8 @@ for (const pagina of ['caixas.html','comandas.html']) {
     .replace('<head>','<head>\n<script src="/js/preview-caixa-completo.js"></script>')
     .replace('href="tokens.css"','href="/tokens.css"')
     .replace('href="app.css"','href="/app.css"')
+    .replace(/<link\s+rel="stylesheet"\s+href="\/css\/[a-z-]+-refinement\.css"\s*\/?>/g,'')
+    .replace('</head>', '<script src="/js/preview-design-review.js"></script>\n</head>')
     .replace(/<title>([^<]*)<\/title>/, '<title>$1 · Caixa completo (demonstração)</title>');
   await writeFile(join(out,'caixa-completo',pagina),html);
 }
@@ -122,8 +124,9 @@ await writeFile(join(out,'caixa-completo','index.html'),
   '<title>StockOS · Caixa completo (demonstração)</title></head><body><a href="/caixa-completo/caixas.html">Abrir o caixa completo</a></body></html>\n');
 // Atalho na demonstração atual para o caixa completo.
 const atalhoCaixaCompleto = '<div class="caixa-completo-entry" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 0;padding:13px;border:1px solid var(--rule,#53667a);border-radius:12px;background:var(--paper-raised,#172638)">' +
-  '<span style="font-size:13px;color:var(--ink,#f4f7fa)"><strong>Caixa completo</strong> · O PDV de verdade do sistema: leitor de código, formas de pagamento, troco, comandas e teclas rápidas, com dados fictícios.</span>' +
-  '<a href="/caixa-completo/" style="min-height:44px;display:inline-flex;align-items:center;padding:10px 15px;border-radius:9px;background:var(--accent,#dca062);color:#211607;text-decoration:none;font-weight:750;font-size:13px">Ver o caixa completo</a></div>';
+  '<span style="font-size:13px;color:var(--ink,#f4f7fa)"><strong>Caixa completo</strong> · O PDV de verdade do sistema: leitor de código, formas de pagamento, troco, comandas e teclas rápidas. Ambiente fictício independente do PDV simplificado.</span>' +
+  '<a href="/caixa-completo/" style="min-height:44px;display:inline-flex;align-items:center;padding:10px 15px;border-radius:9px;background:var(--accent,#dca062);color:#211607;text-decoration:none;font-weight:750;font-size:13px">Ver o caixa completo</a>' +
+  '<a href="/caixa-completo/comandas.html" style="min-height:44px;display:inline-flex;align-items:center;padding:10px 15px;border-radius:9px;border:1px solid var(--rule);color:var(--ink);font-weight:650;font-size:13px">Comandas completas</a></div>';
 for (const pagina of ['dashboard.html','caixas.html']) {
   const caminho = join(out,pagina);
   const html = await readFile(caminho,'utf8');
