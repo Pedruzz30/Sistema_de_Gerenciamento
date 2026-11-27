@@ -156,6 +156,14 @@
     const button=(name,text,fn)=>{const b=make('button',name,text);b.type='button';if(fn)b.onclick=fn;return b;};
     const header=make('header','header'),title=make('h2','title','PDV · Caixa '+numero);title.id='stockos-terminal-title';
     const intro=make('div','intro');intro.append(title,make('p','muted','Demonstração · nenhuma venda ou pagamento real'));
+    const fullPdv=button('full-pdv','PDV completo · Comandas',()=>{
+      if(processing || (!submitted && (pending || cart.size))){
+        feedback.textContent='Finalize ou descarte o pedido antes de abrir o PDV completo.';
+        return;
+      }
+      if(confirm('Abrir o PDV completo? Ele utiliza dados fictícios independentes deste terminal.')) location.assign('/caixa-completo/caixas.html');
+    });
+    intro.append(fullPdv);
     const close=button('close','Fechar (Esc)',()=>dismiss());header.append(intro,close);
     const feedback=make('p','status','');feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');
     const nav=make('nav','nav'),catalogTab=button('tab','Produtos',()=>switchPanel('catalog')),cartTab=button('tab','Pedido · 0 itens',()=>switchPanel('cart'));nav.append(catalogTab,cartTab);

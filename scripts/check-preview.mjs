@@ -63,9 +63,12 @@ for (const pagina of ['caixas.html','comandas.html']) {
   const completo = await readFile(join('dist-preview','caixa-completo',pagina),'utf8');
   assert.match(completo,/<head>\n<script src="\/js\/preview-caixa-completo.js"><\/script>/,'Simulador antes de tudo em '+pagina);
   assert.match(completo,/href="\/app.css"/);
+  assert.match(completo,/src="\/js\/preview-design-review\.js"/,'Redesign compartilhado no caixa completo');
   assert.doesNotMatch(completo,/preview-mock.js|preview-pdv.js/,'Sem a simulação antiga em '+pagina);
 }
 assert.match(html,/caixa-completo-entry/,'Atalho para o caixa completo no Dashboard da demonstração');
+assert.match(html,/href="\/caixa-completo\/comandas\.html"/,'Acesso direto às comandas completas');
+assert.match(html,/Ambiente fictício independente/,'Deixar explícito que os simuladores não compartilham dados');
 assert.match(routes,/^\/caixa-completo \/caixa-completo\/caixas.html 200$/m);
 assert.doesNotMatch(await readFile('src/main/resources/static/caixas.html','utf8'),/preview-caixa-completo/,'Simulador nunca no sistema Java');
 for(const f of ['saas-admin.html','saas-comandas.html','application.properties']) {
