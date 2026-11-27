@@ -93,49 +93,64 @@ public class CompraEstoqueService {
     }
 
     @Transactional
-    public CompraEstoque adicionarItem(Usuario usuario,
-                                       long compraId,
-                                       int produtoId,
-                                       Long embalagemId,
-                                       String unidadeCompraCodigo,
-                                       BigDecimal quantidadeComprada,
-                                       BigDecimal custoTotal,
-                                       String motivoEntradaGratuita) {
-        validarPermissaoEdicao(usuario);
-        CompraEstoque compra = bloquearCompraObrigatoria(compraId);
-        Produto produto = buscarProdutoObrigatorio(produtoId);
-        validarProdutoParaCompra(produto);
-        validarCusto(custoTotal, motivoEntradaGratuita);
+public CompraEstoque adicionarItem(Usuario usuario,
+                                   long compraId,
+                                   int produtoId,
+                                   Long embalagemId,
+                                   String unidadeCompraCodigo,
+                                   BigDecimal quantidadeComprada,
+                                   BigDecimal custoTotal,
+                                   String motivoEntradaGratuita) {
+    validarPermissaoEdicao(usuario);
 
-        boolean temEmbalagem = embalagemId != null && embalagemId > 0;
-        boolean temUnidade = unidadeCompraCodigo != null && !unidadeCompraCodigo.isBlank();
-        if (temEmbalagem == temUnidade) {
-            throw new IllegalArgumentException("Informe embalagem ou unidade de compra, nunca ambos.");
+    CompraEstoque compra = bloquearCompraObrigatoria(compraId);
+    Produto produto = buscarProdutoObrigatorio(produtoId);
+
+    validarProdutoParaCompra(produto);
+    validarCusto(custoTotal, motivoEntradaGratuita);
+
+    EmbalagemProduto embalagem = null;
+    UnidadeMedida unidadeCompra = null;
+    BigDecimal quantidadeBase;
+
+    if (embalagemId != null && embalagemId > 0) {
+        if (unidadeCompraCodigo != null && !unidadeCompraCodigo.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Informe embalagem ou unidade de compra, nunca ambos.");
         }
 
-        EmbalagemProduto embalagem = null;
-        UnidadeMedida unidadeCompra = null;
-        BigDecimal quantidadeBase;
-        if (temEmbalagem) {
-            embalagem = embalagemProdutoRepository.buscarPorId(embalagemId)
-                    .orElseThrow(() -> new IllegalArgumentException("Embalagem nao encontrada com ID: " + embalagemId));
-            if (!embalagem.pertenceAoProduto(produto.getId())) {
-                throw new IllegalArgumentException("Embalagem nao pertence ao produto informado.");
-            }
-            BigDecimal quantidadeNaUnidadeDaEmbalagem = quantidadeComprada.multiply(embalagem.getQuantidadeBase());
-            quantidadeBase = unidadeMedidaService.converterParaUnidadeBaseProduto(
-                    quantidadeNaUnidadeDaEmbalagem,
-                    embalagem.getUnidadeBase(),
-                    produto.getUnidadeBase()
-            );
-        } else {
-            unidadeCompra = unidadeMedidaService.buscarPorCodigoObrigatorio(unidadeCompraCodigo);
-            quantidadeBase = unidadeMedidaService.converterParaUnidadeBaseProduto(
-                    quantidadeComprada,
-                    unidadeCompra,
-                    produto.getUnidadeBase()
-            );
+        embalagem = embalagemProdutoRepository.buscarPorId(embalagemId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Embalagem nao encontrada com ID: " + embalagemId));
+
+        if (!embalagem.pertenceAoProduto(produto.getId())) {
+            throw new IllegalArgumentException(
+                    "Embalagem nao pertence ao produto informado.");
         }
+
+        BigDecimal quantidadeNaUnidadeDaEmbalagem = quantidadeComprada
+                .multiply(embalagem.getQuantidadeBase());
+
+        quantidadeBase = unidadeMedidaService.converterParaUnidadeBaseProduto(
+                quantidadeNaUnidadeDaEmbalagem,
+                embalagem.getUnidadeBase(),
+                produto.getUnidadeBase()
+        );
+    } else {
+        if (unidadeCompraCodigo == null || unidadeCompraCodigo.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Informe embalagem ou unidade de compra, nunca ambos.");
+        }
+
+        unidadeCompra = unidadeMedidaService
+                .buscarPorCodigoObrigatorio(unidadeCompraCodigo);
+
+        quantidadeBase = unidadeMedidaService.converterParaUnidadeBaseProduto(
+                quantidadeComprada,
+                unidadeCompra,
+                produto.getUnidadeBase()
+        );
+    }
 
         compra.adicionarItem(new ItemCompraEstoque(
                 0,
@@ -249,11 +264,12 @@ public class CompraEstoqueService {
                 )));
     }
 
-    private Produto buscarProdutoObrigatorio(int produtoId) {
-        return produtoRepository.buscarPorId(produtoId)
-                .filter(Produto::isControladoPorEstoque)
-                .orElseThrow(() -> new IllegalArgumentException("Produto nao encontrado com ID: " + produtoId));
-    }
+   private Produto buscarProdutoObrigatorio(int produtoId) {
+    return produtoRepository.buscarPorId(produtoId)
+            .filter(produto -> produto.isControladoPorEstoque())
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "Produto nao encontrado com ID: " + produtoId));
+}
 
     private void validarProdutoParaCompra(Produto produto) {
         if (produto.getUnidadeBase() == null) {

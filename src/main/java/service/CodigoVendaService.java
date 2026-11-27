@@ -8,10 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 import repository.CodigoVendaRepository;
 import repository.VariacaoItemCardapioRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Códigos lidos no caixa: código de barras (EAN-8, UPC-A, EAN-13, GTIN-14)
@@ -41,19 +44,36 @@ public class CodigoVendaService {
 
     public Optional<Leitura> ler(String codigoLido) {
         String codigo = normalizar(codigoLido);
+
         if (codigo.isEmpty()) {
             return Optional.empty();
         }
-        List<CodigoVenda> encontrados = codigoVendaRepository.listarAtivosPorCodigo(codigo).stream()
+
+        List<CodigoVenda> encontrados = codigoVendaRepository
+                .listarAtivosPorCodigo(codigo)
+                .stream()
                 .filter(c -> c.getVariacao().isAtiva())
-                .filter(c -> c.getVariacao().getItemCardapio() == null || c.getVariacao().getItemCardapio().isAtivo())
+                .filter(c -> {
+                    var item = c.getVariacao().getItemCardapio();
+                    return item == null || item.isAtivo();
+                })
                 .toList();
+
         if (encontrados.isEmpty()) {
             return Optional.empty();
         }
-        CodigoVenda padrao = encontrados.stream().filter(CodigoVenda::isPadrao).findFirst().orElse(encontrados.get(0));
-        List<CodigoVenda> alternativas = encontrados.stream().filter(c -> c != padrao).toList();
-        return Optional.of(new Leitura(codigo, padrao.getTipo(), padrao, alternativas));
+
+        CodigoVenda padrao = encontrados.stream()
+                .filter(c -> c.isPadrao())
+                .findFirst()
+                .orElseGet(() -> encontrados.get(0));
+
+        List<CodigoVenda> alternativas = encontrados.stream()
+                .filter(c -> c != padrao)
+                .toList();
+
+        return Optional.of(
+                new Leitura(codigo, padrao.getTipo(), padrao, alternativas));
     }
 
     public List<CodigoVenda> listarAtivos() {
@@ -62,13 +82,18 @@ public class CodigoVendaService {
 
     /** Variações à venda sem nenhum código: gelo, copo, petiscos, caldos. */
     public List<VariacaoItemCardapio> listarSemCodigo() {
-        java.util.Set<Long> comCodigo = codigoVendaRepository.listarAtivos().stream()
-                .map(c -> c.getVariacao().getId())
-                .collect(java.util.stream.Collectors.toSet());
+        Set<Long> comCodigo = codigoVendaRepository.listarAtivos()
+                .stream()
+                .map(codigo -> codigo.getVariacao().getId())
+                .collect(Collectors.toSet());
+
         return variacaoRepository.listarTodos().stream()
-                .filter(VariacaoItemCardapio::isAtiva)
-                .filter(v -> v.getItemCardapio() == null || v.getItemCardapio().isAtivo())
-                .filter(v -> !comCodigo.contains(v.getId()))
+                .filter(variacao -> variacao.isAtiva())
+                .filter(variacao -> {
+                    var item = variacao.getItemCardapio();
+                    return item == null || item.isAtivo();
+                })
+                .filter(variacao -> !comCodigo.contains(variacao.getId()))
                 .toList();
     }
 
@@ -86,7 +111,7 @@ public class CodigoVendaService {
     @Transactional
     public List<CodigoVenda> gerarInternos(Usuario usuario) {
         validarPermissaoEdicao(usuario);
-        java.util.List<CodigoVenda> criados = new java.util.ArrayList<>();
+        List<CodigoVenda> criados = new ArrayList<>();
         for (VariacaoItemCardapio variacao : listarSemCodigo()) {
             String codigo = codigoInterno(variacao.getId());
             if (!codigoVendaRepository.listarAtivosPorCodigo(codigo).isEmpty()) {
@@ -113,7 +138,7 @@ public class CodigoVendaService {
         String codigo = normalizar(codigoInformado);
         CodigoVenda.Tipo tipo = classificar(codigo);
         VariacaoItemCardapio variacao = variacaoRepository.buscarPorId(variacaoId)
-                .filter(VariacaoItemCardapio::isAtiva)
+                .filter(variacaoAtiva -> variacaoAtiva.isAtiva())
                 .orElseThrow(() -> new ErroNegocioException(
                         "VARIACAO_NAO_ENCONTRADA", "Variacao nao encontrada ou inativa.",
                         Map.of("variacaoId", variacaoId)));
@@ -124,7 +149,7 @@ public class CodigoVendaService {
                     "Este codigo ja esta vinculado a esta variacao.",
                     Map.of("codigo", codigo, "variacaoId", variacaoId));
         }
-        boolean jaTemPadrao = existentes.stream().anyMatch(CodigoVenda::isPadrao);
+        boolean jaTemPadrao = existentes.stream().anyMatch(existente -> existente.isPadrao());
         boolean seraPadrao = padrao == null ? !jaTemPadrao : padrao;
         if (seraPadrao) {
             for (CodigoVenda existente : existentes) {
@@ -217,9 +242,8 @@ public class CodigoVendaService {
     }
 
     private static void validarPermissaoEdicao(Usuario usuario) {
-        if (usuario == null
-                || usuario.getClasse() == null
-                || !usuario.getClasse().possuiPermissao(Permissao.EDITAR_ESTOQUE)) {
+        var classe = usuario == null ? null : usuario.getClasse();
+        if (classe == null || !classe.possuiPermissao(Permissao.EDITAR_ESTOQUE)) {
             throw new SecurityException("Voce nao tem permissao para cadastrar codigos de venda.");
         }
     }

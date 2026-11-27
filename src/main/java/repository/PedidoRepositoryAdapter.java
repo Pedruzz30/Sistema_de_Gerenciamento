@@ -1,23 +1,36 @@
 package repository;
 
 import model.Pedido;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
 public class PedidoRepositoryAdapter implements PedidoRepository {
 
+    private static final Sort ORDENACAO_PADRAO =
+            Sort.by(Sort.Direction.DESC, "dataHora", "id");
+
     private final JpaPedidoRepository delegate;
 
     public PedidoRepositoryAdapter(JpaPedidoRepository delegate) {
-        this.delegate = delegate;
+        this.delegate = Objects.requireNonNull(
+                delegate, "Repositorio JPA de pedido e obrigatorio.");
     }
 
     @Override
     public Pedido salvar(Pedido pedido) {
+        if (pedido == null) {
+            throw new IllegalArgumentException(
+                    "Pedido e obrigatorio.");
+        }
+
         return delegate.save(pedido);
     }
 
@@ -27,23 +40,36 @@ public class PedidoRepositoryAdapter implements PedidoRepository {
     }
 
     @Override
-    public java.util.Map<Integer,Integer> quantidadesVendidasPorProduto() {
-        java.util.Map<Integer,Integer> map = new java.util.HashMap<>();
-        for (JpaPedidoRepository.QuantidadeVendida row : delegate.somarQuantidadesVendidasPorProduto())
-            map.put(row.getProdutoId(),Math.toIntExact(row.getQuantidadeTotal()));
-        return map;
+    public Map<Integer, Integer> quantidadesVendidasPorProduto() {
+        Map<Integer, Integer> quantidades = new HashMap<>();
+
+        for (JpaPedidoRepository.QuantidadeVendida registro
+                : delegate.somarQuantidadesVendidasPorProduto()) {
+
+            quantidades.put(
+                    registro.getProdutoId(),
+                    Math.toIntExact(registro.getQuantidadeTotal()));
+        }
+
+        return quantidades;
     }
+
     @Override
     public List<Pedido> listarRecentes(int limite) {
-        if (limite < 1 || limite > 500) throw new IllegalArgumentException("Limite deve estar entre 1 e 500.");
-        return delegate.findAllByOrderByDataHoraDescIdDesc(org.springframework.data.domain.PageRequest.of(0, limite));
+        if (limite < 1 || limite > 500) {
+            throw new IllegalArgumentException(
+                    "Limite deve estar entre 1 e 500.");
+        }
+
+        PageRequest paginacao = PageRequest.of(0, limite);
+
+        return delegate.findAllByOrderByDataHoraDescIdDesc(
+                Objects.requireNonNull(paginacao));
     }
 
     @Override
     public List<Pedido> listarTodos() {
         return delegate.findAll(
-                Sort.by(Sort.Direction.DESC, "dataHora")
-                        .and(Sort.by(Sort.Direction.DESC, "id"))
-        );
+                Objects.requireNonNull(ORDENACAO_PADRAO));
     }
 }

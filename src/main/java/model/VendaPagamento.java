@@ -64,28 +64,54 @@ public class VendaPagamento {
         // JPA
     }
 
-    public VendaPagamento(Venda venda, FormaPagamento forma, BigDecimal valor, BigDecimal valorRecebido, String nsu) {
-        validar(venda != null, "Venda do pagamento e obrigatoria.");
-        validar(forma != null, "Forma de pagamento e obrigatoria.");
-        validar(valor != null && valor.compareTo(BigDecimal.ZERO) > 0, "Valor do pagamento deve ser maior que zero.");
-        BigDecimal valorEscala = valor.setScale(ESCALA, RoundingMode.HALF_UP);
-        BigDecimal recebido = null;
-        BigDecimal trocoCalculado = BigDecimal.ZERO.setScale(ESCALA, RoundingMode.HALF_UP);
-        if (valorRecebido != null) {
-            recebido = valorRecebido.setScale(ESCALA, RoundingMode.HALF_UP);
-            validar(recebido.compareTo(valorEscala) >= 0, "Valor recebido nao pode ser menor que o valor pago.");
-            validar(forma == FormaPagamento.DINHEIRO || recebido.compareTo(valorEscala) == 0,
-                    "Troco so e permitido em dinheiro.");
-            trocoCalculado = recebido.subtract(valorEscala);
-        }
-        this.venda = venda;
-        this.forma = forma;
-        this.valor = valorEscala;
-        this.valorRecebido = recebido;
-        this.troco = trocoCalculado;
-        this.nsu = nsu == null || nsu.isBlank() ? null : nsu.trim();
-        this.criadoEm = LocalDateTime.now();
+    public VendaPagamento(Venda venda,
+                      FormaPagamento forma,
+                      BigDecimal valor,
+                      BigDecimal valorRecebido,
+                      String nsu) {
+
+    validar(venda != null,
+            "Venda do pagamento e obrigatoria.");
+
+    validar(forma != null,
+            "Forma de pagamento e obrigatoria.");
+
+    if (valor == null || valor.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Valor do pagamento deve ser maior que zero.");
     }
+
+    BigDecimal valorEscala = valor.setScale(
+            ESCALA, RoundingMode.HALF_UP);
+
+    BigDecimal recebido = null;
+
+    BigDecimal trocoCalculado = BigDecimal.ZERO.setScale(
+            ESCALA, RoundingMode.HALF_UP);
+
+    if (valorRecebido != null) {
+        recebido = valorRecebido.setScale(
+                ESCALA, RoundingMode.HALF_UP);
+
+        int comparacao = recebido.compareTo(valorEscala);
+
+        validar(comparacao >= 0,
+                "Valor recebido nao pode ser menor que o valor pago.");
+
+        validar(forma == FormaPagamento.DINHEIRO || comparacao == 0,
+                "Troco so e permitido em dinheiro.");
+
+        trocoCalculado = recebido.subtract(valorEscala);
+    }
+
+    this.venda = venda;
+    this.forma = forma;
+    this.valor = valorEscala;
+    this.valorRecebido = recebido;
+    this.troco = trocoCalculado;
+    this.nsu = nsu == null || nsu.isBlank() ? null : nsu.trim();
+    this.criadoEm = LocalDateTime.now();
+}
 
     public long getId() { return id; }
     public Venda getVenda() { return venda; }

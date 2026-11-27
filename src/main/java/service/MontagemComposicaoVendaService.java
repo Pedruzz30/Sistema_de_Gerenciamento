@@ -19,33 +19,45 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class MontagemComposicaoVendaService {
 
     private static final int ESCALA_QUANTIDADE = 6;
 
-    private final ResolucaoComposicaoVariacaoService resolucaoComposicaoVariacaoService;
     private final MontagemConfiguracaoItemService montagemConfiguracaoItemService;
     private final ComposicaoMultiplaService composicaoMultiplaService;
     private final VendaItemModificadorRepository vendaItemModificadorRepository;
     private final VendaItemParteRepository vendaItemParteRepository;
 
-    public MontagemComposicaoVendaService(ResolucaoComposicaoVariacaoService resolucaoComposicaoVariacaoService,
-                                          MontagemConfiguracaoItemService montagemConfiguracaoItemService,
-                                          ComposicaoMultiplaService composicaoMultiplaService,
-                                          VendaItemModificadorRepository vendaItemModificadorRepository,
-                                          VendaItemParteRepository vendaItemParteRepository) {
-        this.resolucaoComposicaoVariacaoService = resolucaoComposicaoVariacaoService;
-        this.montagemConfiguracaoItemService = montagemConfiguracaoItemService;
-        this.composicaoMultiplaService = composicaoMultiplaService;
-        this.vendaItemModificadorRepository = vendaItemModificadorRepository;
-        this.vendaItemParteRepository = vendaItemParteRepository;
+    public MontagemComposicaoVendaService(
+            MontagemConfiguracaoItemService montagemConfiguracaoItemService,
+            ComposicaoMultiplaService composicaoMultiplaService,
+            VendaItemModificadorRepository vendaItemModificadorRepository,
+            VendaItemParteRepository vendaItemParteRepository) {
+
+        this.montagemConfiguracaoItemService = Objects.requireNonNull(
+                montagemConfiguracaoItemService,
+                "montagemConfiguracaoItemService");
+
+        this.composicaoMultiplaService = Objects.requireNonNull(
+                composicaoMultiplaService,
+                "composicaoMultiplaService");
+
+        this.vendaItemModificadorRepository = Objects.requireNonNull(
+                vendaItemModificadorRepository,
+                "vendaItemModificadorRepository");
+
+        this.vendaItemParteRepository = Objects.requireNonNull(
+                vendaItemParteRepository,
+                "vendaItemParteRepository");
     }
 
     public ItemMontado montar(VendaItem item) {
         VariacaoItemCardapio variacao = item.getVariacaoItemCardapio();
         validarVariacaoVendavel(variacao);
+        variacao = Objects.requireNonNull(variacao);
 
         List<VendaItemModificador> modificadores = vendaItemModificadorRepository.listarPorItem(item.getId());
         List<VendaItemParte> partes = vendaItemParteRepository.listarPorItemEStatus(item.getId(), model.StatusVendaItem.ATIVO);
@@ -107,7 +119,8 @@ public class MontagemComposicaoVendaService {
                 List.copyOf(modificadores),
                 configuracao.impactos(),
                 false,
-                variacao.getPrecoVenda().setScale(VendaItem.ESCALA_DINHEIRO, RoundingMode.HALF_UP),
+                Objects.requireNonNull(variacao.getPrecoVenda())
+                        .setScale(VendaItem.ESCALA_DINHEIRO, RoundingMode.HALF_UP),
                 null,
                 List.of()
         );
@@ -119,8 +132,8 @@ public class MontagemComposicaoVendaService {
         Map<Long, List<VendaItemModificador>> modificadoresPorParte = modificadores.stream()
                 .filter(modificador -> modificador.getVendaItemParte() != null)
                 .collect(Collectors.groupingBy(
-                        modificador -> modificador.getVendaItemParte().getId(),
-                        LinkedHashMap::new,
+                        modificador -> Objects.requireNonNull(modificador.getVendaItemParte()).getId(),
+                        () -> new LinkedHashMap<>(),
                         Collectors.toList()
                 ));
         List<VendaItemModificador> modificadoresGlobais = modificadores.stream()
@@ -136,7 +149,9 @@ public class MontagemComposicaoVendaService {
                 ))
                 .toList();
         ComposicaoMultiplaService.PreparacaoComposicaoMultipla composicao =
-                composicaoMultiplaService.preparar(item.getVariacaoItemCardapio(), entradasPartes);
+                Objects.requireNonNull(
+                        composicaoMultiplaService.preparar(item.getVariacaoItemCardapio(), entradasPartes),
+                        "Composicao multissabor nao encontrada para o item: " + item.getId());
         composicaoMultiplaService.validarHashObservado(
                 item.getConfiguracaoMultissaborHashObservada(),
                 composicao.configuracaoHash()
@@ -158,7 +173,7 @@ public class MontagemComposicaoVendaService {
         List<MontagemConfiguracaoItemService.ImpactoPlanejado> impactos = new ArrayList<>(configuracaoGlobal.impactos());
 
         Map<Integer, VendaItemParte> partePorOrdem = partesPersistidas.stream()
-                .collect(Collectors.toMap(VendaItemParte::getOrdemVisual, parte -> parte));
+                .collect(Collectors.toMap(parte -> parte.getOrdemVisual(), parte -> parte));
         for (ComposicaoMultiplaService.ParteResolvida parteResolvida : composicao.partes()) {
             VendaItemParte partePersistida = partePorOrdem.get(parteResolvida.ordemVisual());
             if (partePersistida == null) {
@@ -265,10 +280,12 @@ public class MontagemComposicaoVendaService {
         if (item == null || !item.isAtivo() || !item.isDisponivel()) {
             throw new ErroNegocioException("ITEM_CARDAPIO_INATIVO", "Item de cardapio inativo ou indisponivel.");
         }
-        if (item.getCategoriaCardapio() != null && !item.getCategoriaCardapio().isAtivo()) {
+        var categoria = item.getCategoriaCardapio();
+        if (categoria != null && !categoria.isAtivo()) {
             throw new ErroNegocioException("ITEM_CARDAPIO_INATIVO", "Categoria do item de cardapio esta inativa.");
         }
-        if (variacao.getPrecoVenda() == null || variacao.getPrecoVenda().compareTo(BigDecimal.ZERO) < 0) {
+        BigDecimal precoVenda = variacao.getPrecoVenda();
+        if (precoVenda == null || precoVenda.signum() < 0) {
             throw new ErroNegocioException("PRECO_VARIACAO_INVALIDO", "Preco da variacao e invalido.");
         }
     }

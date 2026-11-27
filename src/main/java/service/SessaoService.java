@@ -20,14 +20,19 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
- * Sessões de login no servidor. O navegador guarda um token aleatório num cookie
- * que o JavaScript não lê (HttpOnly). A identidade vem daqui, e não mais do
- * cabeçalho X-User-RU, que qualquer um podia forjar.
+ * Sessoes de login no servidor. Apenas o hash do token fica no banco.
+ * A identidade e obtida da sessao, nao de cabecalhos informados pelo cliente.
  */
 public class SessaoService {
+
+    private static final int TOKEN_BYTES = 32;
+    private static final int TOKEN_CARACTERES = 43;
+    private static final Pattern FORMATO_TOKEN = Pattern.compile("[A-Za-z0-9_-]{43}");
 
     private final SessaoUsuarioRepository sessaoRepository;
     private final UsuarioRepository usuarioRepository;
@@ -43,44 +48,50 @@ public class SessaoService {
                          LogRepository logRepository,
                          Duration duracao,
                          Clock relogio) {
-        this.sessaoRepository = sessaoRepository;
-        this.usuarioRepository = usuarioRepository;
-        this.autenticacaoService = autenticacaoService;
-        this.logRepository = logRepository;
-        this.duracao = duracao;
-        this.relogio = relogio;
+        this.sessaoRepository = Objects.requireNonNull(sessaoRepository, "sessaoRepository");
+        this.usuarioRepository = Objects.requireNonNull(usuarioRepository, "usuarioRepository");
+        this.autenticacaoService = Objects.requireNonNull(autenticacaoService, "autenticacaoService");
+        this.logRepository = Objects.requireNonNull(logRepository, "logRepository");
+        this.duracao = Objects.requireNonNull(duracao, "duracao");
+        this.relogio = Objects.requireNonNull(relogio, "relogio");
+        if (duracao.isZero() || duracao.isNegative()) {
+            throw new IllegalArgumentException("A duracao da sessao deve ser positiva.");
+        }
     }
 
     public Duration getDuracao() {
         return duracao;
     }
 
-    /** @return o token que vai para o cookie; só o hash dele fica no banco */
+    /** @return o token que vai para o cookie; so o hash dele fica no banco */
     @Transactional
     public String criar(Usuario usuario) {
+        Objects.requireNonNull(usuario, "usuario");
         LocalDateTime agora = LocalDateTime.now(relogio);
+        LocalDateTime expiraEm = agora.plus(duracao);
         sessaoRepository.removerExpiradas(agora);
-        byte[] bytes = new byte[32];
-        aleatorio.nextBytes(bytes);
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        sessaoRepository.salvar(new SessaoUsuario(hash(token), usuario, agora, agora.plus(duracao)));
+        String token = gerarToken();
+        sessaoRepository.salvar(new SessaoUsuario(hash(token), usuario, agora, expiraEm));
         return token;
     }
 
     @Transactional(readOnly = true)
     public Optional<SessaoUsuario> resolver(String token) {
-        if (token == null || token.isBlank()) {
+        if (!tokenValido(token)) {
             return Optional.empty();
         }
         LocalDateTime agora = LocalDateTime.now(relogio);
         return sessaoRepository.buscarPorTokenHash(hash(token))
                 .filter(sessao -> !sessao.expirada(agora))
-                .filter(sessao -> sessao.getUsuario().isAtivo());
+                .filter(sessao -> {
+                    Usuario usuario = sessao.getUsuario();
+                    return usuario != null && usuario.isAtivo();
+                });
     }
 
     @Transactional
     public void encerrar(String token) {
-        if (token == null || token.isBlank()) {
+        if (!tokenValido(token)) {
             return;
         }
         sessaoRepository.buscarPorTokenHash(hash(token)).ifPresent(sessao -> {
@@ -99,24 +110,24 @@ public class SessaoService {
     @Transactional(readOnly = true)
     public List<Usuario> listarOperadores() {
         return usuarioRepository.listarTodos().stream()
-                .filter(Usuario::isAtivo)
+                .filter(usuario -> usuario.isAtivo())
                 .filter(usuario -> usuario.getPinHash() != null)
-                .filter(SessaoService::operaCaixa)
+                .filter(usuario -> operaCaixa(usuario))
                 .toList();
     }
 
     /**
-     * Troca quem está operando sem sair do PDV. A partir daí, e até um novo login
-     * com senha, a sessão só alcança a área de caixa (ver {@code SessaoFilter}).
+     * Troca quem esta operando sem sair do PDV. A restricao da sessao
+     * a area de caixa depende tambem do SessaoFilter.
      */
     @Transactional
     public SessaoUsuario trocarOperador(String token, long ru, String pin) {
         SessaoUsuario sessao = resolver(token)
                 .orElseThrow(() -> new SecurityException("Sessao encerrada. Entre de novo."));
-        Usuario anterior = sessao.getUsuario();
+        Usuario anterior = Objects.requireNonNull(sessao.getUsuario(), "Usuario da sessao");
         Usuario operador = usuarioRepository.buscarPorRu(ru)
-                .filter(Usuario::isAtivo)
-                .filter(SessaoService::operaCaixa)
+                .filter(usuario -> usuario.isAtivo())
+                .filter(usuario -> operaCaixa(usuario))
                 .orElseThrow(() -> new IllegalArgumentException("Operador nao encontrado."));
         if (!autenticacaoService.conferirPin(operador, pin)) {
             throw new IllegalArgumentException("PIN incorreto.");
@@ -128,17 +139,14 @@ public class SessaoService {
         return salva;
     }
 
-    /**
-     * Entrada pelo celular do atendente: nome e PIN, sem senha. A sessão nasce restrita à
-     * área de caixa, como a troca de operador. O PIN respeita o limite de tentativas.
-     */
-    // O PIN errado fica no log mesmo com a entrada recusada.
+    /** Entrada pelo celular do atendente: nome e PIN, sem senha. */
+    // O PIN errado fica no log mesmo com a entrada recusada, conforme a regra transacional existente.
     @Transactional(noRollbackFor = SecurityException.class)
     public Map.Entry<String, SessaoUsuario> entrarPorPin(long ru, String pin) {
         Usuario operador = usuarioRepository.buscarPorRu(ru)
-                .filter(Usuario::isAtivo)
+                .filter(usuario -> usuario.isAtivo())
                 .filter(usuario -> usuario.getPinHash() != null)
-                .filter(SessaoService::operaCaixa)
+                .filter(usuario -> operaCaixa(usuario))
                 .orElseThrow(() -> new IllegalArgumentException("Atendente nao encontrado."));
         if (!autenticacaoService.conferirPin(operador, pin)) {
             logRepository.salvar(new LogAcao(0, operador.getRu(), "LOGIN_CELULAR_FALHOU",
@@ -146,22 +154,33 @@ public class SessaoService {
             throw new SecurityException("PIN incorreto.");
         }
         LocalDateTime agora = LocalDateTime.now(relogio);
+        LocalDateTime expiraEm = agora.plus(duracao);
         sessaoRepository.removerExpiradas(agora);
-        byte[] bytes = new byte[32];
-        aleatorio.nextBytes(bytes);
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        SessaoUsuario sessao = new SessaoUsuario(hash(token), operador, agora, agora.plus(duracao));
+        String token = gerarToken();
+        SessaoUsuario sessao = new SessaoUsuario(hash(token), operador, agora, expiraEm);
         sessao.trocarOperador(operador);
         SessaoUsuario salva = sessaoRepository.salvar(sessao);
         logRepository.salvar(new LogAcao(0, operador.getRu(), "LOGIN_CELULAR",
                 operador.getNomeCompleto() + " entrou pelo celular"));
-        return Map.entry(token, salva);
+        return Map.entry(token, Objects.requireNonNull(salva, "Sessao persistida"));
     }
 
     private static boolean operaCaixa(Usuario usuario) {
-        return usuario.getClasse() != null
-                && (usuario.getClasse().possuiPermissao(Permissao.VER_VENDAS)
-                || usuario.getClasse().possuiPermissao(Permissao.VER_FINANCAS));
+        var classe = usuario.getClasse();
+        return classe != null
+                && (classe.possuiPermissao(Permissao.VER_VENDAS)
+                || classe.possuiPermissao(Permissao.VER_FINANCAS));
+    }
+
+    private String gerarToken() {
+        byte[] bytes = new byte[TOKEN_BYTES];
+        aleatorio.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private static boolean tokenValido(String token) {
+        return token != null && token.length() == TOKEN_CARACTERES
+                && FORMATO_TOKEN.matcher(token).matches();
     }
 
     static String hash(String token) {

@@ -119,7 +119,9 @@ public class OpcaoModificador {
                           Boolean ativa,
                           Integer ordemExibicao) {
         validar(grupoModificador != null, "Grupo do modificador e obrigatorio.");
-        validar(nome != null && !nome.isBlank(), "Nome da opcao e obrigatorio.");
+       if (nome == null || nome.isBlank()) {
+    throw new IllegalArgumentException("Nome da opcao e obrigatorio.");
+}
         validar(codigo != null && !codigo.isBlank(), "Codigo da opcao e obrigatorio.");
         BigDecimal acrescimo = acrescimoPreco == null ? BigDecimal.ZERO : acrescimoPreco;
         validar(acrescimo.compareTo(BigDecimal.ZERO) >= 0,

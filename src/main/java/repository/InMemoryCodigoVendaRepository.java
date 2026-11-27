@@ -2,6 +2,7 @@ package repository;
 
 import model.CodigoVenda;
 import org.springframework.lang.NonNull;
+import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -9,57 +10,82 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Implementação em memória para testes de unidade. */
-public class InMemoryCodigoVendaRepository implements CodigoVendaRepository {
+/** Implementacao em memoria para testes de unidade. */
+public class InMemoryCodigoVendaRepository
+        implements CodigoVendaRepository {
+
+    private static final Comparator<CodigoVenda> ORDENACAO_POR_ID =
+            Comparator.comparingLong(codigo -> codigo.getId());
+
+    private static final Comparator<CodigoVenda> ORDENACAO_POR_PADRAO =
+            Comparator.comparing(
+                    (CodigoVenda codigo) -> codigo.isPadrao())
+                    .reversed()
+                    .thenComparing(ORDENACAO_POR_ID);
+
+    private static final Comparator<CodigoVenda> ORDENACAO_GERAL =
+            Comparator.comparing(
+                    (CodigoVenda codigo) -> codigo.getCodigo())
+                    .thenComparing(ORDENACAO_POR_PADRAO);
 
     private final List<CodigoVenda> codigos = new ArrayList<>();
     private final AtomicLong sequence = new AtomicLong(1);
 
     @Override
     public synchronized CodigoVenda salvar(@NonNull CodigoVenda codigo) {
-        if (codigo == null) {
-            throw new IllegalArgumentException("Codigo de venda nao pode ser nulo.");
-        }
+        Assert.notNull(
+                codigo, "Codigo de venda nao pode ser nulo.");
+
         if (codigo.getId() == 0) {
             codigo.atribuirIdGerado(sequence.getAndIncrement());
         } else {
-            sequence.updateAndGet(atual -> Math.max(atual, codigo.getId() + 1));
+            sequence.updateAndGet(atual ->
+                    Math.max(atual, codigo.getId() + 1));
         }
-        codigos.removeIf(c -> c.getId() == codigo.getId());
+
+        codigos.removeIf(registro ->
+                registro.getId() == codigo.getId());
+
         codigos.add(codigo);
+
         return codigo;
     }
 
     @Override
     public synchronized Optional<CodigoVenda> buscarPorId(long id) {
-        return codigos.stream().filter(c -> c.getId() == id).findFirst();
+        return codigos.stream()
+                .filter(codigo -> codigo.getId() == id)
+                .findFirst();
     }
 
     @Override
-    public synchronized List<CodigoVenda> listarAtivosPorCodigo(String codigo) {
+    public synchronized List<CodigoVenda> listarAtivosPorCodigo(
+            String codigo) {
+
         return codigos.stream()
-                .filter(CodigoVenda::isAtivo)
-                .filter(c -> c.getCodigo().equals(codigo))
-                .sorted(Comparator.comparing(CodigoVenda::isPadrao).reversed().thenComparingLong(CodigoVenda::getId))
+                .filter(registro -> registro.isAtivo())
+                .filter(registro -> registro.getCodigo().equals(codigo))
+                .sorted(ORDENACAO_POR_PADRAO)
                 .toList();
     }
 
     @Override
-    public synchronized List<CodigoVenda> listarAtivosPorVariacao(long variacaoId) {
+    public synchronized List<CodigoVenda> listarAtivosPorVariacao(
+            long variacaoId) {
+
         return codigos.stream()
-                .filter(CodigoVenda::isAtivo)
-                .filter(c -> c.getVariacao().getId() == variacaoId)
-                .sorted(Comparator.comparingLong(CodigoVenda::getId))
+                .filter(codigo -> codigo.isAtivo())
+                .filter(codigo ->
+                        codigo.getVariacao().getId() == variacaoId)
+                .sorted(ORDENACAO_POR_ID)
                 .toList();
     }
 
     @Override
     public synchronized List<CodigoVenda> listarAtivos() {
         return codigos.stream()
-                .filter(CodigoVenda::isAtivo)
-                .sorted(Comparator.comparing(CodigoVenda::getCodigo)
-                        .thenComparing(Comparator.comparing(CodigoVenda::isPadrao).reversed())
-                        .thenComparingLong(CodigoVenda::getId))
+                .filter(codigo -> codigo.isAtivo())
+                .sorted(ORDENACAO_GERAL)
                 .toList();
     }
 }

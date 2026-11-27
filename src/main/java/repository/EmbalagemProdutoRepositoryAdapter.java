@@ -4,19 +4,29 @@ import model.EmbalagemProduto;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class EmbalagemProdutoRepositoryAdapter implements EmbalagemProdutoRepository {
+public class EmbalagemProdutoRepositoryAdapter
+        implements EmbalagemProdutoRepository {
 
     private final JpaEmbalagemProdutoRepository delegate;
 
-    public EmbalagemProdutoRepositoryAdapter(JpaEmbalagemProdutoRepository delegate) {
-        this.delegate = delegate;
+    public EmbalagemProdutoRepositoryAdapter(
+            JpaEmbalagemProdutoRepository delegate) {
+
+        this.delegate = Objects.requireNonNull(
+                delegate, "Repositorio JPA de embalagem e obrigatorio.");
     }
 
     @Override
     public EmbalagemProduto salvar(EmbalagemProduto embalagem) {
+        if (embalagem == null) {
+            throw new IllegalArgumentException(
+                    "Embalagem do produto e obrigatoria.");
+        }
+
         return delegate.save(embalagem);
     }
 

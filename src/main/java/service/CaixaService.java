@@ -315,42 +315,54 @@ public class CaixaService {
     }
 
     public String consolidarDia(LocalDate data) {
-        List<Caixa> encerrados = caixaRepository.buscarEncerradosPorData(data);
+    List<Caixa> encerrados = caixaRepository.buscarEncerradosPorData(data);
 
-        if (encerrados.isEmpty()) {
-            return "Nenhum caixa encerrado em " + data + ".";
-        }
-
-        BigDecimal totalVendas = somar(encerrados.stream().map(Caixa::calcularTotalVendas).toList());
-        BigDecimal totalEntradas = somar(encerrados.stream().map(Caixa::calcularTotalEntradas).toList());
-        BigDecimal totalSaidas = somar(encerrados.stream().map(Caixa::calcularTotalSaidas).toList());
-        BigDecimal saldoTotal = somar(encerrados.stream().map(Caixa::getSaldoAtual).toList());
-
-        String detalhesCaixas = encerrados.stream()
-                .map(c -> String.format("  Caixa %d: vendas R$%s | saldo R$%s",
-                        c.getNumeroCaixa(),
-                        formatarMoeda(c.calcularTotalVendas()),
-                        formatarMoeda(c.getSaldoAtual())))
-                .collect(Collectors.joining("\n"));
-
-        return String.format("""
-                CONSOLIDADO DO DIA %s
-                %s
-                ------------------------------
-                Total vendas:    R$%s
-                Total entradas:  R$%s
-                Total saidas:    R$%s
-                Saldo total:     R$%s
-                Caixas fechados: %d
-                """,
-                data,
-                detalhesCaixas,
-                formatarMoeda(totalVendas),
-                formatarMoeda(totalEntradas),
-                formatarMoeda(totalSaidas),
-                formatarMoeda(saldoTotal),
-                encerrados.size());
+    if (encerrados.isEmpty()) {
+        return "Nenhum caixa encerrado em " + data + ".";
     }
+
+    BigDecimal totalVendas = somar(encerrados.stream()
+            .map(caixa -> caixa.calcularTotalVendas())
+            .toList());
+
+    BigDecimal totalEntradas = somar(encerrados.stream()
+            .map(caixa -> caixa.calcularTotalEntradas())
+            .toList());
+
+    BigDecimal totalSaidas = somar(encerrados.stream()
+            .map(caixa -> caixa.calcularTotalSaidas())
+            .toList());
+
+    BigDecimal saldoTotal = somar(encerrados.stream()
+            .map(caixa -> caixa.getSaldoAtual())
+            .toList());
+
+    String detalhesCaixas = encerrados.stream()
+            .map(caixa -> String.format(
+                    "  Caixa %d: vendas R$%s | saldo R$%s",
+                    caixa.getNumeroCaixa(),
+                    formatarMoeda(caixa.calcularTotalVendas()),
+                    formatarMoeda(caixa.getSaldoAtual())))
+            .collect(Collectors.joining("\n"));
+
+    return String.format("""
+            CONSOLIDADO DO DIA %s
+            %s
+            ------------------------------
+            Total vendas:    R$%s
+            Total entradas:  R$%s
+            Total saidas:    R$%s
+            Saldo total:     R$%s
+            Caixas fechados: %d
+            """,
+            data,
+            detalhesCaixas,
+            formatarMoeda(totalVendas),
+            formatarMoeda(totalEntradas),
+            formatarMoeda(totalSaidas),
+            formatarMoeda(saldoTotal),
+            encerrados.size());
+}
 
     public Caixa buscarCaixaAberto(int numeroCaixa) {
         return buscarCaixaAbertoOuLancar(numeroCaixa);
@@ -434,10 +446,10 @@ public class CaixaService {
     }
 
     private BigDecimal somar(List<BigDecimal> valores) {
-        return valores.stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
-    }
+    return valores.stream()
+            .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
+            .setScale(2, RoundingMode.HALF_UP);
+}
 
     private String formatarMoeda(BigDecimal valor) {
         return valor.setScale(2, RoundingMode.HALF_UP).toPlainString();

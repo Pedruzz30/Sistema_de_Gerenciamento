@@ -76,11 +76,12 @@ public class ProdutoEstoqueService {
                 ));
     }
 
-    public Produto buscarProdutoObrigatorio(int produtoId) {
-        return produtoRepository.buscarPorId(produtoId)
-                .filter(Produto::isControladoPorEstoque)
-                .orElseThrow(() -> new IllegalArgumentException("Produto nao encontrado com ID: " + produtoId));
-    }
+   public Produto buscarProdutoObrigatorio(int produtoId) {
+    return produtoRepository.buscarPorId(produtoId)
+            .filter(produto -> produto.isControladoPorEstoque())
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "Produto nao encontrado com ID: " + produtoId));
+}
 
     private void validarPermissaoEdicao(Usuario usuario) {
         if (usuario == null

@@ -4,19 +4,29 @@ import model.FichaTecnica;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class FichaTecnicaRepositoryAdapter implements FichaTecnicaRepository {
+public class FichaTecnicaRepositoryAdapter
+        implements FichaTecnicaRepository {
 
     private final JpaFichaTecnicaRepository delegate;
 
-    public FichaTecnicaRepositoryAdapter(JpaFichaTecnicaRepository delegate) {
-        this.delegate = delegate;
+    public FichaTecnicaRepositoryAdapter(
+            JpaFichaTecnicaRepository delegate) {
+
+        this.delegate = Objects.requireNonNull(
+                delegate, "Repositorio JPA de ficha tecnica e obrigatorio.");
     }
 
     @Override
     public FichaTecnica salvar(FichaTecnica fichaTecnica) {
+        if (fichaTecnica == null) {
+            throw new IllegalArgumentException(
+                    "Ficha tecnica e obrigatoria.");
+        }
+
         return delegate.save(fichaTecnica);
     }
 
@@ -36,10 +46,13 @@ public class FichaTecnicaRepositoryAdapter implements FichaTecnicaRepository {
     }
 
     @Override
-    public List<FichaTecnica> listarAtivasPorVariacoes(List<Long> variacaoIds) {
+    public List<FichaTecnica> listarAtivasPorVariacoes(
+            List<Long> variacaoIds) {
+
         if (variacaoIds == null || variacaoIds.isEmpty()) {
             return List.of();
         }
+
         return delegate.findAtivasByVariacoes(variacaoIds);
     }
 

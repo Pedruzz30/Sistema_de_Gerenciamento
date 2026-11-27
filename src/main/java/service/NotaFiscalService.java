@@ -7,7 +7,6 @@ import model.LogAcao;
 import model.NotaFiscal;
 import model.Permissao;
 import model.Produto;
-import model.TipoMovimentacao;
 import model.Usuario;
 import org.springframework.transaction.annotation.Transactional;
 import repository.LogRepository;

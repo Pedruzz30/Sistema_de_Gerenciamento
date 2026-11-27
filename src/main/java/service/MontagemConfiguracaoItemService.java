@@ -66,7 +66,7 @@ public class MontagemConfiguracaoItemService {
                 variacao,
                 contexto.hashConfiguracao(),
                 contexto.associacoes().stream()
-                        .filter(VariacaoGrupoModificador::isAtivo)
+                        .filter(associacao -> associacao.isAtivo())
                         .map(associacao -> grupoConfiguracao(associacao, contexto))
                         .toList()
         );
@@ -98,8 +98,8 @@ public class MontagemConfiguracaoItemService {
         List<ImpactoPlanejado> impactos = resolverImpactos(selecoesAplicadas, contexto);
         List<ConsumoConfigurado> consumos = aplicarDeltas(resolucao, impactos);
         BigDecimal acrescimoUnitario = selecoesAplicadas.stream()
-                .map(SelecaoAplicada::acrescimoTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .map(selecao -> selecao.acrescimoTotal())
+                .reduce(BigDecimal.ZERO, (total, parcela) -> total.add(parcela))
                 .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
 
         return new MontagemConfiguracao(
@@ -170,19 +170,19 @@ public class MontagemConfiguracaoItemService {
         Map<Long, List<OpcaoModificador>> opcoesPorGrupo = opcaoRepository.listarPorGrupos(grupoIds).stream()
                 .collect(Collectors.groupingBy(
                         opcao -> opcao.getGrupoModificador().getId(),
-                        LinkedHashMap::new,
+                        () -> new LinkedHashMap<>(),
                         Collectors.toList()
                 ));
         List<Long> opcaoIds = opcoesPorGrupo.values().stream()
-                .flatMap(List::stream)
-                .map(OpcaoModificador::getId)
+                .flatMap(lista -> lista.stream())
+                .map(opcao -> opcao.getId())
                 .distinct()
                 .toList();
         Map<Long, List<OpcaoModificadorComponente>> componentesPorOpcao =
                 componenteRepository.listarPorOpcoes(opcaoIds).stream()
                         .collect(Collectors.groupingBy(
                                 componente -> componente.getOpcaoModificador().getId(),
-                                LinkedHashMap::new,
+                                () -> new LinkedHashMap<>(),
                                 Collectors.toList()
                         ));
         List<IncompatibilidadeOpcaoModificador> incompatibilidades =
@@ -195,19 +195,20 @@ public class MontagemConfiguracaoItemService {
                                                           List<SelecaoModificadorInput> selecoes,
                                                           boolean aplicarPadroes) {
         Map<Long, VariacaoGrupoModificador> associacaoPorGrupo = contexto.associacoes().stream()
-                .filter(VariacaoGrupoModificador::isAtivo)
+                .filter(associacao -> associacao.isAtivo())
                 .filter(a -> a.getGrupoModificador().isAtivo())
                 .collect(Collectors.toMap(a -> a.getGrupoModificador().getId(), Function.identity()));
         Map<Long, OpcaoModificador> opcaoPorId = contexto.opcoesPorGrupo().values().stream()
-                .flatMap(List::stream)
-                .collect(Collectors.toMap(OpcaoModificador::getId, Function.identity()));
+                .flatMap(lista -> lista.stream())
+                .collect(Collectors.toMap(opcao -> opcao.getId(), Function.identity()));
         List<SelecaoModificadorInput> entradas = selecoes == null ? List.of() : selecoes;
         List<SelecaoAplicada> aplicadas = new ArrayList<>();
         Set<Long> gruposComSelecaoExplicita = new HashSet<>();
         Set<Long> opcoesExplicitas = new HashSet<>();
 
         for (SelecaoModificadorInput entrada : entradas) {
-            int quantidade = entrada.quantidade() == null ? 1 : entrada.quantidade();
+            Integer quantidadeInformada = entrada.quantidade();
+            int quantidade = quantidadeInformada == null ? 1 : quantidadeInformada;
             if (quantidade <= 0) {
                 throw new ErroNegocioException("SELECAO_MODIFICADOR_INVALIDA", "Quantidade da selecao deve ser maior que zero.");
             }
@@ -244,8 +245,8 @@ public class MontagemConfiguracaoItemService {
                 List<OpcaoModificador> padroes = contexto.opcoesPorGrupo()
                         .getOrDefault(associacao.getGrupoModificador().getId(), List.of())
                         .stream()
-                        .filter(OpcaoModificador::isAtiva)
-                        .filter(OpcaoModificador::isSelecionadaPorPadrao)
+                        .filter(opcao -> opcao.isAtiva())
+                        .filter(opcao -> opcao.isSelecionadaPorPadrao())
                         .filter(opcao -> opcao.getAcrescimoPreco().compareTo(BigDecimal.ZERO) == 0)
                         .toList();
                 for (OpcaoModificador padrao : padroes) {
@@ -267,7 +268,8 @@ public class MontagemConfiguracaoItemService {
         if (quantidade > 1 && !grupo.isPermiteRepeticao()) {
             throw new ErroNegocioException("REPETICAO_NAO_PERMITIDA", "Grupo nao permite repeticao de opcao.");
         }
-        if (opcao.getQuantidadeMaximaPorItem() != null && quantidade > opcao.getQuantidadeMaximaPorItem()) {
+        Integer quantidadeMaxima = opcao.getQuantidadeMaximaPorItem();
+        if (quantidadeMaxima != null && quantidade > quantidadeMaxima) {
             throw new ErroNegocioException("QUANTIDADE_OPCAO_EXCEDIDA", "Quantidade maxima da opcao excedida.");
         }
         if (grupo.getTipoSelecao() == TipoSelecaoModificador.UNICA && quantidade > 1) {
@@ -282,7 +284,7 @@ public class MontagemConfiguracaoItemService {
             totalPorGrupo.merge(
                     aplicada.associacao().getGrupoModificador().getId(),
                     aplicada.quantidade(),
-                    Integer::sum
+                    (total, quantidade) -> Integer.sum(total, quantidade)
             );
         }
         for (VariacaoGrupoModificador associacao : associacaoPorGrupo.values()) {
@@ -326,8 +328,9 @@ public class MontagemConfiguracaoItemService {
                     continue;
                 }
                 BigDecimal fator = BigDecimal.valueOf(selecao.quantidade());
-                if (componente.getMultiplicador() != null) {
-                    fator = fator.multiply(componente.getMultiplicador());
+                BigDecimal multiplicador = componente.getMultiplicador();
+                if (multiplicador != null) {
+                    fator = fator.multiply(multiplicador);
                 }
                 BigDecimal quantidade = componente.getQuantidadeBase()
                         .multiply(fator)
@@ -353,7 +356,8 @@ public class MontagemConfiguracaoItemService {
                                      OpcaoModificadorComponente componente,
                                      Produto produto,
                                      BigDecimal delta) {
-        if (produto == null || produto.getUnidadeBase() == null) {
+        UnidadeMedida unidadeBase = produto == null ? null : produto.getUnidadeBase();
+        if (produto == null || unidadeBase == null) {
             throw new ErroNegocioException("EFEITO_MODIFICADOR_INVALIDO",
                     "Componente de modificador sem produto ou unidade-base configurada.");
         }
@@ -361,7 +365,7 @@ public class MontagemConfiguracaoItemService {
                 selecao,
                 componente,
                 produto,
-                produto.getUnidadeBase(),
+                unidadeBase,
                 componente.getTipoEfeito(),
                 delta.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP),
                 resolverPolitica(componente, produto)
@@ -411,8 +415,8 @@ public class MontagemConfiguracaoItemService {
             BigDecimal base = escala(basePorProduto.getOrDefault(produtoId, BigDecimal.ZERO));
             BigDecimal negativos = escala(negativosPorProduto.getOrDefault(produtoId, BigDecimal.ZERO));
             BigDecimal positivos = positivosPorProduto.getOrDefault(produtoId, List.of()).stream()
-                    .map(ImpactoPlanejado::quantidadeDeltaBase)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .map(impacto -> impacto.quantidadeDeltaBase())
+                    .reduce(BigDecimal.ZERO, (total, parcela) -> total.add(parcela))
                     .setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
             BigDecimal finalProduto = base.add(negativos).add(positivos).setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
             if (finalProduto.compareTo(BigDecimal.ZERO) < 0) {
@@ -475,9 +479,9 @@ public class MontagemConfiguracaoItemService {
         StringBuilder sb = new StringBuilder();
         associacoes.stream()
                 .sorted(Comparator
-                        .comparingInt(VariacaoGrupoModificador::getOrdemExibicao)
+                        .comparingInt((VariacaoGrupoModificador associacao) -> associacao.getOrdemExibicao())
                         .thenComparing(associacao -> codigoOperacional(associacao.getGrupoModificador().getCodigo()))
-                        .thenComparingLong(VariacaoGrupoModificador::getId))
+                        .thenComparingLong(associacao -> associacao.getId()))
                 .forEach(associacao -> {
                     GrupoModificador grupo = associacao.getGrupoModificador();
                     sb.append("A|").append(codigoOperacional(grupo.getCodigo())).append('|').append(associacao.isAtivo())
@@ -492,9 +496,9 @@ public class MontagemConfiguracaoItemService {
                             .append(grupo.getOrdemExibicao()).append('\n');
                     opcoesPorGrupo.getOrDefault(grupo.getId(), List.of()).stream()
                             .sorted(Comparator
-                                    .comparingInt(OpcaoModificador::getOrdemExibicao)
+                                    .comparingInt((OpcaoModificador opcao) -> opcao.getOrdemExibicao())
                                     .thenComparing(opcao -> codigoOperacional(opcao.getCodigo()))
-                                    .thenComparingLong(OpcaoModificador::getId))
+                                    .thenComparingLong(opcao -> opcao.getId()))
                             .forEach(opcao -> {
                                 sb.append("O|").append(codigoOpcao(opcao)).append('|')
                                         .append(dinheiroHash(opcao.getAcrescimoPreco())).append('|')
@@ -504,8 +508,8 @@ public class MontagemConfiguracaoItemService {
                                         .append(opcao.getOrdemExibicao()).append('\n');
                                 componentesPorOpcao.getOrDefault(opcao.getId(), List.of()).stream()
                                         .sorted(Comparator
-                                                .comparing(MontagemConfiguracaoItemService::chaveComponenteOperacional)
-                                                .thenComparingLong(OpcaoModificadorComponente::getId))
+                                                .comparing((OpcaoModificadorComponente componente) -> chaveComponenteOperacional(componente))
+                                                .thenComparingLong(componente -> componente.getId()))
                                         .forEach(componente -> sb.append("C|").append(chaveComponenteOperacional(componente)).append('|')
                                                 .append(componente.getTipoEfeito()).append('|')
                                                 .append(idProduto(componente.getProdutoOrigem())).append('|')
@@ -519,8 +523,8 @@ public class MontagemConfiguracaoItemService {
                 });
         incompatibilidades.stream()
                 .sorted(Comparator
-                        .comparing(MontagemConfiguracaoItemService::chaveIncompatibilidadeOperacional)
-                        .thenComparingLong(IncompatibilidadeOpcaoModificador::getId))
+                        .comparing((IncompatibilidadeOpcaoModificador incompatibilidade) -> chaveIncompatibilidadeOperacional(incompatibilidade))
+                        .thenComparingLong(incompatibilidade -> incompatibilidade.getId()))
                 .forEach(incompatibilidade -> sb.append("I|")
                         .append(codigoOpcao(incompatibilidade.getOpcaoOrigem()))
                         .append('|').append(codigoOpcao(incompatibilidade.getOpcaoIncompativel()))
@@ -653,7 +657,7 @@ public class MontagemConfiguracaoItemService {
                     modificador -> modificador.getOpcaoModificador().getId(),
                     Function.identity(),
                     (a, b) -> a,
-                    LinkedHashMap::new
+                    () -> new LinkedHashMap<>()
             ));
         }
     }

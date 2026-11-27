@@ -16,9 +16,14 @@ public class CompraEstoqueRepositoryAdapter implements CompraEstoqueRepository {
     }
 
     @Override
-    public CompraEstoque salvar(CompraEstoque compra) {
-        return delegate.save(compra);
+public CompraEstoque salvar(CompraEstoque compra) {
+    if (compra == null) {
+        throw new IllegalArgumentException(
+                "Compra de estoque e obrigatoria.");
     }
+
+    return delegate.save(compra);
+}
 
     @Override
     public Optional<CompraEstoque> buscarPorId(long id) {

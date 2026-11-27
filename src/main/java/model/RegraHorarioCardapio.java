@@ -60,52 +60,77 @@ public class RegraHorarioCardapio {
         // JPA
     }
 
-    public RegraHorarioCardapio(long id,
-                                Long filialId,
-                                ItemCardapio itemCardapio,
-                                VariacaoItemCardapio variacaoItemCardapio,
-                                CanalVenda canal,
-                                DayOfWeek diaSemana,
-                                LocalTime horaInicio,
-                                LocalTime horaFim,
-                                Boolean ativa) {
-        validar(id >= 0, "ID da regra de horario nao pode ser negativo.");
-        validar(filialId != null && filialId > 0, "Filial da regra e obrigatoria.");
-        validar(itemCardapio != null || variacaoItemCardapio != null, "Regra de horario exige item ou variacao.");
-        validar(diaSemana != null, "Dia da semana e obrigatorio.");
-        validar(horaInicio != null && horaFim != null, "Horario de inicio e fim sao obrigatorios.");
-        validar(!horaInicio.equals(horaFim), "Horario de inicio e fim nao podem ser iguais.");
+   public RegraHorarioCardapio(long id,
+                           Long filialId,
+                           ItemCardapio itemCardapio,
+                           VariacaoItemCardapio variacaoItemCardapio,
+                           CanalVenda canal,
+                           DayOfWeek diaSemana,
+                           LocalTime horaInicio,
+                           LocalTime horaFim,
+                           Boolean ativa) {
 
-        this.id = id;
-        this.filialId = filialId;
-        this.itemCardapio = itemCardapio;
-        this.variacaoItemCardapio = variacaoItemCardapio;
-        this.canal = canal;
-        this.diaSemana = diaSemana;
-        this.horaInicio = horaInicio;
-        this.horaFim = horaFim;
-        this.ativa = ativa == null || ativa;
+    validar(id >= 0,
+            "ID da regra de horario nao pode ser negativo.");
+
+    validar(filialId != null && filialId > 0,
+            "Filial da regra e obrigatoria.");
+
+    validar(itemCardapio != null || variacaoItemCardapio != null,
+            "Regra de horario exige item ou variacao.");
+
+    validar(diaSemana != null,
+            "Dia da semana e obrigatorio.");
+
+    if (horaInicio == null || horaFim == null) {
+        throw new IllegalArgumentException(
+                "Horario de inicio e fim sao obrigatorios.");
     }
+
+    validar(!horaInicio.equals(horaFim),
+            "Horario de inicio e fim nao podem ser iguais.");
+
+    this.id = id;
+    this.filialId = filialId;
+    this.itemCardapio = itemCardapio;
+    this.variacaoItemCardapio = variacaoItemCardapio;
+    this.canal = canal;
+    this.diaSemana = diaSemana;
+    this.horaInicio = horaInicio;
+    this.horaFim = horaFim;
+    this.ativa = ativa == null || ativa;
+}
 
     public void atualizar(ItemCardapio itemCardapio,
-                          VariacaoItemCardapio variacaoItemCardapio,
-                          CanalVenda canal,
-                          DayOfWeek diaSemana,
-                          LocalTime horaInicio,
-                          LocalTime horaFim,
-                          Boolean ativa) {
-        validar(itemCardapio != null || variacaoItemCardapio != null, "Regra de horario exige item ou variacao.");
-        validar(diaSemana != null, "Dia da semana e obrigatorio.");
-        validar(horaInicio != null && horaFim != null, "Horario de inicio e fim sao obrigatorios.");
-        validar(!horaInicio.equals(horaFim), "Horario de inicio e fim nao podem ser iguais.");
-        this.itemCardapio = itemCardapio;
-        this.variacaoItemCardapio = variacaoItemCardapio;
-        this.canal = canal;
-        this.diaSemana = diaSemana;
-        this.horaInicio = horaInicio;
-        this.horaFim = horaFim;
-        this.ativa = ativa == null || ativa;
+                      VariacaoItemCardapio variacaoItemCardapio,
+                      CanalVenda canal,
+                      DayOfWeek diaSemana,
+                      LocalTime horaInicio,
+                      LocalTime horaFim,
+                      Boolean ativa) {
+
+    validar(itemCardapio != null || variacaoItemCardapio != null,
+            "Regra de horario exige item ou variacao.");
+
+    validar(diaSemana != null,
+            "Dia da semana e obrigatorio.");
+
+    if (horaInicio == null || horaFim == null) {
+        throw new IllegalArgumentException(
+                "Horario de inicio e fim sao obrigatorios.");
     }
+
+    validar(!horaInicio.equals(horaFim),
+            "Horario de inicio e fim nao podem ser iguais.");
+
+    this.itemCardapio = itemCardapio;
+    this.variacaoItemCardapio = variacaoItemCardapio;
+    this.canal = canal;
+    this.diaSemana = diaSemana;
+    this.horaInicio = horaInicio;
+    this.horaFim = horaFim;
+    this.ativa = ativa == null || ativa;
+}
 
     public void inativar() {
         this.ativa = Boolean.FALSE;

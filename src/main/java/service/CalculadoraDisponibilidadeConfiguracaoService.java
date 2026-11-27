@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -86,7 +87,7 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
         BigDecimal precoBase = dinheiro(variacao.getPrecoVenda());
         BigDecimal acrescimos = dinheiro(montagem.acrescimoUnitario());
         BigDecimal precoUnitarioFinal = precoBase.add(acrescimos).setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        boolean disponivel = motivos.stream().noneMatch(DisponibilidadeDtos.MotivoDisponibilidade::bloqueante);
+        boolean disponivel = motivos.stream().noneMatch(motivo -> motivo.bloqueante());
         return new ResultadoValidacaoConfiguracao(
                 disponivel,
                 disponivel,
@@ -127,7 +128,7 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
         }
 
         List<Long> opcaoIds = opcoes.stream()
-                .map(MontagemConfiguracaoItemService.OpcaoConfiguracao::opcaoId)
+                .map(opcao -> opcao.opcaoId())
                 .distinct()
                 .toList();
         Map<Long, List<OpcaoModificadorComponente>> componentesPorOpcao = componenteRepository
@@ -139,9 +140,9 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
                         Collectors.toList()
                 ));
         List<Integer> produtoIds = componentesPorOpcao.values().stream()
-                .flatMap(List::stream)
+                .flatMap(lista -> lista.stream())
                 .flatMap(componente -> produtosParaDisponibilidade(componente).stream())
-                .map(Produto::getId)
+                .map(produto -> produto.getId())
                 .distinct()
                 .toList();
         Map<Integer, EstoqueProduto> estoquePorProduto = estoqueRepository
@@ -157,8 +158,9 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
         Map<Long, OpcaoDisponibilidade> resultado = new LinkedHashMap<>();
         for (MontagemConfiguracaoItemService.OpcaoConfiguracao opcao : opcoes.stream()
                 .sorted(Comparator
-                        .comparingInt(MontagemConfiguracaoItemService.OpcaoConfiguracao::ordemExibicao)
-                        .thenComparing(MontagemConfiguracaoItemService.OpcaoConfiguracao::codigo))
+                        .comparingInt((MontagemConfiguracaoItemService.OpcaoConfiguracao item) ->
+                                item.ordemExibicao())
+                        .thenComparing(item -> item.codigo()))
                 .toList()) {
             resultado.put(opcao.opcaoId(), avaliarOpcao(opcao, componentesPorOpcao.getOrDefault(opcao.opcaoId(), List.of()), estoquePorProduto));
         }
@@ -175,14 +177,14 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
         }
 
         List<Long> variacaoIds = variacoes.stream()
-                .map(VariacaoItemCardapio::getId)
+                .map(variacao -> variacao.getId())
                 .distinct()
                 .toList();
         List<model.VariacaoGrupoModificador> associacoesObrigatorias =
                 montagemConfiguracaoItemService.associacoesAtivasPorVariacoes(variacaoIds)
                         .stream()
                         .filter(associacao -> associacao.getGrupoModificador().isAtivo())
-                        .filter(model.VariacaoGrupoModificador::obrigatorioEfetivo)
+                        .filter(associacao -> associacao.obrigatorioEfetivo())
                         .toList();
         if (associacoesObrigatorias.isEmpty()) {
             return Map.of();
@@ -201,9 +203,9 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
                         Collectors.toList()
                 ));
         List<Long> opcaoIds = opcoesPorGrupo.values().stream()
-                .flatMap(List::stream)
-                .filter(model.OpcaoModificador::isAtiva)
-                .map(model.OpcaoModificador::getId)
+                .flatMap(lista -> lista.stream())
+                .filter(opcao -> opcao.isAtiva())
+                .map(opcao -> opcao.getId())
                 .distinct()
                 .toList();
         Map<Long, List<OpcaoModificadorComponente>> componentesPorOpcao = componenteRepository
@@ -215,9 +217,9 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
                         Collectors.toList()
                 ));
         List<Integer> produtoIds = componentesPorOpcao.values().stream()
-                .flatMap(List::stream)
+                .flatMap(lista -> lista.stream())
                 .flatMap(componente -> produtosParaDisponibilidade(componente).stream())
-                .map(Produto::getId)
+                .map(produto -> produto.getId())
                 .distinct()
                 .toList();
         Map<Integer, EstoqueProduto> estoquePorProduto = estoqueRepository
@@ -232,8 +234,8 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
 
         Map<Long, OpcaoDisponibilidade> disponibilidadePorOpcao = new LinkedHashMap<>();
         for (model.OpcaoModificador opcao : opcoesPorGrupo.values().stream()
-                .flatMap(List::stream)
-                .filter(model.OpcaoModificador::isAtiva)
+                .flatMap(lista -> lista.stream())
+                .filter(item -> item.isAtiva())
                 .toList()) {
             disponibilidadePorOpcao.put(opcao.getId(), avaliarOpcao(
                     opcaoConfiguracao(opcao),
@@ -247,7 +249,7 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
             boolean possuiOpcaoDisponivel = opcoesPorGrupo
                     .getOrDefault(associacao.getGrupoModificador().getId(), List.of())
                     .stream()
-                    .filter(model.OpcaoModificador::isAtiva)
+                    .filter(opcao -> opcao.isAtiva())
                     .anyMatch(opcao -> {
                         OpcaoDisponibilidade disponibilidade = disponibilidadePorOpcao.get(opcao.getId());
                         return disponibilidade != null && disponibilidade.disponivel();
@@ -277,15 +279,16 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
         for (MontagemConfiguracaoItemService.ConsumoConfigurado consumo : montagem.consumos()) {
             Produto produto = consumo.produto();
             PoliticaFalta politica = produto.getPoliticaFalta();
+            var unidadeBase = consumo.unidadeBase();
             mapa.merge(
                     produto.getId(),
                     new ProdutoConsumoConfiguracao(
                             produto,
-                            consumo.unidadeBase() == null ? null : consumo.unidadeBase().getCodigo(),
+                            unidadeBase == null ? null : unidadeBase.getCodigo(),
                             consumo.quantidadeBasePorUnidade(),
                             politica
                     ),
-                    ProdutoConsumoConfiguracao::somar
+                    (atual, adicional) -> atual.somar(adicional)
             );
         }
         for (MontagemConfiguracaoItemService.ImpactoPlanejado impacto : montagem.impactos()) {
@@ -324,7 +327,7 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
             avaliarProduto(consumo, estoque, motivos, alertas, entradas);
         }
         CalculadoraCapacidadeService.ResultadoCapacidade capacidade = calculadoraCapacidadeService.calcular(entradas);
-        boolean disponivel = motivos.stream().noneMatch(DisponibilidadeDtos.MotivoDisponibilidade::bloqueante);
+        boolean disponivel = motivos.stream().noneMatch(motivo -> motivo.bloqueante());
         String estado = disponivel
                 ? (alertas.isEmpty() ? "DISPONIVEL" : "DISPONIVEL_COM_ALERTA")
                 : "INDISPONIVEL";
@@ -364,15 +367,16 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
             }
             BigDecimal quantidade = componente.getQuantidadeBase();
             PoliticaFalta politica = resolverPolitica(componente, produto);
+            var unidadeBase = produto.getUnidadeBase();
             mapa.merge(
                     produto.getId(),
                     new ProdutoConsumoConfiguracao(
                             produto,
-                            produto.getUnidadeBase() == null ? null : produto.getUnidadeBase().getCodigo(),
+                            unidadeBase == null ? null : unidadeBase.getCodigo(),
                             quantidade.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP),
                             politica
                     ),
-                    ProdutoConsumoConfiguracao::somar
+                    (atual, adicional) -> atual.somar(adicional)
             );
         }
         return mapa;
@@ -422,7 +426,9 @@ public class CalculadoraDisponibilidadeConfiguracaoService {
                     bloqueante
             );
             adicionarPorPolitica(motivo, motivos, alertas);
-        } else if (disponivel.compareTo(consumo.quantidadeBasePorUnidade()) < 0) {
+        } else if (Objects.requireNonNull(disponivel,
+                "Estoque configurado sem quantidade disponivel.")
+                .compareTo(consumo.quantidadeBasePorUnidade()) < 0) {
             DisponibilidadeDtos.MotivoDisponibilidade motivo = motivo(
                     "ESTOQUE_INSUFICIENTE",
                     consumo,

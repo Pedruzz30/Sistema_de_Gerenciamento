@@ -1,17 +1,14 @@
 package service;
 
-import model.CotacaoMensal;
-import model.Pedido;
 import model.Produto;
 import repository.CotacaoRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class RentabilidadeService {
 
@@ -34,10 +31,14 @@ public class RentabilidadeService {
 
         List<ItemRentabilidade> itens = new ArrayList<>();
         for (Produto produto : produtos) {
-            itens.add(criarItem(produto, custos.get(produto.getId()), unidadesVendidas.getOrDefault(produto.getId(), 0)));
+            int produtoId = produto.getId();
+            int quantidadeVendida = Objects.requireNonNull(
+                    unidadesVendidas.getOrDefault(produtoId, 0),
+                    "Quantidade vendida nula para produto: " + produtoId);
+            itens.add(criarItem(produto, custos.get(produtoId), quantidadeVendida));
         }
 
-        itens.sort(this::compararItens);
+        itens.sort((a, b) -> compararItens(a, b));
 
         int posicao = 0;
         List<ItemRentabilidade> ranqueados = new ArrayList<>();
@@ -47,24 +48,25 @@ public class RentabilidadeService {
         }
 
         List<ItemRentabilidade> validos = ranqueados.stream()
-                .filter(ItemRentabilidade::margemValida)
+                .filter(item -> item.margemValida())
                 .toList();
 
         BigDecimal margemMedia = validos.isEmpty()
                 ? null
                 : validos.stream()
-                .map(ItemRentabilidade::margemPercentual)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .map(item -> Objects.requireNonNull(item.margemPercentual(),
+                        "Margem ausente para produto analisado: " + item.produtoId()))
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
                 .divide(BigDecimal.valueOf(validos.size()), ESCALA_PERCENTUAL, RoundingMode.HALF_UP);
 
         BigDecimal receitaTotal = validos.stream()
-                .map(ItemRentabilidade::receitaEstimada)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .map(item -> item.receitaEstimada())
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
                 .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
 
         BigDecimal lucroTotal = validos.stream()
-                .map(ItemRentabilidade::lucroTotalEstimado)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .map(item -> item.lucroTotalEstimado())
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
                 .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
 
         int pendentesCusto = (int) ranqueados.stream()
@@ -75,9 +77,11 @@ public class RentabilidadeService {
                 .filter(item -> item.unidadesVendidas() == 0)
                 .count();
 
-        int unidadesVendidasTotal = ranqueados.stream()
-                .mapToInt(ItemRentabilidade::unidadesVendidas)
+        // O contrato publico ainda utiliza int. Soma em long para evitar overflow silencioso.
+        long totalUnidades = ranqueados.stream()
+                .mapToLong(item -> item.unidadesVendidas())
                 .sum();
+        int unidadesVendidasTotal = Math.toIntExact(totalUnidades);
 
         return new AnaliseRentabilidade(
                 ranqueados,
@@ -98,22 +102,28 @@ public class RentabilidadeService {
         BigDecimal precoVenda = normalizarMoeda(produto.getPrecoUnitario());
         boolean vendaValida = precoVenda.compareTo(BigDecimal.ZERO) > 0;
         boolean custoValido = precoCusto != null && precoCusto.compareTo(BigDecimal.ZERO) >= 0;
+        BigDecimal custoNormalizado = null;
+        if (precoCusto != null && custoValido) {
+            custoNormalizado = normalizarMoeda(precoCusto);
+        }
         boolean margemValida = vendaValida && custoValido;
+        BigDecimal lucroUnitario = null;
+        BigDecimal margem = null;
+        BigDecimal receitaEstimada = BigDecimal.ZERO.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+        BigDecimal lucroTotalEstimado = BigDecimal.ZERO.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
 
-        BigDecimal custoNormalizado = custoValido ? normalizarMoeda(precoCusto) : null;
-        BigDecimal lucroUnitario = margemValida
-                ? precoVenda.subtract(custoNormalizado).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP)
-                : null;
-        BigDecimal margem = margemValida
-                ? lucroUnitario.multiply(CEM).divide(precoVenda, ESCALA_PERCENTUAL, RoundingMode.HALF_UP)
-                : null;
-        BigDecimal receitaEstimada = margemValida
-                ? precoVenda.multiply(BigDecimal.valueOf(unidadesVendidas)).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-        BigDecimal lucroTotalEstimado = margemValida
-                ? lucroUnitario.multiply(BigDecimal.valueOf(unidadesVendidas)).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+        if (vendaValida && custoNormalizado != null) {
+            lucroUnitario = precoVenda.subtract(custoNormalizado)
+                    .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+            margem = lucroUnitario.multiply(CEM)
+                    .divide(precoVenda, ESCALA_PERCENTUAL, RoundingMode.HALF_UP);
+            receitaEstimada = precoVenda.multiply(BigDecimal.valueOf(unidadesVendidas))
+                    .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+            lucroTotalEstimado = lucroUnitario.multiply(BigDecimal.valueOf(unidadesVendidas))
+                    .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+        }
         StatusRentabilidade status = classificar(vendaValida, custoValido, margem);
+        var categoria = produto.getCategoriaEstoque();
 
         return new ItemRentabilidade(
                 null,
@@ -121,7 +131,7 @@ public class RentabilidadeService {
                 produto.getNome(),
                 produto.getQuantidadeAtual(),
                 produto.getQuantidadeMinima(),
-                produto.getCategoriaEstoque() != null ? produto.getCategoriaEstoque().name() : null,
+                categoria != null ? categoria.name() : null,
                 precoVenda,
                 custoNormalizado,
                 lucroUnitario,
@@ -140,10 +150,12 @@ public class RentabilidadeService {
             int porLucroTotal = b.lucroTotalEstimado().compareTo(a.lucroTotalEstimado());
             if (porLucroTotal != 0) return porLucroTotal;
 
-            int porMargem = b.margemPercentual().compareTo(a.margemPercentual());
+            int porMargem = Objects.requireNonNull(b.margemPercentual())
+                    .compareTo(Objects.requireNonNull(a.margemPercentual()));
             if (porMargem != 0) return porMargem;
 
-            int porLucroUnitario = b.lucroUnitario().compareTo(a.lucroUnitario());
+            int porLucroUnitario = Objects.requireNonNull(b.lucroUnitario())
+                    .compareTo(Objects.requireNonNull(a.lucroUnitario()));
             if (porLucroUnitario != 0) return porLucroUnitario;
 
             return a.nome().compareToIgnoreCase(b.nome());
@@ -173,54 +185,22 @@ public class RentabilidadeService {
         if (!custoValido) {
             return new StatusRentabilidade("CUSTO_PENDENTE", "Custo pendente");
         }
-        if (margem.compareTo(BigDecimal.ZERO) < 0) {
+        BigDecimal margemCalculada = Objects.requireNonNull(margem, "Margem nao calculada para produto valido.");
+        if (margemCalculada.signum() < 0) {
             return new StatusRentabilidade("MARGEM_NEGATIVA", "Margem negativa");
         }
-        if (margem.compareTo(BigDecimal.valueOf(50)) >= 0) {
+        if (margemCalculada.compareTo(BigDecimal.valueOf(50)) >= 0) {
             return new StatusRentabilidade("ALTA_MARGEM", "Alta margem");
         }
-        if (margem.compareTo(BigDecimal.valueOf(25)) >= 0) {
+        if (margemCalculada.compareTo(BigDecimal.valueOf(25)) >= 0) {
             return new StatusRentabilidade("MARGEM_SAUDAVEL", "Margem saudavel");
         }
         return new StatusRentabilidade("BAIXA_MARGEM", "Baixa margem");
     }
 
-    private Map<Integer, BigDecimal> custoMaisRecentePorProduto() {
-        Map<Integer, BigDecimal> custos = new LinkedHashMap<>();
-        cotacaoRepository.listarTodas().stream()
-                .filter(cotacao -> cotacao.getProduto() != null)
-                .sorted(Comparator
-                        .comparing(CotacaoMensal::getMesReferencia).reversed()
-                        .thenComparing(Comparator.comparingLong(CotacaoMensal::getId).reversed()))
-                .forEach(cotacao -> custos.putIfAbsent(
-                        cotacao.getProduto().getId(),
-                        cotacao.getPrecoUnitario()
-                ));
-        return custos;
-    }
-
-    private Map<Integer, Integer> unidadesVendidasPorProduto() {
-        Map<Integer, Integer> unidades = new LinkedHashMap<>();
-        for (Pedido pedido : estoqueService.listarPedidos()) {
-            if (!ehSaidaPorVenda(pedido)) {
-                continue;
-            }
-            int produtoId = pedido.getProduto().getId();
-            unidades.merge(produtoId, pedido.getQuantidade(), Integer::sum);
-        }
-        return unidades;
-    }
-
-    private boolean ehSaidaPorVenda(Pedido pedido) {
-        if (pedido == null || !pedido.ehSaida() || pedido.getProduto() == null) {
-            return false;
-        }
-        String descricao = pedido.getDescricao();
-        return descricao != null && descricao.toLowerCase().contains("venda");
-    }
-
     private BigDecimal normalizarMoeda(BigDecimal valor) {
-        return valor.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+        return Objects.requireNonNull(valor, "Valor monetario obrigatorio.")
+                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
     }
 
     private record StatusRentabilidade(String codigo, String label) {}

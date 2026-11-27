@@ -359,12 +359,12 @@ public int calcularQuantidadeTotalItens() {
      * <p>Sempre retorna {@link BigDecimal} com exatamente 2 casas decimais,
      * arredondado por {@code HALF_UP}. Nunca retorna {@code null}.
      */
-    public BigDecimal calcularTotal() {
-        return itens.stream()
-                .map(ItemNotaFiscal::calcularSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-    }
+   public BigDecimal calcularTotal() {
+    return itens.stream()
+            .map(item -> item.calcularSubtotal())
+            .reduce(BigDecimal.ZERO, (total, subtotal) -> total.add(subtotal))
+            .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+}
 
     // ── Consultas de estado ───────────────────────────────────────────────────
 

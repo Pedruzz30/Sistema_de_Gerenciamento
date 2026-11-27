@@ -206,21 +206,26 @@ public class EstoqueService {
     }
 
     public Optional<Produto> buscarProdutoPorId(int id) {
-        return produtoRepository.buscarPorId(id)
-                .filter(Produto::isControladoPorEstoque);
+    return produtoRepository.buscarPorId(id)
+            .filter(produto -> produto.isControladoPorEstoque());
+}
+
+public Optional<Produto> buscarProdutoPorNome(String nome) {
+    if (nome == null || nome.trim().isEmpty()) {
+        return Optional.empty();
     }
 
-    public Optional<Produto> buscarProdutoPorNome(String nome) {
-        if (nome == null || nome.trim().isEmpty()) {
-            return Optional.empty();
-        }
-        return produtoRepository.buscarPorNome(nome.trim())
-                .filter(Produto::isControladoPorEstoque);
-    }
+    return produtoRepository.buscarPorNome(nome.trim())
+            .filter(produto -> produto.isControladoPorEstoque());
+}
 
-    public Pedido registrarMovimentacao(int idProduto, int quantidade, TipoMovimentacao tipo, Usuario usuario) {
-        return registrarMovimentacao(idProduto, quantidade, tipo, usuario, null);
-    }
+public Pedido registrarMovimentacao(int idProduto,
+                                    int quantidade,
+                                    TipoMovimentacao tipo,
+                                    Usuario usuario) {
+    return registrarMovimentacao(
+            idProduto, quantidade, tipo, usuario, null);
+}
 
     @Transactional
     public Pedido registrarMovimentacao(int idProduto,
@@ -303,10 +308,10 @@ public class EstoqueService {
     }
 
     public List<Produto> listarProdutos() {
-        return produtoRepository.listarTodos().stream()
-                .filter(Produto::isControladoPorEstoque)
-                .toList();
-    }
+    return produtoRepository.listarTodos().stream()
+            .filter(produto -> produto.isControladoPorEstoque())
+            .toList();
+}
 
     public Map<Integer,Integer> quantidadesVendidasPorProduto() {
         return pedidoRepository.quantidadesVendidasPorProduto();

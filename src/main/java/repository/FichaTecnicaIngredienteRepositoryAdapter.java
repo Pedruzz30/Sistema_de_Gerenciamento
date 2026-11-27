@@ -4,19 +4,31 @@ import model.FichaTecnicaIngrediente;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class FichaTecnicaIngredienteRepositoryAdapter implements FichaTecnicaIngredienteRepository {
+public class FichaTecnicaIngredienteRepositoryAdapter
+        implements FichaTecnicaIngredienteRepository {
 
     private final JpaFichaTecnicaIngredienteRepository delegate;
 
-    public FichaTecnicaIngredienteRepositoryAdapter(JpaFichaTecnicaIngredienteRepository delegate) {
-        this.delegate = delegate;
+    public FichaTecnicaIngredienteRepositoryAdapter(
+            JpaFichaTecnicaIngredienteRepository delegate) {
+
+        this.delegate = Objects.requireNonNull(
+                delegate, "Repositorio JPA de ingrediente e obrigatorio.");
     }
 
     @Override
-    public FichaTecnicaIngrediente salvar(FichaTecnicaIngrediente ingrediente) {
+    public FichaTecnicaIngrediente salvar(
+            FichaTecnicaIngrediente ingrediente) {
+
+        if (ingrediente == null) {
+            throw new IllegalArgumentException(
+                    "Ingrediente da ficha tecnica e obrigatorio.");
+        }
+
         return delegate.save(ingrediente);
     }
 
@@ -26,20 +38,31 @@ public class FichaTecnicaIngredienteRepositoryAdapter implements FichaTecnicaIng
     }
 
     @Override
-    public List<FichaTecnicaIngrediente> listarPorVersao(long fichaTecnicaVersaoId) {
+    public List<FichaTecnicaIngrediente> listarPorVersao(
+            long fichaTecnicaVersaoId) {
+
         return delegate.findByVersao(fichaTecnicaVersaoId);
     }
 
     @Override
-    public List<FichaTecnicaIngrediente> listarPorVersoes(List<Long> fichaTecnicaVersaoIds) {
-        if (fichaTecnicaVersaoIds == null || fichaTecnicaVersaoIds.isEmpty()) {
+    public List<FichaTecnicaIngrediente> listarPorVersoes(
+            List<Long> fichaTecnicaVersaoIds) {
+
+        if (fichaTecnicaVersaoIds == null
+                || fichaTecnicaVersaoIds.isEmpty()) {
             return List.of();
         }
+
         return delegate.findByVersoes(fichaTecnicaVersaoIds);
     }
 
     @Override
     public void remover(FichaTecnicaIngrediente ingrediente) {
+        if (ingrediente == null) {
+            throw new IllegalArgumentException(
+                    "Ingrediente da ficha tecnica e obrigatorio.");
+        }
+
         delegate.delete(ingrediente);
     }
 }

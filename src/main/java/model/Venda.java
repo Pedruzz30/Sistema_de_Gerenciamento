@@ -92,26 +92,41 @@ public class Venda {
         // JPA
     }
 
-    public Venda(long id, Long filialId, String numero, CanalVenda canal, Long criadaPor) {
-        validar(id >= 0, "ID da venda nao pode ser negativo.");
-        validar(filialId != null && filialId > 0, "Filial da venda e obrigatoria.");
-        validar(numero != null && !numero.isBlank(), "Numero da venda e obrigatorio.");
-        validar(canal != null, "Canal da venda e obrigatorio.");
+    public Venda(long id,
+             Long filialId,
+             String numero,
+             CanalVenda canal,
+             Long criadaPor) {
 
-        this.id = id;
-        this.filialId = filialId;
-        this.numero = numero.trim();
-        this.canal = canal;
-        this.status = StatusVenda.RASCUNHO;
-        this.subtotal = dinheiro(BigDecimal.ZERO);
-        this.descontoTotal = dinheiro(BigDecimal.ZERO);
-        this.acrescimoTotal = dinheiro(BigDecimal.ZERO);
-        this.valorTotal = dinheiro(BigDecimal.ZERO);
-        this.custoIngredientesTotal = dinheiro(BigDecimal.ZERO);
-        this.margemBrutaEstimadaTotal = dinheiro(BigDecimal.ZERO);
-        this.criadaPor = criadaPor;
-        this.criadaEm = LocalDateTime.now();
+    validar(id >= 0, "ID da venda nao pode ser negativo.");
+
+    validar(filialId != null && filialId > 0,
+            "Filial da venda e obrigatoria.");
+
+    if (numero == null || numero.isBlank()) {
+        throw new IllegalArgumentException(
+                "Numero da venda e obrigatorio.");
     }
+
+    validar(canal != null,
+            "Canal da venda e obrigatorio.");
+
+    this.id = id;
+    this.filialId = filialId;
+    this.numero = numero.trim();
+    this.canal = canal;
+    this.status = StatusVenda.RASCUNHO;
+
+    this.subtotal = dinheiro(BigDecimal.ZERO);
+    this.descontoTotal = dinheiro(BigDecimal.ZERO);
+    this.acrescimoTotal = dinheiro(BigDecimal.ZERO);
+    this.valorTotal = dinheiro(BigDecimal.ZERO);
+    this.custoIngredientesTotal = dinheiro(BigDecimal.ZERO);
+    this.margemBrutaEstimadaTotal = dinheiro(BigDecimal.ZERO);
+
+    this.criadaPor = criadaPor;
+    this.criadaEm = LocalDateTime.now();
+}
 
     public void exigirRascunho() {
         if (status != StatusVenda.RASCUNHO) {
@@ -143,29 +158,41 @@ public class Venda {
     }
 
     public void cancelar(Long usuarioId, String motivo) {
-        validar(motivo != null && !motivo.isBlank(), "Motivo do cancelamento e obrigatorio.");
-        if (status == StatusVenda.CANCELADA) {
-            throw new IllegalStateException("VENDA_JA_CANCELADA");
-        }
-        if (status != StatusVenda.FINALIZADA && status != StatusVenda.PARCIALMENTE_CANCELADA) {
-            throw new IllegalStateException("CANCELAMENTO_NAO_PERMITIDO");
-        }
-        this.status = StatusVenda.CANCELADA;
-        this.canceladaPor = usuarioId;
-        this.canceladaEm = LocalDateTime.now();
-        this.motivoCancelamento = motivo.trim();
+    if (motivo == null || motivo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Motivo do cancelamento e obrigatorio.");
     }
 
-    public void marcarParcialmenteCancelada(Long usuarioId, String motivo) {
-        validar(motivo != null && !motivo.isBlank(), "Motivo do cancelamento e obrigatorio.");
-        if (status == StatusVenda.CANCELADA) {
-            throw new IllegalStateException("VENDA_JA_CANCELADA");
-        }
-        this.status = StatusVenda.PARCIALMENTE_CANCELADA;
-        this.canceladaPor = usuarioId;
-        this.canceladaEm = LocalDateTime.now();
-        this.motivoCancelamento = motivo.trim();
+    if (status == StatusVenda.CANCELADA) {
+        throw new IllegalStateException("VENDA_JA_CANCELADA");
     }
+
+    if (status != StatusVenda.FINALIZADA
+            && status != StatusVenda.PARCIALMENTE_CANCELADA) {
+        throw new IllegalStateException("CANCELAMENTO_NAO_PERMITIDO");
+    }
+
+    this.status = StatusVenda.CANCELADA;
+    this.canceladaPor = usuarioId;
+    this.canceladaEm = LocalDateTime.now();
+    this.motivoCancelamento = motivo.trim();
+}
+
+public void marcarParcialmenteCancelada(Long usuarioId, String motivo) {
+    if (motivo == null || motivo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Motivo do cancelamento e obrigatorio.");
+    }
+
+    if (status == StatusVenda.CANCELADA) {
+        throw new IllegalStateException("VENDA_JA_CANCELADA");
+    }
+
+    this.status = StatusVenda.PARCIALMENTE_CANCELADA;
+    this.canceladaPor = usuarioId;
+    this.canceladaEm = LocalDateTime.now();
+    this.motivoCancelamento = motivo.trim();
+}
 
     @PrePersist
     void prePersist() {

@@ -110,21 +110,34 @@ public class BackupService {
         return pasta != null;
     }
 
-    /** Verificação periódica: faz o backup vencido e leva o último ao pen drive recém-conectado. */
-    @Scheduled(initialDelayString = "PT1M", fixedDelayString = "PT15M")
-    public void verificar() {
-        if (!ativo()) return;
-        Instant ultimo = ultimoBackup().map(Arquivo::quando).orElse(null);
-        if (ultimo == null || Duration.between(ultimo, clock.instant()).compareTo(intervalo) >= 0) {
-            executar("automático");
-        } else if (trava.tryLock()) {
-            try {
-                copiarParaDestinos();
-            } finally {
-                trava.unlock();
-            }
+    /**
+ * Verificacao periodica: executa o backup vencido
+ * e copia o ultimo backup para os destinos disponiveis.
+ */
+@Scheduled(initialDelayString = "PT1M", fixedDelayString = "PT15M")
+public void verificar() {
+    if (!ativo()) {
+        return;
+    }
+
+    Instant ultimo = ultimoBackup()
+            .map(arquivo -> arquivo.quando())
+            .orElse(null);
+
+    if (ultimo == null
+            || Duration.between(ultimo, clock.instant())
+                    .compareTo(intervalo) >= 0) {
+
+        executar("automático");
+
+    } else if (trava.tryLock()) {
+        try {
+            copiarParaDestinos();
+        } finally {
+            trava.unlock();
         }
     }
+}
 
     /** Depois de um fechamento de caixa: guarda o dia sem fazer ninguém esperar. */
     public void executarEmSegundoPlano(String motivo) {
@@ -267,30 +280,66 @@ public class BackupService {
         return listar(pasta).stream().findFirst();
     }
 
-    /** Backups da pasta, do mais novo para o mais antigo. Só conta arquivo com o nome do sistema. */
-    private List<Arquivo> listar(Path diretorio) {
-        List<Arquivo> arquivos = new ArrayList<>();
-        if (!Files.isDirectory(diretorio)) return arquivos;
-        try (DirectoryStream<Path> itens = Files.newDirectoryStream(diretorio, PREFIXO + "*" + EXTENSAO)) {
-            for (Path item : itens) {
-                Instant quando = instanteDoNome(item.getFileName().toString());
-                if (quando != null) arquivos.add(new Arquivo(item, quando));
-            }
-        } catch (IOException e) {
-            log.warn("Não foi possível listar {}: {}", diretorio, e.getMessage());
-        }
-        arquivos.sort(Comparator.comparing(Arquivo::quando).reversed());
+    /**
+ * Lista os backups do mais recente para o mais antigo.
+ * Considera apenas arquivos com o nome padrao do sistema.
+ */
+private List<Arquivo> listar(Path diretorio) {
+    List<Arquivo> arquivos = new ArrayList<>();
+
+    if (!Files.isDirectory(diretorio)) {
         return arquivos;
     }
 
-    private Instant instanteDoNome(String nome) {
-        String miolo = nome.substring(PREFIXO.length(), nome.length() - EXTENSAO.length());
-        try {
-            return LocalDateTime.parse(miolo, FORMATO_NOME).atZone(clock.getZone()).toInstant();
-        } catch (DateTimeParseException e) {
-            return null;
+    try (DirectoryStream<Path> itens = Files.newDirectoryStream(
+            diretorio, PREFIXO + "*" + EXTENSAO)) {
+
+        for (Path item : itens) {
+            Path nomeArquivo = item.getFileName();
+
+            if (nomeArquivo == null) {
+                continue;
+            }
+
+            Instant quando = instanteDoNome(nomeArquivo.toString());
+
+            if (quando != null) {
+                arquivos.add(new Arquivo(item, quando));
+            }
         }
+
+    } catch (IOException e) {
+        log.warn("Não foi possível listar {}: {}",
+                diretorio, e.getMessage());
     }
+
+    arquivos.sort(Comparator.comparing(
+            (Arquivo arquivo) -> arquivo.quando()).reversed());
+
+    return arquivos;
+}
+
+private Instant instanteDoNome(String nome) {
+    if (nome == null
+            || !nome.startsWith(PREFIXO)
+            || !nome.endsWith(EXTENSAO)
+            || nome.length() <= PREFIXO.length() + EXTENSAO.length()) {
+        return null;
+    }
+
+    String miolo = nome.substring(
+            PREFIXO.length(),
+            nome.length() - EXTENSAO.length());
+
+    try {
+        return LocalDateTime.parse(miolo, FORMATO_NOME)
+                .atZone(clock.getZone())
+                .toInstant();
+
+    } catch (DateTimeParseException e) {
+        return null;
+    }
+}
 
     private void registrarFalha(String mensagem) {
         String texto = mensagem == null || mensagem.isBlank() ? "Falha desconhecida no backup." : mensagem;

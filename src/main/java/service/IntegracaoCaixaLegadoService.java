@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Liga as vendas do PDV ({@code /api/vendas}) à sessão de caixa.
@@ -176,55 +177,108 @@ public class IntegracaoCaixaLegadoService {
         return normalizados;
     }
 
-    private static Map<FormaPagamento, BigDecimal> somarPorForma(List<PagamentoInput> pagamentos) {
-        Map<FormaPagamento, BigDecimal> totais = new EnumMap<>(FormaPagamento.class);
-        for (PagamentoInput p : pagamentos) {
-            totais.merge(p.forma(), p.valor(), BigDecimal::add);
-        }
-        return totais;
+    private static Map<FormaPagamento, BigDecimal> somarPorForma(
+        List<PagamentoInput> pagamentos) {
+
+    Map<FormaPagamento, BigDecimal> totais =
+            new EnumMap<>(FormaPagamento.class);
+
+    for (PagamentoInput pagamento : pagamentos) {
+        totais.merge(
+                pagamento.forma(),
+                pagamento.valor(),
+                (total, adicional) -> total.add(adicional)
+        );
     }
 
-    private Map<FormaPagamento, BigDecimal> alocarEstorno(long vendaId, BigDecimal valor, FormaPagamento formaEstorno) {
-        BigDecimal restante = valor.setScale(ESCALA, RoundingMode.HALF_UP);
-        Map<FormaPagamento, BigDecimal> alocacao = new EnumMap<>(FormaPagamento.class);
-        if (formaEstorno != null) {
-            alocacao.put(formaEstorno, restante);
-            return alocacao;
-        }
-        List<VendaPagamento> pagos = vendaPagamentoRepository == null
-                ? List.of()
-                : vendaPagamentoRepository.listarPorVenda(vendaId);
-        if (pagos.isEmpty()) {
-            alocacao.put(FormaPagamento.DINHEIRO, restante);
-            return alocacao;
-        }
-        Map<FormaPagamento, BigDecimal> pagoPorForma = new EnumMap<>(FormaPagamento.class);
-        for (VendaPagamento p : pagos) {
-            pagoPorForma.merge(p.getForma(), p.getValor(), BigDecimal::add);
-        }
-        // Eletrônicas primeiro, dinheiro por último.
-        List<FormaPagamento> ordem = new ArrayList<>(pagoPorForma.keySet());
-        ordem.sort((a, b) -> Boolean.compare(a.afetaGaveta(), b.afetaGaveta()));
-        for (FormaPagamento forma : ordem) {
-            if (restante.compareTo(BigDecimal.ZERO) <= 0) break;
-            BigDecimal parte = restante.min(pagoPorForma.get(forma));
-            alocacao.merge(forma, parte, BigDecimal::add);
-            restante = restante.subtract(parte);
-        }
-        if (restante.compareTo(BigDecimal.ZERO) > 0) {
-            // Mais estorno que pagamento registrado (não deveria acontecer): vai na última forma.
-            FormaPagamento ultima = ordem.get(ordem.size() - 1);
-            alocacao.merge(ultima, restante, BigDecimal::add);
-        }
+    return totais;
+}
+
+private Map<FormaPagamento, BigDecimal> alocarEstorno(
+        long vendaId,
+        BigDecimal valor,
+        FormaPagamento formaEstorno) {
+
+    BigDecimal restante = valor.setScale(
+            ESCALA, RoundingMode.HALF_UP);
+
+    Map<FormaPagamento, BigDecimal> alocacao =
+            new EnumMap<>(FormaPagamento.class);
+
+    if (formaEstorno != null) {
+        alocacao.put(formaEstorno, restante);
         return alocacao;
     }
 
-    private boolean caixaEstaAberto(int numeroCaixa) {
-        try {
-            caixaService.buscarCaixaAberto(numeroCaixa);
-            return true;
-        } catch (IllegalStateException e) {
-            return false;
-        }
+    List<VendaPagamento> pagos = vendaPagamentoRepository == null
+            ? List.of()
+            : vendaPagamentoRepository.listarPorVenda(vendaId);
+
+    if (pagos.isEmpty()) {
+        alocacao.put(FormaPagamento.DINHEIRO, restante);
+        return alocacao;
     }
+
+    Map<FormaPagamento, BigDecimal> pagoPorForma =
+            new EnumMap<>(FormaPagamento.class);
+
+    for (VendaPagamento pagamento : pagos) {
+        pagoPorForma.merge(
+                pagamento.getForma(),
+                pagamento.getValor(),
+                (total, adicional) -> total.add(adicional)
+        );
+    }
+
+    // Eletrônicas primeiro, dinheiro por último.
+    List<FormaPagamento> ordem =
+            new ArrayList<>(pagoPorForma.keySet());
+
+    ordem.sort((a, b) ->
+            Boolean.compare(a.afetaGaveta(), b.afetaGaveta()));
+
+    for (FormaPagamento forma : ordem) {
+        if (restante.signum() <= 0) {
+            break;
+        }
+
+        BigDecimal valorPago = Objects.requireNonNull(
+                pagoPorForma.get(forma),
+                "Valor pago nao encontrado para a forma: " + forma
+        );
+
+        BigDecimal parte = restante.min(valorPago);
+
+        alocacao.merge(
+                forma,
+                parte,
+                (total, adicional) -> total.add(adicional)
+        );
+
+        restante = restante.subtract(parte);
+    }
+
+    if (restante.signum() > 0) {
+        // Mais estorno que pagamento registrado:
+        // comportamento legado preservado.
+        FormaPagamento ultima = ordem.get(ordem.size() - 1);
+
+        alocacao.merge(
+                ultima,
+                restante,
+                (total, adicional) -> total.add(adicional)
+        );
+    }
+
+    return alocacao;
+}
+
+private boolean caixaEstaAberto(int numeroCaixa) {
+    try {
+        caixaService.buscarCaixaAberto(numeroCaixa);
+        return true;
+    } catch (IllegalStateException e) {
+        return false;
+    }
+}
 }

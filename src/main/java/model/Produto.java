@@ -139,36 +139,48 @@ public class Produto {
         );
     }
 
-    public Produto(int id,
-                   String nome,
-                   int quantidadeAtual,
-                   int quantidadeMinima,
-                   BigDecimal precoUnitario,
-                   CategoriaEstoque categoriaEstoque,
-                   Boolean controladoPorEstoque,
-                   UnidadeMedida unidadeBase,
-                   PoliticaFalta politicaFalta,
-                   Boolean ativo) {
+   public Produto(int id,
+               String nome,
+               int quantidadeAtual,
+               int quantidadeMinima,
+               BigDecimal precoUnitario,
+               CategoriaEstoque categoriaEstoque,
+               Boolean controladoPorEstoque,
+               UnidadeMedida unidadeBase,
+               PoliticaFalta politicaFalta,
+               Boolean ativo) {
 
-        validar(id >= 0,                            "ID do produto não pode ser negativo.");
-        validar(nome != null && !nome.isBlank(),    "Nome do produto é obrigatório.");
-        validar(quantidadeAtual >= 0,               "Quantidade atual não pode ser negativa.");
-        validar(quantidadeMinima >= 0,              "Quantidade mínima não pode ser negativa.");
-        validar(precoUnitario != null,              "Preço unitário é obrigatório.");
-        validar(precoUnitario.compareTo(BigDecimal.ZERO) >= 0,
-                "Preço unitário não pode ser negativo.");
+    validar(id >= 0, "ID do produto não pode ser negativo.");
 
-        this.id               = id;
-        this.nome             = nome.trim();
-        this.quantidadeAtual  = quantidadeAtual;
-        this.quantidadeMinima = quantidadeMinima;
-        this.precoUnitario    = precoUnitario.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-        this.categoriaEstoque = categoriaEstoque;
-        this.controladoPorEstoque = controladoPorEstoque;
-        this.unidadeBase = unidadeBase;
-        this.politicaFalta = politicaFalta == null ? PoliticaFalta.BLOQUEAR : politicaFalta;
-        this.ativo = ativo == null ? Boolean.TRUE : ativo;
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException("Nome do produto é obrigatório.");
     }
+
+    validar(quantidadeAtual >= 0, "Quantidade atual não pode ser negativa.");
+    validar(quantidadeMinima >= 0, "Quantidade mínima não pode ser negativa.");
+
+    if (precoUnitario == null) {
+        throw new IllegalArgumentException("Preço unitário é obrigatório.");
+    }
+
+    validar(precoUnitario.signum() >= 0,
+            "Preço unitário não pode ser negativo.");
+
+    this.id = id;
+    this.nome = nome.trim();
+    this.quantidadeAtual = quantidadeAtual;
+    this.quantidadeMinima = quantidadeMinima;
+    this.precoUnitario = precoUnitario.setScale(
+            ESCALA_MONETARIA, RoundingMode.HALF_UP);
+
+    this.categoriaEstoque = categoriaEstoque;
+    this.controladoPorEstoque = controladoPorEstoque;
+    this.unidadeBase = unidadeBase;
+    this.politicaFalta = politicaFalta == null
+            ? PoliticaFalta.BLOQUEAR
+            : politicaFalta;
+    this.ativo = ativo == null ? Boolean.TRUE : ativo;
+}
 
     // ── Fábrica para repositório ──────────────────────────────────────────────
 

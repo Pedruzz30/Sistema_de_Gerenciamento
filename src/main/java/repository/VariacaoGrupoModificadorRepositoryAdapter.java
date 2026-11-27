@@ -4,19 +4,32 @@ import model.VariacaoGrupoModificador;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class VariacaoGrupoModificadorRepositoryAdapter implements VariacaoGrupoModificadorRepository {
+public class VariacaoGrupoModificadorRepositoryAdapter
+        implements VariacaoGrupoModificadorRepository {
 
     private final JpaVariacaoGrupoModificadorRepository delegate;
 
-    public VariacaoGrupoModificadorRepositoryAdapter(JpaVariacaoGrupoModificadorRepository delegate) {
-        this.delegate = delegate;
+    public VariacaoGrupoModificadorRepositoryAdapter(
+            JpaVariacaoGrupoModificadorRepository delegate) {
+
+        this.delegate = Objects.requireNonNull(
+                delegate,
+                "Repositorio JPA de associacao de grupo modificador e obrigatorio.");
     }
 
     @Override
-    public VariacaoGrupoModificador salvar(VariacaoGrupoModificador associacao) {
+    public VariacaoGrupoModificador salvar(
+            VariacaoGrupoModificador associacao) {
+
+        if (associacao == null) {
+            throw new IllegalArgumentException(
+                    "Associacao de grupo modificador e obrigatoria.");
+        }
+
         return delegate.save(associacao);
     }
 
@@ -26,25 +39,34 @@ public class VariacaoGrupoModificadorRepositoryAdapter implements VariacaoGrupoM
     }
 
     @Override
-    public Optional<VariacaoGrupoModificador> buscarPorVariacaoEGrupo(long variacaoId, long grupoId) {
+    public Optional<VariacaoGrupoModificador> buscarPorVariacaoEGrupo(
+            long variacaoId, long grupoId) {
+
         return delegate.findByVariacaoAndGrupo(variacaoId, grupoId);
     }
 
     @Override
-    public List<VariacaoGrupoModificador> listarPorVariacao(long variacaoId) {
+    public List<VariacaoGrupoModificador> listarPorVariacao(
+            long variacaoId) {
+
         return delegate.findByVariacao(variacaoId);
     }
 
     @Override
-    public List<VariacaoGrupoModificador> listarAtivasPorVariacao(long variacaoId) {
+    public List<VariacaoGrupoModificador> listarAtivasPorVariacao(
+            long variacaoId) {
+
         return delegate.findAtivasByVariacao(variacaoId);
     }
 
     @Override
-    public List<VariacaoGrupoModificador> listarAtivasPorVariacoes(List<Long> variacaoIds) {
+    public List<VariacaoGrupoModificador> listarAtivasPorVariacoes(
+            List<Long> variacaoIds) {
+
         if (variacaoIds == null || variacaoIds.isEmpty()) {
             return List.of();
         }
+
         return delegate.findAtivasByVariacoes(variacaoIds);
     }
 }

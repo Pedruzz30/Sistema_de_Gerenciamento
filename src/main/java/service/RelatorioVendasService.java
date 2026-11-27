@@ -100,7 +100,7 @@ public class RelatorioVendasService {
                     .filter(i -> i.getStatus() == StatusVendaItem.ATIVO).toList();
             Map<Long, List<model.VendaItemConsumo>> consumosPorItem = new LinkedHashMap<>();
             if (consumoRepository != null && !itens.isEmpty()) {
-                for (model.VendaItemConsumo c : consumoRepository.listarPorVendaItens(itens.stream().map(VendaItem::getId).toList())) {
+                for (model.VendaItemConsumo c : consumoRepository.listarPorVendaItens(itens.stream().map(item -> item.getId()).toList())) {
                     consumosPorItem.computeIfAbsent(c.getVendaItem().getId(), k -> new ArrayList<>()).add(c);
                 }
             }
@@ -108,7 +108,8 @@ public class RelatorioVendasService {
                 String nome = item.getNomeItemSnapshot();
                 BigDecimal[] s = somas.computeIfAbsent(nome, n -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
                 s[0] = s[0].add(item.getSubtotal());
-                s[1] = s[1].add(item.getCustoTotalEstimado() == null ? BigDecimal.ZERO : item.getCustoTotalEstimado());
+                BigDecimal custo = item.getCustoTotalEstimado();
+                s[1] = s[1].add(custo == null ? BigDecimal.ZERO : custo);
                 for (model.VendaItemConsumo c : consumosPorItem.getOrDefault(item.getId(), List.of())) {
                     s[2] = s[2].add(c.getQuantidadeBaseTotal());
                     produtos.computeIfAbsent(nome, n -> new LinkedHashMap<>()).put(c.getProduto().getId(), c.getProduto());
@@ -130,6 +131,9 @@ public class RelatorioVendasService {
      * cruza a faixa fica na classe de cima, como é o costume da curva ABC.
      */
     public static Abc classificarAbc(LocalDate inicio, LocalDate fim, String criterio, List<VendidoNoPeriodo> vendidos) {
+        if (inicio == null || fim == null || fim.isBefore(inicio)) {
+            throw new IllegalArgumentException("Periodo invalido para a curva ABC.");
+        }
         boolean porMargem = "margem".equalsIgnoreCase(criterio);
         int dias = (int) java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) + 1;
         List<VendidoNoPeriodo> ordenados = new ArrayList<>(vendidos);
@@ -137,8 +141,8 @@ public class RelatorioVendasService {
             BigDecimal base = porMargem ? v.valor().subtract(v.custo()) : v.valor();
             return base.max(BigDecimal.ZERO);
         };
-        ordenados.sort(Comparator.comparing(peso).reversed().thenComparing(VendidoNoPeriodo::nome));
-        BigDecimal total = ordenados.stream().map(peso).reduce(BigDecimal.ZERO, BigDecimal::add);
+        ordenados.sort(Comparator.comparing(peso).reversed().thenComparing(vendido -> vendido.nome()));
+        BigDecimal total = ordenados.stream().map(peso).reduce(BigDecimal.ZERO, (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
         BigDecimal cem = BigDecimal.valueOf(100);
         BigDecimal acumuladoAntes = BigDecimal.ZERO;
         List<LinhaAbc> linhas = new ArrayList<>();
@@ -153,15 +157,21 @@ public class RelatorioVendasService {
             BigDecimal acumulado = acumuladoAntes.add(percentual);
             acumuladoAntes = acumulado;
             BigDecimal cobertura = null;
-            if (v.consumoBase() != null && v.estoqueAtual() != null && v.consumoBase().signum() > 0) {
-                BigDecimal porDia = v.consumoBase().divide(BigDecimal.valueOf(dias), 6, RoundingMode.HALF_UP);
-                cobertura = BigDecimal.valueOf(Math.max(0, v.estoqueAtual())).divide(porDia, 0, RoundingMode.DOWN);
+            BigDecimal consumoBase = v.consumoBase();
+            Integer estoqueAtual = v.estoqueAtual();
+            if (consumoBase != null && estoqueAtual != null && consumoBase.signum() > 0) {
+                BigDecimal porDia = consumoBase.divide(BigDecimal.valueOf(dias), 6, RoundingMode.HALF_UP);
+                BigDecimal estoque = BigDecimal.valueOf(Math.max(0, estoqueAtual));
+                // Evita divisao por zero quando um consumo positivo arredonda para zero.
+                cobertura = porDia.signum() == 0
+                        ? estoque.multiply(BigDecimal.valueOf(dias)).divide(consumoBase, 0, RoundingMode.DOWN)
+                        : estoque.divide(porDia, 0, RoundingMode.DOWN);
             }
             linhas.add(new LinhaAbc(v.nome(), classe, dinheiro(v.valor()), dinheiro(v.valor().subtract(v.custo())),
                     percentual.setScale(1, RoundingMode.HALF_UP), acumulado.min(cem).setScale(1, RoundingMode.HALF_UP),
-                    v.consumoBase() == null ? null : v.consumoBase().stripTrailingZeros(), v.estoqueAtual(), cobertura));
-            porClasse.merge(classe, 1, Integer::sum);
-            percentualPorClasse.merge(classe, percentual, BigDecimal::add);
+                    consumoBase == null ? null : consumoBase.stripTrailingZeros(), estoqueAtual, cobertura));
+            porClasse.merge(classe, 1, (totalClasse, adicional) -> totalClasse + adicional);
+            percentualPorClasse.merge(classe, percentual, (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
         }
         percentualPorClasse.replaceAll((k, p) -> p.setScale(1, RoundingMode.HALF_UP));
         return new Abc(inicio, fim, porMargem ? "margem" : "valor", dias, dinheiro(total), porClasse, percentualPorClasse, linhas);
@@ -187,7 +197,8 @@ public class RelatorioVendasService {
         List<MovimentacaoCaixa> todas = new ArrayList<>();
         for (Caixa caixa : caixaRepository.listarAtivosNoPeriodo(inicio, fim)) {
             for (MovimentacaoCaixa m : caixa.getMovimentacoes()) {
-                if (m.getDataHora() != null && !m.getDataHora().isBefore(inicio) && m.getDataHora().isBefore(fim)) {
+                LocalDateTime dataHora = m.getDataHora();
+                if (dataHora != null && !dataHora.isBefore(inicio) && dataHora.isBefore(fim)) {
                     todas.add(m);
                 }
             }
@@ -200,11 +211,13 @@ public class RelatorioVendasService {
         for (Venda venda : vendaRepository.listarFinalizadasEntre(inicio, fim)) {
             for (VendaItem item : itemRepository.listarPorVenda(venda.getId())) {
                 if (item.getStatus() != StatusVendaItem.ATIVO) continue;
+                String nomeVariacao = item.getNomeVariacaoSnapshot();
+                BigDecimal custo = item.getCustoTotalEstimado();
                 String nome = item.getNomeItemSnapshot()
-                        + (item.getNomeVariacaoSnapshot() == null || item.getNomeVariacaoSnapshot().isBlank() ? "" : " " + item.getNomeVariacaoSnapshot());
+                        + (nomeVariacao == null || nomeVariacao.isBlank() ? "" : " " + nomeVariacao);
                 itens.add(new ItemVendido(nome, item.getQuantidade(), item.getSubtotal(),
                         item.getDescontoUnitario().multiply(item.getQuantidade()),
-                        item.getCustoTotalEstimado() == null ? BigDecimal.ZERO : item.getCustoTotalEstimado()));
+                        custo == null ? BigDecimal.ZERO : custo));
             }
         }
         return itens;
@@ -219,7 +232,7 @@ public class RelatorioVendasService {
             if (m.getTipo() != TipoMovimentacaoCaixa.VENDA) continue;
             int hora = m.getDataHora().getHour();
             vendasPorHora.computeIfAbsent(hora, h -> new HashSet<>()).add(chaveVenda(m));
-            valorPorHora.merge(hora, m.getValor(), BigDecimal::add);
+            valorPorHora.merge(hora, m.getValor(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
         }
         List<Hora> porHora = new ArrayList<>();
         vendasPorHora.forEach((hora, vendas) -> porHora.add(new Hora(hora, vendas.size(), dinheiro(valorPorHora.get(hora)))));
@@ -234,9 +247,9 @@ public class RelatorioVendasService {
             LocalDate dia = m.getDataHora().toLocalDate();
             if (m.getTipo() == TipoMovimentacaoCaixa.VENDA) {
                 vendasPorDia.computeIfAbsent(dia, d -> new HashSet<>()).add(chaveVenda(m));
-                liquidoPorDia.merge(dia, m.getValor(), BigDecimal::add);
+                liquidoPorDia.merge(dia, m.getValor(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
             } else if (m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA) {
-                liquidoPorDia.merge(dia, m.getValor().negate(), BigDecimal::add);
+                liquidoPorDia.merge(dia, m.getValor().negate(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
             }
         }
         List<DiaDoMes> dias = new ArrayList<>();
@@ -258,11 +271,11 @@ public class RelatorioVendasService {
                 case VENDA -> {
                     vendas.add(chaveVenda(m));
                     bruto = bruto.add(m.getValor());
-                    vendidoPorVenda.merge(chaveVenda(m), m.getValor(), BigDecimal::add);
+                    vendidoPorVenda.merge(chaveVenda(m), m.getValor(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
                 }
                 case ESTORNO_VENDA -> {
                     cancelado = cancelado.add(m.getValor());
-                    estornadoPorVenda.merge(chaveVenda(m), m.getValor(), BigDecimal::add);
+                    estornadoPorVenda.merge(chaveVenda(m), m.getValor(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
                 }
                 case SANGRIA -> sangrias = sangrias.add(m.getValor());
                 case SUPRIMENTO -> suprimentos = suprimentos.add(m.getValor());
@@ -277,9 +290,9 @@ public class RelatorioVendasService {
         BigDecimal liquido = bruto.subtract(cancelado);
         int validas = vendas.size() - canceladasInteiras;
         BigDecimal ticket = validas > 0 ? liquido.divide(BigDecimal.valueOf(validas), ESCALA, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal descontos = itens.stream().map(ItemVendido::desconto).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal custo = itens.stream().map(ItemVendido::custo).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal vendidoItens = itens.stream().map(ItemVendido::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal descontos = itens.stream().map(item -> item.desconto()).reduce(BigDecimal.ZERO, (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
+        BigDecimal custo = itens.stream().map(item -> item.custo()).reduce(BigDecimal.ZERO, (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
+        BigDecimal vendidoItens = itens.stream().map(item -> item.valor()).reduce(BigDecimal.ZERO, (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
         return new Resumo(vendas.size(), estornadoPorVenda.size(), dinheiro(bruto), dinheiro(cancelado), dinheiro(liquido),
                 dinheiro(ticket), dinheiro(descontos), dinheiro(custo), dinheiro(vendidoItens.subtract(custo)),
                 dinheiro(sangrias), dinheiro(suprimentos), comandasPagas);
@@ -288,16 +301,17 @@ public class RelatorioVendasService {
     private static List<Forma> porForma(List<MovimentacaoCaixa> movs) {
         Map<FormaPagamento, BigDecimal> valores = new EnumMap<>(FormaPagamento.class);
         for (MovimentacaoCaixa m : movs) {
-            if (m.getFormaPagamento() == null) continue;
+            FormaPagamento forma = m.getFormaPagamento();
+            if (forma == null) continue;
             if (m.getTipo() == TipoMovimentacaoCaixa.VENDA) {
-                valores.merge(m.getFormaPagamento(), m.getValor(), BigDecimal::add);
+                valores.merge(forma, m.getValor(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
             } else if (m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA) {
-                valores.merge(m.getFormaPagamento(), m.getValor().negate(), BigDecimal::add);
+                valores.merge(forma, m.getValor().negate(), (valorAcumulado, adicional) -> valorAcumulado.add(adicional));
             }
         }
         List<Forma> formas = new ArrayList<>();
         valores.forEach((forma, valor) -> formas.add(new Forma(forma.name(), forma.getLabel(), dinheiro(valor))));
-        formas.sort(Comparator.comparing(Forma::valor).reversed());
+        formas.sort(Comparator.comparing((Forma forma) -> forma.valor()).reversed());
         return formas;
     }
 
@@ -312,12 +326,13 @@ public class RelatorioVendasService {
         }
         List<Produto> produtos = new ArrayList<>();
         porNome.forEach((nome, s) -> produtos.add(new Produto(nome, s[0].stripTrailingZeros(), dinheiro(s[1]), dinheiro(s[2]))));
-        produtos.sort(Comparator.comparing(Produto::valor).reversed().thenComparing(Produto::nome));
+        produtos.sort(Comparator.comparing((Produto produto) -> produto.valor()).reversed().thenComparing(produto -> produto.nome()));
         return produtos;
     }
 
     private static Long chaveVenda(MovimentacaoCaixa m) {
-        return m.getVendaId() != null ? m.getVendaId() : -m.getId() - 1;
+        Long vendaId = m.getVendaId();
+        return vendaId != null ? vendaId : -m.getId() - 1;
     }
 
     private static BigDecimal dinheiro(BigDecimal valor) {

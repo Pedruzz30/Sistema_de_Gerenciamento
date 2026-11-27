@@ -19,7 +19,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ResolucaoComposicaoVariacaoService {
@@ -31,11 +31,14 @@ public class ResolucaoComposicaoVariacaoService {
 
     public ResolucaoComposicaoVariacaoService(FichaTecnicaRepository fichaTecnicaRepository,
                                               FichaTecnicaIngredienteRepository ingredienteRepository) {
-        this.fichaTecnicaRepository = fichaTecnicaRepository;
-        this.ingredienteRepository = ingredienteRepository;
+        this.fichaTecnicaRepository = Objects.requireNonNull(fichaTecnicaRepository, "fichaTecnicaRepository");
+        this.ingredienteRepository = Objects.requireNonNull(ingredienteRepository, "ingredienteRepository");
     }
 
     public ResolucaoComposicao resolverObrigatoria(VariacaoItemCardapio variacao) {
+        if (variacao == null) {
+            throw new ErroNegocioException("CONFIGURACAO_INCOMPLETA", "Composicao da variacao nao encontrada.");
+        }
         ResolucaoComposicao resolucao = resolverVariacoes(List.of(variacao)).get(variacao.getId());
         if (resolucao == null || !resolucao.completa()) {
             throw new ErroNegocioException(
@@ -57,25 +60,25 @@ public class ResolucaoComposicaoVariacaoService {
         Map<Long, ResolucaoComposicao> resultado = new LinkedHashMap<>();
         List<Long> preparadasIds = lista.stream()
                 .filter(v -> v.getTipoComposicao() == TipoComposicaoVariacao.PREPARADO)
-                .map(VariacaoItemCardapio::getId)
+                .map(v -> v.getId())
                 .toList();
 
         Map<Long, FichaTecnica> fichaPorVariacao = fichaTecnicaRepository.listarAtivasPorVariacoes(preparadasIds).stream()
                 .collect(Collectors.toMap(
                         ficha -> ficha.getVariacaoItemCardapio().getId(),
-                        Function.identity(),
+                        ficha -> ficha,
                         (a, b) -> a,
-                        LinkedHashMap::new
+                        () -> new LinkedHashMap<>()
                 ));
         List<Long> versaoIds = fichaPorVariacao.values().stream()
-                .map(FichaTecnica::getVersaoPublicadaAtual)
+                .map(ficha -> ficha.getVersaoPublicadaAtual())
                 .filter(v -> v != null && v.getStatus() == StatusFichaTecnicaVersao.PUBLICADA)
-                .map(FichaTecnicaVersao::getId)
+                .map(v -> v.getId())
                 .toList();
         Map<Long, List<FichaTecnicaIngrediente>> ingredientesPorVersao = ingredienteRepository.listarPorVersoes(versaoIds).stream()
                 .collect(Collectors.groupingBy(
                         ingrediente -> ingrediente.getFichaTecnicaVersao().getId(),
-                        LinkedHashMap::new,
+                        () -> new LinkedHashMap<>(),
                         Collectors.toList()
                 ));
 
@@ -101,9 +104,14 @@ public class ResolucaoComposicaoVariacaoService {
                     "Produto direto nao possui unidade-base configurada.");
         }
         BigDecimal quantidade = variacao.getQuantidadeProdutoDiretoBase();
-        if (quantidade == null || quantidade.compareTo(BigDecimal.ZERO) <= 0) {
+        if (quantidade == null || quantidade.signum() <= 0) {
             return incompleta(variacao, "CONFIGURACAO_INCOMPLETA",
                     "Quantidade consumida pela variacao direta deve ser maior que zero.");
+        }
+        BigDecimal quantidadeNormalizada = quantidade.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+        if (quantidadeNormalizada.signum() <= 0) {
+            return incompleta(variacao, "CONFIGURACAO_INCOMPLETA",
+                    "Quantidade consumida pela variacao direta e inferior a precisao suportada.");
         }
         return completa(
                 variacao,
@@ -112,7 +120,7 @@ public class ResolucaoComposicaoVariacaoService {
                 List.of(new ComponenteComposicao(
                         produto,
                         unidadeBase,
-                        quantidade.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP),
+                        quantidadeNormalizada,
                         OrigemComposicaoVenda.PRODUTO_DIRETO,
                         null
                 ))
@@ -136,7 +144,8 @@ public class ResolucaoComposicaoVariacaoService {
             return incompleta(variacao, "FICHA_SEM_VERSAO_PUBLICADA",
                     "Versao vigente da ficha tecnica nao esta publicada.");
         }
-        if (versao.getRendimentoQuantidade() == null || versao.getRendimentoQuantidade().compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal rendimento = versao.getRendimentoQuantidade();
+        if (rendimento == null || rendimento.signum() <= 0) {
             return incompleta(variacao, "CONFIGURACAO_INCOMPLETA",
                     "Rendimento da ficha tecnica e invalido.");
         }
@@ -149,15 +158,24 @@ public class ResolucaoComposicaoVariacaoService {
         List<ComponenteComposicao> componentes = new ArrayList<>();
         for (FichaTecnicaIngrediente ingrediente : ingredientes) {
             Produto produto = ingrediente.getProduto();
-            if (produto == null || produto.getUnidadeBase() == null) {
+            UnidadeMedida unidadeBase = produto == null ? null : produto.getUnidadeBase();
+            if (produto == null || unidadeBase == null) {
                 return incompleta(variacao, "CONFIGURACAO_INCOMPLETA",
                         "Ingrediente da ficha nao possui produto ou unidade-base configurada.");
             }
-            BigDecimal porUnidade = ingrediente.getQuantidadeBrutaBase()
-                    .divide(versao.getRendimentoQuantidade(), ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+            BigDecimal quantidadeBruta = ingrediente.getQuantidadeBrutaBase();
+            if (quantidadeBruta == null || quantidadeBruta.signum() <= 0) {
+                return incompleta(variacao, "CONFIGURACAO_INCOMPLETA",
+                        "Quantidade bruta do ingrediente deve ser maior que zero.");
+            }
+            BigDecimal porUnidade = quantidadeBruta.divide(rendimento, ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+            if (porUnidade.signum() <= 0) {
+                return incompleta(variacao, "CONFIGURACAO_INCOMPLETA",
+                        "Quantidade do ingrediente por unidade e inferior a precisao suportada.");
+            }
             componentes.add(new ComponenteComposicao(
                     produto,
-                    produto.getUnidadeBase(),
+                    unidadeBase,
                     porUnidade,
                     OrigemComposicaoVenda.FICHA_TECNICA,
                     ingrediente

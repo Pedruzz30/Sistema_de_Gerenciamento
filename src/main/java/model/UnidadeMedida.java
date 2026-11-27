@@ -49,48 +49,73 @@ public class UnidadeMedida {
     }
 
     public UnidadeMedida(long id,
-                         String codigo,
-                         String nome,
-                         DimensaoUnidade dimensao,
-                         BigDecimal fatorBase,
-                         Boolean ativa) {
-        validar(id >= 0, "ID da unidade nao pode ser negativo.");
-        validar(codigo != null && !codigo.isBlank(), "Codigo da unidade e obrigatorio.");
-        validar(nome != null && !nome.isBlank(), "Nome da unidade e obrigatorio.");
-        validar(dimensao != null, "Dimensao da unidade e obrigatoria.");
-        validar(fatorBase != null && fatorBase.compareTo(BigDecimal.ZERO) > 0,
+                     String codigo,
+                     String nome,
+                     DimensaoUnidade dimensao,
+                     BigDecimal fatorBase,
+                     Boolean ativa) {
+
+    validar(id >= 0, "ID da unidade nao pode ser negativo.");
+
+    if (codigo == null || codigo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Codigo da unidade e obrigatorio.");
+    }
+
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException(
+                "Nome da unidade e obrigatorio.");
+    }
+
+    validar(dimensao != null, "Dimensao da unidade e obrigatoria.");
+
+    if (fatorBase == null || fatorBase.signum() <= 0) {
+        throw new IllegalArgumentException(
                 "Fator de conversao para base deve ser maior que zero.");
-
-        this.id = id;
-        this.codigo = codigo.trim().toUpperCase();
-        this.nome = nome.trim();
-        this.dimensao = dimensao;
-        this.fatorBase = fatorBase.setScale(ESCALA_FATOR, RoundingMode.HALF_UP);
-        this.ativa = ativa == null ? Boolean.TRUE : ativa;
     }
 
-    public UnidadeMedida comId(long novoId) {
-        validar(novoId > 0, "Novo ID da unidade deve ser maior que zero.");
-        return new UnidadeMedida(novoId, codigo, nome, dimensao, fatorBase, ativa);
-    }
+    this.id = id;
+    this.codigo = codigo.trim().toUpperCase();
+    this.nome = nome.trim();
+    this.dimensao = dimensao;
+    this.fatorBase = fatorBase.setScale(
+            ESCALA_FATOR, RoundingMode.HALF_UP);
+    this.ativa = ativa == null ? Boolean.TRUE : ativa;
+}
 
-    public BigDecimal converterParaBase(BigDecimal quantidade) {
-        validar(quantidade != null && quantidade.compareTo(BigDecimal.ZERO) >= 0,
+public UnidadeMedida comId(long novoId) {
+    validar(novoId > 0,
+            "Novo ID da unidade deve ser maior que zero.");
+
+    return new UnidadeMedida(
+            novoId, codigo, nome, dimensao, fatorBase, ativa);
+}
+
+public BigDecimal converterParaBase(BigDecimal quantidade) {
+    if (quantidade == null || quantidade.signum() < 0) {
+        throw new IllegalArgumentException(
                 "Quantidade para conversao deve ser nao negativa.");
-        return quantidade.multiply(fatorBase).setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
     }
 
-    public void exigirCompatibilidade(UnidadeMedida destino) {
-        if (destino == null) {
-            throw new IllegalArgumentException("Unidade destino e obrigatoria.");
-        }
-        DimensaoUnidade dimensaoDestino = destino.getDimensao();
-        if (dimensao != dimensaoDestino) {
-            throw new IllegalArgumentException(
-                    "Unidades incompatíveis: " + codigo + " (" + dimensao + ") para " +
-                        destino.getCodigo() + " (" + dimensaoDestino + ").");
-        }
+    return quantidade.multiply(fatorBase)
+            .setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+}
+
+public void exigirCompatibilidade(UnidadeMedida destino) {
+    if (destino == null) {
+        throw new IllegalArgumentException(
+                "Unidade destino e obrigatoria.");
     }
+
+    DimensaoUnidade dimensaoDestino = destino.getDimensao();
+
+    if (dimensao != dimensaoDestino) {
+        throw new IllegalArgumentException(
+                "Unidades incompatíveis: "
+                        + codigo + " (" + dimensao + ") para "
+                        + destino.getCodigo() + " (" + dimensaoDestino + ").");
+    }
+}
 
     public long getId() { return id; }
     public String getCodigo() { return codigo; }

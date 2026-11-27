@@ -16,9 +16,16 @@ public class ConfiguracaoComposicaoMultiplaParteRepositoryAdapter implements Con
     }
 
     @Override
-    public ConfiguracaoComposicaoMultiplaParte salvar(ConfiguracaoComposicaoMultiplaParte parte) {
-        return delegate.save(parte);
+public ConfiguracaoComposicaoMultiplaParte salvar(
+        ConfiguracaoComposicaoMultiplaParte parte) {
+
+    if (parte == null) {
+        throw new IllegalArgumentException(
+                "Parte da configuracao de composicao multipla e obrigatoria.");
     }
+
+    return delegate.save(parte);
+}
 
     @Override
     public Optional<ConfiguracaoComposicaoMultiplaParte> buscarPorConfiguracaoEVariacaoParte(long configuracaoId, long variacaoParteId) {
@@ -36,7 +43,12 @@ public class ConfiguracaoComposicaoMultiplaParteRepositoryAdapter implements Con
     }
 
     @Override
-    public void remover(ConfiguracaoComposicaoMultiplaParte parte) {
-        delegate.delete(parte);
+public void remover(ConfiguracaoComposicaoMultiplaParte parte) {
+    if (parte == null) {
+        throw new IllegalArgumentException(
+                "Parte da configuracao de composicao multipla e obrigatoria.");
     }
+
+    delegate.delete(parte);
+}
 }

@@ -59,33 +59,58 @@ public class VendaItemModificadorImpacto {
     }
 
     public VendaItemModificadorImpacto(long id,
-                                       VendaItemModificador vendaItemModificador,
-                                       VendaItemConsumo vendaItemConsumo,
-                                       Produto produto,
-                                       TipoEfeitoModificador tipoEfeito,
-                                       BigDecimal quantidadeDeltaBase,
-                                       BigDecimal custoUnitarioSnapshot,
-                                       BigDecimal valorImpactoSnapshot) {
-        validar(id >= 0, "ID do impacto nao pode ser negativo.");
-        validar(vendaItemModificador != null, "Modificador da venda e obrigatorio.");
-        validar(produto != null, "Produto do impacto e obrigatorio.");
-        validar(tipoEfeito != null, "Tipo do impacto e obrigatorio.");
-        validar(quantidadeDeltaBase != null && quantidadeDeltaBase.compareTo(BigDecimal.ZERO) != 0,
+                                   VendaItemModificador vendaItemModificador,
+                                   VendaItemConsumo vendaItemConsumo,
+                                   Produto produto,
+                                   TipoEfeitoModificador tipoEfeito,
+                                   BigDecimal quantidadeDeltaBase,
+                                   BigDecimal custoUnitarioSnapshot,
+                                   BigDecimal valorImpactoSnapshot) {
+
+    validar(id >= 0,
+            "ID do impacto nao pode ser negativo.");
+
+    validar(vendaItemModificador != null,
+            "Modificador da venda e obrigatorio.");
+
+    validar(produto != null,
+            "Produto do impacto e obrigatorio.");
+
+    validar(tipoEfeito != null,
+            "Tipo do impacto e obrigatorio.");
+
+    if (quantidadeDeltaBase == null || quantidadeDeltaBase.signum() == 0) {
+        throw new IllegalArgumentException(
                 "Quantidade delta deve ser diferente de zero.");
-        validar(custoUnitarioSnapshot != null && custoUnitarioSnapshot.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo unitario do impacto deve ser nao negativo.");
-        validar(valorImpactoSnapshot != null,
-                "Valor do impacto e obrigatorio.");
-        this.id = id;
-        this.vendaItemModificador = vendaItemModificador;
-        this.vendaItemConsumo = vendaItemConsumo;
-        this.produto = produto;
-        this.tipoEfeito = tipoEfeito;
-        this.quantidadeDeltaBase = quantidadeDeltaBase.setScale(6, RoundingMode.HALF_UP);
-        this.custoUnitarioSnapshot = custoUnitarioSnapshot.setScale(8, RoundingMode.HALF_UP);
-        this.valorImpactoSnapshot = valorImpactoSnapshot.setScale(4, RoundingMode.HALF_UP);
-        this.criadoEm = LocalDateTime.now();
     }
+
+    if (custoUnitarioSnapshot == null || custoUnitarioSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Custo unitario do impacto deve ser nao negativo.");
+    }
+
+    if (valorImpactoSnapshot == null) {
+        throw new IllegalArgumentException(
+                "Valor do impacto e obrigatorio.");
+    }
+
+    this.id = id;
+    this.vendaItemModificador = vendaItemModificador;
+    this.vendaItemConsumo = vendaItemConsumo;
+    this.produto = produto;
+    this.tipoEfeito = tipoEfeito;
+
+    this.quantidadeDeltaBase = quantidadeDeltaBase
+            .setScale(6, RoundingMode.HALF_UP);
+
+    this.custoUnitarioSnapshot = custoUnitarioSnapshot
+            .setScale(8, RoundingMode.HALF_UP);
+
+    this.valorImpactoSnapshot = valorImpactoSnapshot
+            .setScale(4, RoundingMode.HALF_UP);
+
+    this.criadoEm = LocalDateTime.now();
+}
 
     @PrePersist
     void prePersist() {

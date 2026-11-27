@@ -4,19 +4,29 @@ import model.OpcaoModificador;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class OpcaoModificadorRepositoryAdapter implements OpcaoModificadorRepository {
+public class OpcaoModificadorRepositoryAdapter
+        implements OpcaoModificadorRepository {
 
     private final JpaOpcaoModificadorRepository delegate;
 
-    public OpcaoModificadorRepositoryAdapter(JpaOpcaoModificadorRepository delegate) {
-        this.delegate = delegate;
+    public OpcaoModificadorRepositoryAdapter(
+            JpaOpcaoModificadorRepository delegate) {
+
+        this.delegate = Objects.requireNonNull(
+                delegate, "Repositorio JPA de opcao modificadora e obrigatorio.");
     }
 
     @Override
     public OpcaoModificador salvar(OpcaoModificador opcao) {
+        if (opcao == null) {
+            throw new IllegalArgumentException(
+                    "Opcao do modificador e obrigatoria.");
+        }
+
         return delegate.save(opcao);
     }
 
@@ -35,6 +45,7 @@ public class OpcaoModificadorRepositoryAdapter implements OpcaoModificadorReposi
         if (grupoIds == null || grupoIds.isEmpty()) {
             return List.of();
         }
+
         return delegate.findByGrupos(grupoIds);
     }
 
@@ -43,11 +54,15 @@ public class OpcaoModificadorRepositoryAdapter implements OpcaoModificadorReposi
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
+
         return delegate.findByIds(ids);
     }
 
     @Override
-    public boolean existeCodigoNoGrupo(long grupoId, String codigo, Long ignorarId) {
-        return delegate.existsCodigoNoGrupo(grupoId, codigo, ignorarId);
+    public boolean existeCodigoNoGrupo(
+            long grupoId, String codigo, Long ignorarId) {
+
+        return delegate.existsCodigoNoGrupo(
+                grupoId, codigo, ignorarId);
     }
 }
