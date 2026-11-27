@@ -8,23 +8,45 @@ import repository.UnidadeMedidaRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 public class UnidadeMedidaService {
 
     private static final int ESCALA_QUANTIDADE = 6;
+    private static final BigDecimal MIL = BigDecimal.valueOf(1000);
+
     private final UnidadeMedidaRepository unidadeMedidaRepository;
 
-    public UnidadeMedidaService(UnidadeMedidaRepository unidadeMedidaRepository) {
-        this.unidadeMedidaRepository = unidadeMedidaRepository;
+    public UnidadeMedidaService(
+            UnidadeMedidaRepository unidadeMedidaRepository) {
+
+        this.unidadeMedidaRepository = Objects.requireNonNull(
+                unidadeMedidaRepository,
+                "unidadeMedidaRepository");
     }
 
     @Transactional
     public void garantirUnidadesPadrao() {
-        criarPadraoSeAusente("GRAMA", "Grama", DimensaoUnidade.MASSA, new BigDecimal("1"));
-        criarPadraoSeAusente("QUILOGRAMA", "Quilograma", DimensaoUnidade.MASSA, new BigDecimal("1000"));
-        criarPadraoSeAusente("MILILITRO", "Mililitro", DimensaoUnidade.VOLUME, new BigDecimal("1"));
-        criarPadraoSeAusente("LITRO", "Litro", DimensaoUnidade.VOLUME, new BigDecimal("1000"));
-        criarPadraoSeAusente("UNIDADE", "Unidade", DimensaoUnidade.CONTAGEM, new BigDecimal("1"));
+        criarPadraoSeAusente(
+                "GRAMA", "Grama",
+                DimensaoUnidade.MASSA, BigDecimal.ONE);
+
+        criarPadraoSeAusente(
+                "QUILOGRAMA", "Quilograma",
+                DimensaoUnidade.MASSA, MIL);
+
+        criarPadraoSeAusente(
+                "MILILITRO", "Mililitro",
+                DimensaoUnidade.VOLUME, BigDecimal.ONE);
+
+        criarPadraoSeAusente(
+                "LITRO", "Litro",
+                DimensaoUnidade.VOLUME, MIL);
+
+        criarPadraoSeAusente(
+                "UNIDADE", "Unidade",
+                DimensaoUnidade.CONTAGEM, BigDecimal.ONE);
     }
 
     @Transactional
@@ -34,69 +56,146 @@ public class UnidadeMedidaService {
     }
 
     @Transactional
-    public UnidadeMedida criar(String codigo,
-                               String nome,
-                               DimensaoUnidade dimensao,
-                               BigDecimal fatorBase,
-                               Boolean ativa) {
+    public UnidadeMedida criar(
+            String codigo,
+            String nome,
+            DimensaoUnidade dimensao,
+            BigDecimal fatorBase,
+            Boolean ativa) {
+
         garantirUnidadesPadrao();
+
         String codigoNormalizado = normalizarCodigo(codigo);
-        unidadeMedidaRepository.buscarPorCodigo(codigoNormalizado).ifPresent(unidade -> {
-            throw new IllegalArgumentException("Ja existe unidade de medida com este codigo.");
-        });
+
+        if (unidadeMedidaRepository
+                .buscarPorCodigo(codigoNormalizado)
+                .isPresent()) {
+
+            throw new IllegalArgumentException(
+                    "Ja existe unidade de medida com este codigo.");
+        }
+
         return unidadeMedidaRepository.salvar(
-                new UnidadeMedida(0, codigoNormalizado, nome, dimensao, fatorBase, ativa)
+                new UnidadeMedida(
+                        0,
+                        codigoNormalizado,
+                        nome,
+                        dimensao,
+                        fatorBase,
+                        ativa
+                )
         );
     }
 
     @Transactional
     public UnidadeMedida buscarPorCodigoObrigatorio(String codigo) {
         garantirUnidadesPadrao();
-        return unidadeMedidaRepository.buscarPorCodigo(normalizarCodigo(codigo))
-                .orElseThrow(() -> new IllegalArgumentException("Unidade de medida nao encontrada: " + codigo));
+
+        String codigoNormalizado = normalizarCodigo(codigo);
+
+        return unidadeMedidaRepository
+                .buscarPorCodigo(codigoNormalizado)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unidade de medida nao encontrada: " + codigo));
     }
 
     @Transactional
     public UnidadeMedida buscarPorIdObrigatorio(long id) {
         garantirUnidadesPadrao();
+
         return unidadeMedidaRepository.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException("Unidade de medida nao encontrada: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unidade de medida nao encontrada: " + id));
     }
 
-    public BigDecimal converter(BigDecimal quantidade, UnidadeMedida origem, UnidadeMedida destino) {
-        validarQuantidadeNaoNegativa(quantidade);
-        origem.exigirCompatibilidade(destino);
-        BigDecimal quantidadeNaBaseDaDimensao = origem.converterParaBase(quantidade);
-        return quantidadeNaBaseDaDimensao
-                .divide(destino.getFatorBase(), ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-    }
+    public BigDecimal converter(
+            BigDecimal quantidade,
+            UnidadeMedida origem,
+            UnidadeMedida destino) {
 
-    public BigDecimal converterParaUnidadeBaseProduto(BigDecimal quantidade,
-                                                      UnidadeMedida unidadeOrigem,
-                                                      UnidadeMedida unidadeBaseProduto) {
-        if (unidadeBaseProduto == null) {
-            throw new IllegalArgumentException("Produto precisa de unidade-base para compras decimais.");
+        if (quantidade == null || quantidade.signum() < 0) {
+            throw new IllegalArgumentException(
+                    "Quantidade para conversao deve ser nao negativa.");
         }
-        return converter(quantidade, unidadeOrigem, unidadeBaseProduto);
+
+        if (origem == null) {
+            throw new IllegalArgumentException(
+                    "Unidade de origem e obrigatoria.");
+        }
+
+        if (destino == null) {
+            throw new IllegalArgumentException(
+                    "Unidade de destino e obrigatoria.");
+        }
+
+        origem.exigirCompatibilidade(destino);
+
+        BigDecimal fatorOrigem = origem.getFatorBase();
+        BigDecimal fatorDestino = destino.getFatorBase();
+
+        if (fatorOrigem == null || fatorOrigem.signum() <= 0) {
+            throw new IllegalStateException(
+                    "Fator-base invalido na unidade de origem.");
+        }
+
+        if (fatorDestino == null || fatorDestino.signum() <= 0) {
+            throw new IllegalStateException(
+                    "Fator-base invalido na unidade de destino.");
+        }
+
+        BigDecimal quantidadeNaBaseDaDimensao =
+                origem.converterParaBase(quantidade);
+
+        return quantidadeNaBaseDaDimensao.divide(
+                fatorDestino,
+                ESCALA_QUANTIDADE,
+                RoundingMode.HALF_UP);
     }
 
-    private void criarPadraoSeAusente(String codigo, String nome, DimensaoUnidade dimensao, BigDecimal fatorBase) {
+    public BigDecimal converterParaUnidadeBaseProduto(
+            BigDecimal quantidade,
+            UnidadeMedida unidadeOrigem,
+            UnidadeMedida unidadeBaseProduto) {
+
+        if (unidadeBaseProduto == null) {
+            throw new IllegalArgumentException(
+                    "Produto precisa de unidade-base para compras decimais.");
+        }
+
+        return converter(
+                quantidade,
+                unidadeOrigem,
+                unidadeBaseProduto);
+    }
+
+    private void criarPadraoSeAusente(
+            String codigo,
+            String nome,
+            DimensaoUnidade dimensao,
+            BigDecimal fatorBase) {
+
         if (unidadeMedidaRepository.buscarPorCodigo(codigo).isPresent()) {
             return;
         }
-        unidadeMedidaRepository.salvar(new UnidadeMedida(0, codigo, nome, dimensao, fatorBase, Boolean.TRUE));
+
+        unidadeMedidaRepository.salvar(
+                new UnidadeMedida(
+                        0,
+                        codigo,
+                        nome,
+                        dimensao,
+                        fatorBase,
+                        Boolean.TRUE
+                )
+        );
     }
 
     private static String normalizarCodigo(String codigo) {
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException("Codigo da unidade e obrigatorio.");
+            throw new IllegalArgumentException(
+                    "Codigo da unidade e obrigatorio.");
         }
-        return codigo.trim().toUpperCase();
-    }
 
-    private static void validarQuantidadeNaoNegativa(BigDecimal quantidade) {
-        if (quantidade == null || quantidade.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Quantidade para conversao deve ser nao negativa.");
-        }
+        return codigo.trim().toUpperCase(Locale.ROOT);
     }
 }

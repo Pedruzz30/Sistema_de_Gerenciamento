@@ -9,20 +9,31 @@ public interface UsuarioRepository {
 
     Usuario salvar(Usuario usuario);
 
-    Optional<Usuario> buscarPorNomeSobrenomeESenha(String nome, String sobrenome, String senha);
+    Optional<Usuario> buscarPorNomeSobrenomeESenha(
+            String nome, String sobrenome, String senha);
 
     Optional<Usuario> buscarPorRu(long ru);
 
-    /** Ativos com este nome e sobrenome. A senha é conferida depois, contra o hash. */
-    default List<Usuario> listarAtivosPorNome(String nome, String sobrenome) {
+    /**
+     * Lista usuarios ativos pelo nome e sobrenome.
+     * A senha e conferida posteriormente contra o hash.
+     */
+    default List<Usuario> listarAtivosPorNome(
+            String nome, String sobrenome) {
+
         if (nome == null || sobrenome == null) {
             return List.of();
         }
+
         String nomeLimpo = nome.trim();
         String sobrenomeLimpo = sobrenome.trim();
+
         return listarTodos().stream()
-                .filter(Usuario::isAtivo)
-                .filter(u -> u.getNome().equalsIgnoreCase(nomeLimpo) && u.getSobrenome().equalsIgnoreCase(sobrenomeLimpo))
+                .filter(usuario -> usuario.isAtivo())
+                .filter(usuario ->
+                        usuario.getNome().equalsIgnoreCase(nomeLimpo)
+                                && usuario.getSobrenome()
+                                        .equalsIgnoreCase(sobrenomeLimpo))
                 .toList();
     }
 

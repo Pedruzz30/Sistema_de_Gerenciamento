@@ -4,23 +4,41 @@ import model.VendaItemModificador;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 
 @Repository
-public class VendaItemModificadorRepositoryAdapter implements VendaItemModificadorRepository {
+public class VendaItemModificadorRepositoryAdapter
+        implements VendaItemModificadorRepository {
 
     private final JpaVendaItemModificadorRepository delegate;
 
-    public VendaItemModificadorRepositoryAdapter(JpaVendaItemModificadorRepository delegate) {
-        this.delegate = delegate;
+    public VendaItemModificadorRepositoryAdapter(
+            JpaVendaItemModificadorRepository delegate) {
+
+        this.delegate = Objects.requireNonNull(
+                delegate,
+                "Repositorio JPA de modificador da venda e obrigatorio.");
     }
 
     @Override
     public VendaItemModificador salvar(VendaItemModificador modificador) {
+        if (modificador == null) {
+            throw new IllegalArgumentException(
+                    "Modificador do item da venda e obrigatorio.");
+        }
+
         return delegate.save(modificador);
     }
 
     @Override
-    public List<VendaItemModificador> salvarTodos(List<VendaItemModificador> modificadores) {
+    public List<VendaItemModificador> salvarTodos(
+            List<VendaItemModificador> modificadores) {
+
+        if (modificadores == null) {
+            throw new IllegalArgumentException(
+                    "Lista de modificadores da venda e obrigatoria.");
+        }
+
         return delegate.saveAll(modificadores);
     }
 
@@ -30,10 +48,13 @@ public class VendaItemModificadorRepositoryAdapter implements VendaItemModificad
     }
 
     @Override
-    public List<VendaItemModificador> listarPorItens(List<Long> vendaItemIds) {
+    public List<VendaItemModificador> listarPorItens(
+            List<Long> vendaItemIds) {
+
         if (vendaItemIds == null || vendaItemIds.isEmpty()) {
             return List.of();
         }
+
         return delegate.findByItens(vendaItemIds);
     }
 

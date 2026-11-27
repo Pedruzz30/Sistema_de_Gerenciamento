@@ -6,6 +6,7 @@ import model.LogAcao;
 import model.RegraHorarioCardapio;
 import model.Usuario;
 import model.VariacaoItemCardapio;
+import org.springframework.transaction.annotation.Transactional;
 import repository.ItemCardapioRepository;
 import repository.LogRepository;
 import repository.RegraHorarioCardapioRepository;
@@ -14,8 +15,12 @@ import repository.VariacaoItemCardapioRepository;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Objects;
 
 public class RegraHorarioCardapioService {
+
+    private static final long NANOS_POR_DIA = 86_400_000_000_000L;
+    private static final long NANOS_POR_SEMANA = 7 * NANOS_POR_DIA;
 
     private final RegraHorarioCardapioRepository regraRepository;
     private final ItemCardapioRepository itemRepository;
@@ -26,12 +31,13 @@ public class RegraHorarioCardapioService {
                                        ItemCardapioRepository itemRepository,
                                        VariacaoItemCardapioRepository variacaoRepository,
                                        LogRepository logRepository) {
-        this.regraRepository = regraRepository;
-        this.itemRepository = itemRepository;
-        this.variacaoRepository = variacaoRepository;
-        this.logRepository = logRepository;
+        this.regraRepository = Objects.requireNonNull(regraRepository, "regraRepository");
+        this.itemRepository = Objects.requireNonNull(itemRepository, "itemRepository");
+        this.variacaoRepository = Objects.requireNonNull(variacaoRepository, "variacaoRepository");
+        this.logRepository = Objects.requireNonNull(logRepository, "logRepository");
     }
 
+    @Transactional(readOnly = true)
     public List<RegraHorarioCardapio> listar(Long filialId) {
         if (filialId == null || filialId <= 0) {
             return regraRepository.listarTodas();
@@ -39,6 +45,7 @@ public class RegraHorarioCardapioService {
         return regraRepository.listarAtivasPorFilial(filialId);
     }
 
+    @Transactional
     public RegraHorarioCardapio criar(Long filialId,
                                       Integer itemId,
                                       Long variacaoId,
@@ -51,21 +58,14 @@ public class RegraHorarioCardapioService {
         Alvo alvo = resolverAlvo(itemId, variacaoId);
         validarSobreposicao(null, filialId, alvo.item(), alvo.variacao(), canal, diaSemana, horaInicio, horaFim);
         RegraHorarioCardapio regra = new RegraHorarioCardapio(
-                0,
-                filialId,
-                alvo.item(),
-                alvo.variacao(),
-                canal,
-                diaSemana,
-                horaInicio,
-                horaFim,
-                ativa
+                0, filialId, alvo.item(), alvo.variacao(), canal, diaSemana, horaInicio, horaFim, ativa
         );
         regra = regraRepository.salvar(regra);
         registrarLog(usuario, "CARDAPIO_REGRA_HORARIO_CRIADA", "Regra de horario criada: id=" + regra.getId());
         return regra;
     }
 
+    @Transactional
     public RegraHorarioCardapio atualizar(long id,
                                           Integer itemId,
                                           Long variacaoId,
@@ -84,6 +84,7 @@ public class RegraHorarioCardapioService {
         return regra;
     }
 
+    @Transactional
     public void remover(long id, Usuario usuario) {
         RegraHorarioCardapio regra = buscarObrigatoria(id);
         regra.inativar();
@@ -108,8 +109,11 @@ public class RegraHorarioCardapioService {
         if (item == null && variacao == null) {
             throw new ErroNegocioException("REGRA_HORARIO_INVALIDA", "Regra de horario exige item ou variacao.");
         }
-        if (item != null && variacao != null && variacao.getItemCardapio().getId() != item.getId()) {
-            throw new ErroNegocioException("REGRA_HORARIO_INVALIDA", "Item e variacao da regra sao inconsistentes.");
+        if (item != null && variacao != null) {
+            ItemCardapio itemDaVariacao = variacao.getItemCardapio();
+            if (itemDaVariacao == null || !Objects.equals(itemDaVariacao.getId(), item.getId())) {
+                throw new ErroNegocioException("REGRA_HORARIO_INVALIDA", "Item e variacao da regra sao inconsistentes.");
+            }
         }
         return new Alvo(item, variacao);
     }
@@ -126,10 +130,11 @@ public class RegraHorarioCardapioService {
             throw new ErroNegocioException("REGRA_HORARIO_INVALIDA", "Regra de horario invalida.");
         }
         boolean sobreposta = regraRepository.listarAtivasPorFilial(filialId).stream()
-                .filter(regra -> ignorarId == null || regra.getId() != ignorarId)
+                .filter(regra -> ignorarId == null || !Objects.equals(regra.getId(), ignorarId))
                 .filter(regra -> mesmoAlvo(regra, item, variacao, canal))
-                .filter(regra -> regra.getDiaSemana() == diaSemana)
-                .anyMatch(regra -> intervalosSobrepostos(regra.getHoraInicio(), regra.getHoraFim(), inicio, fim));
+                .anyMatch(regra -> intervalosSobrepostos(
+                        regra.getDiaSemana(), regra.getHoraInicio(), regra.getHoraFim(),
+                        diaSemana, inicio, fim));
         if (sobreposta) {
             throw new ErroNegocioException("REGRA_HORARIO_SOBREPOSTA", "Ja existe regra de horario sobreposta para o alvo.");
         }
@@ -139,35 +144,47 @@ public class RegraHorarioCardapioService {
                               ItemCardapio item,
                               VariacaoItemCardapio variacao,
                               CanalVenda canal) {
+        ItemCardapio regraItem = regra.getItemCardapio();
+        VariacaoItemCardapio regraVariacao = regra.getVariacaoItemCardapio();
         long itemId = item == null ? 0 : item.getId();
-        long regraItemId = regra.getItemCardapio() == null ? 0 : regra.getItemCardapio().getId();
+        long regraItemId = regraItem == null ? 0 : regraItem.getId();
         long variacaoId = variacao == null ? 0 : variacao.getId();
-        long regraVariacaoId = regra.getVariacaoItemCardapio() == null ? 0 : regra.getVariacaoItemCardapio().getId();
+        long regraVariacaoId = regraVariacao == null ? 0 : regraVariacao.getId();
         return regraItemId == itemId && regraVariacaoId == variacaoId && regra.getCanal() == canal;
     }
 
-    private boolean intervalosSobrepostos(LocalTime aInicio, LocalTime aFim, LocalTime bInicio, LocalTime bFim) {
-        List<IntervaloMinuto> a = quebrarIntervalo(aInicio, aFim);
-        List<IntervaloMinuto> b = quebrarIntervalo(bInicio, bFim);
-        return a.stream().anyMatch(ai -> b.stream().anyMatch(bi -> ai.inicio() < bi.fim() && bi.inicio() < ai.fim()));
+    /** Intervalos semiabertos [inicio, fim), com recorrencia semanal. */
+    static boolean intervalosSobrepostos(DayOfWeek diaA, LocalTime inicioA, LocalTime fimA,
+                                         DayOfWeek diaB, LocalTime inicioB, LocalTime fimB) {
+        IntervaloSemanal a = intervaloSemanal(diaA, inicioA, fimA);
+        IntervaloSemanal b = intervaloSemanal(diaB, inicioB, fimB);
+        return intercepta(a, b, 0)
+                || intercepta(a, b, NANOS_POR_SEMANA)
+                || intercepta(a, b, -NANOS_POR_SEMANA);
     }
 
-    private List<IntervaloMinuto> quebrarIntervalo(LocalTime inicio, LocalTime fim) {
-        int ini = inicio.toSecondOfDay() / 60;
-        int f = fim.toSecondOfDay() / 60;
-        if (ini < f) {
-            return List.of(new IntervaloMinuto(ini, f));
+    private static IntervaloSemanal intervaloSemanal(DayOfWeek dia, LocalTime inicio, LocalTime fim) {
+        if (dia == null || inicio == null || fim == null || inicio.equals(fim)) {
+            throw new ErroNegocioException("REGRA_HORARIO_INVALIDA", "Regra de horario invalida.");
         }
-        return List.of(new IntervaloMinuto(ini, 24 * 60), new IntervaloMinuto(0, f));
+        long deslocamento = (dia.getValue() - 1L) * NANOS_POR_DIA;
+        long inicioAbsoluto = deslocamento + inicio.toNanoOfDay();
+        long fimAbsoluto = deslocamento + fim.toNanoOfDay();
+        if (fimAbsoluto < inicioAbsoluto) {
+            fimAbsoluto += NANOS_POR_DIA;
+        }
+        return new IntervaloSemanal(inicioAbsoluto, fimAbsoluto);
+    }
+
+    private static boolean intercepta(IntervaloSemanal a, IntervaloSemanal b, long deslocamento) {
+        return a.inicio() < b.fim() + deslocamento
+                && b.inicio() + deslocamento < a.fim();
     }
 
     private void registrarLog(Usuario usuario, String acao, String descricao) {
         logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), acao, descricao));
     }
 
-    private record Alvo(ItemCardapio item, VariacaoItemCardapio variacao) {
-    }
-
-    private record IntervaloMinuto(int inicio, int fim) {
-    }
+    private record Alvo(ItemCardapio item, VariacaoItemCardapio variacao) {}
+    private record IntervaloSemanal(long inicio, long fim) {}
 }

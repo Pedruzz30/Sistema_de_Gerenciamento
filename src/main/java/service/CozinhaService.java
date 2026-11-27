@@ -75,21 +75,41 @@ public class CozinhaService {
 
     // ── Configuração ────────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
-    public Config config() {
-        Map<String, String> valores = new HashMap<>();
-        jdbc.query("select chave, valor from configuracoes where chave like 'cozinha.%'",
-                rs -> { valores.put(rs.getString(1), rs.getString(2)); });
-        int colunas = 48;
-        try {
-            colunas = Integer.parseInt(valores.getOrDefault("cozinha.colunas", "48"));
-        } catch (NumberFormatException ignorada) {
-            // Fica o padrão de 80 mm.
-        }
-        String categorias = valores.getOrDefault("cozinha.categorias", "");
-        return new Config(valores.getOrDefault("cozinha.impressora", ""), colunas,
-                categorias.isBlank() ? List.of() : Arrays.stream(categorias.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+   @Transactional(readOnly = true)
+public Config config() {
+    Map<String, String> valores = new HashMap<>();
+
+    jdbc.query(
+            "select chave, valor from configuracoes where chave like 'cozinha.%'",
+            rs -> {
+                valores.put(rs.getString(1), rs.getString(2));
+            }
+    );
+
+    int colunas = 48;
+
+    try {
+        colunas = Integer.parseInt(
+                valores.getOrDefault("cozinha.colunas", "48"));
+    } catch (NumberFormatException ignorada) {
+        // Fica o padrão de 80 mm.
     }
+
+    String categorias = valores.getOrDefault("cozinha.categorias", "");
+
+    List<String> categoriasConfiguradas = categorias.isBlank()
+            ? List.of()
+            : Arrays.stream(categorias.split(","))
+                    .map(categoria -> categoria.trim())
+                    .filter(categoria -> !categoria.isEmpty())
+                    .toList();
+
+    return new Config(
+            valores.getOrDefault("cozinha.impressora", ""),
+            colunas,
+            categoriasConfiguradas
+    );
+}
 
     @Transactional
     public Config salvarConfig(Usuario responsavel, Config nova) {
@@ -126,26 +146,70 @@ public class CozinhaService {
     // ── Mandar para a cozinha ───────────────────────────────────────────
 
     /** Manda o que é da cozinha e ainda não foi mandado. Sem nada novo, não imprime. */
-    @Transactional
-    public Optional<Long> enviar(Usuario usuario, long vendaId) {
-        if (!ligada()) return Optional.empty();
-        Config config = config();
-        List<ItemVenda> itens = itensDaVenda(vendaId).stream()
-                .filter(i -> vaiParaCozinha(i.categoria(), i.tipo(), config.categorias()))
-                .toList();
-        if (itens.isEmpty()) return Optional.empty();
-        Map<Long, List<String>> adicionais = adicionais(itens.stream().map(ItemVenda::id).toList());
-        List<Linha> linhas = new ArrayList<>();
-        for (ItemVenda item : itens) {
-            BigDecimal falta = item.quantidade().subtract(enviado(item.id()));
-            if (falta.signum() <= 0) continue;
-            List<String> detalhes = new ArrayList<>(adicionais.getOrDefault(item.id(), List.of()));
-            if (item.observacao() != null && !item.observacao().isBlank()) detalhes.add("obs: " + item.observacao().trim());
-            linhas.add(new Linha(item.id(), descricao(item.nome(), item.variacao()), falta, detalhes));
-        }
-        if (linhas.isEmpty()) return Optional.empty();
-        return Optional.of(gravarPedido("PEDIDO", vendaId, usuario, linhas, config.colunas()));
+@Transactional
+public Optional<Long> enviar(Usuario usuario, long vendaId) {
+    if (!ligada()) {
+        return Optional.empty();
     }
+
+    Config config = config();
+
+    List<ItemVenda> itens = itensDaVenda(vendaId).stream()
+            .filter(item -> vaiParaCozinha(
+                    item.categoria(),
+                    item.tipo(),
+                    config.categorias()))
+            .toList();
+
+    if (itens.isEmpty()) {
+        return Optional.empty();
+    }
+
+    Map<Long, List<String>> adicionais = adicionais(
+            itens.stream()
+                    .map(item -> item.id())
+                    .toList()
+    );
+
+    List<Linha> linhas = new ArrayList<>();
+
+    for (ItemVenda item : itens) {
+        BigDecimal falta = item.quantidade()
+                .subtract(enviado(item.id()));
+
+        if (falta.signum() <= 0) {
+            continue;
+        }
+
+        List<String> detalhes = new ArrayList<>(
+                adicionais.getOrDefault(item.id(), List.of()));
+
+        String observacao = item.observacao();
+
+        if (observacao != null && !observacao.isBlank()) {
+            detalhes.add("obs: " + observacao.trim());
+        }
+
+        linhas.add(new Linha(
+                item.id(),
+                descricao(item.nome(), item.variacao()),
+                falta,
+                detalhes
+        ));
+    }
+
+    if (linhas.isEmpty()) {
+        return Optional.empty();
+    }
+
+    return Optional.of(gravarPedido(
+            "PEDIDO",
+            vendaId,
+            usuario,
+            linhas,
+            config.colunas()
+    ));
+}
 
     /** Depois de tirar itens da comanda: o que já tinha ido e saiu vira aviso de cancelamento. */
     @Transactional
@@ -209,11 +273,32 @@ public class CozinhaService {
         return id;
     }
 
-    private long inserirPedido(String tipo, Long vendaId, Integer comanda, String texto, Usuario usuario) {
-        return jdbc.queryForObject("insert into pedidos_cozinha (venda_id, comanda_numero, tipo, texto, criado_em, criado_por)"
-                        + " values (?, ?, ?, ?, ?, ?) returning id", Long.class,
-                vendaId, comanda, tipo, texto, Timestamp.valueOf(LocalDateTime.now(clock)), usuario == null ? null : usuario.getRu());
+    private long inserirPedido(String tipo,
+                           Long vendaId,
+                           Integer comanda,
+                           String texto,
+                           Usuario usuario) {
+
+    Long pedidoId = jdbc.queryForObject(
+            "insert into pedidos_cozinha "
+                    + "(venda_id, comanda_numero, tipo, texto, criado_em, criado_por)"
+                    + " values (?, ?, ?, ?, ?, ?) returning id",
+            Long.class,
+            vendaId,
+            comanda,
+            tipo,
+            texto,
+            Timestamp.valueOf(LocalDateTime.now(clock)),
+            usuario == null ? null : usuario.getRu()
+    );
+
+    if (pedidoId == null) {
+        throw new IllegalStateException(
+                "Nao foi possivel obter o ID do pedido da cozinha.");
     }
+
+    return pedidoId;
+}
 
     // ── Imprimir ────────────────────────────────────────────────────────
 

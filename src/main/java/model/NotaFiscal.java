@@ -243,17 +243,21 @@ public class NotaFiscal {
      * @throws IllegalArgumentException se {@code novoItem} for {@code null}
      */
     public void adicionarItem(ItemNotaFiscal novoItem) {
-        exigirStatusEditavel();
-        validar(novoItem != null, "Item não pode ser nulo.");
+    exigirStatusEditavel();
 
-        itens.stream()
-                .filter(existente -> existente.podeSerAgrupadoCom(novoItem))
-                .findFirst()
-                .ifPresentOrElse(
-                        existente -> existente.adicionarQuantidade(novoItem.getQuantidade()),
-                        ()        -> itens.add(novoItem)
-                );
+    if (novoItem == null) {
+        throw new IllegalArgumentException("Item não pode ser nulo.");
     }
+
+    itens.stream()
+            .filter(existente -> existente.podeSerAgrupadoCom(novoItem))
+            .findFirst()
+            .ifPresentOrElse(
+                    existente -> existente.adicionarQuantidade(
+                            novoItem.getQuantidade()),
+                    () -> itens.add(novoItem)
+            );
+}
 
     /**
      * Remove todos os itens referentes ao produto informado.
@@ -288,11 +292,11 @@ public class NotaFiscal {
     }
 
     /** Retorna a soma das quantidades de todos os itens da nota. */
-    public int calcularQuantidadeTotalItens() {
-        return itens.stream()
-                .mapToInt(ItemNotaFiscal::getQuantidade)
-                .sum();
-    }
+public int calcularQuantidadeTotalItens() {
+    return itens.stream()
+            .mapToInt(item -> item.getQuantidade())
+            .sum();
+}
 
     /**
      * Retorna uma visão imutável da lista de itens.
@@ -355,12 +359,12 @@ public class NotaFiscal {
      * <p>Sempre retorna {@link BigDecimal} com exatamente 2 casas decimais,
      * arredondado por {@code HALF_UP}. Nunca retorna {@code null}.
      */
-    public BigDecimal calcularTotal() {
-        return itens.stream()
-                .map(ItemNotaFiscal::calcularSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-    }
+   public BigDecimal calcularTotal() {
+    return itens.stream()
+            .map(item -> item.calcularSubtotal())
+            .reduce(BigDecimal.ZERO, (total, subtotal) -> total.add(subtotal))
+            .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+}
 
     // ── Consultas de estado ───────────────────────────────────────────────────
 

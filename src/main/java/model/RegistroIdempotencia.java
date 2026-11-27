@@ -55,41 +55,65 @@ public class RegistroIdempotencia {
     }
 
     public RegistroIdempotencia(long id,
-                                Long filialId,
-                                String operacao,
-                                String idempotencyKey,
-                                String payloadHash,
-                                Long recursoId) {
-        this(id, filialId, operacao, idempotencyKey, payloadHash, recursoId, StatusRegistroIdempotencia.CONCLUIDA);
+                            Long filialId,
+                            String operacao,
+                            String idempotencyKey,
+                            String payloadHash,
+                            Long recursoId) {
+
+    this(id, filialId, operacao, idempotencyKey, payloadHash,
+            recursoId, StatusRegistroIdempotencia.CONCLUIDA);
+}
+
+private RegistroIdempotencia(long id,
+                             Long filialId,
+                             String operacao,
+                             String idempotencyKey,
+                             String payloadHash,
+                             Long recursoId,
+                             StatusRegistroIdempotencia status) {
+
+    validar(id >= 0,
+            "ID do registro de idempotencia nao pode ser negativo.");
+
+    validar(filialId != null && filialId > 0,
+            "Filial da idempotencia e obrigatoria.");
+
+    if (operacao == null || operacao.isBlank()) {
+        throw new IllegalArgumentException(
+                "Operacao da idempotencia e obrigatoria.");
     }
 
-    private RegistroIdempotencia(long id,
-                                 Long filialId,
-                                 String operacao,
-                                 String idempotencyKey,
-                                 String payloadHash,
-                                 Long recursoId,
-                                 StatusRegistroIdempotencia status) {
-        validar(id >= 0, "ID do registro de idempotencia nao pode ser negativo.");
-        validar(filialId != null && filialId > 0, "Filial da idempotencia e obrigatoria.");
-        validar(operacao != null && !operacao.isBlank(), "Operacao da idempotencia e obrigatoria.");
-        validar(idempotencyKey != null && !idempotencyKey.isBlank(), "Chave de idempotencia e obrigatoria.");
-        validar(payloadHash != null && !payloadHash.isBlank(), "Hash do payload e obrigatorio.");
-        validar(status != null, "Status da idempotencia e obrigatorio.");
-        validar(recursoId == null || recursoId > 0, "Recurso da idempotencia deve ser maior que zero.");
-        if (status == StatusRegistroIdempotencia.CONCLUIDA) {
-            validar(recursoId != null && recursoId > 0, "Recurso da idempotencia e obrigatorio.");
-        }
-
-        this.id = id;
-        this.filialId = filialId;
-        this.operacao = operacao.trim();
-        this.idempotencyKey = idempotencyKey.trim();
-        this.payloadHash = payloadHash.trim();
-        this.recursoId = recursoId;
-        this.status = status;
-        this.criadoEm = LocalDateTime.now();
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+        throw new IllegalArgumentException(
+                "Chave de idempotencia e obrigatoria.");
     }
+
+    if (payloadHash == null || payloadHash.isBlank()) {
+        throw new IllegalArgumentException(
+                "Hash do payload e obrigatorio.");
+    }
+
+    validar(status != null,
+            "Status da idempotencia e obrigatorio.");
+
+    validar(recursoId == null || recursoId > 0,
+            "Recurso da idempotencia deve ser maior que zero.");
+
+    if (status == StatusRegistroIdempotencia.CONCLUIDA) {
+        validar(recursoId != null && recursoId > 0,
+                "Recurso da idempotencia e obrigatorio.");
+    }
+
+    this.id = id;
+    this.filialId = filialId;
+    this.operacao = operacao.trim();
+    this.idempotencyKey = idempotencyKey.trim();
+    this.payloadHash = payloadHash.trim();
+    this.recursoId = recursoId;
+    this.status = status;
+    this.criadoEm = LocalDateTime.now();
+}
 
     public static RegistroIdempotencia iniciar(Long filialId,
                                                String operacao,

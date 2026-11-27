@@ -1,5 +1,6 @@
 package service;
 
+import model.CategoriaCardapio;
 import model.ConfiguracaoComposicaoMultipla;
 import model.ConfiguracaoComposicaoMultiplaParte;
 import model.FichaTecnica;
@@ -154,16 +155,18 @@ public class ComposicaoMultiplaService {
                         parte -> parte.getVariacaoParte().getId(),
                         parte -> parte,
                         (a, b) -> a,
-                        LinkedHashMap::new
+                        () -> new LinkedHashMap<>()
                 ));
         if (permitidas.isEmpty()) {
             throw new ErroNegocioException("PARTE_NAO_PERMITIDA", "Nenhuma parte ativa configurada para a variacao.");
         }
 
         List<BigDecimal> proporcoes = resolverProporcoes(configuracao, partesInput);
-        List<Long> variacaoParteIds = partesInput.stream().map(ParteInput::variacaoParteId).toList();
+        List<Long> variacaoParteIds = partesInput.stream()
+                .map(parte -> parte.variacaoParteId())
+                .toList();
         Map<Long, VariacaoItemCardapio> variacoesPorId = variacaoRepository.listarPorIds(variacaoParteIds).stream()
-                .collect(Collectors.toMap(VariacaoItemCardapio::getId, v -> v));
+                .collect(Collectors.toMap(variacao -> variacao.getId(), variacao -> variacao));
         Set<Long> repetidas = new HashSet<>();
         List<ParteResolvida> partes = new ArrayList<>();
         for (int i = 0; i < partesInput.size(); i++) {
@@ -249,11 +252,10 @@ public class ComposicaoMultiplaService {
             return proporcoesIguais(partesInput.size());
         }
         List<BigDecimal> proporcoes = partesInput.stream()
-                .map(ParteInput::proporcao)
-                .map(this::proporcaoObrigatoria)
+                .map(parte -> proporcaoObrigatoria(parte.proporcao()))
                 .toList();
         BigDecimal soma = proporcoes.stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
                 .setScale(ESCALA_PROPORCAO, RoundingMode.HALF_UP);
         if (soma.compareTo(BigDecimal.ONE.setScale(ESCALA_PROPORCAO, RoundingMode.HALF_UP)) != 0) {
             throw new ErroNegocioException(
@@ -300,11 +302,11 @@ public class ComposicaoMultiplaService {
                     .orElse(BigDecimal.ZERO.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP));
             case MEDIA_ARITMETICA -> partes.stream()
                     .map(parte -> dinheiro(parte.variacaoParte().getPrecoVenda()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
                     .divide(BigDecimal.valueOf(partes.size()), ESCALA_DINHEIRO, RoundingMode.HALF_UP);
             case MEDIA_PONDERADA, SOMA_PROPORCIONAL -> partes.stream()
                     .map(parte -> dinheiro(parte.variacaoParte().getPrecoVenda()).multiply(parte.proporcao()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor))
                     .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
             case PRECO_FIXO_DA_VARIACAO -> dinheiro(variacaoPrincipal.getPrecoVenda());
         };
@@ -332,7 +334,7 @@ public class ComposicaoMultiplaService {
         partes.stream()
                 .sorted(Comparator
                         .comparingLong((ParteResolvida parte) -> parte.variacaoParte().getId())
-                        .thenComparing(ParteResolvida::proporcao))
+                        .thenComparing(parte -> parte.proporcao()))
                 .forEach(parte -> {
                     FichaTecnica ficha = parte.resolucao().fichaTecnica();
                     FichaTecnicaVersao versao = parte.resolucao().fichaTecnicaVersao();
@@ -349,7 +351,7 @@ public class ComposicaoMultiplaService {
 
     private String resumo(List<ParteResolvida> partes) {
         return partes.stream()
-                .sorted(Comparator.comparingInt(ParteResolvida::ordemVisual))
+                .sorted(Comparator.comparingInt((ParteResolvida parte) -> parte.ordemVisual()))
                 .map(parte -> proporcaoResumo(parte.proporcao()) + " " + parte.variacaoParte().getNome())
                 .collect(Collectors.joining("; "));
     }
@@ -386,7 +388,8 @@ public class ComposicaoMultiplaService {
         if (item == null || !item.isAtivo() || !item.isDisponivel()) {
             throw new ErroNegocioException(codigoErro, "Item da variacao esta inativo ou indisponivel.");
         }
-        if (item.getCategoriaCardapio() != null && !item.getCategoriaCardapio().isAtivo()) {
+        CategoriaCardapio categoria = item.getCategoriaCardapio();
+        if (categoria != null && !categoria.isAtivo()) {
             throw new ErroNegocioException(codigoErro, "Categoria da variacao esta inativa.");
         }
     }
@@ -408,7 +411,7 @@ public class ComposicaoMultiplaService {
         }
         return quantidadesPermitidas(valor).stream()
                 .sorted()
-                .map(String::valueOf)
+                .map(quantidade -> String.valueOf(quantidade))
                 .collect(Collectors.joining(","));
     }
 

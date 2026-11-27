@@ -237,25 +237,36 @@ public class CancelamentoVendaService {
             throw new ErroNegocioException("VENDA_JA_CANCELADA", "Venda nao possui itens ativos para cancelar.");
         }
 
-        List<Long> itemIds = itensAtivos.stream().map(VendaItem::getId).toList();
-        List<VendaItemConsumo> consumos = consumoRepository.listarPorVendaItens(itemIds);
-        criarEstornos(venda, consumos, usuario, motivo, chave);
+        List<Long> itemIds = itensAtivos.stream()
+        .map(item -> item.getId())
+        .toList();
 
-        for (VendaItem item : itensAtivos) {
-            item.cancelar(usuario == null ? null : usuario.getRu(), motivo);
-            itemRepository.salvar(item);
-            for (VendaItemParte parte : vendaItemParteRepository.listarPorItemEStatus(item.getId(), StatusVendaItem.ATIVO)) {
-                parte.cancelar();
-                vendaItemParteRepository.salvar(parte);
-            }
-        }
+List<VendaItemConsumo> consumos =
+        consumoRepository.listarPorVendaItens(itemIds);
 
-        BigDecimal valorCancelado = itensAtivos.stream()
-                .map(VendaItem::getSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        return new ResultadoCancelamento(valorCancelado);
+criarEstornos(venda, consumos, usuario, motivo, chave);
+
+for (VendaItem item : itensAtivos) {
+    item.cancelar(usuario == null ? null : usuario.getRu(), motivo);
+    itemRepository.salvar(item);
+
+    List<VendaItemParte> partesAtivas =
+            vendaItemParteRepository.listarPorItemEStatus(
+                    item.getId(), StatusVendaItem.ATIVO);
+
+    for (VendaItemParte parte : partesAtivas) {
+        parte.cancelar();
+        vendaItemParteRepository.salvar(parte);
     }
+}
+
+       BigDecimal valorCancelado = itensAtivos.stream()
+        .map(item -> item.getSubtotal())
+        .reduce(BigDecimal.ZERO, (total, subtotal) -> total.add(subtotal))
+        .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+return new ResultadoCancelamento(valorCancelado);
+}
 
     private void criarEstornos(Venda venda,
                                List<VendaItemConsumo> consumos,
@@ -300,19 +311,34 @@ public class CancelamentoVendaService {
         }
     }
 
-    private List<ConsumoEstornar> consumosPendentes(List<VendaItemConsumo> consumos) {
-        if (consumos == null || consumos.isEmpty()) {
-            throw new ErroNegocioException("CANCELAMENTO_NAO_PERMITIDO", "Item nao possui consumos para estornar.");
-        }
-        List<Long> consumoIds = consumos.stream().map(VendaItemConsumo::getId).toList();
-        Map<Long, BigDecimal> jaEstornadoPorConsumo = new LinkedHashMap<>();
-        for (VendaItemConsumoEstorno estorno : consumoEstornoRepository.listarPorConsumos(consumoIds)) {
-            jaEstornadoPorConsumo.merge(
-                    estorno.getVendaItemConsumo().getId(),
-                    estorno.getQuantidadeBaseEstornada(),
-                    (a, b) -> a.add(b).setScale(EstoqueProduto.ESCALA_QUANTIDADE, RoundingMode.HALF_UP)
-            );
-        }
+    private List<ConsumoEstornar> consumosPendentes(
+        List<VendaItemConsumo> consumos) {
+
+    if (consumos == null || consumos.isEmpty()) {
+        throw new ErroNegocioException(
+                "CANCELAMENTO_NAO_PERMITIDO",
+                "Item nao possui consumos para estornar.");
+    }
+
+    List<Long> consumoIds = consumos.stream()
+            .map(consumo -> consumo.getId())
+            .toList();
+
+    Map<Long, BigDecimal> jaEstornadoPorConsumo = new LinkedHashMap<>();
+
+    for (VendaItemConsumoEstorno estorno
+            : consumoEstornoRepository.listarPorConsumos(consumoIds)) {
+
+        jaEstornadoPorConsumo.merge(
+                estorno.getVendaItemConsumo().getId(),
+                estorno.getQuantidadeBaseEstornada(),
+                (acumulado, quantidade) -> acumulado
+                        .add(quantidade)
+                        .setScale(
+                                EstoqueProduto.ESCALA_QUANTIDADE,
+                                RoundingMode.HALF_UP)
+        );
+    }
 
         List<ConsumoEstornar> pendentes = new ArrayList<>();
         for (VendaItemConsumo consumo : consumos) {
@@ -356,41 +382,57 @@ public class CancelamentoVendaService {
         }
     }
 
-    private void validarQuantidadesAindaEstornaveis(List<GrupoEstornoPlanejado> grupos) {
-        for (GrupoEstornoPlanejado grupo : grupos) {
-            BigDecimal quantidadeOriginal = grupo.original.getQuantidadeBase()
-                    .setScale(EstoqueProduto.ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-            BigDecimal jaEstornada = movimentoRepository.listarEstornosDoMovimento(grupo.original.getId()).stream()
-                    .map(MovimentoEstoque::getQuantidadeBase)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .setScale(EstoqueProduto.ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-            BigDecimal aindaEstornavel = quantidadeOriginal.subtract(jaEstornada)
-                    .setScale(EstoqueProduto.ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-            if (aindaEstornavel.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new ErroNegocioException(
-                        "MOVIMENTO_TOTALMENTE_ESTORNADO",
-                        "Movimento original ja foi totalmente estornado.",
-                        Map.of(
-                                "movimentoId", grupo.original.getId(),
-                                "quantidadeOriginal", quantidadeOriginal,
-                                "quantidadeJaEstornada", jaEstornada
-                        )
-                );
-            }
-            if (grupo.quantidade.compareTo(aindaEstornavel) > 0) {
-                throw new ErroNegocioException(
-                        "QUANTIDADE_ESTORNO_EXCEDE_DISPONIVEL",
-                        "Quantidade solicitada para estorno excede o saldo estornavel do movimento.",
-                        Map.of(
-                                "movimentoId", grupo.original.getId(),
-                                "quantidadeSolicitada", grupo.quantidade,
-                                "quantidadeAindaEstornavel", aindaEstornavel,
-                                "quantidadeJaEstornada", jaEstornada
-                        )
-                );
-            }
+    private void validarQuantidadesAindaEstornaveis(
+        List<GrupoEstornoPlanejado> grupos) {
+
+    for (GrupoEstornoPlanejado grupo : grupos) {
+        BigDecimal quantidadeOriginal = grupo.original.getQuantidadeBase()
+                .setScale(
+                        EstoqueProduto.ESCALA_QUANTIDADE,
+                        RoundingMode.HALF_UP);
+
+        BigDecimal jaEstornada = movimentoRepository
+                .listarEstornosDoMovimento(grupo.original.getId())
+                .stream()
+                .map(movimento -> movimento.getQuantidadeBase())
+                .reduce(BigDecimal.ZERO, (total, quantidade) ->
+                        total.add(quantidade))
+                .setScale(
+                        EstoqueProduto.ESCALA_QUANTIDADE,
+                        RoundingMode.HALF_UP);
+
+        BigDecimal aindaEstornavel = quantidadeOriginal
+                .subtract(jaEstornada)
+                .setScale(
+                        EstoqueProduto.ESCALA_QUANTIDADE,
+                        RoundingMode.HALF_UP);
+
+        if (aindaEstornavel.signum() <= 0) {
+            throw new ErroNegocioException(
+                    "MOVIMENTO_TOTALMENTE_ESTORNADO",
+                    "Movimento original ja foi totalmente estornado.",
+                    Map.of(
+                            "movimentoId", grupo.original.getId(),
+                            "quantidadeOriginal", quantidadeOriginal,
+                            "quantidadeJaEstornada", jaEstornada
+                    )
+            );
+        }
+
+        if (grupo.quantidade.compareTo(aindaEstornavel) > 0) {
+            throw new ErroNegocioException(
+                    "QUANTIDADE_ESTORNO_EXCEDE_DISPONIVEL",
+                    "Quantidade solicitada para estorno excede o saldo estornavel do movimento.",
+                    Map.of(
+                            "movimentoId", grupo.original.getId(),
+                            "quantidadeSolicitada", grupo.quantidade,
+                            "quantidadeAindaEstornavel", aindaEstornavel,
+                            "quantidadeJaEstornada", jaEstornada
+                    )
+            );
         }
     }
+}
 
     private MovimentoEstoque criarMovimentoEstorno(Venda venda,
                                                    GrupoEstornoPlanejado grupo,

@@ -81,6 +81,23 @@ class CaixaServiceTest {
     }
 
     @Test
+    void movimentacaoQueArredondaParaZeroNaoDeveSerRegistrada() {
+        service.abrirCaixa(operadorFinancas, 1, 100.00);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.registrarSangria(operadorFinancas, 1, 0.004, "Abaixo de meio centavo"));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.registrarSuprimento(operadorFinancas, 1, 0.004, "Abaixo de meio centavo"));
+        Caixa caixa = service.buscarCaixaAberto(1);
+        assertBigDecimalEquals(100.00, caixa.getSaldoAtual());
+        assertEquals(0, caixa.getMovimentacoes().size());
+
+        service.registrarSuprimento(operadorFinancas, 1, 0.005, "Meio centavo");
+        assertBigDecimalEquals(100.01, service.buscarCaixaAberto(1).getSaldoAtual());
+        assertEquals(1, service.buscarCaixaAberto(1).getMovimentacoes().size());
+    }
+
+    @Test
     void abrirCaixa_comPermissaoValida_retornaCaixaAberto() {
         Caixa caixa = service.abrirCaixa(operadorFinancas, 1, 100.00);
 

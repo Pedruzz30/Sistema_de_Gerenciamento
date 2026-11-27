@@ -219,20 +219,31 @@ public class FuncionarioController {
             boolean ativo
     ) {
         public static FuncionarioResponse from(Usuario u) {
-            ClasseFuncionario classe = u.getClasse();
-            Set<String> permissoes = classe == null
-                    ? Set.of()
-                    : classe.getPermissoes().stream().map(Enum::name).collect(Collectors.toSet());
-            return new FuncionarioResponse(
-                    u.getRu(),
-                    u.getNome(),
-                    u.getSobrenome(),
-                    classe != null ? classe.getNome() : null,
-                    permissoes,
-                    u.getPerfil() != null ? u.getPerfil().name() : null,
-                    u.isAtivo()
-            );
-        }
+    ClasseFuncionario classe = u.getClasse();
+
+    Set<String> permissoes = classe == null
+            ? Set.of()
+            : classe.getPermissoes().stream()
+                    .map(permissao -> {
+                        if (permissao == null) {
+                            throw new IllegalStateException(
+                                    "Permissão inválida: valor nulo."
+                            );
+                        }
+                        return permissao.name();
+                    })
+                    .collect(Collectors.toSet());
+
+    return new FuncionarioResponse(
+            u.getRu(),
+            u.getNome(),
+            u.getSobrenome(),
+            classe != null ? classe.getNome() : null,
+            permissoes,
+            u.getPerfil() != null ? u.getPerfil().name() : null,
+            u.isAtivo()
+    );
+}
     }
 
     public record ClasseResponse(String nome, String descricao) {}

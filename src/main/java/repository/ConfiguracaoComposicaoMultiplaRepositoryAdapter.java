@@ -16,9 +16,16 @@ public class ConfiguracaoComposicaoMultiplaRepositoryAdapter implements Configur
     }
 
     @Override
-    public ConfiguracaoComposicaoMultipla salvar(ConfiguracaoComposicaoMultipla configuracao) {
-        return delegate.save(configuracao);
+public ConfiguracaoComposicaoMultipla salvar(
+        ConfiguracaoComposicaoMultipla configuracao) {
+
+    if (configuracao == null) {
+        throw new IllegalArgumentException(
+                "Configuracao de composicao multipla e obrigatoria.");
     }
+
+    return delegate.save(configuracao);
+}
 
     @Override
     public Optional<ConfiguracaoComposicaoMultipla> buscarPorId(long id) {

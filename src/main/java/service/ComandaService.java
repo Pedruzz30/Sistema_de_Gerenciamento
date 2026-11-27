@@ -7,10 +7,12 @@ import model.Permissao;
 import model.Usuario;
 import model.Venda;
 import model.VendaItem;
+import model.VariacaoItemCardapio;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 import repository.ComandaRepository;
 import repository.LogRepository;
+import repository.VendaItemModificadorRepository;
 import repository.VendaItemRepository;
 import repository.VendaRepository;
 
@@ -19,7 +21,9 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Comandas de quem consome na loja. Abrir cria a venda em rascunho; os itens entram pelas
@@ -40,7 +44,7 @@ public class ComandaService {
     private final LogRepository logRepository;
     private final Clock clock;
     private VendaItemService vendaItemService;
-    private repository.VendaItemModificadorRepository modificadorRepository;
+    private VendaItemModificadorRepository modificadorRepository;
 
     private CozinhaService cozinha;
 
@@ -58,7 +62,7 @@ public class ComandaService {
     }
 
     /** Para transferir parte de um item: reduz a linha de origem e cria outra no destino. */
-    public void setTransferencia(VendaItemService vendaItemService, repository.VendaItemModificadorRepository modificadorRepository) {
+    public void setTransferencia(VendaItemService vendaItemService, VendaItemModificadorRepository modificadorRepository) {
         this.vendaItemService = vendaItemService;
         this.modificadorRepository = modificadorRepository;
     }
@@ -119,7 +123,7 @@ public class ComandaService {
         Comanda comanda = comandaRepository.buscarAbertaPorNumero(numero)
                 .orElseThrow(() -> new ErroNegocioException("COMANDA_NAO_ENCONTRADA", "Nao ha comanda aberta com o numero " + numero + "."));
         String nome = Comanda.normalizarCliente(cliente);
-        if (java.util.Objects.equals(nome, comanda.getCliente())) {
+        if (Objects.equals(nome, comanda.getCliente())) {
             return comanda;
         }
         return trocarCliente(usuario, comanda, nome);
@@ -137,13 +141,17 @@ public class ComandaService {
 
     @Transactional(readOnly = true)
     public List<Resumo> listarAbertas() {
-        return comandaRepository.listarAbertas().stream().map(this::resumir).toList();
+        return comandaRepository.listarAbertas().stream().map(comanda -> resumir(comanda)).toList();
     }
 
     private Resumo resumir(Comanda comanda) {
         List<VendaItem> itens = itemRepository.listarAtivosPorVenda(comanda.getVendaId());
-        BigDecimal quantidade = itens.stream().map(VendaItem::getQuantidade).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal total = itens.stream().map(VendaItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal quantidade = itens.stream()
+                .map(item -> item.getQuantidade())
+                .reduce(BigDecimal.ZERO, (acumulado, valor) -> acumulado.add(valor));
+        BigDecimal total = itens.stream()
+                .map(item -> item.getSubtotal())
+                .reduce(BigDecimal.ZERO, (acumulado, valor) -> acumulado.add(valor));
         return new Resumo(comanda.getNumero(), comanda.getVendaId(), comanda.getAbertaEm(),
                 quantidade.stripTrailingZeros(), total.setScale(2, RoundingMode.HALF_UP), comanda.getCliente());
     }
@@ -151,7 +159,7 @@ public class ComandaService {
     /** Chamado depois que a venda é paga no caixa. Venda sem comanda não muda nada. */
     @Transactional
     public void fecharPorVenda(Usuario usuario, long vendaId) {
-        comandaRepository.buscarPorVendaId(vendaId).filter(Comanda::isAberta).ifPresent(comanda -> {
+        comandaRepository.buscarPorVendaId(vendaId).filter(comanda -> comanda.isAberta()).ifPresent(comanda -> {
             comanda.fechar(LocalDateTime.now(clock));
             comandaRepository.salvar(comanda);
             logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "COMANDA_FECHADA",
@@ -185,7 +193,10 @@ public class ComandaService {
      */
     @Transactional
     public Transferencia transferir(Usuario usuario, int numeroDestino, long vendaOrigemId, List<ItemTransferido> itens) {
-        if (itens == null || itens.stream().noneMatch(i -> i.quantidade() != null && i.quantidade().signum() > 0)) {
+        if (itens == null || itens.stream().noneMatch(i -> {
+            BigDecimal quantidade = i.quantidade();
+            return quantidade != null && quantidade.signum() > 0;
+        })) {
             throw new ErroNegocioException("TRANSFERENCIA_VAZIA", "Escolha o que transferir.");
         }
         Comanda destino = abrirOuRetomar(usuario, numeroDestino);
@@ -201,11 +212,14 @@ public class ComandaService {
 
         int movidos = 0;
         for (ItemTransferido pedido : itens) {
-            if (pedido.quantidade() == null || pedido.quantidade().signum() <= 0) continue;
+            BigDecimal quantidade = pedido.quantidade();
+            if (quantidade == null || quantidade.signum() <= 0) {
+                continue;
+            }
             VendaItem item = itemRepository.buscarPorId(pedido.itemId())
                     .filter(i -> i.getVenda().getId() == vendaOrigemId && i.getStatus() == model.StatusVendaItem.ATIVO)
                     .orElseThrow(() -> new ErroNegocioException("ITEM_VENDA_NAO_ENCONTRADO", "Item não encontrado nesta conta."));
-            int comparacao = pedido.quantidade().compareTo(item.getQuantidade());
+            int comparacao = quantidade.compareTo(item.getQuantidade());
             if (comparacao > 0) {
                 throw new ErroNegocioException("TRANSFERENCIA_QUANTIDADE", "Só há " + item.getQuantidade().stripTrailingZeros().toPlainString()
                         + " de " + item.getNomeItemSnapshot() + " para transferir.");
@@ -222,9 +236,9 @@ public class ComandaService {
                 }
                 long variacaoId = item.getVariacaoItemCardapio().getId();
                 vendaItemService.editarItemRascunho(usuario, vendaOrigemId, item.getId(), variacaoId,
-                        item.getQuantidade().subtract(pedido.quantidade()), item.getObservacao(), null, List.of(), null, List.of());
-                VendaItem novo = vendaItemService.adicionarItem(usuario, vendaDestino.getId(), variacaoId, pedido.quantidade(), item.getObservacao());
-                if (cozinha != null) cozinha.moverEnviado(item.getId(), novo.getId(), pedido.quantidade());
+                        item.getQuantidade().subtract(quantidade), item.getObservacao(), null, List.of(), null, List.of());
+                VendaItem novo = vendaItemService.adicionarItem(usuario, vendaDestino.getId(), variacaoId, quantidade, item.getObservacao());
+                if (cozinha != null) cozinha.moverEnviado(item.getId(), novo.getId(), quantidade);
             }
             movidos++;
         }
@@ -232,7 +246,7 @@ public class ComandaService {
         boolean origemVazia = itemRepository.listarAtivosPorVenda(vendaOrigemId).isEmpty();
         Integer fechada = null;
         if (origemVazia) {
-            Optional<Comanda> origem = comandaRepository.buscarPorVendaId(vendaOrigemId).filter(Comanda::isAberta);
+            Optional<Comanda> origem = comandaRepository.buscarPorVendaId(vendaOrigemId).filter(comanda -> comanda.isAberta());
             if (origem.isPresent()) {
                 origem.get().cancelar(LocalDateTime.now(clock));
                 comandaRepository.salvar(origem.get());
@@ -263,8 +277,13 @@ public class ComandaService {
     private Detalhe detalhar(Comanda comanda) {
         List<VendaItem> itens = itemRepository.listarAtivosPorVenda(comanda.getVendaId());
         List<LinhaDetalhe> linhas = itens.stream()
-                .map(i -> new LinhaDetalhe(i.getNomeItemSnapshot(), i.getVariacaoItemCardapio() == null ? "" : i.getVariacaoItemCardapio().getNome(),
-                        i.getQuantidade().stripTrailingZeros(), i.getSubtotal().setScale(2, RoundingMode.HALF_UP)))
+                .map(i -> {
+                    VariacaoItemCardapio variacao = i.getVariacaoItemCardapio();
+                    return new LinhaDetalhe(i.getNomeItemSnapshot(),
+                            variacao == null ? "" : variacao.getNome(),
+                            i.getQuantidade().stripTrailingZeros(),
+                            i.getSubtotal().setScale(2, RoundingMode.HALF_UP));
+                })
                 .toList();
         Resumo resumo = resumir(comanda);
         return new Detalhe(comanda.getNumero(), comanda.getVendaId(), comanda.getAbertaEm(), resumo.itens(), resumo.total(), linhas,
@@ -285,7 +304,13 @@ public class ComandaService {
     @Transactional
     public Detalhe lancar(Usuario usuario, int numero, List<ItemLancado> itens, String cliente) {
         List<ItemLancado> validos = itens == null ? List.of()
-                : itens.stream().filter(i -> i != null && i.quantidade() != null && i.quantidade().signum() > 0).toList();
+                : itens.stream().filter(i -> {
+                    if (i == null) {
+                        return false;
+                    }
+                    BigDecimal quantidade = i.quantidade();
+                    return quantidade != null && quantidade.signum() > 0;
+                }).toList();
         if (validos.isEmpty()) {
             throw new ErroNegocioException("LANCAMENTO_VAZIO", "Escolha o que lançar.");
         }
@@ -302,8 +327,17 @@ public class ComandaService {
         StringBuilder descricao = new StringBuilder();
         for (ItemLancado pedido : validos) {
             Optional<VendaItem> mesmo = itemRepository.listarAtivosPorVenda(vendaId).stream()
-                    .filter(i -> i.getVariacaoItemCardapio() != null && i.getVariacaoItemCardapio().getId() == pedido.variacaoId())
-                    .filter(i -> !i.isComposicaoMultipla() && (i.getObservacao() == null || i.getObservacao().isBlank()))
+                    .filter(i -> {
+                        VariacaoItemCardapio variacao = i.getVariacaoItemCardapio();
+                        return variacao != null && variacao.getId() == pedido.variacaoId();
+                    })
+                    .filter(i -> {
+                        if (i.isComposicaoMultipla()) {
+                            return false;
+                        }
+                        String observacao = i.getObservacao();
+                        return observacao == null || observacao.isBlank();
+                    })
                     .filter(i -> modificadorRepository == null || modificadorRepository.listarPorItem(i.getId()).isEmpty())
                     .findFirst();
             VendaItem item;
@@ -341,7 +375,10 @@ public class ComandaService {
         if (motivoLimpo.length() > 200) {
             motivoLimpo = motivoLimpo.substring(0, 200);
         }
-        if (itens == null || itens.stream().noneMatch(i -> i.quantidade() != null && i.quantidade().signum() > 0)) {
+        if (itens == null || itens.stream().noneMatch(i -> {
+            BigDecimal quantidade = i.quantidade();
+            return quantidade != null && quantidade.signum() > 0;
+        })) {
             throw new ErroNegocioException("RETIRADA_VAZIA", "Escolha o que tirar.");
         }
         Comanda comanda = comandaRepository.buscarAbertaPorNumero(numero)
@@ -356,16 +393,19 @@ public class ComandaService {
         int retirados = 0;
         StringBuilder descricao = new StringBuilder();
         for (ItemRetirado pedido : itens) {
-            if (pedido.quantidade() == null || pedido.quantidade().signum() <= 0) continue;
+            BigDecimal quantidade = pedido.quantidade();
+            if (quantidade == null || quantidade.signum() <= 0) {
+                continue;
+            }
             VendaItem item = itemRepository.buscarPorId(pedido.itemId())
                     .filter(i -> i.getVenda().getId() == vendaId && i.getStatus() == model.StatusVendaItem.ATIVO)
                     .orElseThrow(() -> new ErroNegocioException("ITEM_VENDA_NAO_ENCONTRADO", "Item não encontrado nesta comanda."));
-            int comparacao = pedido.quantidade().compareTo(item.getQuantidade());
+            int comparacao = quantidade.compareTo(item.getQuantidade());
             if (comparacao > 0) {
                 throw new ErroNegocioException("RETIRADA_QUANTIDADE", "Só há " + item.getQuantidade().stripTrailingZeros().toPlainString()
                         + " de " + item.getNomeItemSnapshot() + " na comanda.");
             }
-            BigDecimal parte = item.getSubtotal().multiply(pedido.quantidade())
+            BigDecimal parte = item.getSubtotal().multiply(quantidade)
                     .divide(item.getQuantidade(), 2, RoundingMode.HALF_UP);
             String nome = item.getNomeItemSnapshot();
             if (comparacao == 0) {
@@ -378,12 +418,12 @@ public class ComandaService {
                             nome + " tem adicionais: tire o item inteiro.");
                 }
                 vendaItemService.editarItemRascunho(operador, vendaId, item.getId(), item.getVariacaoItemCardapio().getId(),
-                        item.getQuantidade().subtract(pedido.quantidade()), item.getObservacao(), null, List.of(), null, List.of());
+                        item.getQuantidade().subtract(quantidade), item.getObservacao(), null, List.of(), null, List.of());
             }
             valor = valor.add(parte);
             retirados++;
             if (descricao.length() > 0) descricao.append(", ");
-            descricao.append(pedido.quantidade().stripTrailingZeros().toPlainString()).append(" x ").append(nome);
+            descricao.append(quantidade.stripTrailingZeros().toPlainString()).append(" x ").append(nome);
         }
 
         if (cozinha != null) cozinha.cancelarExcedente(operador, vendaId);
@@ -415,8 +455,11 @@ public class ComandaService {
     }
 
     public static boolean podeTirarItem(Usuario usuario) {
-        return usuario != null && usuario.getClasse() != null
-                && usuario.getClasse().possuiPermissao(Permissao.VER_FINANCAS);
+        if (usuario == null) {
+            return false;
+        }
+        var classe = usuario.getClasse();
+        return classe != null && classe.possuiPermissao(Permissao.VER_FINANCAS);
     }
 
     private static String nomeDe(Usuario usuario) {
@@ -426,24 +469,28 @@ public class ComandaService {
     /** A venda é de uma comanda que ainda não foi paga? */
     @Transactional(readOnly = true)
     public boolean vendaDeComandaAberta(long vendaId) {
-        return comandaRepository.buscarPorVendaId(vendaId).filter(Comanda::isAberta).isPresent();
+        return comandaRepository.buscarPorVendaId(vendaId).filter(comanda -> comanda.isAberta()).isPresent();
     }
 
     /** Fica no log quem encerrou o caixa deixando comandas sem pagar. */
     @Transactional
     public void registrarEncerramentoComAbertas(Usuario usuario, int numeroCaixa, List<Resumo> abertas) {
         if (abertas == null || abertas.isEmpty()) return;
-        BigDecimal total = abertas.stream().map(Resumo::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = abertas.stream()
+                .map(resumo -> resumo.total())
+                .reduce(BigDecimal.ZERO, (acumulado, valor) -> acumulado.add(valor));
         logRepository.salvar(new LogAcao(0, usuario == null ? null : usuario.getRu(), "CAIXA_ENCERRADO_COM_COMANDAS",
                 "Caixa " + numeroCaixa + " encerrado com " + abertas.size() + " comanda(s) aberta(s): "
-                        + abertas.stream().map(r -> String.valueOf(r.numero())).collect(java.util.stream.Collectors.joining(", "))
+                        + abertas.stream().map(r -> String.valueOf(r.numero())).collect(Collectors.joining(", "))
                         + " (R$ " + total.setScale(2, RoundingMode.HALF_UP).toPlainString() + ")."));
     }
 
     /** Texto do aviso de comandas abertas, usado ao encerrar o caixa. */
     public static String avisoComandasAbertas(List<Resumo> abertas) {
-        BigDecimal total = abertas.stream().map(Resumo::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        String numeros = abertas.stream().map(r -> String.valueOf(r.numero())).collect(java.util.stream.Collectors.joining(", "));
+        BigDecimal total = abertas.stream()
+                .map(resumo -> resumo.total())
+                .reduce(BigDecimal.ZERO, (acumulado, valor) -> acumulado.add(valor));
+        String numeros = abertas.stream().map(r -> String.valueOf(r.numero())).collect(Collectors.joining(", "));
         return (abertas.size() == 1 ? "A comanda " + numeros + " está aberta" : "As comandas " + numeros + " estão abertas")
                 + ", somando R$ " + total.setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', ',')
                 + ". Receba antes de encerrar, ou confirme que elas ficam abertas.";

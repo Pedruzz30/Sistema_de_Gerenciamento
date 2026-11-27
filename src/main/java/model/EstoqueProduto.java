@@ -110,11 +110,10 @@ public class EstoqueProduto {
     }
 
     public void aplicarEntrada(BigDecimal quantidadeEntradaBase, BigDecimal custoUnitarioBase) {
-        validarQuantidadeMovimento(quantidadeEntradaBase);
+        BigDecimal quantidadeEntrada = normalizarQuantidadeMovimento(quantidadeEntradaBase);
         validar(custoUnitarioBase != null && custoUnitarioBase.compareTo(BigDecimal.ZERO) >= 0,
                 "Custo unitario da entrada deve ser nao negativo.");
 
-        BigDecimal quantidadeEntrada = escalaQuantidade(quantidadeEntradaBase);
         BigDecimal custoEntrada = escalaCusto(custoUnitarioBase);
         BigDecimal novaQuantidade = quantidadeAtual.add(quantidadeEntrada);
         BigDecimal novoCustoMedio;
@@ -132,11 +131,10 @@ public class EstoqueProduto {
     }
 
     public void aplicarSaida(BigDecimal quantidadeSaidaBase, BigDecimal custoUnitarioSaida, boolean bloquearNegativo) {
-        validarQuantidadeMovimento(quantidadeSaidaBase);
+        BigDecimal quantidadeSaida = normalizarQuantidadeMovimento(quantidadeSaidaBase);
         validar(custoUnitarioSaida != null && custoUnitarioSaida.compareTo(BigDecimal.ZERO) >= 0,
                 "Custo unitario da saida deve ser nao negativo.");
 
-        BigDecimal quantidadeSaida = escalaQuantidade(quantidadeSaidaBase);
         BigDecimal novaQuantidade = quantidadeAtual.subtract(quantidadeSaida);
         if (bloquearNegativo && novaQuantidade.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalStateException("Estoque insuficiente para movimento de saida.");
@@ -184,9 +182,13 @@ public class EstoqueProduto {
         return Objects.hash(id);
     }
 
-    private static void validarQuantidadeMovimento(BigDecimal quantidade) {
-        validar(quantidade != null && quantidade.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade do movimento deve ser maior que zero.");
+    private static BigDecimal normalizarQuantidadeMovimento(BigDecimal quantidade) {
+        if (quantidade == null) {
+            throw new IllegalArgumentException("Quantidade do movimento deve ser maior que zero.");
+        }
+        BigDecimal normalizada = escalaQuantidade(quantidade);
+        validar(normalizada.signum() > 0, "Quantidade do movimento deve ser maior que zero.");
+        return normalizada;
     }
 
     private static BigDecimal escalaQuantidade(BigDecimal valor) {

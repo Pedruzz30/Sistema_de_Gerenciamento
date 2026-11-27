@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import repository.UsuarioRepository;
 import service.CertificadoCelular;
+import java.nio.file.Path;
 
 import java.nio.file.Files;
 import java.util.List;
@@ -27,16 +28,26 @@ public class CelularController {
     }
 
     /** O certificado público da loja, para instalar no celular. Não é segredo. */
-    @GetMapping("/certificado")
-    public ResponseEntity<FileSystemResource> baixarCertificado() {
-        if (!certificado.ativo() || !Files.exists(certificado.getArquivoCa())) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/x-x509-ca-cert"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + CertificadoCelular.ARQUIVO_CA + "\"")
-                .body(new FileSystemResource(certificado.getArquivoCa()));
+@GetMapping("/certificado")
+public ResponseEntity<FileSystemResource> baixarCertificado() {
+    if (!certificado.ativo()) {
+        return ResponseEntity.notFound().build();
     }
+
+    Path arquivoCa = certificado.getArquivoCa();
+
+    if (arquivoCa == null || !Files.exists(arquivoCa)) {
+        return ResponseEntity.notFound().build();
+    }
+
+    return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("application/x-x509-ca-cert"))
+            .header(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + CertificadoCelular.ARQUIVO_CA + "\""
+            )
+            .body(new FileSystemResource(arquivoCa));
+}
 
     /** O mesmo certificado, como perfil do iPhone (instala pelo Safari, com o nome da loja). */
     @GetMapping("/certificado.mobileconfig")

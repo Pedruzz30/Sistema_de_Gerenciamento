@@ -91,6 +91,21 @@ class CompraEstoqueServiceTest {
     }
 
     @Test
+    void entradaESaidaAbaixoDaPrecisaoNaoAlteramSaldoNemCusto() {
+        EstoqueProduto estoque = new EstoqueProduto(0, 1L, mussarela, BigDecimal.ZERO,
+                BigDecimal.ZERO, new BigDecimal("2.00"));
+        BigDecimal abaixoDaPrecisao = new BigDecimal("0.0000004");
+
+        assertThrows(IllegalArgumentException.class, () -> estoque.aplicarEntrada(abaixoDaPrecisao, BigDecimal.TEN));
+        assertThrows(IllegalArgumentException.class, () -> estoque.aplicarSaida(abaixoDaPrecisao, BigDecimal.TEN, false));
+        assertBigDecimalEquals("0.000000", estoque.getQuantidadeAtual());
+        assertBigDecimalEquals("2.00000000", estoque.getCustoMedio());
+
+        estoque.aplicarEntrada(new BigDecimal("0.0000005"), BigDecimal.TEN);
+        assertBigDecimalEquals("0.000001", estoque.getQuantidadeAtual());
+    }
+
+    @Test
     void embalagemDeDozeUnidadesGeraDozeUnidadesBase() {
         Produto refrigerante = salvarProduto("Refrigerante", unidade);
         EmbalagemProduto caixa = produtoEstoqueService.cadastrarEmbalagem(

@@ -30,7 +30,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,14 +92,14 @@ public class CalculadoraDisponibilidadeService {
         List<DisponibilidadeDtos.ResultadoDisponibilidade> variacoes = consultarLote(filialId, canal, variacaoIds);
         Map<Integer, List<DisponibilidadeDtos.ResultadoDisponibilidade>> porItem = variacoes.stream()
                 .collect(Collectors.groupingBy(
-                        DisponibilidadeDtos.ResultadoDisponibilidade::itemCardapioId,
+                        resultado -> resultado.itemCardapioId(),
                         LinkedHashMap::new,
                         Collectors.toList()
                 ));
         List<DisponibilidadeDtos.ResumoItemDisponibilidade> itens = porItem.entrySet().stream()
                 .map(entry -> {
                     int disponiveis = (int) entry.getValue().stream()
-                            .filter(DisponibilidadeDtos.ResultadoDisponibilidade::disponivel)
+                            .filter(resultado -> resultado.disponivel())
                             .count();
                     return new DisponibilidadeDtos.ResumoItemDisponibilidade(
                             entry.getKey(),
@@ -158,7 +157,7 @@ public class CalculadoraDisponibilidadeService {
         Map<Long, ResolucaoComposicaoVariacaoService.ResolucaoComposicao> resolucoes =
                 resolucaoComposicaoService.resolverVariacoes(variacoes);
         List<Integer> produtoIds = resolucoes.values().stream()
-                .filter(ResolucaoComposicaoVariacaoService.ResolucaoComposicao::completa)
+                .filter(resolucao -> resolucao.completa())
                 .flatMap(resolucao -> resolucao.componentes().stream())
                 .map(componente -> componente.produto().getId())
                 .distinct()
@@ -173,7 +172,7 @@ public class CalculadoraDisponibilidadeService {
                         LinkedHashMap::new
                 ));
         List<Long> idsVariacoes = variacoes.stream()
-                .map(VariacaoItemCardapio::getId)
+                .map(variacao -> variacao.getId())
                 .toList();
         Map<Long, List<VariacaoCanalDisponibilidade>> regrasCanalPorVariacao =
                 canalRepository.listarPorVariacoesFilial(idsVariacoes, filialId)
@@ -238,7 +237,7 @@ public class CalculadoraDisponibilidadeService {
                 calculadoraCapacidadeService.calcular(entradasCapacidade);
         adicionarAlertasCapacidade(variacao, capacidade, motivos, alertas);
 
-        boolean disponivel = motivos.stream().noneMatch(DisponibilidadeDtos.MotivoDisponibilidade::bloqueante);
+        boolean disponivel = motivos.stream().noneMatch(motivo -> motivo.bloqueante());
         EstadoDisponibilidade estado = estadoPrincipal(disponivel, motivos, alertas);
         return new AvaliacaoVariacao(
                 new DisponibilidadeDtos.ResultadoDisponibilidade(
@@ -282,7 +281,8 @@ public class CalculadoraDisponibilidadeService {
         if (!item.isDisponivel()) {
             motivos.add(bloqueio("ITEM_PAUSADO", "Item pausado pela disponibilidade manual legada."));
         }
-        if (item.getCategoriaCardapio() != null && !item.getCategoriaCardapio().isAtivo()) {
+        var categoria = item.getCategoriaCardapio();
+        if (categoria != null && !categoria.isAtivo()) {
             motivos.add(bloqueio("CATEGORIA_INATIVA", "Categoria de cardapio inativa."));
         }
         if (!variacao.isAtiva()) {
@@ -389,10 +389,16 @@ public class CalculadoraDisponibilidadeService {
     }
 
     private PoliticaFalta resolverPolitica(ResolucaoComposicaoVariacaoService.ComponenteComposicao componente) {
-        if (componente.origem() == OrigemComposicaoVenda.PRODUTO_DIRETO || componente.ingrediente() == null) {
+        if (componente.origem() == OrigemComposicaoVenda.PRODUTO_DIRETO) {
             return componente.produto().getPoliticaFalta();
         }
-        PoliticaFaltaIngrediente politicaIngrediente = componente.ingrediente().getPoliticaFalta();
+
+        var ingrediente = componente.ingrediente();
+        if (ingrediente == null) {
+            return componente.produto().getPoliticaFalta();
+        }
+
+        PoliticaFaltaIngrediente politicaIngrediente = ingrediente.getPoliticaFalta();
         if (politicaIngrediente == null || politicaIngrediente == PoliticaFaltaIngrediente.HERDAR_PRODUTO) {
             return componente.produto().getPoliticaFalta();
         }
@@ -462,7 +468,9 @@ public class CalculadoraDisponibilidadeService {
                 componente.politicaFalta().name(),
                 estoque == null || componente.quantidadeBasePorUnidade().compareTo(BigDecimal.ZERO) <= 0
                         ? null
-                        : Math.max(0, inteiroSeguro(disponivel.divideToIntegralValue(componente.quantidadeBasePorUnidade()))),
+                        : Math.max(0, inteiroSeguro(Objects.requireNonNull(disponivel,
+                                "Quantidade disponivel do estoque e obrigatoria.")
+                                .divideToIntegralValue(componente.quantidadeBasePorUnidade()))),
                 entraNaCapacidade
         ));
     }
@@ -522,26 +530,30 @@ public class CalculadoraDisponibilidadeService {
                                             CalculadoraCapacidadeService.ResultadoCapacidade capacidade,
                                             List<DisponibilidadeDtos.MotivoDisponibilidade> motivos,
                                             List<DisponibilidadeDtos.MotivoDisponibilidade> alertas) {
-        if (capacidade.capacidadeEstimada() == null) {
+        Integer capacidadeEstimada = capacidade.capacidadeEstimada();
+        if (capacidadeEstimada == null) {
             return;
         }
-        boolean possuiBloqueio = motivos.stream().anyMatch(DisponibilidadeDtos.MotivoDisponibilidade::bloqueante);
+        boolean possuiBloqueio = motivos.stream().anyMatch(motivo -> motivo.bloqueante());
         if (possuiBloqueio) {
             return;
         }
-        int limite = variacao.getLimiteAlertaCapacidade() == null
+        var limiteConfigurado = variacao.getLimiteAlertaCapacidade();
+        int limite = limiteConfigurado == null
                 ? limiteAlertaPadrao
-                : variacao.getLimiteAlertaCapacidade();
-        if (capacidade.capacidadeEstimada() <= limite) {
+                : limiteConfigurado;
+        if (capacidadeEstimada <= limite) {
+            DisponibilidadeDtos.IngredienteLimitante limitante =
+                    capacidade.ingredienteLimitantePrincipal();
             alertas.add(new DisponibilidadeDtos.MotivoDisponibilidade(
                     "CAPACIDADE_BAIXA",
                     SeveridadeDisponibilidade.ALERTA,
-                    capacidade.ingredienteLimitantePrincipal() == null ? null : capacidade.ingredienteLimitantePrincipal().produtoId(),
-                    capacidade.ingredienteLimitantePrincipal() == null ? null : capacidade.ingredienteLimitantePrincipal().produto(),
-                    capacidade.ingredienteLimitantePrincipal() == null ? null : capacidade.ingredienteLimitantePrincipal().quantidadeNecessariaPorUnidade(),
-                    capacidade.ingredienteLimitantePrincipal() == null ? null : capacidade.ingredienteLimitantePrincipal().quantidadeDisponivel(),
-                    capacidade.ingredienteLimitantePrincipal() == null ? null : capacidade.ingredienteLimitantePrincipal().unidade(),
-                    "Restam ingredientes para aproximadamente " + capacidade.capacidadeEstimada() + " unidades.",
+                    limitante == null ? null : limitante.produtoId(),
+                    limitante == null ? null : limitante.produto(),
+                    limitante == null ? null : limitante.quantidadeNecessariaPorUnidade(),
+                    limitante == null ? null : limitante.quantidadeDisponivel(),
+                    limitante == null ? null : limitante.unidade(),
+                    "Restam ingredientes para aproximadamente " + capacidadeEstimada + " unidades.",
                     false
             ));
         }
@@ -554,8 +566,8 @@ public class CalculadoraDisponibilidadeService {
             return alertas.isEmpty() ? EstadoDisponibilidade.DISPONIVEL : EstadoDisponibilidade.DISPONIVEL_COM_ALERTA;
         }
         Set<String> codigos = motivos.stream()
-                .filter(DisponibilidadeDtos.MotivoDisponibilidade::bloqueante)
-                .map(DisponibilidadeDtos.MotivoDisponibilidade::codigo)
+                .filter(motivo -> motivo.bloqueante())
+                .map(motivo -> motivo.codigo())
                 .collect(Collectors.toSet());
         if (contemAlgum(codigos, "ITEM_INATIVO", "CATEGORIA_INATIVA", "VARIACAO_INATIVA")) {
             return EstadoDisponibilidade.INATIVO;

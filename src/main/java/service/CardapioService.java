@@ -29,7 +29,7 @@ public class CardapioService {
 
     public List<CategoriaCardapio> listarCategoriasAtivas() {
         return listarCategoriasAdministrativas().stream()
-                .filter(CategoriaCardapio::isAtivo)
+                .filter(categoria -> categoria.isAtivo())
                 .toList();
     }
 
@@ -44,10 +44,13 @@ public class CardapioService {
         String buscaNormalizada = normalizarTexto(busca);
 
         return itemCardapioRepository.listarTodos().stream()
-                .filter(ItemCardapio::isAtivo)
-                .filter(this::categoriaAtiva)
-                .filter(item -> categoriaNormalizada.isEmpty()
-                        || normalizarTexto(item.getCategoriaCardapio().getCodigo()).equals(categoriaNormalizada))
+                .filter(item -> item.isAtivo())
+                .filter(item -> {
+                    CategoriaCardapio categoria = item.getCategoriaCardapio();
+                    return categoria != null && categoria.isAtivo()
+                            && (categoriaNormalizada.isEmpty()
+                            || normalizarTexto(categoria.getCodigo()).equals(categoriaNormalizada));
+                })
                 .filter(item -> buscaNormalizada.isEmpty() || montarIndiceBusca(item).contains(buscaNormalizada))
                 .sorted(comparadorItens())
                 .toList();
@@ -57,8 +60,13 @@ public class CardapioService {
         String buscaNormalizada = normalizarTexto(busca);
 
         return itemCardapioRepository.listarTodos().stream()
-                .filter(item -> categoriaId == null
-                        || (item.getCategoriaCardapio() != null && item.getCategoriaCardapio().getId() == categoriaId))
+                .filter(item -> {
+                    if (categoriaId == null) {
+                        return true;
+                    }
+                    CategoriaCardapio categoria = item.getCategoriaCardapio();
+                    return categoria != null && categoria.getId() == categoriaId;
+                })
                 .filter(item -> buscaNormalizada.isEmpty() || montarIndiceBusca(item).contains(buscaNormalizada))
                 .sorted(comparadorItens())
                 .toList();
@@ -340,10 +348,11 @@ public class CardapioService {
     }
 
     private String montarIndiceBusca(ItemCardapio item) {
+        CategoriaCardapio categoria = item.getCategoriaCardapio();
         return normalizarTexto(String.join(" ",
                 valorOuVazio(item.getNome()),
                 valorOuVazio(item.getDescricaoCurta()),
-                item.getCategoriaCardapio() != null ? valorOuVazio(item.getCategoriaCardapio().getNomeExibicao()) : "",
+                categoria != null ? valorOuVazio(categoria.getNomeExibicao()) : "",
                 valorOuVazio(item.getCodigo())
         ));
     }
@@ -364,8 +373,12 @@ public class CardapioService {
         }
 
         itemCardapioRepository.listarTodos().stream()
-                .filter(item -> item.getCategoriaCardapio() != null && item.getCategoriaCardapio().getId() == categoriaVigente.getId())
-                .filter(item -> categoriaDivergente(item.getCategoriaCardapio(), categoriaVigente))
+                .filter(item -> {
+                    CategoriaCardapio categoria = item.getCategoriaCardapio();
+                    return categoria != null
+                            && categoria.getId() == categoriaVigente.getId()
+                            && categoriaDivergente(categoria, categoriaVigente);
+                })
                 .forEach(item -> itemCardapioRepository.salvar(new ItemCardapio(
                         item.getId(),
                         item.getCodigo(),
@@ -390,17 +403,23 @@ public class CardapioService {
     }
 
     private ItemCardapio sincronizarCategoriaVigente(ItemCardapio item) {
-        if (item == null || item.getCategoriaCardapio() == null) {
+        if (item == null) {
+            return null;
+        }
+
+        CategoriaCardapio categoriaAtual = item.getCategoriaCardapio();
+        if (categoriaAtual == null) {
             return item;
         }
 
-        CategoriaCardapio categoriaVigente = categoriaCardapioRepository.buscarPorId(item.getCategoriaCardapio().getId())
-                .orElse(item.getCategoriaCardapio());
-        if (categoriaVigente.equals(item.getCategoriaCardapio())
-                && categoriaVigente.isAtivo() == item.getCategoriaCardapio().isAtivo()
-                && categoriaVigente.getOrdemExibicao() == item.getCategoriaCardapio().getOrdemExibicao()
-                && categoriaVigente.getCodigo().equals(item.getCategoriaCardapio().getCodigo())
-                && categoriaVigente.getNomeExibicao().equals(item.getCategoriaCardapio().getNomeExibicao())) {
+        CategoriaCardapio categoriaVigente = categoriaCardapioRepository
+                .buscarPorId(categoriaAtual.getId())
+                .orElse(categoriaAtual);
+        if (categoriaVigente.equals(categoriaAtual)
+                && categoriaVigente.isAtivo() == categoriaAtual.isAtivo()
+                && categoriaVigente.getOrdemExibicao() == categoriaAtual.getOrdemExibicao()
+                && categoriaVigente.getCodigo().equals(categoriaAtual.getCodigo())
+                && categoriaVigente.getNomeExibicao().equals(categoriaAtual.getNomeExibicao())) {
             return item;
         }
 
@@ -420,17 +439,17 @@ public class CardapioService {
     }
 
     private Comparator<CategoriaCardapio> comparadorCategorias() {
-        return Comparator.comparingInt(CategoriaCardapio::getOrdemExibicao)
-                .thenComparing(CategoriaCardapio::getNomeExibicao, String.CASE_INSENSITIVE_ORDER)
-                .thenComparingInt(CategoriaCardapio::getId);
+        return Comparator.comparingInt((CategoriaCardapio categoria) -> categoria.getOrdemExibicao())
+                .thenComparing(categoria -> categoria.getNomeExibicao(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparingInt(categoria -> categoria.getId());
     }
 
     private Comparator<ItemCardapio> comparadorItens() {
         return Comparator.comparingInt((ItemCardapio item) -> item.getCategoriaCardapio().getOrdemExibicao())
                 .thenComparing(item -> item.getCategoriaCardapio().getNomeExibicao(), String.CASE_INSENSITIVE_ORDER)
-                .thenComparingInt(ItemCardapio::getOrdemExibicao)
-                .thenComparing(ItemCardapio::getNome, String.CASE_INSENSITIVE_ORDER)
-                .thenComparingInt(ItemCardapio::getId);
+                .thenComparingInt(item -> item.getOrdemExibicao())
+                .thenComparing(item -> item.getNome(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparingInt(item -> item.getId());
     }
 
     private static String normalizarCodigo(String codigo, String fallback) {

@@ -16,10 +16,15 @@ public class ComandaRepositoryAdapter implements ComandaRepository {
     }
 
     @Override
-    public Comanda salvar(Comanda comanda) {
-        // saveAndFlush: o índice único de comanda aberta precisa barrar a duplicata aqui.
-        return delegate.saveAndFlush(comanda);
+public Comanda salvar(Comanda comanda) {
+    if (comanda == null) {
+        throw new IllegalArgumentException("Comanda e obrigatoria.");
     }
+
+    // Forca a verificacao da restricao de unicidade no banco
+    // antes de retornar ao servico.
+    return delegate.saveAndFlush(comanda);
+}
 
     @Override
     public Optional<Comanda> buscarAbertaPorNumero(int numero) {

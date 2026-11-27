@@ -486,20 +486,19 @@ public class AppConfig {
     }
 
     @Bean
-    public MontagemComposicaoVendaService montagemComposicaoVendaService(
-            ResolucaoComposicaoVariacaoService resolucaoComposicaoVariacaoService,
-            MontagemConfiguracaoItemService montagemConfiguracaoItemService,
-            ComposicaoMultiplaService composicaoMultiplaService,
-            VendaItemModificadorRepository vendaItemModificadorRepository,
-            VendaItemParteRepository vendaItemParteRepository) {
-        return new MontagemComposicaoVendaService(
-                resolucaoComposicaoVariacaoService,
-                montagemConfiguracaoItemService,
-                composicaoMultiplaService,
-                vendaItemModificadorRepository,
-                vendaItemParteRepository
-        );
-    }
+public MontagemComposicaoVendaService montagemComposicaoVendaService(
+        MontagemConfiguracaoItemService montagemConfiguracaoItemService,
+        ComposicaoMultiplaService composicaoMultiplaService,
+        VendaItemModificadorRepository vendaItemModificadorRepository,
+        VendaItemParteRepository vendaItemParteRepository) {
+
+    return new MontagemComposicaoVendaService(
+            montagemConfiguracaoItemService,
+            composicaoMultiplaService,
+            vendaItemModificadorRepository,
+            vendaItemParteRepository
+    );
+}
 
     @Bean
     public CalculadoraCustoVendaService calculadoraCustoVendaService() {

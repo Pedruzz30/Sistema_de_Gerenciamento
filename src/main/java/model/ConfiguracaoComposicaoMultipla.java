@@ -93,7 +93,7 @@ public class ConfiguracaoComposicaoMultipla {
         validar(id >= 0, "ID da configuracao multissabor nao pode ser negativo.");
         this.id = id;
         this.criadoEm = LocalDateTime.now();
-        atualizar(
+        atualizarCampos(
                 variacaoItemCardapio,
                 ativo,
                 minimoPartes,
@@ -108,6 +108,19 @@ public class ConfiguracaoComposicaoMultipla {
     }
 
     public void atualizar(VariacaoItemCardapio variacaoItemCardapio,
+                          boolean ativo,
+                          int minimoPartes,
+                          int maximoPartes,
+                          String quantidadesPermitidas,
+                          boolean permiteRepetirPartes,
+                          boolean proporcoesIguaisObrigatorias,
+                          boolean permiteProporcaoPersonalizada,
+                          PoliticaPrecoComposicaoMultipla politicaPreco,
+                          PoliticaArredondamentoComposicaoMultipla politicaArredondamento) {
+        atualizarCampos(variacaoItemCardapio, ativo, minimoPartes, maximoPartes, quantidadesPermitidas, permiteRepetirPartes, proporcoesIguaisObrigatorias, permiteProporcaoPersonalizada, politicaPreco, politicaArredondamento);
+    }
+
+    private void atualizarCampos(VariacaoItemCardapio variacaoItemCardapio,
                           boolean ativo,
                           int minimoPartes,
                           int maximoPartes,

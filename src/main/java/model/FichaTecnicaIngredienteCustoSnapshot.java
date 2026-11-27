@@ -51,31 +51,59 @@ public class FichaTecnicaIngredienteCustoSnapshot {
         // JPA
     }
 
-    public FichaTecnicaIngredienteCustoSnapshot(long id,
-                                                FichaTecnicaCustoSnapshot fichaTecnicaCustoSnapshot,
-                                                FichaTecnicaIngrediente fichaTecnicaIngrediente,
-                                                Produto produto,
-                                                BigDecimal quantidadeBase,
-                                                BigDecimal custoMedioUnitario,
-                                                BigDecimal custoTotalIngrediente) {
-        validar(id >= 0, "ID do snapshot de ingrediente nao pode ser negativo.");
-        validar(fichaTecnicaCustoSnapshot != null, "Snapshot de custo e obrigatorio.");
-        validar(fichaTecnicaIngrediente != null, "Ingrediente da ficha e obrigatorio.");
-        validar(produto != null, "Produto e obrigatorio.");
-        validar(quantidadeBase != null && quantidadeBase.compareTo(BigDecimal.ZERO) > 0,
+    public FichaTecnicaIngredienteCustoSnapshot(
+        long id,
+        FichaTecnicaCustoSnapshot fichaTecnicaCustoSnapshot,
+        FichaTecnicaIngrediente fichaTecnicaIngrediente,
+        Produto produto,
+        BigDecimal quantidadeBase,
+        BigDecimal custoMedioUnitario,
+        BigDecimal custoTotalIngrediente) {
+
+    validar(id >= 0,
+            "ID do snapshot de ingrediente nao pode ser negativo.");
+
+    validar(fichaTecnicaCustoSnapshot != null,
+            "Snapshot de custo e obrigatorio.");
+
+    validar(fichaTecnicaIngrediente != null,
+            "Ingrediente da ficha e obrigatorio.");
+
+    validar(produto != null,
+            "Produto e obrigatorio.");
+
+    if (quantidadeBase == null
+            || quantidadeBase.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException(
                 "Quantidade do snapshot deve ser maior que zero.");
-        validar(custoMedioUnitario != null && custoMedioUnitario.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo medio unitario nao pode ser negativo.");
-        validar(custoTotalIngrediente != null && custoTotalIngrediente.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo total do ingrediente nao pode ser negativo.");
-        this.id = id;
-        this.fichaTecnicaCustoSnapshot = fichaTecnicaCustoSnapshot;
-        this.fichaTecnicaIngrediente = fichaTecnicaIngrediente;
-        this.produto = produto;
-        this.quantidadeBase = quantidadeBase.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-        this.custoMedioUnitario = custoMedioUnitario.setScale(ESCALA_CUSTO_UNITARIO, RoundingMode.HALF_UP);
-        this.custoTotalIngrediente = custoTotalIngrediente.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
     }
+
+    if (custoMedioUnitario == null
+            || custoMedioUnitario.compareTo(BigDecimal.ZERO) < 0) {
+        throw new IllegalArgumentException(
+                "Custo medio unitario nao pode ser negativo.");
+    }
+
+    if (custoTotalIngrediente == null
+            || custoTotalIngrediente.compareTo(BigDecimal.ZERO) < 0) {
+        throw new IllegalArgumentException(
+                "Custo total do ingrediente nao pode ser negativo.");
+    }
+
+    this.id = id;
+    this.fichaTecnicaCustoSnapshot = fichaTecnicaCustoSnapshot;
+    this.fichaTecnicaIngrediente = fichaTecnicaIngrediente;
+    this.produto = produto;
+
+    this.quantidadeBase = quantidadeBase.setScale(
+            ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+
+    this.custoMedioUnitario = custoMedioUnitario.setScale(
+            ESCALA_CUSTO_UNITARIO, RoundingMode.HALF_UP);
+
+    this.custoTotalIngrediente = custoTotalIngrediente.setScale(
+            ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+}
 
     public long getId() { return id; }
     public FichaTecnicaCustoSnapshot getFichaTecnicaCustoSnapshot() { return fichaTecnicaCustoSnapshot; }

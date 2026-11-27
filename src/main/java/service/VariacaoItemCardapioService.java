@@ -16,6 +16,8 @@ import repository.VariacaoItemCardapioRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 public class VariacaoItemCardapioService {
 
@@ -30,10 +32,10 @@ public class VariacaoItemCardapioService {
                                        ProdutoRepository produtoRepository,
                                        VariacaoItemCardapioRepository variacaoRepository,
                                        LogRepository logRepository) {
-        this.itemCardapioRepository = itemCardapioRepository;
-        this.produtoRepository = produtoRepository;
-        this.variacaoRepository = variacaoRepository;
-        this.logRepository = logRepository;
+        this.itemCardapioRepository = Objects.requireNonNull(itemCardapioRepository, "itemCardapioRepository");
+        this.produtoRepository = Objects.requireNonNull(produtoRepository, "produtoRepository");
+        this.variacaoRepository = Objects.requireNonNull(variacaoRepository, "variacaoRepository");
+        this.logRepository = Objects.requireNonNull(logRepository, "logRepository");
     }
 
     @Transactional
@@ -66,12 +68,13 @@ public class VariacaoItemCardapioService {
                                       Usuario usuario) {
         ItemCardapio item = buscarItemObrigatorio(itemId);
         Produto produtoDireto = buscarProdutoDireto(tipoComposicao, produtoDiretoId);
-        validarUnicidades(itemId, normalizarCodigo(codigo), padrao != null && padrao, null);
+        String codigoNormalizado = normalizarCodigo(codigo);
+        validarUnicidades(itemId, codigoNormalizado, Boolean.TRUE.equals(padrao), null);
         VariacaoItemCardapio variacao = new VariacaoItemCardapio(
                 0,
                 item,
                 nome,
-                codigo,
+                codigoNormalizado,
                 precoVenda,
                 tipoComposicao,
                 produtoDireto,
@@ -100,15 +103,16 @@ public class VariacaoItemCardapioService {
                                           Usuario usuario) {
         VariacaoItemCardapio variacao = buscarObrigatoria(variacaoId);
         Produto produtoDireto = buscarProdutoDireto(tipoComposicao, produtoDiretoId);
+        String codigoNormalizado = normalizarCodigo(codigo);
         validarUnicidades(
                 variacao.getItemCardapio().getId(),
-                normalizarCodigo(codigo),
-                padrao != null && padrao && ativa != Boolean.FALSE,
+                codigoNormalizado,
+                Boolean.TRUE.equals(padrao) && !Boolean.FALSE.equals(ativa),
                 variacao.getId()
         );
         variacao.atualizar(
                 nome,
-                codigo,
+                codigoNormalizado,
                 precoVenda,
                 tipoComposicao,
                 produtoDireto,
@@ -145,8 +149,9 @@ public class VariacaoItemCardapioService {
             if (resultado.criada()) {
                 criadas++;
             }
-            if (resultado.pendencia() != null) {
-                pendencias.add(resultado.pendencia());
+            String pendencia = resultado.pendencia();
+            if (pendencia != null) {
+                pendencias.add(pendencia);
             }
         }
         return new BackfillVariacaoResultado(criadas, List.copyOf(pendencias));
@@ -154,7 +159,15 @@ public class VariacaoItemCardapioService {
 
     @Transactional
     public ResultadoPadrao garantirVariacaoPadraoSePossivel(ItemCardapio item, Usuario usuario) {
+        Objects.requireNonNull(item, "item");
         if (variacaoRepository.buscarPadraoAtivaPorItem(item.getId()).isPresent()) {
+            return ResultadoPadrao.semAlteracao();
+        }
+
+        // Um item inativo pode ter uma variacao padrao inativa ja criada.
+        // Nao gerar outra a cada listagem ou execucao do backfill.
+        if (!item.isAtivo() && variacaoRepository.listarPorItem(item.getId()).stream()
+                .anyMatch(variacao -> variacao.isPadrao())) {
             return ResultadoPadrao.semAlteracao();
         }
 
@@ -246,7 +259,7 @@ public class VariacaoItemCardapioService {
         if (codigo == null || codigo.isBlank()) {
             throw new ErroNegocioException("VARIACAO_INVALIDA", "Codigo da variacao e obrigatorio.");
         }
-        return codigo.trim().toUpperCase();
+        return codigo.trim().toUpperCase(Locale.ROOT);
     }
 
     private void auditar(Usuario usuario, String acao, String descricao) {

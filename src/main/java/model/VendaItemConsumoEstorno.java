@@ -53,31 +53,58 @@ public class VendaItemConsumoEstorno {
     }
 
     public VendaItemConsumoEstorno(long id,
-                                   VendaItemConsumo vendaItemConsumo,
-                                   MovimentoEstoque movimentoEstoque,
-                                   BigDecimal quantidadeBaseEstornada,
-                                   BigDecimal custoUnitarioSnapshot,
-                                   BigDecimal valorEstornado) {
-        validar(id >= 0, "ID do estorno de consumo nao pode ser negativo.");
-        validar(vendaItemConsumo != null, "Consumo da venda e obrigatorio.");
-        validar(movimentoEstoque != null, "Movimento de estorno e obrigatorio.");
-        validar(movimentoEstoque.getTipo() == TipoMovimentoEstoque.ESTORNO_VENDA,
-                "Movimento vinculado ao consumo precisa ser ESTORNO_VENDA.");
-        validar(quantidadeBaseEstornada != null && quantidadeBaseEstornada.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade estornada deve ser maior que zero.");
-        validar(custoUnitarioSnapshot != null && custoUnitarioSnapshot.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo unitario do estorno deve ser nao negativo.");
-        validar(valorEstornado != null && valorEstornado.compareTo(BigDecimal.ZERO) >= 0,
-                "Valor estornado deve ser nao negativo.");
+                               VendaItemConsumo vendaItemConsumo,
+                               MovimentoEstoque movimentoEstoque,
+                               BigDecimal quantidadeBaseEstornada,
+                               BigDecimal custoUnitarioSnapshot,
+                               BigDecimal valorEstornado) {
 
-        this.id = id;
-        this.vendaItemConsumo = vendaItemConsumo;
-        this.movimentoEstoque = movimentoEstoque;
-        this.quantidadeBaseEstornada = quantidadeBaseEstornada.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-        this.custoUnitarioSnapshot = custoUnitarioSnapshot.setScale(ESCALA_CUSTO, RoundingMode.HALF_UP);
-        this.valorEstornado = valorEstornado.setScale(ESCALA_VALOR, RoundingMode.HALF_UP);
-        this.criadoEm = LocalDateTime.now();
+    validar(id >= 0,
+            "ID do estorno de consumo nao pode ser negativo.");
+
+    validar(vendaItemConsumo != null,
+            "Consumo da venda e obrigatorio.");
+
+    if (movimentoEstoque == null) {
+        throw new IllegalArgumentException(
+                "Movimento de estorno e obrigatorio.");
     }
+
+    validar(movimentoEstoque.getTipo() == TipoMovimentoEstoque.ESTORNO_VENDA,
+            "Movimento vinculado ao consumo precisa ser ESTORNO_VENDA.");
+
+    if (quantidadeBaseEstornada == null
+            || quantidadeBaseEstornada.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Quantidade estornada deve ser maior que zero.");
+    }
+
+    if (custoUnitarioSnapshot == null
+            || custoUnitarioSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Custo unitario do estorno deve ser nao negativo.");
+    }
+
+    if (valorEstornado == null || valorEstornado.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Valor estornado deve ser nao negativo.");
+    }
+
+    this.id = id;
+    this.vendaItemConsumo = vendaItemConsumo;
+    this.movimentoEstoque = movimentoEstoque;
+
+    this.quantidadeBaseEstornada = quantidadeBaseEstornada
+            .setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+
+    this.custoUnitarioSnapshot = custoUnitarioSnapshot
+            .setScale(ESCALA_CUSTO, RoundingMode.HALF_UP);
+
+    this.valorEstornado = valorEstornado
+            .setScale(ESCALA_VALOR, RoundingMode.HALF_UP);
+
+    this.criadoEm = LocalDateTime.now();
+}
 
     @PrePersist
     void prePersist() {

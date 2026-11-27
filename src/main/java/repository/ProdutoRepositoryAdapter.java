@@ -1,6 +1,7 @@
 package repository;
 
 import model.Produto;
+import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +18,7 @@ public class ProdutoRepositoryAdapter implements ProdutoRepository {
     }
 
     @Override
-    public Produto salvar(Produto produto) {
+    public Produto salvar(@NonNull Produto produto) {
         return delegate.save(produto);
     }
 

@@ -22,6 +22,7 @@ import repository.VendaRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Transactional(readOnly = true)
 public class VendaService {
@@ -43,14 +44,14 @@ public class VendaService {
                         VendaItemParteRepository vendaItemParteRepository,
                         VendaItemService vendaItemService,
                         LogRepository logRepository) {
-        this.vendaRepository = vendaRepository;
-        this.vendaItemRepository = vendaItemRepository;
-        this.consumoRepository = consumoRepository;
-        this.modificadorRepository = modificadorRepository;
-        this.modificadorImpactoRepository = modificadorImpactoRepository;
-        this.vendaItemParteRepository = vendaItemParteRepository;
-        this.vendaItemService = vendaItemService;
-        this.logRepository = logRepository;
+        this.vendaRepository = Objects.requireNonNull(vendaRepository, "vendaRepository");
+        this.vendaItemRepository = Objects.requireNonNull(vendaItemRepository, "vendaItemRepository");
+        this.consumoRepository = Objects.requireNonNull(consumoRepository, "consumoRepository");
+        this.modificadorRepository = Objects.requireNonNull(modificadorRepository, "modificadorRepository");
+        this.modificadorImpactoRepository = Objects.requireNonNull(modificadorImpactoRepository, "modificadorImpactoRepository");
+        this.vendaItemParteRepository = Objects.requireNonNull(vendaItemParteRepository, "vendaItemParteRepository");
+        this.vendaItemService = Objects.requireNonNull(vendaItemService, "vendaItemService");
+        this.logRepository = Objects.requireNonNull(logRepository, "logRepository");
     }
 
     @Transactional
@@ -58,20 +59,27 @@ public class VendaService {
                             Long filialId,
                             CanalVenda canal,
                             List<NovoItemVenda> itens) {
-        validarPermissaoVenda(usuario);
+        Usuario autorizado = exigirUsuarioAutorizado(usuario);
+        if (itens != null) {
+            for (NovoItemVenda item : itens) {
+                if (item == null) {
+                    throw new IllegalArgumentException("Item da venda nao pode ser nulo.");
+                }
+            }
+        }
         Long filial = filialId == null ? ProdutoEstoqueService.FILIAL_PADRAO_ID : filialId;
         Venda venda = vendaRepository.salvar(new Venda(
                 0,
                 filial,
                 gerarNumeroVenda(),
                 canal == null ? CanalVenda.BALCAO : canal,
-                usuario == null ? null : usuario.getRu()
+                autorizado.getRu()
         ));
-        auditar(usuario, "VENDA_CRIADA", "Venda " + venda.getId() + " criada em rascunho.");
+        auditar(autorizado, "VENDA_CRIADA", "Venda " + venda.getId() + " criada em rascunho.");
         if (itens != null) {
             for (NovoItemVenda item : itens) {
                 vendaItemService.adicionarItem(
-                        usuario,
+                        autorizado,
                         venda.getId(),
                         item.variacaoId(),
                         item.quantidade(),
@@ -136,19 +144,8 @@ public class VendaService {
                                    String observacao,
                                    String configuracaoVersao,
                                    List<MontagemConfiguracaoItemService.SelecaoModificadorInput> selecoes) {
-        VendaItem item = vendaItemService.adicionarItem(
-                usuario,
-                vendaId,
-                variacaoId,
-                quantidade,
-                observacao,
-                configuracaoVersao,
-                selecoes == null ? List.of() : selecoes,
-                null,
-                List.of()
-        );
-        auditar(usuario, "VENDA_ITEM_INCLUIDO", "Item " + item.getId() + " incluido na venda " + vendaId + ".");
-        return item;
+        return adicionarItem(usuario, vendaId, variacaoId, quantidade,
+                observacao, configuracaoVersao, selecoes, null, List.of());
     }
 
     @Transactional
@@ -191,20 +188,8 @@ public class VendaService {
                                         String observacao,
                                         String configuracaoVersao,
                                         List<MontagemConfiguracaoItemService.SelecaoModificadorInput> selecoes) {
-        VendaItem item = vendaItemService.editarItemRascunho(
-                usuario,
-                vendaId,
-                itemId,
-                variacaoId,
-                quantidade,
-                observacao,
-                configuracaoVersao,
-                selecoes == null ? List.of() : selecoes,
-                null,
-                List.of()
-        );
-        auditar(usuario, "VENDA_ITEM_EDITADO", "Item " + itemId + " editado no rascunho da venda " + vendaId + ".");
-        return item;
+        return editarItemRascunho(usuario, vendaId, itemId, variacaoId,
+                quantidade, observacao, configuracaoVersao, selecoes, null, List.of());
     }
 
     @Transactional
@@ -235,15 +220,18 @@ public class VendaService {
     }
 
     private static String gerarNumeroVenda() {
-        return "V" + System.currentTimeMillis() + "-" + Math.abs((int) System.nanoTime());
+        return "V" + System.currentTimeMillis() + "-" + Math.abs((long) (int) System.nanoTime());
     }
 
-    private void validarPermissaoVenda(Usuario usuario) {
-        if (usuario == null
-                || usuario.getClasse() == null
-                || !usuario.getClasse().possuiPermissao(Permissao.VER_VENDAS)) {
+    private Usuario exigirUsuarioAutorizado(Usuario usuario) {
+        if (usuario == null) {
             throw new SecurityException("Voce nao tem permissao para registrar venda.");
         }
+        var classe = usuario.getClasse();
+        if (classe == null || !classe.possuiPermissao(Permissao.VER_VENDAS)) {
+            throw new SecurityException("Voce nao tem permissao para registrar venda.");
+        }
+        return usuario;
     }
 
     private void auditar(Usuario usuario, String acao, String descricao) {

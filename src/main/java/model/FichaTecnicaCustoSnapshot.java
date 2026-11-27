@@ -45,26 +45,46 @@ public class FichaTecnicaCustoSnapshot {
         // JPA
     }
 
-    public FichaTecnicaCustoSnapshot(long id,
-                                     FichaTecnicaVersao fichaTecnicaVersao,
-                                     Long filialId,
-                                     BigDecimal custoTotal,
-                                     BigDecimal custoPorUnidadeRendimento,
-                                     LocalDateTime calculadoEm) {
-        validar(id >= 0, "ID do snapshot de custo nao pode ser negativo.");
-        validar(fichaTecnicaVersao != null, "Versao da ficha tecnica e obrigatoria.");
-        validar(filialId != null, "Filial do snapshot e obrigatoria.");
-        validar(custoTotal != null && custoTotal.compareTo(BigDecimal.ZERO) >= 0,
+    public FichaTecnicaCustoSnapshot(
+        long id,
+        FichaTecnicaVersao fichaTecnicaVersao,
+        Long filialId,
+        BigDecimal custoTotal,
+        BigDecimal custoPorUnidadeRendimento,
+        LocalDateTime calculadoEm) {
+
+    validar(id >= 0,
+            "ID do snapshot de custo nao pode ser negativo.");
+
+    validar(fichaTecnicaVersao != null,
+            "Versao da ficha tecnica e obrigatoria.");
+
+    validar(filialId != null,
+            "Filial do snapshot e obrigatoria.");
+
+    if (custoTotal == null
+            || custoTotal.compareTo(BigDecimal.ZERO) < 0) {
+        throw new IllegalArgumentException(
                 "Custo total do snapshot nao pode ser negativo.");
-        validar(custoPorUnidadeRendimento != null && custoPorUnidadeRendimento.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo por unidade do snapshot nao pode ser negativo.");
-        this.id = id;
-        this.fichaTecnicaVersao = fichaTecnicaVersao;
-        this.filialId = filialId;
-        this.custoTotal = custoTotal.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.custoPorUnidadeRendimento = custoPorUnidadeRendimento.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.calculadoEm = calculadoEm == null ? LocalDateTime.now() : calculadoEm;
     }
+
+    if (custoPorUnidadeRendimento == null
+            || custoPorUnidadeRendimento.compareTo(BigDecimal.ZERO) < 0) {
+        throw new IllegalArgumentException(
+                "Custo por unidade do snapshot nao pode ser negativo.");
+    }
+
+    this.id = id;
+    this.fichaTecnicaVersao = fichaTecnicaVersao;
+    this.filialId = filialId;
+    this.custoTotal = custoTotal.setScale(
+            ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+    this.custoPorUnidadeRendimento = custoPorUnidadeRendimento.setScale(
+            ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+    this.calculadoEm = calculadoEm == null
+            ? LocalDateTime.now()
+            : calculadoEm;
+}
 
     public long getId() { return id; }
     public FichaTecnicaVersao getFichaTecnicaVersao() { return fichaTecnicaVersao; }

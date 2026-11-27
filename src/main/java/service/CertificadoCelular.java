@@ -105,7 +105,7 @@ public class CertificadoCelular {
         }
 
         List<Rede> redes = redesLocais();
-        String san = san(redes.stream().map(Rede::ip).toList(), nomeDoComputador());
+        String san = san(redes.stream().map(rede -> rede.ip()).toList(), nomeDoComputador());
         Path arquivoSan = pasta.resolve("servidor.san");
         boolean mesmoEndereco = Files.exists(arquivoSan) && Files.readString(arquivoSan, StandardCharsets.UTF_8).equals(san);
         if (!Files.exists(getKeystoreServidor()) || !mesmoEndereco || venceEmBreve(getKeystoreServidor(), senha())) {
@@ -216,7 +216,11 @@ public class CertificadoCelular {
     private static List<Rede> redesLocais() {
         List<Rede> redes = new ArrayList<>();
         try {
-            for (NetworkInterface interfaceRede : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+            var interfaces = NetworkInterface.getNetworkInterfaces();
+            if (interfaces == null) {
+                return List.of();
+            }
+            for (NetworkInterface interfaceRede : Collections.list(interfaces)) {
                 if (!interfaceRede.isUp() || interfaceRede.isLoopback() || interfaceRede.isVirtual()) continue;
                 for (InetAddress endereco : Collections.list(interfaceRede.getInetAddresses())) {
                     if (endereco instanceof Inet4Address && endereco.isSiteLocalAddress()) {
@@ -236,10 +240,11 @@ public class CertificadoCelular {
      * (VirtualBox, Hyper-V, WSL, Docker, VMware), que o celular não alcança.
      */
     static Comparator<Rede> ordemDasRedes() {
-        return Comparator.comparing((Rede r) -> ehVirtual(r.nome(), r.ip()))
-                .thenComparing(r -> !ehSemFio(r.nome()))
-                .thenComparing(r -> !r.ip().startsWith("192.168."))
-                .thenComparing(Rede::ip);
+        return Comparator
+                .comparing((Rede rede) -> ehVirtual(rede.nome(), rede.ip()))
+                .thenComparing(rede -> !ehSemFio(rede.nome()))
+                .thenComparing(rede -> !rede.ip().startsWith("192.168."))
+                .thenComparing(rede -> rede.ip());
     }
 
     static boolean ehVirtual(String nome, String ip) {
@@ -250,28 +255,32 @@ public class CertificadoCelular {
                 || (ip != null && ip.startsWith("192.168.56."));
     }
 
-    /** Ordena endereços como o painel mostra: o primeiro vira o QR. Para teste. */
-    static List<String> ordenar(List<String[]> nomesEIps) {
-        return nomesEIps.stream().map(n -> new Rede(n[1], n[0])).sorted(ordemDasRedes()).map(Rede::ip).toList();
-    }
-
     static boolean ehSemFio(String nome) {
         String texto = nome == null ? "" : nome.toLowerCase(Locale.ROOT);
-        return texto.contains("wi-fi") || texto.contains("wifi") || texto.contains("wireless")
-                || texto.contains("wlan") || texto.contains("802.11");
+        return texto.contains("wi-fi") || texto.contains("wifi")
+                || texto.contains("wireless") || texto.contains("wlan")
+                || texto.contains("sem fio") || texto.contains("802.11");
     }
 
-    private static String nomeDoComputador() {
-        String nome = System.getenv("COMPUTERNAME");
-        if (nome == null || nome.isBlank()) {
-            try {
-                nome = InetAddress.getLocalHost().getHostName();
-            } catch (IOException e) {
-                return null;
-            }
+   static List<String> ordenar(List<String[]> nomesEIps) {
+    return nomesEIps.stream()
+            .map(rede -> new Rede(rede[1], rede[0]))
+            .sorted(ordemDasRedes())
+            .map(rede -> rede.ip())
+            .toList();
+}
+
+private static String nomeDoComputador() {
+    String nome = System.getenv("COMPUTERNAME");
+    if (nome == null || nome.isBlank()) {
+        try {
+            nome = InetAddress.getLocalHost().getHostName();
+        } catch (IOException e) {
+            return null;
         }
-        return nome;
     }
+    return nome;
+}
 
     private void keytool(String... argumentos) throws IOException, InterruptedException {
         boolean windows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");

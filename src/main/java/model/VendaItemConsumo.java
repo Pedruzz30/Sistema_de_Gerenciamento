@@ -94,47 +94,90 @@ public class VendaItemConsumo {
     }
 
     public VendaItemConsumo(long id,
-                            VendaItem vendaItem,
-                            VendaItemParte vendaItemParte,
-                            Produto produto,
-                            UnidadeMedida unidadeBase,
-                            BigDecimal quantidadeBasePorUnidade,
-                            BigDecimal quantidadeBaseTotal,
-                            BigDecimal custoMedioUnitarioSnapshot,
-                            BigDecimal custoTotalSnapshot,
-                            OrigemComposicaoVenda origemComposicao,
-                            FichaTecnicaIngrediente fichaTecnicaIngrediente) {
-        validar(id >= 0, "ID do consumo nao pode ser negativo.");
-        validar(vendaItem != null, "Item da venda e obrigatorio.");
-        validar(vendaItemParte == null || vendaItemParte.getVendaItem().equals(vendaItem),
-                "Parte do consumo nao pertence ao item da venda.");
-        validar(produto != null, "Produto do consumo e obrigatorio.");
-        validar(unidadeBase != null, "Unidade-base do consumo e obrigatoria.");
-        validar(quantidadeBasePorUnidade != null && quantidadeBasePorUnidade.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade por unidade deve ser maior que zero.");
-        validar(quantidadeBaseTotal != null && quantidadeBaseTotal.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade total deve ser maior que zero.");
-        validar(custoMedioUnitarioSnapshot != null && custoMedioUnitarioSnapshot.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo medio unitario deve ser nao negativo.");
-        validar(custoTotalSnapshot != null && custoTotalSnapshot.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo total deve ser nao negativo.");
-        validar(origemComposicao != null, "Origem da composicao e obrigatoria.");
+                        VendaItem vendaItem,
+                        VendaItemParte vendaItemParte,
+                        Produto produto,
+                        UnidadeMedida unidadeBase,
+                        BigDecimal quantidadeBasePorUnidade,
+                        BigDecimal quantidadeBaseTotal,
+                        BigDecimal custoMedioUnitarioSnapshot,
+                        BigDecimal custoTotalSnapshot,
+                        OrigemComposicaoVenda origemComposicao,
+                        FichaTecnicaIngrediente fichaTecnicaIngrediente) {
 
-        this.id = id;
-        this.vendaItem = vendaItem;
-        this.vendaItemParte = vendaItemParte;
-        this.produto = produto;
-        this.nomeProdutoSnapshot = produto.getNome();
-        this.unidadeBase = unidadeBase;
-        this.unidadeBaseCodigoSnapshot = unidadeBase.getCodigo();
-        this.quantidadeBasePorUnidade = quantidadeBasePorUnidade.setScale(6, RoundingMode.HALF_UP);
-        this.quantidadeBaseTotal = quantidadeBaseTotal.setScale(6, RoundingMode.HALF_UP);
-        this.custoMedioUnitarioSnapshot = custoMedioUnitarioSnapshot.setScale(8, RoundingMode.HALF_UP);
-        this.custoTotalSnapshot = custoTotalSnapshot.setScale(4, RoundingMode.HALF_UP);
-        this.origemComposicao = origemComposicao;
-        this.fichaTecnicaIngrediente = fichaTecnicaIngrediente;
-        this.criadoEm = LocalDateTime.now();
+    validar(id >= 0,
+            "ID do consumo nao pode ser negativo.");
+
+    validar(vendaItem != null,
+            "Item da venda e obrigatorio.");
+
+    validar(vendaItemParte == null
+                    || vendaItemParte.getVendaItem().equals(vendaItem),
+            "Parte do consumo nao pertence ao item da venda.");
+
+    if (produto == null) {
+        throw new IllegalArgumentException(
+                "Produto do consumo e obrigatorio.");
     }
+
+    if (unidadeBase == null) {
+        throw new IllegalArgumentException(
+                "Unidade-base do consumo e obrigatoria.");
+    }
+
+    if (quantidadeBasePorUnidade == null
+            || quantidadeBasePorUnidade.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Quantidade por unidade deve ser maior que zero.");
+    }
+
+    if (quantidadeBaseTotal == null
+            || quantidadeBaseTotal.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Quantidade total deve ser maior que zero.");
+    }
+
+    if (custoMedioUnitarioSnapshot == null
+            || custoMedioUnitarioSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Custo medio unitario deve ser nao negativo.");
+    }
+
+    if (custoTotalSnapshot == null
+            || custoTotalSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Custo total deve ser nao negativo.");
+    }
+
+    validar(origemComposicao != null,
+            "Origem da composicao e obrigatoria.");
+
+    this.id = id;
+    this.vendaItem = vendaItem;
+    this.vendaItemParte = vendaItemParte;
+
+    this.produto = produto;
+    this.nomeProdutoSnapshot = produto.getNome();
+
+    this.unidadeBase = unidadeBase;
+    this.unidadeBaseCodigoSnapshot = unidadeBase.getCodigo();
+
+    this.quantidadeBasePorUnidade = quantidadeBasePorUnidade
+            .setScale(6, RoundingMode.HALF_UP);
+
+    this.quantidadeBaseTotal = quantidadeBaseTotal
+            .setScale(6, RoundingMode.HALF_UP);
+
+    this.custoMedioUnitarioSnapshot = custoMedioUnitarioSnapshot
+            .setScale(8, RoundingMode.HALF_UP);
+
+    this.custoTotalSnapshot = custoTotalSnapshot
+            .setScale(4, RoundingMode.HALF_UP);
+
+    this.origemComposicao = origemComposicao;
+    this.fichaTecnicaIngrediente = fichaTecnicaIngrediente;
+    this.criadoEm = LocalDateTime.now();
+}
 
     public void vincularMovimento(MovimentoEstoque movimentoEstoque) {
         validar(movimentoEstoque != null, "Movimento de estoque e obrigatorio.");

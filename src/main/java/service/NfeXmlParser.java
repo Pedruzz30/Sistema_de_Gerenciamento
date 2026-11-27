@@ -3,9 +3,10 @@ package service;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -15,11 +16,16 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Lê o XML de uma NF-e (modelo 55) recebida do fornecedor.
@@ -32,6 +38,10 @@ import java.util.List;
 public final class NfeXmlParser {
 
     private static final int MAX_CARACTERES = 5_000_000;
+    private static final int MAX_ITENS = 1_000;
+    private static final String NS_NFE = "http://www.portalfiscal.inf.br/nfe";
+    // Limites defensivos da aplicacao, nao substituem o schema fiscal.
+    private static final Pattern DECIMAL = Pattern.compile("[0-9]{1,20}(?:\\.[0-9]{1,10})?");
     private static final String SEM_GTIN = "SEM GTIN";
 
     private NfeXmlParser() {
@@ -51,7 +61,7 @@ public final class NfeXmlParser {
     public record Parte(String documento, String nome, String telefone) {}
 
     /**
-     * @param custoTotal o que o item custou de verdade: produto + frete + seguro
+     * @param custoTotal estimativa de custo de entrada: produto + frete + seguro
      *                   + outras despesas + IPI + ICMS-ST + FCP-ST − desconto
      */
     public record Item(int numero,
@@ -77,10 +87,16 @@ public final class NfeXmlParser {
             throw new IllegalArgumentException("Arquivo XML grande demais para uma NF-e.");
         }
         Document documento = interpretar(xml);
-        Element infNFe = primeiro(documento.getDocumentElement(), "infNFe");
-        if (infNFe == null) {
+        Element raiz = documento.getDocumentElement();
+        if (raiz == null || !NS_NFE.equals(raiz.getNamespaceURI())) {
             throw new IllegalArgumentException("Este XML nao e uma NF-e.");
         }
+        Element nfe = switch (raiz.getLocalName()) {
+            case "NFe" -> raiz;
+            case "nfeProc" -> exigir(raiz, "NFe");
+            default -> throw new IllegalArgumentException("Este XML nao e uma NF-e.");
+        };
+        Element infNFe = exigir(nfe, "infNFe");
 
         Element ide = exigir(infNFe, "ide");
         String modelo = texto(ide, "mod");
@@ -91,28 +107,41 @@ public final class NfeXmlParser {
             throw new IllegalArgumentException("Modelo de nota nao suportado: " + modelo + ".");
         }
 
-        String chave = infNFe.getAttribute("Id").replaceFirst("^NFe", "");
+        String id = infNFe.getAttribute("Id");
+        String chave = id.startsWith("NFe") ? id.substring(3) : "";
         if (!chaveValida(chave)) {
-            throw new IllegalArgumentException("Chave de acesso invalida: o arquivo esta incompleto ou foi alterado.");
+            throw new IllegalArgumentException("Chave de acesso invalida: formato ou digito verificador incorreto.");
         }
 
-        Parte emitente = lerParte(exigir(infNFe, "emit"), "xNome");
+        Parte emitente = lerParte(exigir(infNFe, "emit"), "enderEmit");
         Element dest = primeiro(infNFe, "dest");
-        Parte destinatario = dest == null ? new Parte("", "", "") : lerParte(dest, "xNome");
+        Parte destinatario = dest == null ? new Parte("", "", "") : lerParte(dest, "enderDest");
 
         List<Item> itens = new ArrayList<>();
-        NodeList detalhes = infNFe.getElementsByTagNameNS("*", "det");
-        for (int i = 0; i < detalhes.getLength(); i++) {
-            itens.add(lerItem((Element) detalhes.item(i), i + 1));
+        Set<Integer> numeros = new HashSet<>();
+        for (Node no = infNFe.getFirstChild(); no != null; no = no.getNextSibling()) {
+            if (!(no instanceof Element det) || !ehTag(det, "det")) {
+                continue;
+            }
+            if (itens.size() >= MAX_ITENS) {
+                throw new IllegalArgumentException("Nota excede o limite de itens da importacao.");
+            }
+            Item item = lerItem(det);
+            if (!numeros.add(item.numero())) {
+                throw new IllegalArgumentException("Numero de item duplicado: " + item.numero() + ".");
+            }
+            itens.add(item);
         }
         if (itens.isEmpty()) {
             throw new IllegalArgumentException("A nota nao tem itens.");
         }
 
-        Element totais = primeiro(infNFe, "ICMSTot");
-        BigDecimal total = totais == null ? null : decimal(texto(totais, "vNF"));
-        if (total == null) {
-            total = itens.stream().map(Item::custoTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        Element totais = exigir(exigir(infNFe, "total"), "ICMSTot");
+        BigDecimal total = decimalObrigatorio(totais, "vNF", "Total da nota");
+
+        String ambiente = texto(ide, "tpAmb");
+        if (!"1".equals(ambiente) && !"2".equals(ambiente)) {
+            throw new IllegalArgumentException("Ambiente da nota invalido ou ausente.");
         }
 
         return new Documento(
@@ -120,7 +149,7 @@ public final class NfeXmlParser {
                 texto(ide, "nNF"),
                 texto(ide, "serie"),
                 lerData(texto(ide, "dhEmi"), texto(ide, "dEmi")),
-                "2".equals(texto(ide, "tpAmb")),
+                "2".equals(ambiente),
                 "1".equals(texto(ide, "tpNF")) && "1".equals(texto(ide, "finNFe")),
                 emitente,
                 destinatario,
@@ -157,29 +186,51 @@ public final class NfeXmlParser {
         return CodigoVendaService.digitoVerificadorValido(limpo) ? limpo : null;
     }
 
-    private static Item lerItem(Element det, int posicao) {
+    private static Item lerItem(Element det) {
         Element prod = exigir(det, "prod");
-        int numero = posicao;
+        int numero;
         try {
-            numero = Integer.parseInt(det.getAttribute("nItem"));
-        } catch (NumberFormatException ignorado) {
-            // Mantém a posição no arquivo.
+            String numeroXml = det.getAttribute("nItem");
+            if (!numeroXml.matches("[0-9]{1,9}")) {
+                throw new NumberFormatException();
+            }
+            numero = Integer.parseInt(numeroXml);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Numero de item invalido.");
         }
-        BigDecimal quantidadeComercial = decimalObrigatorio(prod, "qCom", numero);
-        BigDecimal valorProdutos = decimalObrigatorio(prod, "vProd", numero);
-        BigDecimal quantidadeTributavel = decimal(texto(prod, "qTrib"));
+        if (numero <= 0) {
+            throw new IllegalArgumentException("Numero de item invalido.");
+        }
+        String contexto = "Item " + numero + " da nota";
+        BigDecimal quantidadeComercial = decimalObrigatorio(prod, "qCom", contexto);
+        BigDecimal valorProdutos = decimalObrigatorio(prod, "vProd", contexto);
+        BigDecimal quantidadeTributavel = decimalObrigatorio(prod, "qTrib", contexto);
+        if (quantidadeComercial.signum() <= 0 || quantidadeTributavel.signum() <= 0) {
+            throw new IllegalArgumentException(contexto + " possui quantidade nao positiva.");
+        }
+        String unidadeComercial = texto(prod, "uCom");
+        String unidadeTributavel = texto(prod, "uTrib");
+        if (unidadeComercial.isBlank() || unidadeTributavel.isBlank()) {
+            throw new IllegalArgumentException(contexto + " sem unidade comercial ou tributavel.");
+        }
 
         BigDecimal custo = valorProdutos
-                .add(zeroSeNulo(decimal(texto(prod, "vFrete"))))
-                .add(zeroSeNulo(decimal(texto(prod, "vSeg"))))
-                .add(zeroSeNulo(decimal(texto(prod, "vOutro"))))
-                .subtract(zeroSeNulo(decimal(texto(prod, "vDesc"))));
+                .add(decimalOpcional(prod, "vFrete", contexto))
+                .add(decimalOpcional(prod, "vSeg", contexto))
+                .add(decimalOpcional(prod, "vOutro", contexto))
+                .subtract(decimalOpcional(prod, "vDesc", contexto));
         Element imposto = primeiro(det, "imposto");
         if (imposto != null) {
+            Element ipi = primeiro(imposto, "IPI");
+            Element ipiTrib = ipi == null ? null : primeiro(ipi, "IPITrib");
+            Element icms = primeiro(imposto, "ICMS");
             custo = custo
-                    .add(zeroSeNulo(decimal(textoEmQualquerNivel(imposto, "vIPI"))))
-                    .add(zeroSeNulo(decimal(textoEmQualquerNivel(imposto, "vICMSST"))))
-                    .add(zeroSeNulo(decimal(textoEmQualquerNivel(imposto, "vFCPST"))));
+                    .add(decimalOpcional(ipiTrib, "vIPI", contexto))
+                    .add(valorGrupoIcms(icms, "vICMSST", contexto))
+                    .add(valorGrupoIcms(icms, "vFCPST", contexto));
+        }
+        if (custo.signum() < 0) {
+            throw new IllegalArgumentException(contexto + " possui custo total negativo.");
         }
 
         return new Item(
@@ -191,26 +242,28 @@ public final class NfeXmlParser {
                 texto(prod, "CFOP"),
                 gtinOuNulo(texto(prod, "cEAN")),
                 gtinOuNulo(texto(prod, "cEANTrib")),
-                texto(prod, "uCom").toUpperCase(java.util.Locale.ROOT),
+                unidadeComercial.toUpperCase(Locale.ROOT),
                 quantidadeComercial,
-                texto(prod, "uTrib").toUpperCase(java.util.Locale.ROOT),
-                quantidadeTributavel == null ? quantidadeComercial : quantidadeTributavel,
+                unidadeTributavel.toUpperCase(Locale.ROOT),
+                quantidadeTributavel,
                 valorProdutos.setScale(2, RoundingMode.HALF_UP),
-                custo.max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP)
+                custo.setScale(2, RoundingMode.HALF_UP)
         );
     }
 
-    private static Parte lerParte(Element parte, String tagNome) {
+    private static Parte lerParte(Element parte, String tagEndereco) {
         String documento = texto(parte, "CNPJ");
         if (documento.isEmpty()) {
             documento = texto(parte, "CPF");
         }
-        return new Parte(documento, texto(parte, tagNome), textoEmQualquerNivel(parte, "fone"));
+        Element endereco = primeiro(parte, tagEndereco);
+        return new Parte(documento, texto(parte, "xNome"),
+                endereco == null ? "" : texto(endereco, "fone"));
     }
 
     private static Document interpretar(String xml) {
         try {
-            DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
+            DocumentBuilderFactory fabrica = DocumentBuilderFactory.newDefaultInstance();
             fabrica.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
             fabrica.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             fabrica.setFeature("http://xml.org/sax/features/external-general-entities", false);
@@ -220,10 +273,25 @@ public final class NfeXmlParser {
             fabrica.setXIncludeAware(false);
             fabrica.setExpandEntityReferences(false);
             fabrica.setNamespaceAware(true);
+            fabrica.setAttribute("jdk.xml.maxElementDepth", "64");
+            fabrica.setAttribute("jdk.xml.elementAttributeLimit", "64");
             DocumentBuilder construtor = fabrica.newDocumentBuilder();
-            construtor.setErrorHandler(null);
+            construtor.setEntityResolver((publicId, systemId) -> {
+                throw new SAXException("Resolucao externa de entidades proibida.");
+            });
+            construtor.setErrorHandler(new DefaultHandler() {
+                @Override
+                public void error(SAXParseException e) throws SAXException {
+                    throw e;
+                }
+
+                @Override
+                public void fatalError(SAXParseException e) throws SAXException {
+                    throw e;
+                }
+            });
             // Lê do texto já decodificado: a declaração de encoding do arquivo é ignorada.
-            return construtor.parse(new InputSource(new StringReader(xml.strip().replaceFirst("^﻿", ""))));
+            return construtor.parse(new InputSource(new StringReader(xml.strip().replaceFirst("^\uFEFF", ""))));
         } catch (SAXException | IOException e) {
             throw new IllegalArgumentException("Arquivo XML invalido ou corrompido.");
         } catch (ParserConfigurationException e) {
@@ -239,50 +307,74 @@ public final class NfeXmlParser {
         return filho;
     }
 
-    private static Element primeiro(Element pai, String tag) {
-        if (tag.equals(pai.getLocalName())) {
-            return pai;
-        }
-        NodeList nos = pai.getElementsByTagNameNS("*", tag);
-        return nos.getLength() == 0 ? null : (Element) nos.item(0);
+    private static boolean ehTag(Element elemento, String tag) {
+        return NS_NFE.equals(elemento.getNamespaceURI()) && tag.equals(elemento.getLocalName());
     }
 
-    /** Valor de um filho direto, para não confundir com tags de mesmo nome mais abaixo. */
-    private static String texto(Element pai, String tag) {
+    /** Somente filhos diretos no namespace fiscal; nao aceita campos ambiguos. */
+    private static Element primeiro(Element pai, String tag) {
+        Element encontrado = null;
         for (Node no = pai.getFirstChild(); no != null; no = no.getNextSibling()) {
-            if (no instanceof Element elemento && tag.equals(elemento.getLocalName())) {
-                return elemento.getTextContent().trim();
+            if (no instanceof Element elemento && ehTag(elemento, tag)) {
+                if (encontrado != null) {
+                    throw new IllegalArgumentException("XML ambiguo: bloco duplicado " + tag + ".");
+                }
+                encontrado = elemento;
             }
         }
-        return "";
+        return encontrado;
     }
 
-    private static String textoEmQualquerNivel(Element pai, String tag) {
-        NodeList nos = pai.getElementsByTagNameNS("*", tag);
-        return nos.getLength() == 0 ? "" : nos.item(0).getTextContent().trim();
+    private static String texto(Element pai, String tag) {
+        Element filho = primeiro(pai, tag);
+        return filho == null ? "" : textoSimples(filho);
     }
 
-    private static BigDecimal decimalObrigatorio(Element prod, String tag, int item) {
-        BigDecimal valor = decimal(texto(prod, tag));
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Item " + item + " da nota sem " + tag + " valido.");
+    private static String textoSimples(Element elemento) {
+        for (Node no = elemento.getFirstChild(); no != null; no = no.getNextSibling()) {
+            if (no instanceof Element) {
+                throw new IllegalArgumentException("XML invalido: campo simples com elementos internos.");
+            }
         }
-        return valor;
+        return elemento.getTextContent().trim();
     }
 
-    private static BigDecimal decimal(String texto) {
-        if (texto == null || texto.isBlank()) {
-            return null;
+    private static BigDecimal decimalObrigatorio(Element pai, String tag, String contexto) {
+        Element filho = primeiro(pai, tag);
+        if (filho == null) {
+            throw new IllegalArgumentException(contexto + " sem " + tag + " valido.");
         }
-        try {
-            return new BigDecimal(texto.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return decimal(textoSimples(filho), tag, contexto);
     }
 
-    private static BigDecimal zeroSeNulo(BigDecimal valor) {
-        return valor == null ? BigDecimal.ZERO : valor;
+    /** Ausencia e zero sao permitidos; campo presente invalido nao e ignorado. */
+    private static BigDecimal decimalOpcional(Element pai, String tag, String contexto) {
+        Element filho = pai == null ? null : primeiro(pai, tag);
+        return filho == null ? BigDecimal.ZERO : decimal(textoSimples(filho), tag, contexto);
+    }
+
+    private static BigDecimal decimal(String texto, String tag, String contexto) {
+        if (!DECIMAL.matcher(texto).matches()) {
+            throw new IllegalArgumentException(contexto + " sem " + tag + " valido.");
+        }
+        return new BigDecimal(texto);
+    }
+
+    /** ICMS possui um grupo de tributacao. Nao busca impostos retidos anteriormente. */
+    private static BigDecimal valorGrupoIcms(Element icms, String tag, String contexto) {
+        if (icms == null) {
+            return BigDecimal.ZERO;
+        }
+        Element grupo = null;
+        for (Node no = icms.getFirstChild(); no != null; no = no.getNextSibling()) {
+            if (no instanceof Element elemento && NS_NFE.equals(elemento.getNamespaceURI())) {
+                if (grupo != null) {
+                    throw new IllegalArgumentException(contexto + " com grupos ICMS ambiguos.");
+                }
+                grupo = elemento;
+            }
+        }
+        return decimalOpcional(grupo, tag, contexto);
     }
 
     private static String vazioParaNulo(String texto) {
@@ -295,11 +387,11 @@ public final class NfeXmlParser {
                 return OffsetDateTime.parse(dataHora).toLocalDateTime();
             }
             if (dataAntiga != null && !dataAntiga.isBlank()) {
-                return java.time.LocalDate.parse(dataAntiga).atStartOfDay();
+                return LocalDate.parse(dataAntiga).atStartOfDay();
             }
-        } catch (DateTimeParseException ignorado) {
-            // Data ilegível não impede a entrada: usa o momento da importação.
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Data de emissao da nota invalida.");
         }
-        return LocalDateTime.now();
+        throw new IllegalArgumentException("Data de emissao da nota obrigatoria.");
     }
 }

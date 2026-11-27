@@ -13,6 +13,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class CalculadoraCustoFichaTecnicaService {
 
@@ -76,23 +77,31 @@ public class CalculadoraCustoFichaTecnicaService {
                 continue;
             }
 
-            BigDecimal custoUnitario = custoMedio.setScale(ESCALA_CUSTO_UNITARIO, RoundingMode.HALF_UP);
-            BigDecimal custoIngrediente = ingrediente.getQuantidadeBrutaBase()
-                    .multiply(custoUnitario)
-                    .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-            custoTotal = custoTotal.add(custoIngrediente).setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-            custos.add(new CustoFichaTecnicaResultado.IngredienteCusto(
-                    ingrediente.getId(),
-                    ingrediente.getProduto().getId(),
-                    ingrediente.getProduto().getNome(),
-                    ingrediente.getQuantidadeBrutaBase(),
-                    unidadeBaseCodigo,
-                    custoUnitario,
-                    custoIngrediente,
-                    true,
-                    ingrediente
-            ));
-        }
+            BigDecimal custoUnitario = Objects.requireNonNull(
+        custoMedio, "Custo medio do ingrediente e obrigatorio.")
+        .setScale(ESCALA_CUSTO_UNITARIO, RoundingMode.HALF_UP);
+
+BigDecimal quantidadeBrutaBase = ingrediente.getQuantidadeBrutaBase();
+
+BigDecimal custoIngrediente = quantidadeBrutaBase
+        .multiply(custoUnitario)
+        .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+custoTotal = custoTotal.add(custoIngrediente)
+        .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+custos.add(new CustoFichaTecnicaResultado.IngredienteCusto(
+        ingrediente.getId(),
+        ingrediente.getProduto().getId(),
+        ingrediente.getProduto().getNome(),
+        quantidadeBrutaBase,
+        unidadeBaseCodigo,
+        custoUnitario,
+        custoIngrediente,
+        true,
+        ingrediente
+));
+}
 
         BigDecimal custoPorUnidade = custoTotal.divide(
                 versao.getRendimentoQuantidade(),

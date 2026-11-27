@@ -16,12 +16,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import repository.UsuarioRepository;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,6 +54,9 @@ class PdvBalcaoApiIntegrationTest {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private Usuario gerente;
     private Usuario caixa;
@@ -166,6 +171,26 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     @Test
+    void sangriaESuprimentoAbaixoDeMeioCentavoNaoAlteramCaixa() throws Exception {
+        int numero = numeroCaixaUnico();
+        assertOk(post("/api/caixas/abrir", Map.of("numeroCaixa", numero, "saldoInicial", 10), gerente));
+        for (String rota : List.of("sangria", "suprimento")) {
+            var resposta = post("/api/caixas/" + rota,
+                    Map.of("numeroCaixa", numero, "valor", "0.004"), gerente);
+            assertEquals(HttpStatus.BAD_REQUEST, resposta.getStatusCode());
+            assertEquals("Valor deve ser maior que zero.", json(resposta).path("erro").asText());
+        }
+        var sessao = caixaAberto(numero);
+        assertBig("10.00", sessao.path("dinheiroNaGaveta").decimalValue());
+        assertEquals(0L, jdbc.queryForObject(
+                "select count(*) from movimentacoes_caixa where caixa_id = ?",
+                Long.class, sessao.path("caixaId").asLong()));
+
+        assertOk(post("/api/caixas/suprimento", Map.of("numeroCaixa", numero, "valor", "0.005"), gerente));
+        assertBig("10.01", caixaAberto(numero).path("dinheiroNaGaveta").decimalValue());
+    }
+
+    @Test
     void operadoraDeCaixaNaoCadastraMasFazSangriaComAutorizacaoDoGerente() throws Exception {
         String sufixo = sufixoUnico();
         int numeroCaixa = numeroCaixaUnico();
@@ -205,7 +230,7 @@ class PdvBalcaoApiIntegrationTest {
     void transferirParteDeUmItemEJuntarComandas() throws Exception {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "1");
-        int origem = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        int origem = numerosDeComandaLivres(1000, 8999, 2);
         int destino = origem + 1;
         json(assertOk(post("/api/produtos/revenda", revenda("Transferir " + sufixo, eanLata, ""), gerente)));
         long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
@@ -241,7 +266,7 @@ class PdvBalcaoApiIntegrationTest {
     void tirarItemDaComandaPedeGerenteEMotivo() throws Exception {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "2");
-        int numero = 9000 + SEQUENCIA.incrementAndGet() % 900;
+        int numero = numerosDeComandaLivres(9000, 9899, 1);
         json(assertOk(post("/api/produtos/revenda", revenda("Retirar " + sufixo, eanLata, ""), gerente)));
         long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
         long venda = json(assertOk(post("/api/comandas/" + numero + "/abrir", Map.of(), caixa))).path("vendaId").asLong();
@@ -282,7 +307,7 @@ class PdvBalcaoApiIntegrationTest {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "3");
         int numeroCaixa = numeroCaixaUnico();
-        int numero = 9000 + SEQUENCIA.incrementAndGet() % 900;
+        int numero = numerosDeComandaLivres(9000, 9899, 1);
         json(assertOk(post("/api/produtos/revenda", revenda("Aberta " + sufixo, eanLata, ""), gerente)));
         long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
         assertOk(post("/api/caixas/abrir", Map.of("numeroCaixa", numeroCaixa, "saldoInicial", 0), gerente));
@@ -306,7 +331,7 @@ class PdvBalcaoApiIntegrationTest {
     void pedidoDoCelularAbreAComandaESomaNaMesmaLinha() throws Exception {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "5");
-        int numero = 9000 + SEQUENCIA.incrementAndGet() % 900;
+        int numero = numerosDeComandaLivres(9000, 9899, 1);
         json(assertOk(post("/api/produtos/revenda", revenda("Celular " + sufixo, eanLata, ""), gerente)));
         long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
 
@@ -367,7 +392,7 @@ class PdvBalcaoApiIntegrationTest {
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "1");
         int numeroCaixa = numeroCaixaUnico();
-        int numero = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        int numero = numerosDeComandaLivres(1000, 8999, 1);
         JsonNode cadastro = json(assertOk(post("/api/produtos/revenda", revenda("Comanda " + sufixo, eanLata, ""), gerente)));
         int produtoId = cadastro.path("produtoId").asInt();
         long gelada = json(assertOk(get("/api/pdv/codigos/" + eanLata, caixa))).path("variacao").path("variacaoId").asLong();
@@ -408,7 +433,7 @@ class PdvBalcaoApiIntegrationTest {
 
     @Test
     void nomeDoClienteFicaJuntoDaComanda() throws Exception {
-        int numero = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        int numero = numerosDeComandaLivres(1000, 8999, 1);
         String sufixo = sufixoUnico();
         String eanLata = ean13(sufixo + "1");
         assertOk(post("/api/produtos/revenda", revenda("Cliente " + sufixo, eanLata, ""), gerente));
@@ -428,7 +453,7 @@ class PdvBalcaoApiIntegrationTest {
         assertTrue(json(assertOk(put("/api/comandas/" + numero + "/cliente", Map.of("cliente", " "), caixa))).path("cliente").isNull());
 
         // O celular manda o nome junto do primeiro pedido.
-        int outra = 1000 + SEQUENCIA.incrementAndGet() % 8000;
+        int outra = numerosDeComandaLivres(1000, 8999, 1);
         JsonNode pedido = json(assertOk(post("/api/comandas/" + outra + "/lancar", Map.of(
                 "itens", List.of(Map.of("variacaoId", gelada, "quantidade", "1")), "cliente", "Mesa da varanda"), caixa)));
         assertEquals("Mesa da varanda", pedido.path("cliente").asText());
@@ -806,6 +831,20 @@ class PdvBalcaoApiIntegrationTest {
     }
 
     /** 11 dígitos únicos desta execução: a base de testes persiste entre classes. */
+    private int numerosDeComandaLivres(int inicio, int fim, int quantidade) {
+        var ocupados = new HashSet<>(jdbc.queryForList(
+                "select numero from comandas where numero between ? and ?",
+                Integer.class, inicio, fim));
+        int consecutivos = 0;
+        for (int numero = inicio; numero <= fim; numero++) {
+            consecutivos = ocupados.contains(numero) ? 0 : consecutivos + 1;
+            if (consecutivos == quantidade) {
+                return numero - quantidade + 1;
+            }
+        }
+        throw new IllegalStateException("Faixa de comandas de teste sem espaco disponivel.");
+    }
+
     private static String sufixoUnico() {
         String tempo = String.valueOf(System.nanoTime());
         return tempo.substring(tempo.length() - 9) + String.format("%02d", SEQUENCIA.incrementAndGet() % 100);

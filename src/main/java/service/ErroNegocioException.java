@@ -6,6 +6,9 @@ import java.util.Map;
 
 public class ErroNegocioException extends RuntimeException {
 
+    @java.io.Serial
+    private static final long serialVersionUID = 1L;
+
     private final String codigo;
     private final Map<String, Object> detalhes;
 

@@ -145,12 +145,12 @@ public class CompraEstoque {
         this.payloadHash = normalizar(payloadHash);
     }
 
-    public BigDecimal calcularTotal() {
-        return itens.stream()
-                .map(ItemCompraEstoque::getCustoTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(4, RoundingMode.HALF_UP);
-    }
+  public BigDecimal calcularTotal() {
+    return itens.stream()
+            .map(item -> item.getCustoTotal())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b))
+            .setScale(4, RoundingMode.HALF_UP);
+}
 
     public boolean estaRascunho() { return status == Status.RASCUNHO; }
     public boolean estaConfirmada() { return status == Status.CONFIRMADA; }

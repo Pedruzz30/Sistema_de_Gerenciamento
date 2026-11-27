@@ -81,30 +81,56 @@ public class ItemCardapio {
                         Boolean disponivel,
                         int ordemExibicao,
                         Produto produtoVinculado) {
-        validar(id >= 0, "ID do item de cardapio nao pode ser negativo.");
-        validar(codigo != null && !codigo.isBlank(), "Codigo do item de cardapio e obrigatorio.");
-        validar(nome != null && !nome.isBlank(), "Nome do item de cardapio e obrigatorio.");
-        validar(precoVenda != null, "Preco de venda do item de cardapio e obrigatorio.");
-        validar(precoVenda.compareTo(BigDecimal.ZERO) >= 0, "Preco de venda do item de cardapio nao pode ser negativo.");
-        validar(categoriaCardapio != null, "Categoria do item de cardapio e obrigatoria.");
-        validar(tipoItem != null, "Tipo do item de cardapio e obrigatorio.");
-        validar(ordemExibicao >= 0, "Ordem de exibicao do item de cardapio nao pode ser negativa.");
-        validar(tipoItem != TipoItemCardapio.PREPARADO_SOB_DEMANDA || produtoVinculado == null,
-                "Itens preparados sob demanda nao devem vincular produto de estoque.");
-        validar(produtoVinculado == null || produtoVinculado.isControladoPorEstoque(),
-                "Produto vinculado precisa estar controlado por estoque.");
+        validar(id >= 0,
+        "ID do item de cardapio nao pode ser negativo.");
 
-        this.id = id;
-        this.codigo = codigo.trim();
-        this.nome = nome.trim();
-        this.descricaoCurta = normalizarDescricao(descricaoCurta);
-        this.precoVenda = precoVenda.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-        this.categoriaCardapio = categoriaCardapio;
-        this.tipoItem = tipoItem;
-        this.ativo = ativo == null ? Boolean.TRUE : ativo;
-        this.disponivel = disponivel == null ? Boolean.TRUE : disponivel;
-        this.ordemExibicao = ordemExibicao;
-        this.produtoVinculado = produtoVinculado;
+if (codigo == null || codigo.isBlank()) {
+    throw new IllegalArgumentException(
+            "Codigo do item de cardapio e obrigatorio.");
+}
+
+if (nome == null || nome.isBlank()) {
+    throw new IllegalArgumentException(
+            "Nome do item de cardapio e obrigatorio.");
+}
+
+if (precoVenda == null) {
+    throw new IllegalArgumentException(
+            "Preco de venda do item de cardapio e obrigatorio.");
+}
+
+validar(precoVenda.compareTo(BigDecimal.ZERO) >= 0,
+        "Preco de venda do item de cardapio nao pode ser negativo.");
+
+validar(categoriaCardapio != null,
+        "Categoria do item de cardapio e obrigatoria.");
+
+validar(tipoItem != null,
+        "Tipo do item de cardapio e obrigatorio.");
+
+validar(ordemExibicao >= 0,
+        "Ordem de exibicao do item de cardapio nao pode ser negativa.");
+
+validar(tipoItem != TipoItemCardapio.PREPARADO_SOB_DEMANDA
+                || produtoVinculado == null,
+        "Itens preparados sob demanda nao devem vincular produto de estoque.");
+
+validar(produtoVinculado == null
+                || produtoVinculado.isControladoPorEstoque(),
+        "Produto vinculado precisa estar controlado por estoque.");
+
+this.id = id;
+this.codigo = codigo.trim();
+this.nome = nome.trim();
+this.descricaoCurta = normalizarDescricao(descricaoCurta);
+this.precoVenda = precoVenda.setScale(
+        ESCALA_MONETARIA, RoundingMode.HALF_UP);
+this.categoriaCardapio = categoriaCardapio;
+this.tipoItem = tipoItem;
+this.ativo = ativo == null ? Boolean.TRUE : ativo;
+this.disponivel = disponivel == null ? Boolean.TRUE : disponivel;
+this.ordemExibicao = ordemExibicao;
+this.produtoVinculado = produtoVinculado;
     }
 
     public ItemCardapio comId(int novoId) {

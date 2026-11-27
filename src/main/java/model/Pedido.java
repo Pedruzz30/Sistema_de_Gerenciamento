@@ -125,15 +125,19 @@ public class Pedido {
                    int saldoPosterior,
                    Long usuarioResponsavelRu,
                    String usuarioResponsavelNome) {
-        validar(id >= 0, "ID do pedido não pode ser negativo.");
-        validar(produto != null, "Produto é obrigatório.");
-        validar(quantidade > 0, "Quantidade deve ser maior que zero.");
-        validar(tipo != null, "Tipo de movimentação é obrigatório.");
-        validar(dataHora != null, "Data/hora da movimentação é obrigatória.");
-        validar(saldoAnterior >= 0, "Saldo anterior não pode ser negativo.");
-        validar(saldoPosterior >= 0, "Saldo posterior não pode ser negativo.");
-        validar(tipo.aplicarAoEstoque(saldoAnterior, quantidade) == saldoPosterior,
-                "Saldos da movimentação são inconsistentes com o tipo informado.");
+       validar(id >= 0, "ID do pedido não pode ser negativo.");
+validar(produto != null, "Produto é obrigatório.");
+validar(quantidade > 0, "Quantidade deve ser maior que zero.");
+
+if (tipo == null) {
+    throw new IllegalArgumentException("Tipo de movimentação é obrigatório.");
+}
+
+validar(dataHora != null, "Data/hora da movimentação é obrigatória.");
+validar(saldoAnterior >= 0, "Saldo anterior não pode ser negativo.");
+validar(saldoPosterior >= 0, "Saldo posterior não pode ser negativo.");
+validar(tipo.aplicarAoEstoque(saldoAnterior, quantidade) == saldoPosterior,
+        "Saldos da movimentação são inconsistentes com o tipo informado.");
 
         this.id = id;
         this.produto = produto;
@@ -251,16 +255,26 @@ public class Pedido {
     }
 
     private static int inferirSaldoAnterior(Produto produto, int quantidade, TipoMovimentacao tipo) {
-        validar(produto != null, "Produto é obrigatório.");
-        validar(tipo != null, "Tipo de movimentação é obrigatório.");
-        validar(quantidade > 0, "Quantidade deve ser maior que zero.");
-        return produto.getQuantidadeAtual() - tipo.aplicarImpactoAssinado(quantidade);
+    if (produto == null) {
+        throw new IllegalArgumentException("Produto é obrigatório.");
     }
 
-    private static int inferirSaldoPosterior(Produto produto) {
-        validar(produto != null, "Produto é obrigatório.");
-        return produto.getQuantidadeAtual();
+    if (tipo == null) {
+        throw new IllegalArgumentException("Tipo de movimentação é obrigatório.");
     }
+
+    validar(quantidade > 0, "Quantidade deve ser maior que zero.");
+
+    return produto.getQuantidadeAtual() - tipo.aplicarImpactoAssinado(quantidade);
+}
+
+private static int inferirSaldoPosterior(Produto produto) {
+    if (produto == null) {
+        throw new IllegalArgumentException("Produto é obrigatório.");
+    }
+
+    return produto.getQuantidadeAtual();
+}
 
     private static String normalizarDescricao(String descricao) {
         if (descricao == null) {

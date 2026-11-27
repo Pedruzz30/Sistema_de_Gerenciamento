@@ -121,22 +121,33 @@ public class MovimentacaoCaixa {
                 null);
     }
 
-    public MovimentacaoCaixa(long id,
-                             TipoMovimentacaoCaixa tipo,
-                             BigDecimal valor,
-                             String descricao,
-                             Usuario operador,
-                             FormaPagamento formaPagamento,
-                             Long vendaId) {
-        validar(id >= 0,                                   "ID não pode ser negativo.");
-        validar(tipo != null,                              "Tipo de movimentação é obrigatório.");
-        validar(valor != null,                             "Valor é obrigatório.");
-        validar(valor.compareTo(BigDecimal.ZERO) > 0,      "Valor deve ser maior que zero.");
-        validar(operador != null,                          "Operador é obrigatório.");
+   public MovimentacaoCaixa(
+        long id,
+        TipoMovimentacaoCaixa tipo,
+        BigDecimal valor,
+        String descricao,
+        Usuario operador,
+        FormaPagamento formaPagamento,
+        Long vendaId) {
+
+    validar(id >= 0, "ID não pode ser negativo.");
+    validar(tipo != null, "Tipo de movimentação é obrigatório.");
+
+    if (valor == null) {
+        throw new IllegalArgumentException("Valor é obrigatório.");
+    }
+
+    BigDecimal valorMonetario = valor.setScale(
+            ESCALA_MONETARIA, RoundingMode.HALF_UP);
+
+    validar(valorMonetario.signum() > 0,
+            "Valor deve ser maior que zero.");
+
+    validar(operador != null, "Operador é obrigatório.");
 
         this.id        = id;
         this.tipo      = tipo;
-        this.valor     = valor.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+        this.valor     = valorMonetario;
         this.descricao = descricao != null ? descricao.trim() : "";
         this.operador  = operador;
         this.dataHora  = LocalDateTime.now();

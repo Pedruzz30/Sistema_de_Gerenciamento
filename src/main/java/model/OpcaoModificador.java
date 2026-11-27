@@ -93,7 +93,7 @@ public class OpcaoModificador {
         this.criadoPor = criadoPor;
         this.criadoEm = LocalDateTime.now();
         this.atualizadoEm = this.criadoEm;
-        atualizar(grupoModificador, nome, descricao, codigo, acrescimoPreco,
+        atualizarCampos(grupoModificador, nome, descricao, codigo, acrescimoPreco,
                 quantidadeMaximaPorItem, selecionadaPorPadrao, ativa, ordemExibicao);
     }
 
@@ -106,8 +106,22 @@ public class OpcaoModificador {
                           Boolean selecionadaPorPadrao,
                           Boolean ativa,
                           Integer ordemExibicao) {
+        atualizarCampos(grupoModificador, nome, descricao, codigo, acrescimoPreco, quantidadeMaximaPorItem, selecionadaPorPadrao, ativa, ordemExibicao);
+    }
+
+    private void atualizarCampos(GrupoModificador grupoModificador,
+                          String nome,
+                          String descricao,
+                          String codigo,
+                          BigDecimal acrescimoPreco,
+                          Integer quantidadeMaximaPorItem,
+                          Boolean selecionadaPorPadrao,
+                          Boolean ativa,
+                          Integer ordemExibicao) {
         validar(grupoModificador != null, "Grupo do modificador e obrigatorio.");
-        validar(nome != null && !nome.isBlank(), "Nome da opcao e obrigatorio.");
+       if (nome == null || nome.isBlank()) {
+    throw new IllegalArgumentException("Nome da opcao e obrigatorio.");
+}
         validar(codigo != null && !codigo.isBlank(), "Codigo da opcao e obrigatorio.");
         BigDecimal acrescimo = acrescimoPreco == null ? BigDecimal.ZERO : acrescimoPreco;
         validar(acrescimo.compareTo(BigDecimal.ZERO) >= 0,

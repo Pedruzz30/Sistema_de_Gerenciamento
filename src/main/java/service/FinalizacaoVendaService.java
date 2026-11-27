@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Objects;
 
 @Transactional(readOnly = true)
 public class FinalizacaoVendaService {
@@ -206,23 +207,33 @@ public class FinalizacaoVendaService {
         );
 
         BigDecimal subtotal = dinheiro(BigDecimal.ZERO);
-        BigDecimal descontoTotal = dinheiro(BigDecimal.ZERO);
-        BigDecimal acrescimoTotal = dinheiro(BigDecimal.ZERO);
-        BigDecimal custoTotalVenda = dinheiro(BigDecimal.ZERO);
-        BigDecimal margemTotalVenda = dinheiro(BigDecimal.ZERO);
-        for (VendaItem item : itens) {
-            MontagemComposicaoVendaService.ItemMontado montado = montadoPorItem.get(item.getId());
-            BigDecimal custoItem = custoTotalPorItem.getOrDefault(item.getId(), dinheiro(BigDecimal.ZERO));
-            BigDecimal acrescimoUnitarioOficial = montado.modificadores().stream()
-                    .map(VendaItemModificador::getAcrescimoTotalSnapshot)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-            item.aplicarSnapshotComercialComPrecoBase(
-                    item.getVariacaoItemCardapio(),
-                    montado.precoUnitarioBaseOficial(),
-                    item.getDescontoUnitario(),
-                    acrescimoUnitarioOficial
+BigDecimal descontoTotal = dinheiro(BigDecimal.ZERO);
+BigDecimal acrescimoTotal = dinheiro(BigDecimal.ZERO);
+BigDecimal custoTotalVenda = dinheiro(BigDecimal.ZERO);
+BigDecimal margemTotalVenda = dinheiro(BigDecimal.ZERO);
+
+for (VendaItem item : itens) {
+    MontagemComposicaoVendaService.ItemMontado montado =
+            Objects.requireNonNull(
+                    montadoPorItem.get(item.getId()),
+                    "Composicao nao encontrada para o item: " + item.getId()
             );
+
+    BigDecimal custoItem = custoTotalPorItem.getOrDefault(
+            item.getId(), dinheiro(BigDecimal.ZERO));
+
+    BigDecimal acrescimoUnitarioOficial = montado.modificadores()
+            .stream()
+            .map(modificador -> modificador.getAcrescimoTotalSnapshot())
+            .reduce(BigDecimal.ZERO, (total, acrescimo) -> total.add(acrescimo))
+            .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+    item.aplicarSnapshotComercialComPrecoBase(
+            item.getVariacaoItemCardapio(),
+            montado.precoUnitarioBaseOficial(),
+            item.getDescontoUnitario(),
+            acrescimoUnitarioOficial
+    );
             BigDecimal margemItem = calculadoraCusto.margemBruta(item.getSubtotal(), custoItem);
             item.aplicarCusto(
                     montado.fichaTecnica(),
@@ -530,26 +541,44 @@ public class FinalizacaoVendaService {
         return idempotencyKey.trim();
     }
 
-    private static String criarPayloadFinalizacao(Venda venda, List<VendaItem> itens, Integer numeroCaixaLegado) {
-        StringBuilder payload = new StringBuilder()
-                .append("operacao=").append(OPERACAO_FINALIZAR_VENDA)
-                .append("|venda=").append(venda.getId())
-                .append("|filial=").append(venda.getFilialId())
-                .append("|caixa=").append(numeroCaixaLegado == null ? "" : numeroCaixaLegado);
-        itens.stream()
-                .sorted(Comparator.comparingLong(VendaItem::getId))
-                .forEach(item -> payload
-                        .append("|item=").append(item.getId())
+    private static String criarPayloadFinalizacao(
+        Venda venda,
+        List<VendaItem> itens,
+        Integer numeroCaixaLegado) {
+
+    StringBuilder payload = new StringBuilder()
+            .append("operacao=").append(OPERACAO_FINALIZAR_VENDA)
+            .append("|venda=").append(venda.getId())
+            .append("|filial=").append(venda.getFilialId())
+            .append("|caixa=").append(
+                    numeroCaixaLegado == null ? "" : numeroCaixaLegado);
+
+    itens.stream()
+            .sorted(Comparator.comparingLong(
+                    (VendaItem item) -> item.getId()))
+            .forEach(item -> {
+                var fichaObservada = item.getFichaTecnicaVersaoObservada();
+                String modHash = item.getConfiguracaoModificadoresHashObservada();
+                String multiHash = item.getConfiguracaoMultissaborHashObservada();
+                String resumoPartes = item.getResumoPartesSnapshot();
+
+                payload.append("|item=").append(item.getId())
                         .append(",variacao=").append(item.getVariacaoItemCardapio().getId())
                         .append(",qtd=").append(item.getQuantidade())
                         .append(",preco=").append(item.getPrecoUnitarioBase())
-                        .append(",fichaObs=").append(item.getFichaTecnicaVersaoObservada() == null ? "" : item.getFichaTecnicaVersaoObservada().getId())
-                        .append(",modHash=").append(item.getConfiguracaoModificadoresHashObservada() == null ? "" : item.getConfiguracaoModificadoresHashObservada())
+                        .append(",fichaObs=").append(
+                                fichaObservada == null ? "" : fichaObservada.getId())
+                        .append(",modHash=").append(
+                                modHash == null ? "" : modHash)
                         .append(",multi=").append(item.isComposicaoMultipla())
-                        .append(",multiHash=").append(item.getConfiguracaoMultissaborHashObservada() == null ? "" : item.getConfiguracaoMultissaborHashObservada())
-                        .append(",partes=").append(item.getResumoPartesSnapshot() == null ? "" : item.getResumoPartesSnapshot()));
-        return payload.toString();
-    }
+                        .append(",multiHash=").append(
+                                multiHash == null ? "" : multiHash)
+                        .append(",partes=").append(
+                                resumoPartes == null ? "" : resumoPartes);
+            });
+
+    return payload.toString();
+}
 
     private static String calcularPayloadHash(String payload) {
         try {

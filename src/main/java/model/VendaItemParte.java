@@ -92,66 +92,108 @@ public class VendaItemParte {
     }
 
     public VendaItemParte(long id,
-                          VendaItem vendaItem,
-                          VariacaoItemCardapio variacaoParte,
-                          BigDecimal proporcao,
-                          BigDecimal precoReferenciaSnapshot,
-                          BigDecimal custoReferenciaSnapshot,
-                          FichaTecnica fichaTecnica,
-                          FichaTecnicaVersao fichaTecnicaVersao,
-                          String configuracaoHashSnapshot,
-                          int ordemVisual) {
-        validar(id >= 0, "ID da parte do item nao pode ser negativo.");
-        validar(vendaItem != null, "Item da venda e obrigatorio para a parte.");
-        validar(variacaoParte != null, "Variacao da parte e obrigatoria.");
-        validar(proporcao != null && proporcao.compareTo(BigDecimal.ZERO) > 0,
-                "Proporcao da parte deve ser maior que zero.");
-        validar(precoReferenciaSnapshot != null && precoReferenciaSnapshot.compareTo(BigDecimal.ZERO) >= 0,
-                "Preco de referencia da parte nao pode ser negativo.");
-        validar(custoReferenciaSnapshot != null && custoReferenciaSnapshot.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo de referencia da parte nao pode ser negativo.");
-        validar(ordemVisual >= 0, "Ordem visual da parte nao pode ser negativa.");
-        if (fichaTecnicaVersao != null) {
-            validar(fichaTecnica != null, "Ficha tecnica da parte e obrigatoria quando ha versao.");
-            validar(fichaTecnicaVersao.getFichaTecnica().equals(fichaTecnica),
-                    "Versao da ficha nao pertence a ficha da parte.");
-        }
-        this.id = id;
-        this.vendaItem = vendaItem;
-        this.variacaoParte = variacaoParte;
-        this.itemCardapioParte = variacaoParte.getItemCardapio();
-        this.nomeItemSnapshot = variacaoParte.getItemCardapio().getNome();
-        this.nomeVariacaoSnapshot = variacaoParte.getNome();
-        this.codigoVariacaoSnapshot = variacaoParte.getCodigo();
-        this.tipoComposicaoSnapshot = variacaoParte.getTipoComposicao();
-        this.proporcao = proporcao.setScale(ESCALA_PROPORCAO, RoundingMode.HALF_UP);
-        this.precoReferenciaSnapshot = precoReferenciaSnapshot.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.custoReferenciaSnapshot = custoReferenciaSnapshot.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.fichaTecnica = fichaTecnica;
-        this.fichaTecnicaVersao = fichaTecnicaVersao;
-        this.numeroVersaoFicha = fichaTecnicaVersao == null ? null : fichaTecnicaVersao.getNumeroVersao();
-        this.configuracaoHashSnapshot = normalizar(configuracaoHashSnapshot);
-        this.ordemVisual = ordemVisual;
-        this.status = StatusVendaItem.ATIVO;
-        this.criadoEm = LocalDateTime.now();
+                      VendaItem vendaItem,
+                      VariacaoItemCardapio variacaoParte,
+                      BigDecimal proporcao,
+                      BigDecimal precoReferenciaSnapshot,
+                      BigDecimal custoReferenciaSnapshot,
+                      FichaTecnica fichaTecnica,
+                      FichaTecnicaVersao fichaTecnicaVersao,
+                      String configuracaoHashSnapshot,
+                      int ordemVisual) {
+
+    validar(id >= 0,
+            "ID da parte do item nao pode ser negativo.");
+
+    validar(vendaItem != null,
+            "Item da venda e obrigatorio para a parte.");
+
+    if (variacaoParte == null) {
+        throw new IllegalArgumentException(
+                "Variacao da parte e obrigatoria.");
     }
+
+    if (proporcao == null || proporcao.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Proporcao da parte deve ser maior que zero.");
+    }
+
+    if (precoReferenciaSnapshot == null
+            || precoReferenciaSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Preco de referencia da parte nao pode ser negativo.");
+    }
+
+    if (custoReferenciaSnapshot == null
+            || custoReferenciaSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Custo de referencia da parte nao pode ser negativo.");
+    }
+
+    validar(ordemVisual >= 0,
+            "Ordem visual da parte nao pode ser negativa.");
+
+    if (fichaTecnicaVersao != null) {
+        validar(fichaTecnica != null,
+                "Ficha tecnica da parte e obrigatoria quando ha versao.");
+
+        validar(fichaTecnicaVersao.getFichaTecnica().equals(fichaTecnica),
+                "Versao da ficha nao pertence a ficha da parte.");
+    }
+
+    this.id = id;
+    this.vendaItem = vendaItem;
+    this.variacaoParte = variacaoParte;
+    this.itemCardapioParte = variacaoParte.getItemCardapio();
+
+    this.nomeItemSnapshot = variacaoParte.getItemCardapio().getNome();
+    this.nomeVariacaoSnapshot = variacaoParte.getNome();
+    this.codigoVariacaoSnapshot = variacaoParte.getCodigo();
+    this.tipoComposicaoSnapshot = variacaoParte.getTipoComposicao();
+
+    this.proporcao = proporcao.setScale(
+            ESCALA_PROPORCAO, RoundingMode.HALF_UP);
+
+    this.precoReferenciaSnapshot = precoReferenciaSnapshot.setScale(
+            ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+    this.custoReferenciaSnapshot = custoReferenciaSnapshot.setScale(
+            ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+    this.fichaTecnica = fichaTecnica;
+    this.fichaTecnicaVersao = fichaTecnicaVersao;
+
+    this.numeroVersaoFicha = fichaTecnicaVersao == null
+            ? null
+            : fichaTecnicaVersao.getNumeroVersao();
+
+    this.configuracaoHashSnapshot = normalizar(configuracaoHashSnapshot);
+    this.ordemVisual = ordemVisual;
+    this.status = StatusVendaItem.ATIVO;
+    this.criadoEm = LocalDateTime.now();
+}
 
     public void cancelar() {
-        this.status = StatusVendaItem.CANCELADO;
-    }
+    this.status = StatusVendaItem.CANCELADO;
+}
 
-    public void atualizarCustoReferencia(BigDecimal custoReferenciaSnapshot) {
-        validar(custoReferenciaSnapshot != null && custoReferenciaSnapshot.compareTo(BigDecimal.ZERO) >= 0,
+public void atualizarCustoReferencia(BigDecimal custoReferenciaSnapshot) {
+    if (custoReferenciaSnapshot == null
+            || custoReferenciaSnapshot.signum() < 0) {
+        throw new IllegalArgumentException(
                 "Custo de referencia da parte nao pode ser negativo.");
-        this.custoReferenciaSnapshot = custoReferenciaSnapshot.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
     }
 
-    @PrePersist
-    void prePersist() {
-        if (criadoEm == null) {
-            criadoEm = LocalDateTime.now();
-        }
+    this.custoReferenciaSnapshot = custoReferenciaSnapshot
+            .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+}
+
+@PrePersist
+void prePersist() {
+    if (criadoEm == null) {
+        criadoEm = LocalDateTime.now();
     }
+}
 
     public long getId() { return id; }
     public VendaItem getVendaItem() { return vendaItem; }

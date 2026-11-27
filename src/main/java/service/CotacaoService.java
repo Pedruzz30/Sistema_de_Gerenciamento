@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import model.CotacaoMensal;
@@ -39,35 +40,50 @@ public class CotacaoService {
                                           int quantidadeComprada) {
         validarPermissao(usuarioLogado);
 
-        long idExistente = cotacaoRepository.buscarPorProdutoEMes(produto.getId(), mes)
-                .map(CotacaoMensal::getId)
+        Usuario usuario = Objects.requireNonNull(usuarioLogado);
+
+        long idExistente = cotacaoRepository
+                .buscarPorProdutoEMes(produto.getId(), mes)
+                .map(cotacao -> cotacao.getId())
                 .orElse(0L);
-        CotacaoMensal cotacao = cotacaoRepository.salvar(new CotacaoMensal(
-                idExistente,
-                produto,
-                mes,
-                precoUnitario,
-                quantidadeComprada
-        ));
+
+        CotacaoMensal cotacao = cotacaoRepository.salvar(
+                new CotacaoMensal(
+                        idExistente,
+                        produto,
+                        mes,
+                        precoUnitario,
+                        quantidadeComprada
+                )
+        );
 
         logRepository.salvar(new LogAcao(
                 0,
-                usuarioLogado.getRu(),
+                usuario.getRu(),
                 "COTACAO_REGISTRADA",
-                String.format("Cotacao registrada: %s - %s - R$%s",
-                        produto.getNome(), mes, precoUnitario.toPlainString())
+                String.format(
+                        "Cotacao registrada: %s - %s - R$%s",
+                        produto.getNome(),
+                        mes,
+                        precoUnitario.toPlainString()
+                )
         ));
 
         return cotacao;
     }
 
-    public Optional<ResultadoComparacao> compararMeses(Produto produto,
-                                                       YearMonth mesAnterior,
-                                                       YearMonth mesAtual) {
+    public Optional<ResultadoComparacao> compararMeses(
+            Produto produto,
+            YearMonth mesAnterior,
+            YearMonth mesAtual) {
+
         Optional<CotacaoMensal> anterior =
-                cotacaoRepository.buscarPorProdutoEMes(produto.getId(), mesAnterior);
+                cotacaoRepository.buscarPorProdutoEMes(
+                        produto.getId(), mesAnterior);
+
         Optional<CotacaoMensal> atual =
-                cotacaoRepository.buscarPorProdutoEMes(produto.getId(), mesAtual);
+                cotacaoRepository.buscarPorProdutoEMes(
+                        produto.getId(), mesAtual);
 
         if (anterior.isEmpty() || atual.isEmpty()) {
             return Optional.empty();
@@ -82,32 +98,42 @@ public class CotacaoService {
         ));
     }
 
-    public Optional<ResultadoComparacao> compararComMesAnterior(Produto produto,
-                                                                YearMonth mesAtual) {
+    public Optional<ResultadoComparacao> compararComMesAnterior(
+            Produto produto,
+            YearMonth mesAtual) {
+
         YearMonth mesAnterior = mesAtual.minusMonths(1);
+
         return compararMeses(produto, mesAnterior, mesAtual);
     }
 
-    public List<ResultadoComparacao> gerarRelatorioMensal(List<Produto> produtos,
-                                                          YearMonth mes) {
+    public List<ResultadoComparacao> gerarRelatorioMensal(
+            List<Produto> produtos,
+            YearMonth mes) {
+
         List<ResultadoComparacao> resultados = new ArrayList<>();
 
         for (Produto produto : produtos) {
-            compararComMesAnterior(produto, mes).ifPresent(resultados::add);
+            compararComMesAnterior(produto, mes)
+                    .ifPresent(resultado -> resultados.add(resultado));
         }
 
-        resultados.sort((a, b) -> b.getVariacaoPercentual().compareTo(a.getVariacaoPercentual()));
+        resultados.sort((a, b) -> b.getVariacaoPercentual()
+                .compareTo(a.getVariacaoPercentual()));
+
         return resultados;
     }
 
     public List<CotacaoMensal> buscarHistorico(Produto produto) {
-        return cotacaoRepository.buscarHistoricoPorProduto(produto.getId());
+        return cotacaoRepository
+                .buscarHistoricoPorProduto(produto.getId());
     }
 
     private void validarPermissao(Usuario usuario) {
-        if (usuario == null
-                || usuario.getClasse() == null
-                || !usuario.getClasse().possuiPermissao(Permissao.VER_FINANCAS)) {
+        var classe = usuario == null ? null : usuario.getClasse();
+
+        if (classe == null
+                || !classe.possuiPermissao(Permissao.VER_FINANCAS)) {
             throw new SecurityException(
                     "Voce nao tem permissao para registrar cotacoes."
             );

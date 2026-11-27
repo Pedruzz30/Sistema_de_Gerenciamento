@@ -37,18 +37,35 @@ public class CategoriaCardapio {
         // Construtor exigido pelo JPA.
     }
 
-    public CategoriaCardapio(int id, String codigo, String nomeExibicao, int ordemExibicao, Boolean ativo) {
-        validar(id >= 0, "ID da categoria de cardapio nao pode ser negativo.");
-        validar(codigo != null && !codigo.isBlank(), "Codigo da categoria de cardapio e obrigatorio.");
-        validar(nomeExibicao != null && !nomeExibicao.isBlank(), "Nome de exibicao da categoria de cardapio e obrigatorio.");
-        validar(ordemExibicao >= 0, "Ordem de exibicao da categoria de cardapio nao pode ser negativa.");
+   public CategoriaCardapio(
+        int id,
+        String codigo,
+        String nomeExibicao,
+        int ordemExibicao,
+        Boolean ativo) {
 
-        this.id = id;
-        this.codigo = codigo.trim();
-        this.nomeExibicao = nomeExibicao.trim();
-        this.ordemExibicao = ordemExibicao;
-        this.ativo = ativo == null ? Boolean.TRUE : ativo;
+    validar(id >= 0,
+            "ID da categoria de cardapio nao pode ser negativo.");
+
+    if (codigo == null || codigo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Codigo da categoria de cardapio e obrigatorio.");
     }
+
+    if (nomeExibicao == null || nomeExibicao.isBlank()) {
+        throw new IllegalArgumentException(
+                "Nome de exibicao da categoria de cardapio e obrigatorio.");
+    }
+
+    validar(ordemExibicao >= 0,
+            "Ordem de exibicao da categoria de cardapio nao pode ser negativa.");
+
+    this.id = id;
+    this.codigo = codigo.trim();
+    this.nomeExibicao = nomeExibicao.trim();
+    this.ordemExibicao = ordemExibicao;
+    this.ativo = ativo == null ? Boolean.TRUE : ativo;
+}
 
     public CategoriaCardapio comId(int novoId) {
         validar(novoId > 0, "Novo ID da categoria de cardapio deve ser maior que zero.");

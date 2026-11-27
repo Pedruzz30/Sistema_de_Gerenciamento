@@ -15,34 +15,46 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
     @Override
     public synchronized Usuario salvar(Usuario usuario) {
         if (usuario == null) {
-            throw new IllegalArgumentException("Usuário não pode ser nulo.");
+            throw new IllegalArgumentException(
+                    "Usuário não pode ser nulo.");
         }
 
-        // Quando RU é <= 0, gera um RU automático preservando os demais dados.
         Usuario persistido = usuario;
+
+        // Gera um RU automaticamente quando necessario.
         if (usuario.getRu() <= 0) {
             persistido = usuario.comRu(sequenceRu.getAndIncrement());
         } else {
-            sequenceRu.updateAndGet(atual -> Math.max(atual, usuario.getRu() + 1));
+            sequenceRu.updateAndGet(atual ->
+                    Math.max(atual, usuario.getRu() + 1));
         }
 
-        final Usuario usuarioPersistido = persistido;
-        usuarios.removeIf(u -> u.getRu() == usuarioPersistido.getRu());
+        final long ruPersistido = persistido.getRu();
+
+        usuarios.removeIf(registro ->
+                registro.getRu() == ruPersistido);
+
         usuarios.add(persistido);
+
         return persistido;
     }
 
     @Override
-    public synchronized Optional<Usuario> buscarPorNomeSobrenomeESenha(String nome, String sobrenome, String senha) {
+    public synchronized Optional<Usuario> buscarPorNomeSobrenomeESenha(
+            String nome, String sobrenome, String senha) {
+
         return usuarios.stream()
-                .filter(Usuario::isAtivo)
-                .filter(usuario -> usuario.autenticar(nome, sobrenome, senha))
+                .filter(usuario -> usuario.isAtivo())
+                .filter(usuario ->
+                        usuario.autenticar(nome, sobrenome, senha))
                 .findFirst();
     }
 
     @Override
     public synchronized Optional<Usuario> buscarPorRu(long ru) {
-        return usuarios.stream().filter(usuario -> usuario.getRu() == ru).findFirst();
+        return usuarios.stream()
+                .filter(usuario -> usuario.getRu() == ru)
+                .findFirst();
     }
 
     @Override

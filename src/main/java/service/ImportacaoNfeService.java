@@ -1,7 +1,6 @@
 package service;
 
 import model.CategoriaEstoque;
-import model.CodigoVenda;
 import model.Fornecedor;
 import model.LogAcao;
 import model.NotaFiscal;
@@ -118,13 +117,15 @@ public class ImportacaoNfeService {
             itens.add(reconhecer(item, fornecedor.orElse(null)));
         }
         return new Previa(
-                documento,
-                fornecedor.map(Fornecedor::getId).orElse(null),
-                fornecedor.map(f -> !f.isAtivo()).orElse(false),
-                notaFiscalRepository.buscarPorChaveAcesso(documento.chaveAcesso()).map(NotaFiscal::getId).orElse(null),
-                itens,
-                avisos
-        );
+        documento,
+        fornecedor.map(f -> f.getId()).orElse(null),
+        fornecedor.map(f -> !f.isAtivo()).orElse(false),
+        notaFiscalRepository.buscarPorChaveAcesso(documento.chaveAcesso())
+                .map(nota -> nota.getId())
+                .orElse(null),
+        itens,
+        avisos
+);
     }
 
     private ItemPrevia reconhecer(NfeXmlParser.Item item, Fornecedor fornecedor) {
@@ -156,14 +157,16 @@ public class ImportacaoNfeService {
     }
 
     private Optional<VariacaoItemCardapio> variacaoDoCodigo(String codigo) {
-        if (codigo == null) {
-            return Optional.empty();
-        }
-        return codigoVendaRepository.listarAtivosPorCodigo(codigo).stream()
-                .map(CodigoVenda::getVariacao)
-                .filter(variacao -> variacao.getProdutoDireto() != null)
-                .findFirst();
+    if (codigo == null) {
+        return Optional.empty();
     }
+
+    return codigoVendaRepository.listarAtivosPorCodigo(codigo)
+            .stream()
+            .map(codigoVenda -> codigoVenda.getVariacao())
+            .filter(variacao -> variacao.getProdutoDireto() != null)
+            .findFirst();
+}
 
     record Fator(int unidades, boolean conferir) {}
 
@@ -280,17 +283,24 @@ public class ImportacaoNfeService {
             }
 
             Produto produto;
-            if (decisao.acao() == Acao.CRIAR) {
-                produto = criarProduto(usuario, item, decisao, custoUnitario);
-                criados++;
-            } else {
-                if (decisao.produtoId() == null) {
-                    throw new IllegalArgumentException("Escolha o produto do item " + item.numero() + ": " + item.descricao() + ".");
-                }
-                produto = produtoRepository.buscarPorId(decisao.produtoId())
-                        .filter(Produto::isControladoPorEstoque)
-                        .orElseThrow(() -> new IllegalArgumentException("Produto do item " + item.numero() + " nao encontrado."));
-            }
+
+if (decisao.acao() == Acao.CRIAR) {
+    produto = criarProduto(usuario, item, decisao, custoUnitario);
+    criados++;
+} else {
+    var produtoId = decisao.produtoId();
+
+    if (produtoId == null) {
+        throw new IllegalArgumentException(
+                "Escolha o produto do item " + item.numero()
+                        + ": " + item.descricao() + ".");
+    }
+
+    produto = produtoRepository.buscarPorId(produtoId)
+            .filter(produtoExistente -> produtoExistente.isControladoPorEstoque())
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "Produto do item " + item.numero() + " nao encontrado."));
+}
 
             produto.preencherDadosFiscais(item.ncm(), item.cest());
             produto = produtoRepository.salvar(produto);

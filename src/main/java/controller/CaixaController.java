@@ -88,23 +88,36 @@ public class CaixaController {
         );
 
         List<Caixa> todos = caixaRepository.listarTodos();
-        BigDecimal totalVendas = todos.stream()
-                .map(Caixa::calcularTotalVendas)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
-        long caixasAbertos = todos.stream()
-                .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
-                .count();
-        long totalMovimentacoesVenda = contarVendas(todos.stream()
-                .flatMap(c -> c.getMovimentacoes().stream())
-                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
-                .toList());
-        BigDecimal ticketMedio = totalMovimentacoesVenda > 0
-                ? totalVendas.divide(BigDecimal.valueOf(totalMovimentacoesVenda), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
-        return ResponseEntity.ok(new MetricasResponse(totalVendas, caixasAbertos, totalMovimentacoesVenda, ticketMedio));
-    }
+BigDecimal totalVendas = todos.stream()
+        .map(c -> c.calcularTotalVendas())
+        .reduce(BigDecimal.ZERO, (a, b) -> a.add(b))
+        .setScale(2, RoundingMode.HALF_UP);
+
+long caixasAbertos = todos.stream()
+        .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
+        .count();
+
+long totalMovimentacoesVenda = contarVendas(todos.stream()
+        .flatMap(c -> c.getMovimentacoes().stream())
+        .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+        .toList());
+
+BigDecimal ticketMedio = totalMovimentacoesVenda > 0
+        ? totalVendas.divide(
+                BigDecimal.valueOf(totalMovimentacoesVenda),
+                2,
+                RoundingMode.HALF_UP
+        )
+        : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+return ResponseEntity.ok(new MetricasResponse(
+        totalVendas,
+        caixasAbertos,
+        totalMovimentacoesVenda,
+        ticketMedio
+));
+}
 
     @GetMapping("/metricas/hoje")
     public ResponseEntity<MetricasResponse> metricasHoje(
@@ -118,41 +131,62 @@ public class CaixaController {
     }
 
     static MetricasResponse calcularMetricasDia(List<Caixa> caixas, LocalDate dia) {
-        List<MovimentacaoCaixa> doDia = caixas.stream()
-                .flatMap(c -> c.getMovimentacoes().stream())
-                .filter(m -> m.getDataHora() != null && dia.equals(m.getDataHora().toLocalDate()))
-                .toList();
-        List<MovimentacaoCaixa> vendas = doDia.stream()
-                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
-                .toList();
-        BigDecimal estornos = doDia.stream()
-                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA)
-                .map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal total = vendas.stream().map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .subtract(estornos)
-                .setScale(2, RoundingMode.HALF_UP);
-        long abertos = caixas.stream().filter(c -> c.getStatus() == Caixa.Status.ABERTO).count();
-        long quantidade = contarVendas(vendas);
-        BigDecimal ticket = quantidade == 0 ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
-                : total.divide(BigDecimal.valueOf(quantidade), 2, RoundingMode.HALF_UP);
-        return new MetricasResponse(total, abertos, quantidade, ticket);
-    }
+    List<MovimentacaoCaixa> doDia = caixas.stream()
+            .flatMap(c -> c.getMovimentacoes().stream())
+            .filter(m -> m.getDataHora() != null
+                    && dia.equals(m.getDataHora().toLocalDate()))
+            .toList();
+
+    List<MovimentacaoCaixa> vendas = doDia.stream()
+            .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+            .toList();
+
+    BigDecimal estornos = doDia.stream()
+            .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA)
+            .map(m -> m.getValor())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
+
+    BigDecimal total = vendas.stream()
+            .map(m -> m.getValor())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b))
+            .subtract(estornos)
+            .setScale(2, RoundingMode.HALF_UP);
+
+    long abertos = caixas.stream()
+            .filter(c -> c.getStatus() == Caixa.Status.ABERTO)
+            .count();
+
+    long quantidade = contarVendas(vendas);
+
+    BigDecimal ticket = quantidade == 0
+            ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+            : total.divide(
+                    BigDecimal.valueOf(quantidade),
+                    2,
+                    RoundingMode.HALF_UP
+            );
+
+    return new MetricasResponse(total, abertos, quantidade, ticket);
+}
 
     /**
-     * Uma venda do PDV paga em duas formas gera duas movimentações; ela conta
-     * como uma venda só. Movimentações sem venda de origem contam uma a uma.
-     */
-    static long contarVendas(List<MovimentacaoCaixa> vendas) {
-        long semVenda = vendas.stream().filter(m -> m.getVendaId() == null || m.getVendaId() <= 0).count();
-        long comVenda = vendas.stream()
-                .map(MovimentacaoCaixa::getVendaId)
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .count();
-        return semVenda + comVenda;
-    }
+ * Uma venda do PDV paga em duas formas gera duas movimentações; ela conta
+ * como uma venda só. Movimentações sem venda de origem contam uma a uma.
+ */
+
+static long contarVendas(List<MovimentacaoCaixa> vendas) {
+    long semVenda = vendas.stream()
+            .filter(m -> m.getVendaId() == null || m.getVendaId() <= 0)
+            .count();
+
+    long comVenda = vendas.stream()
+            .map(m -> m.getVendaId())
+            .filter(id -> id != null && id > 0)
+            .distinct()
+            .count();
+
+    return semVenda + comVenda;
+}
 
     @GetMapping("/{numero}")
     public ResponseEntity<?> buscarCaixaPorNumero(@PathVariable int numero,
@@ -244,21 +278,28 @@ public class CaixaController {
                 Permissao.VER_FINANCAS
         );
         try {
-            List<model.MovimentacaoCaixa> movimentacoes = caixaService.listarMovimentacoesPorCaixaId(caixaId);
-            Map<Long, BigDecimal> descontos = new java.util.HashMap<>();
-            if (vendaRepository != null) {
-                movimentacoes.stream()
-                        .filter(m -> m.getTipo() == model.TipoMovimentacaoCaixa.VENDA && m.getVendaId() != null)
-                        .map(model.MovimentacaoCaixa::getVendaId)
-                        .distinct()
-                        .forEach(id -> vendaRepository.buscarPorId(id).ifPresent(
-                                venda -> descontos.put(id, venda.getDescontoTotal())));
-            }
-            return ResponseEntity.ok(service.ResumoOperadoresCaixa.calcular(movimentacoes, descontos));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.notFound().build();
-        }
+    List<model.MovimentacaoCaixa> movimentacoes =
+            caixaService.listarMovimentacoesPorCaixaId(caixaId);
+
+    Map<Long, BigDecimal> descontos = new java.util.HashMap<>();
+
+    if (vendaRepository != null) {
+        movimentacoes.stream()
+                .filter(m -> m.getTipo() == model.TipoMovimentacaoCaixa.VENDA
+                        && m.getVendaId() != null)
+                .map(m -> m.getVendaId())
+                .distinct()
+                .forEach(id -> vendaRepository.buscarPorId(id).ifPresent(
+                        venda -> descontos.put(id, venda.getDescontoTotal())));
     }
+
+    return ResponseEntity.ok(
+            service.ResumoOperadoresCaixa.calcular(movimentacoes, descontos));
+
+} catch (IllegalStateException e) {
+    return ResponseEntity.notFound().build();
+}
+                                               }
 
     @GetMapping("/sessoes/{caixaId}/historico")
     public ResponseEntity<?> listarHistoricoPorCaixaId(@PathVariable long caixaId,

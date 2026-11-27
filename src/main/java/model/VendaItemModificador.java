@@ -83,39 +83,63 @@ public class VendaItemModificador {
     }
 
     public VendaItemModificador(long id,
-                                VendaItem vendaItem,
-                                VendaItemParte vendaItemParte,
-                                GrupoModificador grupoModificador,
-                                OpcaoModificador opcaoModificador,
-                                int quantidadeSelecionada,
-                                boolean selecaoPadrao) {
-        validar(id >= 0, "ID do modificador da venda nao pode ser negativo.");
-        validar(vendaItem != null, "Item da venda e obrigatorio.");
-        validar(grupoModificador != null, "Grupo do modificador e obrigatorio.");
-        validar(opcaoModificador != null, "Opcao do modificador e obrigatoria.");
-        validar(quantidadeSelecionada > 0, "Quantidade selecionada deve ser maior que zero.");
-        validar(vendaItemParte == null || vendaItemParte.getVendaItem().equals(vendaItem),
-                "Parte do modificador nao pertence ao item da venda.");
-        validar(opcaoModificador.getGrupoModificador().equals(grupoModificador),
-                "Opcao nao pertence ao grupo informado.");
-        this.id = id;
-        this.vendaItem = vendaItem;
-        this.vendaItemParte = vendaItemParte;
-        this.grupoModificador = grupoModificador;
-        this.opcaoModificador = opcaoModificador;
-        this.nomeGrupoSnapshot = grupoModificador.getNome();
-        this.nomeOpcaoSnapshot = opcaoModificador.getNome();
-        this.codigoGrupoSnapshot = grupoModificador.getCodigo();
-        this.codigoOpcaoSnapshot = opcaoModificador.getCodigo();
-        this.quantidadeSelecionada = quantidadeSelecionada;
-        this.selecaoPadrao = selecaoPadrao;
-        this.acrescimoUnitarioSnapshot = opcaoModificador.getAcrescimoPreco()
-                .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.acrescimoTotalSnapshot = this.acrescimoUnitarioSnapshot
-                .multiply(BigDecimal.valueOf(quantidadeSelecionada))
-                .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.criadoEm = LocalDateTime.now();
+                            VendaItem vendaItem,
+                            VendaItemParte vendaItemParte,
+                            GrupoModificador grupoModificador,
+                            OpcaoModificador opcaoModificador,
+                            int quantidadeSelecionada,
+                            boolean selecaoPadrao) {
+
+    validar(id >= 0,
+            "ID do modificador da venda nao pode ser negativo.");
+
+    validar(vendaItem != null,
+            "Item da venda e obrigatorio.");
+
+    if (grupoModificador == null) {
+        throw new IllegalArgumentException(
+                "Grupo do modificador e obrigatorio.");
     }
+
+    if (opcaoModificador == null) {
+        throw new IllegalArgumentException(
+                "Opcao do modificador e obrigatoria.");
+    }
+
+    validar(quantidadeSelecionada > 0,
+            "Quantidade selecionada deve ser maior que zero.");
+
+    validar(vendaItemParte == null
+                    || vendaItemParte.getVendaItem().equals(vendaItem),
+            "Parte do modificador nao pertence ao item da venda.");
+
+    validar(opcaoModificador.getGrupoModificador().equals(grupoModificador),
+            "Opcao nao pertence ao grupo informado.");
+
+    this.id = id;
+    this.vendaItem = vendaItem;
+    this.vendaItemParte = vendaItemParte;
+    this.grupoModificador = grupoModificador;
+    this.opcaoModificador = opcaoModificador;
+
+    this.nomeGrupoSnapshot = grupoModificador.getNome();
+    this.nomeOpcaoSnapshot = opcaoModificador.getNome();
+    this.codigoGrupoSnapshot = grupoModificador.getCodigo();
+    this.codigoOpcaoSnapshot = opcaoModificador.getCodigo();
+
+    this.quantidadeSelecionada = quantidadeSelecionada;
+    this.selecaoPadrao = selecaoPadrao;
+
+    this.acrescimoUnitarioSnapshot = opcaoModificador
+            .getAcrescimoPreco()
+            .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+    this.acrescimoTotalSnapshot = this.acrescimoUnitarioSnapshot
+            .multiply(BigDecimal.valueOf(quantidadeSelecionada))
+            .setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+    this.criadoEm = LocalDateTime.now();
+}
 
     @PrePersist
     void prePersist() {

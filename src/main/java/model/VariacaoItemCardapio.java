@@ -183,54 +183,86 @@ public class VariacaoItemCardapio {
     }
 
     private void atualizarDados(ItemCardapio itemCardapio,
-                                String nome,
-                                String codigo,
-                                BigDecimal precoVenda,
-                                TipoComposicaoVariacao tipoComposicao,
-                                Produto produtoDireto,
-                                BigDecimal quantidadeProdutoDiretoBase,
-                                Boolean ativa,
-                                Boolean padrao,
-                                int ordemExibicao,
-                                Integer limiteAlertaCapacidade) {
-        validar(itemCardapio != null, "Item do cardapio e obrigatorio.");
-        validar(nome != null && !nome.isBlank(), "Nome da variacao e obrigatorio.");
-        validar(codigo != null && !codigo.isBlank(), "Codigo da variacao e obrigatorio.");
-        validar(precoVenda != null && precoVenda.compareTo(BigDecimal.ZERO) >= 0,
-                "Preco da variacao nao pode ser negativo.");
-        validar(tipoComposicao != null, "Tipo de composicao da variacao e obrigatorio.");
-        validar(ordemExibicao >= 0, "Ordem de exibicao da variacao nao pode ser negativa.");
-        validar(limiteAlertaCapacidade == null || limiteAlertaCapacidade >= 0,
-                "Limite de alerta de capacidade nao pode ser negativo.");
+                            String nome,
+                            String codigo,
+                            BigDecimal precoVenda,
+                            TipoComposicaoVariacao tipoComposicao,
+                            Produto produtoDireto,
+                            BigDecimal quantidadeProdutoDiretoBase,
+                            Boolean ativa,
+                            Boolean padrao,
+                            int ordemExibicao,
+                            Integer limiteAlertaCapacidade) {
 
-        if (tipoComposicao == TipoComposicaoVariacao.PRODUTO_DIRETO) {
-            validar(produtoDireto != null, "Variacao de produto direto exige produto vinculado.");
-            if (quantidadeProdutoDiretoBase != null) {
-                validar(quantidadeProdutoDiretoBase.compareTo(BigDecimal.ZERO) > 0,
-                        "Quantidade consumida do produto direto deve ser maior que zero.");
-            }
-        } else {
-            validar(produtoDireto == null, "Variacao preparada nao deve possuir produto direto.");
-            validar(quantidadeProdutoDiretoBase == null,
-                    "Variacao preparada nao deve possuir quantidade de produto direto.");
-        }
+    validar(itemCardapio != null,
+            "Item do cardapio e obrigatorio.");
 
-        this.itemCardapio = itemCardapio;
-        this.nome = nome.trim();
-        this.codigo = normalizarCodigo(codigo);
-        this.precoVenda = precoVenda.setScale(ESCALA_DINHEIRO, RoundingMode.HALF_UP);
-        this.tipoComposicao = tipoComposicao;
-        this.produtoDireto = produtoDireto;
-        this.quantidadeProdutoDiretoBase = tipoComposicao == TipoComposicaoVariacao.PRODUTO_DIRETO
-                ? (quantidadeProdutoDiretoBase == null ? BigDecimal.ONE : quantidadeProdutoDiretoBase)
-                .setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP)
-                : null;
-        this.ativa = ativa == null || ativa;
-        this.padrao = padrao != null && padrao;
-        this.ordemExibicao = ordemExibicao;
-        this.limiteAlertaCapacidade = limiteAlertaCapacidade;
-        this.atualizadoEm = LocalDateTime.now();
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException(
+                "Nome da variacao e obrigatorio.");
     }
+
+    if (codigo == null || codigo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Codigo da variacao e obrigatorio.");
+    }
+
+    if (precoVenda == null || precoVenda.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Preco da variacao nao pode ser negativo.");
+    }
+
+    validar(tipoComposicao != null,
+            "Tipo de composicao da variacao e obrigatorio.");
+
+    validar(ordemExibicao >= 0,
+            "Ordem de exibicao da variacao nao pode ser negativa.");
+
+    validar(limiteAlertaCapacidade == null || limiteAlertaCapacidade >= 0,
+            "Limite de alerta de capacidade nao pode ser negativo.");
+
+    boolean produtoDiretoVinculado =
+            tipoComposicao == TipoComposicaoVariacao.PRODUTO_DIRETO;
+
+    if (produtoDiretoVinculado) {
+        validar(produtoDireto != null,
+                "Variacao de produto direto exige produto vinculado.");
+
+        if (quantidadeProdutoDiretoBase != null) {
+            validar(quantidadeProdutoDiretoBase.signum() > 0,
+                    "Quantidade consumida do produto direto deve ser maior que zero.");
+        }
+    } else {
+        validar(produtoDireto == null,
+                "Variacao preparada nao deve possuir produto direto.");
+
+        validar(quantidadeProdutoDiretoBase == null,
+                "Variacao preparada nao deve possuir quantidade de produto direto.");
+    }
+
+    this.itemCardapio = itemCardapio;
+    this.nome = nome.trim();
+    this.codigo = normalizarCodigo(codigo);
+
+    this.precoVenda = precoVenda.setScale(
+            ESCALA_DINHEIRO, RoundingMode.HALF_UP);
+
+    this.tipoComposicao = tipoComposicao;
+    this.produtoDireto = produtoDireto;
+
+    this.quantidadeProdutoDiretoBase = produtoDiretoVinculado
+            ? (quantidadeProdutoDiretoBase == null
+                    ? BigDecimal.ONE
+                    : quantidadeProdutoDiretoBase)
+                    .setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP)
+            : null;
+
+    this.ativa = ativa == null || ativa;
+    this.padrao = padrao != null && padrao;
+    this.ordemExibicao = ordemExibicao;
+    this.limiteAlertaCapacidade = limiteAlertaCapacidade;
+    this.atualizadoEm = LocalDateTime.now();
+}
 
     public long getId() { return id; }
     public ItemCardapio getItemCardapio() { return itemCardapio; }

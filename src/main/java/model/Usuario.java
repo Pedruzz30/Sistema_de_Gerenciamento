@@ -128,29 +128,41 @@ public class Usuario {
      * @throws IllegalArgumentException se qualquer argumento obrigatório for inválido
      */
     public Usuario(long ru,
-                   String nome,
-                   String sobrenome,
-                   String cpf,
-                   String senha,
-                   ClasseFuncionario classe,
-                   Perfil perfil) {
-        validar(ru >= 0,                     "RU não pode ser negativo.");
-        validar(nome != null && !nome.isBlank(),         "Nome é obrigatório.");
-        validar(sobrenome != null && !sobrenome.isBlank(),"Sobrenome é obrigatório.");
-        validar(senha != null && !senha.isBlank(),        "Senha é obrigatória.");
+               String nome,
+               String sobrenome,
+               String cpf,
+               String senha,
+               ClasseFuncionario classe,
+               Perfil perfil) {
 
-        String cpfNormalizado = normalizarCpf(cpf);
-        validar(cpfDigitosValidos(cpfNormalizado), "CPF inválido (dígitos verificadores incorretos).");
+    validar(ru >= 0, "RU não pode ser negativo.");
 
-        this.ru        = ru;
-        this.nome      = nome.trim();
-        this.sobrenome = sobrenome.trim();
-        this.cpf       = cpfNormalizado;
-        this.senha     = senha;
-        this.classe    = classe;
-        this.perfil    = perfil;
-        this.ativo     = true;
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException("Nome é obrigatório.");
     }
+
+    if (sobrenome == null || sobrenome.isBlank()) {
+        throw new IllegalArgumentException("Sobrenome é obrigatório.");
+    }
+
+    if (senha == null || senha.isBlank()) {
+        throw new IllegalArgumentException("Senha é obrigatória.");
+    }
+
+    String cpfNormalizado = normalizarCpf(cpf);
+
+    validar(cpfDigitosValidos(cpfNormalizado),
+            "CPF inválido (dígitos verificadores incorretos).");
+
+    this.ru = ru;
+    this.nome = nome.trim();
+    this.sobrenome = sobrenome.trim();
+    this.cpf = cpfNormalizado;
+    this.senha = senha;
+    this.classe = classe;
+    this.perfil = perfil;
+    this.ativo = true;
+}
 
     /**
      * Construtor privado usado por {@link #comRu} para preservar estado
@@ -350,12 +362,18 @@ public class Usuario {
      * @throws IllegalArgumentException se o CPF não contiver exatamente 11 dígitos
      */
     private static String normalizarCpf(String cpf) {
-        validar(cpf != null && !cpf.isBlank(), "CPF é obrigatório.");
-        String digitos = cpf.replaceAll("\\D", "");
-        validar(digitos.length() == 11,
-                "CPF deve conter 11 dígitos. Recebido: " + digitos.length() + " dígito(s).");
-        return digitos;
+    if (cpf == null || cpf.isBlank()) {
+        throw new IllegalArgumentException("CPF é obrigatório.");
     }
+
+    String digitos = cpf.replaceAll("\\D", "");
+
+    validar(digitos.length() == 11,
+            "CPF deve conter 11 dígitos. Recebido: "
+                    + digitos.length() + " dígito(s).");
+
+    return digitos;
+}
 
     /**
      * Valida os dígitos verificadores do CPF pelo algoritmo da Receita Federal.

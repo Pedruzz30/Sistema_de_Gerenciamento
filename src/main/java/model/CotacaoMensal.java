@@ -100,25 +100,34 @@ public class CotacaoMensal {
      * @param quantidadeComprada total de unidades compradas no mês; deve ser {@code > 0}
      * @throws IllegalArgumentException se qualquer argumento obrigatório for inválido
      */
-    public CotacaoMensal(long id,
-                         Produto produto,
-                         YearMonth mesReferencia,
-                         BigDecimal precoUnitario,
-                         int quantidadeComprada) {
-        validar(id >= 0,                                    "ID não pode ser negativo.");
-        validar(produto != null,                            "Produto é obrigatório.");
-        validar(mesReferencia != null,                      "Mês de referência é obrigatório.");
-        validar(precoUnitario != null,                      "Preço unitário é obrigatório.");
-        validar(precoUnitario.compareTo(BigDecimal.ZERO) >= 0,
-                "Preço não pode ser negativo.");
-        validar(quantidadeComprada > 0,                     "Quantidade deve ser maior que zero.");
+    public CotacaoMensal(
+        long id,
+        Produto produto,
+        YearMonth mesReferencia,
+        BigDecimal precoUnitario,
+        int quantidadeComprada) {
 
-        this.id                 = id;
-        this.produto            = produto;
-        this.mesReferencia      = mesReferencia;
-        this.precoUnitario      = precoUnitario.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-        this.quantidadeComprada = quantidadeComprada;
+    validar(id >= 0, "ID não pode ser negativo.");
+    validar(produto != null, "Produto é obrigatório.");
+    validar(mesReferencia != null, "Mês de referência é obrigatório.");
+
+    if (precoUnitario == null) {
+        throw new IllegalArgumentException("Preço unitário é obrigatório.");
     }
+
+    validar(precoUnitario.compareTo(BigDecimal.ZERO) >= 0,
+            "Preço não pode ser negativo.");
+
+    validar(quantidadeComprada > 0,
+            "Quantidade deve ser maior que zero.");
+
+    this.id = id;
+    this.produto = produto;
+    this.mesReferencia = mesReferencia;
+    this.precoUnitario = precoUnitario.setScale(
+            ESCALA_MONETARIA, RoundingMode.HALF_UP);
+    this.quantidadeComprada = quantidadeComprada;
+}
 
     // ── Fábrica para repositório ──────────────────────────────────────────────
 

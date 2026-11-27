@@ -108,45 +108,61 @@ public class ResultadoComparacao {
      * @throws IllegalArgumentException se qualquer argumento obrigatório for inválido
      */
     public ResultadoComparacao(Produto produto,
-                               YearMonth mesAnterior,
-                               YearMonth mesAtual,
-                               BigDecimal precoAnterior,
-                               BigDecimal precoAtual) {
-        validar(produto != null,       "Produto é obrigatório.");
-        validar(mesAnterior != null,   "Mês anterior é obrigatório.");
-        validar(mesAtual != null,      "Mês atual é obrigatório.");
-        validar(precoAnterior != null, "Preço anterior é obrigatório.");
-        validar(precoAtual != null,    "Preço atual é obrigatório.");
-        validar(precoAnterior.compareTo(BigDecimal.ZERO) >= 0,
-                "Preço anterior não pode ser negativo.");
-        validar(precoAtual.compareTo(BigDecimal.ZERO) >= 0,
-                "Preço atual não pode ser negativo.");
+                           YearMonth mesAnterior,
+                           YearMonth mesAtual,
+                           BigDecimal precoAnterior,
+                           BigDecimal precoAtual) {
 
-        this.produto       = produto;
-        this.mesAnterior   = mesAnterior;
-        this.mesAtual      = mesAtual;
-        this.precoAnterior = precoAnterior.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-        this.precoAtual    = precoAtual.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+    validar(produto != null, "Produto é obrigatório.");
+    validar(mesAnterior != null, "Mês anterior é obrigatório.");
+    validar(mesAtual != null, "Mês atual é obrigatório.");
 
-        this.variacaoAbsoluta = this.precoAtual
-                .subtract(this.precoAnterior)
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-
-        // Se precoAnterior == 0, a variação percentual é indefinida.
-        // Retornamos 0% por convenção — sem divisão por zero.
-        this.variacaoPercentual = this.precoAnterior.compareTo(BigDecimal.ZERO) == 0
-                ? BigDecimal.ZERO.setScale(ESCALA_PERCENTUAL, RoundingMode.HALF_UP)
-                : variacaoAbsoluta
-                .divide(this.precoAnterior, ESCALA_DIVISAO, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(ESCALA_PERCENTUAL, RoundingMode.HALF_UP);
-
-        // Comparação exata com BigDecimal — sem epsilon arbitrário
-        int cmp = variacaoAbsoluta.compareTo(BigDecimal.ZERO);
-        this.tendencia = cmp > 0 ? Tendencia.SUBIU
-                : cmp < 0 ? Tendencia.CAIU
-                :           Tendencia.ESTAVEL;
+    if (precoAnterior == null) {
+        throw new IllegalArgumentException(
+                "Preço anterior é obrigatório.");
     }
+
+    if (precoAtual == null) {
+        throw new IllegalArgumentException(
+                "Preço atual é obrigatório.");
+    }
+
+    validar(precoAnterior.signum() >= 0,
+            "Preço anterior não pode ser negativo.");
+
+    validar(precoAtual.signum() >= 0,
+            "Preço atual não pode ser negativo.");
+
+    this.produto = produto;
+    this.mesAnterior = mesAnterior;
+    this.mesAtual = mesAtual;
+
+    this.precoAnterior = precoAnterior.setScale(
+            ESCALA_MONETARIA, RoundingMode.HALF_UP);
+
+    this.precoAtual = precoAtual.setScale(
+            ESCALA_MONETARIA, RoundingMode.HALF_UP);
+
+    this.variacaoAbsoluta = this.precoAtual
+            .subtract(this.precoAnterior)
+            .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+
+    // Retorna 0% por convenção quando o preço anterior é zero.
+    this.variacaoPercentual = this.precoAnterior.signum() == 0
+            ? BigDecimal.ZERO.setScale(
+                    ESCALA_PERCENTUAL, RoundingMode.HALF_UP)
+            : variacaoAbsoluta
+                    .divide(this.precoAnterior,
+                            ESCALA_DIVISAO, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(ESCALA_PERCENTUAL, RoundingMode.HALF_UP);
+
+    int cmp = variacaoAbsoluta.signum();
+
+    this.tendencia = cmp > 0 ? Tendencia.SUBIU
+            : cmp < 0 ? Tendencia.CAIU
+            : Tendencia.ESTAVEL;
+}
 
     // ── Exibição ──────────────────────────────────────────────────────────────
 

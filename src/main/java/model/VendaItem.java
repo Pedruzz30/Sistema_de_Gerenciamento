@@ -153,30 +153,55 @@ public class VendaItem {
     }
 
     public VendaItem(long id,
-                     Venda venda,
-                     ItemCardapio itemCardapio,
-                     VariacaoItemCardapio variacaoItemCardapio,
-                     BigDecimal quantidade,
-                     String observacao) {
-        validar(id >= 0, "ID do item da venda nao pode ser negativo.");
-        validar(venda != null, "Venda do item e obrigatoria.");
-        validar(itemCardapio != null, "Item de cardapio e obrigatorio.");
-        validar(variacaoItemCardapio != null, "Variacao de cardapio e obrigatoria.");
-        validar(quantidade != null && quantidade.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade do item deve ser maior que zero.");
+                 Venda venda,
+                 ItemCardapio itemCardapio,
+                 VariacaoItemCardapio variacaoItemCardapio,
+                 BigDecimal quantidade,
+                 String observacao) {
 
-        this.id = id;
-        this.venda = venda;
-        this.itemCardapio = itemCardapio;
-        this.variacaoItemCardapio = variacaoItemCardapio;
-        this.quantidade = quantidade.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-        this.observacao = normalizar(observacao);
-        this.status = StatusVendaItem.ATIVO;
-        this.criadoEm = LocalDateTime.now();
-        this.composicaoMultipla = Boolean.FALSE;
-        aplicarSnapshotComercial(variacaoItemCardapio, BigDecimal.ZERO, BigDecimal.ZERO);
-        aplicarCusto(null, null, null, BigDecimal.ZERO, BigDecimal.ZERO);
+    validar(id >= 0,
+            "ID do item da venda nao pode ser negativo.");
+
+    validar(venda != null,
+            "Venda do item e obrigatoria.");
+
+    validar(itemCardapio != null,
+            "Item de cardapio e obrigatorio.");
+
+    if (variacaoItemCardapio == null) {
+        throw new IllegalArgumentException(
+                "Variacao de cardapio e obrigatoria.");
     }
+
+    if (quantidade == null || quantidade.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Quantidade do item deve ser maior que zero.");
+    }
+
+    this.id = id;
+    this.venda = venda;
+    this.itemCardapio = itemCardapio;
+    this.variacaoItemCardapio = variacaoItemCardapio;
+
+    this.quantidade = quantidade.setScale(
+            ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+
+    this.observacao = normalizar(observacao);
+    this.status = StatusVendaItem.ATIVO;
+    this.criadoEm = LocalDateTime.now();
+    this.composicaoMultipla = Boolean.FALSE;
+
+    atualizarSnapshotComercial(
+            variacaoItemCardapio,
+            variacaoItemCardapio.getPrecoVenda(),
+            BigDecimal.ZERO,
+            BigDecimal.ZERO);
+
+    atualizarCusto(
+            null, null, null,
+            BigDecimal.ZERO,
+            BigDecimal.ZERO);
+}
 
     public void aplicarSnapshotComercial(VariacaoItemCardapio variacao,
                                          BigDecimal descontoUnitario,
@@ -188,7 +213,16 @@ public class VendaItem {
                                                      BigDecimal precoUnitarioBase,
                                                      BigDecimal descontoUnitario,
                                                      BigDecimal acrescimoUnitario) {
-        validar(variacao != null, "Variacao de cardapio e obrigatoria.");
+        atualizarSnapshotComercial(variacao, precoUnitarioBase, descontoUnitario, acrescimoUnitario);
+    }
+
+    private void atualizarSnapshotComercial(VariacaoItemCardapio variacao,
+                                              BigDecimal precoUnitarioBase,
+                                              BigDecimal descontoUnitario,
+                                              BigDecimal acrescimoUnitario) {
+        if (variacao == null) {
+            throw new IllegalArgumentException("Variacao de cardapio e obrigatoria.");
+        }
         BigDecimal desconto = dinheiro(descontoUnitario);
         BigDecimal acrescimo = dinheiro(acrescimoUnitario);
         BigDecimal precoBase = dinheiro(precoUnitarioBase);
@@ -213,6 +247,14 @@ public class VendaItem {
                              Integer numeroVersaoFicha,
                              BigDecimal custoTotal,
                              BigDecimal margemTotal) {
+        atualizarCusto(ficha, versao, numeroVersaoFicha, custoTotal, margemTotal);
+    }
+
+    private void atualizarCusto(FichaTecnica ficha,
+                                 FichaTecnicaVersao versao,
+                                 Integer numeroVersaoFicha,
+                                 BigDecimal custoTotal,
+                                 BigDecimal margemTotal) {
         BigDecimal total = dinheiro(custoTotal);
         BigDecimal margem = dinheiro(margemTotal);
         this.fichaTecnica = ficha;
@@ -224,14 +266,24 @@ public class VendaItem {
         this.margemBrutaUnitariaEstimada = margem.divide(quantidade, ESCALA_DINHEIRO, RoundingMode.HALF_UP);
     }
 
-    public void registrarFichaObservada(FichaTecnica ficha, FichaTecnicaVersao versao) {
-        validar(ficha != null, "Ficha tecnica observada e obrigatoria.");
-        validar(versao != null, "Versao observada e obrigatoria.");
-        validar(versao.getFichaTecnica().equals(ficha), "Versao observada nao pertence a ficha observada.");
-        this.fichaTecnicaObservada = ficha;
-        this.fichaTecnicaVersaoObservada = versao;
-        this.numeroVersaoFichaObservada = versao.getNumeroVersao();
+    public void registrarFichaObservada(FichaTecnica ficha,
+                                    FichaTecnicaVersao versao) {
+
+    validar(ficha != null,
+            "Ficha tecnica observada e obrigatoria.");
+
+    if (versao == null) {
+        throw new IllegalArgumentException(
+                "Versao observada e obrigatoria.");
     }
+
+    validar(versao.getFichaTecnica().equals(ficha),
+            "Versao observada nao pertence a ficha observada.");
+
+    this.fichaTecnicaObservada = ficha;
+    this.fichaTecnicaVersaoObservada = versao;
+    this.numeroVersaoFichaObservada = versao.getNumeroVersao();
+}
 
     public void registrarConfiguracaoModificadoresObservada(String hashConfiguracao,
                                                             BigDecimal acrescimoUnitario) {
@@ -290,46 +342,70 @@ public class VendaItem {
     }
 
     public void atualizarRascunho(VariacaoItemCardapio variacao,
-                                  BigDecimal quantidade,
-                                  String observacao) {
-        validar(status == StatusVendaItem.ATIVO, "Item cancelado nao pode ser editado.");
-        validar(variacao != null, "Variacao de cardapio e obrigatoria.");
-        validar(quantidade != null && quantidade.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade do item deve ser maior que zero.");
-        this.quantidade = quantidade.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-        this.observacao = normalizar(observacao);
-        this.fichaTecnica = null;
-        this.fichaTecnicaVersao = null;
-        this.numeroVersaoFicha = null;
-        this.fichaTecnicaObservada = null;
-        this.fichaTecnicaVersaoObservada = null;
-        this.numeroVersaoFichaObservada = null;
-        this.composicaoMultipla = Boolean.FALSE;
-        this.politicaPrecoComposicao = null;
-        this.quantidadePartesSnapshot = null;
-        this.resumoPartesSnapshot = null;
-        this.configuracaoMultissaborHashObservada = null;
-        aplicarSnapshotComercial(variacao, descontoUnitario, BigDecimal.ZERO);
-        aplicarCusto(null, null, null, BigDecimal.ZERO, BigDecimal.ZERO);
+                              BigDecimal quantidade,
+                              String observacao) {
+
+    validar(status == StatusVendaItem.ATIVO,
+            "Item cancelado nao pode ser editado.");
+
+    if (variacao == null) {
+        throw new IllegalArgumentException(
+                "Variacao de cardapio e obrigatoria.");
     }
+
+    if (quantidade == null || quantidade.signum() <= 0) {
+        throw new IllegalArgumentException(
+                "Quantidade do item deve ser maior que zero.");
+    }
+
+    this.quantidade = quantidade.setScale(
+            ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+
+    this.observacao = normalizar(observacao);
+
+    this.fichaTecnica = null;
+    this.fichaTecnicaVersao = null;
+    this.numeroVersaoFicha = null;
+
+    this.fichaTecnicaObservada = null;
+    this.fichaTecnicaVersaoObservada = null;
+    this.numeroVersaoFichaObservada = null;
+
+    this.composicaoMultipla = Boolean.FALSE;
+    this.politicaPrecoComposicao = null;
+    this.quantidadePartesSnapshot = null;
+    this.resumoPartesSnapshot = null;
+    this.configuracaoMultissaborHashObservada = null;
+
+    aplicarSnapshotComercial(
+            variacao, descontoUnitario, BigDecimal.ZERO);
+
+    aplicarCusto(
+            null, null, null, BigDecimal.ZERO, BigDecimal.ZERO);
+}
 
     public void cancelar(Long usuarioId, String motivo) {
-        if (status == StatusVendaItem.CANCELADO) {
-            throw new IllegalStateException("ITEM_VENDA_JA_CANCELADO");
-        }
-        validar(motivo != null && !motivo.isBlank(), "Motivo do cancelamento e obrigatorio.");
-        this.status = StatusVendaItem.CANCELADO;
-        this.canceladoPor = usuarioId;
-        this.canceladoEm = LocalDateTime.now();
-        this.motivoCancelamento = motivo.trim();
+    if (status == StatusVendaItem.CANCELADO) {
+        throw new IllegalStateException("ITEM_VENDA_JA_CANCELADO");
     }
 
-    @PrePersist
-    void prePersist() {
-        if (criadoEm == null) {
-            criadoEm = LocalDateTime.now();
-        }
+    if (motivo == null || motivo.isBlank()) {
+        throw new IllegalArgumentException(
+                "Motivo do cancelamento e obrigatorio.");
     }
+
+    this.status = StatusVendaItem.CANCELADO;
+    this.canceladoPor = usuarioId;
+    this.canceladoEm = LocalDateTime.now();
+    this.motivoCancelamento = motivo.trim();
+}
+
+@PrePersist
+void prePersist() {
+    if (criadoEm == null) {
+        criadoEm = LocalDateTime.now();
+    }
+}
 
     public long getId() { return id; }
     public Venda getVenda() { return venda; }

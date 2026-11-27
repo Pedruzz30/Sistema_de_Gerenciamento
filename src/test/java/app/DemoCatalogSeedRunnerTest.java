@@ -39,7 +39,8 @@ class DemoCatalogSeedRunnerTest {
         for (Permissao permissao : Permissao.values()) superior.adicionarPermissao(permissao);
         admin = new Usuario(1, "Admin", "Seed", "529.982.247-25",
                 "1234", superior, Usuario.Perfil.ADMIN);
-        runner = new DemoCatalogSeedRunner(estoqueService, categorias, itens, produtos, admin);
+       runner = new DemoCatalogSeedRunner(
+        estoqueService, categorias, itens, admin);
     }
 
     @Test

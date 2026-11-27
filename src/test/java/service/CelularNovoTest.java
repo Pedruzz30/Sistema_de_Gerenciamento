@@ -11,7 +11,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -119,7 +119,7 @@ class CelularNovoTest {
             confia.init(confianca);
             SSLContext contextoCelular = SSLContext.getInstance("TLS");
             contextoCelular.init(null, confia.getTrustManagers(), null);
-            HttpsURLConnection conexao = (HttpsURLConnection) new URL("https://localhost:" + socket.getLocalPort() + "/").openConnection();
+            HttpsURLConnection conexao = (HttpsURLConnection) URI.create("https://localhost:" + socket.getLocalPort() + "/").toURL().openConnection();
             conexao.setSSLSocketFactory(contextoCelular.getSocketFactory());
             assertEquals(200, conexao.getResponseCode());
             atendente.join(5000);
@@ -135,7 +135,7 @@ class CelularNovoTest {
                 }
             });
             atendente.start();
-            HttpsURLConnection conexao = (HttpsURLConnection) new URL("https://localhost:" + socket.getLocalPort() + "/").openConnection();
+            HttpsURLConnection conexao = (HttpsURLConnection) URI.create("https://localhost:" + socket.getLocalPort() + "/").toURL().openConnection();
             assertThrows(javax.net.ssl.SSLHandshakeException.class, conexao::getResponseCode);
             atendente.join(5000);
         }

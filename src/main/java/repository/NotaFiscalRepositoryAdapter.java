@@ -4,15 +4,18 @@ import model.NotaFiscal;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class NotaFiscalRepositoryAdapter implements NotaFiscalRepository {
+public class NotaFiscalRepositoryAdapter
+        implements NotaFiscalRepository {
 
     private final JpaNotaFiscalRepository delegate;
 
     public NotaFiscalRepositoryAdapter(JpaNotaFiscalRepository delegate) {
-        this.delegate = delegate;
+        this.delegate = Objects.requireNonNull(
+                delegate, "Repositorio JPA de nota fiscal e obrigatorio.");
     }
 
     @Override
@@ -29,6 +32,11 @@ public class NotaFiscalRepositoryAdapter implements NotaFiscalRepository {
 
     @Override
     public NotaFiscal salvar(NotaFiscal nota) {
+        if (nota == null) {
+            throw new IllegalArgumentException(
+                    "Nota fiscal e obrigatoria.");
+        }
+
         return delegate.save(nota);
     }
 

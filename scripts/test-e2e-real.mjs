@@ -235,6 +235,14 @@ async function bipar(pagina, codigo) {
 }
 
 function notaXml(numero, linhas) {
+  // Fixture sem impostos adicionais, frete ou descontos: vNF corresponde à soma de vProd.
+  const totalCentavos = linhas.reduce((soma, linha) => {
+    assert.match(linha.vProd, /^\d+\.\d{2}$/, 'Valor monetário da fixture em duas casas');
+    const centavos = Number(linha.vProd.replace('.', ''));
+    assert.ok(Number.isSafeInteger(centavos) && Number.isSafeInteger(soma + centavos));
+    return soma + centavos;
+  }, 0);
+  const total = (totalCentavos / 100).toFixed(2);
   const dets = linhas.map((l, i) => `<det nItem="${i + 1}"><prod><cProd>${l.codigo}</cProd><cEAN>${l.eanCaixa}</cEAN><xProd>${l.descricao}</xProd>`
     + `<NCM>22030000</NCM><CEST>0302100</CEST><CFOP>5405</CFOP><uCom>${l.uCom}</uCom><qCom>${l.qCom}</qCom><vProd>${l.vProd}</vProd>`
     + `<cEANTrib>${l.eanUnidade}</cEANTrib><uTrib>${l.uTrib}</uTrib><qTrib>${l.qTrib}</qTrib></prod></det>`).join('');
@@ -242,7 +250,7 @@ function notaXml(numero, linhas) {
     + `<infNFe Id="NFe${chaveNfe(numero)}" versao="4.00"><ide><mod>55</mod><serie>1</serie><nNF>${numero}</nNF>`
     + `<dhEmi>2026-11-05T10:30:00-03:00</dhEmi><tpNF>1</tpNF><tpAmb>1</tpAmb><finNFe>1</finNFe></ide>`
     + `<emit><CNPJ>11222333000181</CNPJ><xNome>Distribuidora Exemplo LTDA</xNome></emit>`
-    + `<dest><CNPJ>04252011000110</CNPJ><xNome>Deposito Exemplo</xNome></dest>${dets}</infNFe></NFe></nfeProc>`;
+    + `<dest><CNPJ>04252011000110</CNPJ><xNome>Deposito Exemplo</xNome></dest>${dets}<total><ICMSTot><vProd>${total}</vProd><vNF>${total}</vNF></ICMSTot></total></infNFe></NFe></nfeProc>`;
 }
 
 await mkdir(SAIDA, { recursive: true });
@@ -896,10 +904,24 @@ try {
   await passo(dono, 'Importar XML mostra a conferencia', async () => {
     await dono.goto(`${BASE}/notas.html`);
     await botoesLigados(dono);
+    // A validação nova deve continuar recusando uma NF-e sem o bloco total.
+    const incompleta = xmlNota.replace(/<total>[\s\S]*?<\/total>/, '');
+    assert.notEqual(incompleta, xmlNota);
+    const rejeitada = await dono.evaluate(async xml => {
+      const resp = await fetch('/api/notas/importacao/previa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ xml })
+      });
+      return { status: resp.status, corpo: await resp.json() };
+    }, incompleta);
+    assert.equal(rejeitada.status, 400);
+    assert.match(rejeitada.corpo.erro, /falta o bloco total/i);
     await dono.click('#btn-importar-nfe');
     await dono.setInputFiles('#xml-input', arquivoNota);
     await dono.waitForSelector('#xml-conferencia:not([hidden])');
     await esperarTexto(dono, '#xml-resumo', 'Distribuidora Exemplo LTDA');
+    await esperarTexto(dono, '#xml-resumo', 'R$ 204,00');
     await esperarTexto(dono, '#xml-conta-1', '24 unidades');
     await esperarTexto(dono, '#xml-conta-2', '60 unidades');
     assert.equal(await dono.inputValue('#xml-acao-1'), 'CRIAR');

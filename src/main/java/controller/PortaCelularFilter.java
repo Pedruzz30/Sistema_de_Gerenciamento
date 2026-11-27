@@ -1,6 +1,7 @@
 package controller;
 
 import jakarta.servlet.FilterChain;
+import org.springframework.lang.NonNull;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,7 +33,8 @@ public class PortaCelularFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain chain)
             throws ServletException, IOException {
         if (porta <= 0 || request.getLocalPort() != porta) {
             chain.doFilter(request, response);
