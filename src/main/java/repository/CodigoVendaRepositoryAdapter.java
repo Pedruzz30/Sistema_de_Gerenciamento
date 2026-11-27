@@ -1,6 +1,7 @@
 package repository;
 
 import model.CodigoVenda;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public class CodigoVendaRepositoryAdapter implements CodigoVendaRepository {
     }
 
     @Override
-    public CodigoVenda salvar(CodigoVenda codigo) {
+    public CodigoVenda salvar(@NonNull CodigoVenda codigo) {
         // saveAndFlush: a troca de padrão precisa chegar ao banco antes do
         // próximo insert, por causa do índice único parcial (codigo, padrao).
         return delegate.saveAndFlush(codigo);

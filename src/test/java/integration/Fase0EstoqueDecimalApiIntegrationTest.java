@@ -3,6 +3,10 @@ package integration;
 import app.Main;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import model.DimensaoUnidade;
+import model.UnidadeMedida;
 import model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,14 +20,31 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.lang.NonNull;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import repository.EstoqueProdutoRepository;
+import repository.InMemoryEstoqueProdutoRepository;
+import repository.InMemoryRegistroIdempotenciaRepository;
+import repository.ProdutoRepository;
+import repository.RegistroIdempotenciaRepository;
 import repository.UsuarioRepository;
+import model.EstoqueProduto;
+import model.RegistroIdempotencia;
+import service.CompraEstoqueService;
+import service.ErroNegocioException;
+import service.UnidadeMedidaService;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(
         classes = Main.class,
@@ -44,6 +65,21 @@ class Fase0EstoqueDecimalApiIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired private CompraEstoqueService compraService;
+    @Autowired private EstoqueProdutoRepository estoques;
+    @Autowired private ProdutoRepository produtos;
+    @Autowired private RegistroIdempotenciaRepository idempotencia;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private UnidadeMedidaService unidades;
+    @PersistenceContext private EntityManager entityManager;
+
+    private final TransactionTemplate tx;
+
+    @Autowired
+    Fase0EstoqueDecimalApiIntegrationTest(@NonNull PlatformTransactionManager transactionManager) {
+        this.tx = new TransactionTemplate(transactionManager);
+    }
+
     private Usuario gerenteEstoque;
 
     @BeforeEach
@@ -52,6 +88,105 @@ class Fase0EstoqueDecimalApiIntegrationTest {
                 .filter(usuario -> "11144477735".equals(usuario.getCpfBruto()))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    @Test
+    void compraConcorrenteComChavesDistintasLancaEstoqueUmaVez() throws Exception {
+        String sufixo = Long.toUnsignedString(System.nanoTime());
+        var produtoCriado = post("/api/produtos", produtoPayload("Compra concorrente " + sufixo));
+        assertEquals(HttpStatus.OK, produtoCriado.getStatusCode());
+        int produtoId = objectMapper.readTree(java.util.Objects.requireNonNull(produtoCriado.getBody())).path("id").asInt();
+        estoques.salvar(new EstoqueProduto(0, 1L, produtos.buscarPorId(produtoId).orElseThrow(),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+        long compraId = criarCompra();
+        assertEquals(HttpStatus.OK, post("/api/compras/" + compraId + "/itens",
+                itemCompraUnidadePayload(produtoId, "GRAMA", "100", "30.00")).getStatusCode());
+
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            var segundo = tx.execute(status -> {
+                compraService.confirmarCompra(gerenteEstoque, compraId, "primeira-" + sufixo, "Concorrencia");
+                var concorrente = executor.submit(() -> {
+                    var erro = assertThrows(ErroNegocioException.class, () -> tx.executeWithoutResult(ignorado -> {
+                        jdbc.execute("SET LOCAL application_name = 'stockos-compra-concorrente'");
+                        compraService.confirmarCompra(gerenteEstoque, compraId, "segunda-" + sufixo, "Concorrencia");
+                    }));
+                    return erro.getCodigo();
+                });
+                long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                boolean aguardando = false;
+                while (!concorrente.isDone() && System.nanoTime() < limite) {
+                    jdbc.execute("SELECT pg_stat_clear_snapshot()");
+                    aguardando = Boolean.TRUE.equals(jdbc.queryForObject("""
+                            SELECT exists (select 1 from pg_stat_activity
+                            where application_name = 'stockos-compra-concorrente' and wait_event_type = 'Lock')
+                            """, Boolean.class));
+                    if (aguardando) {
+                        break;
+                    }
+                    java.util.concurrent.locks.LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+                }
+                assertTrue(aguardando, "A segunda transacao deve chegar ao lock antes do commit");
+                return concorrente;
+            });
+            assertEquals("COMPRA_JA_CONFIRMADA", java.util.Objects.requireNonNull(segundo).get(15, TimeUnit.SECONDS));
+        }
+
+        var estoque = estoques.buscarPorFilialEProduto(1L, produtoId).orElseThrow();
+        assertBigDecimalEquals("100", estoque.getQuantidadeAtual());
+        assertEquals(1L, jdbc.queryForObject("""
+                SELECT count(*) FROM movimentos_estoque_decimal WHERE produto_id = ? AND origem_id = ?
+                """, Long.class, produtoId, compraId));
+        assertEquals(0L, jdbc.queryForObject("""
+                SELECT count(*) FROM registros_idempotencia WHERE recurso_id = ? AND idempotency_key = ?
+                """, Long.class, compraId, "segunda-" + sufixo));
+    }
+
+    @Test
+    void saldoEIdempotenciaSaoSeparadosPorFilialEmJpaEEmMemoria() throws Exception {
+        var resposta = post("/api/produtos", produtoPayload("Saldo por filial " + System.nanoTime()));
+        assertEquals(HttpStatus.OK, resposta.getStatusCode());
+        int id = objectMapper.readTree(java.util.Objects.requireNonNull(resposta.getBody())).path("id").asInt();
+        var produto = produtos.buscarPorId(id).orElseThrow();
+        for (var repository : java.util.List.of(estoques, new InMemoryEstoqueProdutoRepository())) {
+            var filialA = repository.salvar(new EstoqueProduto(0, 9031L, produto, BigDecimal.ONE,
+                    BigDecimal.ZERO, BigDecimal.ONE));
+            repository.salvar(new EstoqueProduto(0, 9032L, produto, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ONE));
+            filialA.aplicarEntrada(BigDecimal.ONE, BigDecimal.ONE);
+            repository.salvar(filialA);
+
+            assertBigDecimalEquals("2", repository.buscarPorFilialEProduto(9031L, id).orElseThrow().getQuantidadeAtual());
+            var resultadosB = repository.listarPorFilialEProdutos(9032L, java.util.List.of(id));
+            assertEquals(1, resultadosB.size());
+            assertEquals(9032L, resultadosB.getFirst().getFilialId());
+            assertBigDecimalEquals("10", resultadosB.getFirst().getQuantidadeAtual());
+            assertTrue(repository.buscarPorFilialEProduto(9033L, id).isEmpty());
+        }
+        String chave = "contrato-filiais-" + id;
+        for (var repository : java.util.List.of(idempotencia, new InMemoryRegistroIdempotenciaRepository())) {
+            repository.salvarEFlush(RegistroIdempotencia.iniciar(9031L, "CONTRATO", chave, "a", null));
+            repository.salvarEFlush(RegistroIdempotencia.iniciar(9032L, "CONTRATO", chave, "b", null));
+            assertTrue(repository.buscar(9031L, "CONTRATO", chave).orElseThrow().mesmoPayload("a"));
+            assertTrue(repository.buscar(9032L, "CONTRATO", chave).orElseThrow().mesmoPayload("b"));
+            assertTrue(repository.buscar(9033L, "CONTRATO", chave).isEmpty());
+            assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () ->
+                    repository.salvarEFlush(RegistroIdempotencia.iniciar(9031L, "CONTRATO", chave, "outro", null)));
+            assertTrue(repository.buscar(9031L, "CONTRATO", " " + chave + " ").orElseThrow().mesmoPayload("a"));
+        }
+    }
+
+    @Test
+    void converteParaUnidadeDeDestinoCarregadaComoProxyJpa() {
+        tx.executeWithoutResult(status -> {
+            Long id = jdbc.queryForObject("""
+                    insert into unidades_medida (codigo, nome, dimensao, fator_base, ativa)
+                    values ('PROXY_FASE3', 'Unidade proxy', 'CONTAGEM', 1, true) returning id
+                    """, Long.class);
+            var destino = entityManager.getReference(UnidadeMedida.class, java.util.Objects.requireNonNull(id));
+            var origem = new UnidadeMedida(0, "UNIDADE_ORIGEM", "Unidade de origem",
+                    DimensaoUnidade.CONTAGEM, BigDecimal.ONE, true);
+            assertBigDecimalEquals("1", unidades.converter(BigDecimal.ONE, origem, destino));
+            status.setRollbackOnly();
+        });
     }
 
     @Test

@@ -1,8 +1,11 @@
 package repository;
 
 import model.Fornecedor;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -14,7 +17,7 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     private final AtomicLong sequenceId = new AtomicLong(1);
 
     @Override
-    public synchronized Fornecedor salvar(Fornecedor fornecedor) {
+    public synchronized Fornecedor salvar(@NonNull Fornecedor fornecedor) {
         if (fornecedor == null) {
             throw new IllegalArgumentException("Fornecedor não pode ser nulo.");
         }
@@ -49,8 +52,8 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     }
 
     @Override
-    public synchronized Optional<Fornecedor> buscarPorCnpj(String cnpj) {
-        if (cnpj == null) return Optional.empty();
+    public synchronized Optional<Fornecedor> buscarPorCnpj(@Nullable String cnpj) {
+        if (cnpj == null || cnpj.isBlank()) return Optional.empty();
         String cnpjNormalizado = cnpj.replaceAll("\\D", "");
         return fornecedores.stream()
                 .filter(f -> f.getCnpjBruto().equals(cnpjNormalizado))
@@ -61,11 +64,14 @@ public class InMemoryFornecedorRepository implements FornecedorRepository {
     public synchronized List<Fornecedor> listarAtivos() {
         return fornecedores.stream()
                 .filter(Fornecedor::isAtivo)
+                .sorted(Comparator.comparingLong(Fornecedor::getId))
                 .collect(Collectors.toList());
     }
 
     @Override
     public synchronized List<Fornecedor> listarTodos() {
-        return new ArrayList<>(fornecedores);
+        List<Fornecedor> ordenados = new ArrayList<>(fornecedores);
+        ordenados.sort(Comparator.comparingLong(Fornecedor::getId));
+        return ordenados;
     }
 }

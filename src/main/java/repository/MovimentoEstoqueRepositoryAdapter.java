@@ -1,6 +1,7 @@
 package repository;
 
 import model.MovimentoEstoque;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public class MovimentoEstoqueRepositoryAdapter implements MovimentoEstoqueReposi
     }
 
     @Override
-    public MovimentoEstoque salvar(MovimentoEstoque movimento) {
+    public MovimentoEstoque salvar(@NonNull MovimentoEstoque movimento) {
         return delegate.save(movimento);
     }
 

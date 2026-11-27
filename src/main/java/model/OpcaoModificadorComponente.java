@@ -85,11 +85,24 @@ public class OpcaoModificadorComponente {
         validar(id >= 0, "ID do componente nao pode ser negativo.");
         this.id = id;
         this.criadoEm = LocalDateTime.now();
-        atualizar(opcaoModificador, tipoEfeito, produtoOrigem, produtoDestino, quantidadeBase,
+        atualizarCampos(opcaoModificador, tipoEfeito, produtoOrigem, produtoDestino, quantidadeBase,
                 unidadeBase, multiplicador, politicaFalta, observacao, ordem);
     }
 
     public void atualizar(OpcaoModificador opcaoModificador,
+                          TipoEfeitoModificador tipoEfeito,
+                          Produto produtoOrigem,
+                          Produto produtoDestino,
+                          BigDecimal quantidadeBase,
+                          UnidadeMedida unidadeBase,
+                          BigDecimal multiplicador,
+                          PoliticaFaltaIngrediente politicaFalta,
+                          String observacao,
+                          Integer ordem) {
+        atualizarCampos(opcaoModificador, tipoEfeito, produtoOrigem, produtoDestino, quantidadeBase, unidadeBase, multiplicador, politicaFalta, observacao, ordem);
+    }
+
+    private void atualizarCampos(OpcaoModificador opcaoModificador,
                           TipoEfeitoModificador tipoEfeito,
                           Produto produtoOrigem,
                           Produto produtoDestino,

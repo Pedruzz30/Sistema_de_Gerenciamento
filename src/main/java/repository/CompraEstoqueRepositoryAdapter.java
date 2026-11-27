@@ -26,6 +26,11 @@ public class CompraEstoqueRepositoryAdapter implements CompraEstoqueRepository {
     }
 
     @Override
+    public Optional<CompraEstoque> buscarPorIdComLock(long id) {
+        return delegate.findByIdForUpdate(id);
+    }
+
+    @Override
     public List<CompraEstoque> listarTodos() {
         return delegate.findAllByOrderByIdDesc();
     }

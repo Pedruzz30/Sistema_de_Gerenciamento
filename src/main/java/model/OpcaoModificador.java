@@ -93,11 +93,23 @@ public class OpcaoModificador {
         this.criadoPor = criadoPor;
         this.criadoEm = LocalDateTime.now();
         this.atualizadoEm = this.criadoEm;
-        atualizar(grupoModificador, nome, descricao, codigo, acrescimoPreco,
+        atualizarCampos(grupoModificador, nome, descricao, codigo, acrescimoPreco,
                 quantidadeMaximaPorItem, selecionadaPorPadrao, ativa, ordemExibicao);
     }
 
     public void atualizar(GrupoModificador grupoModificador,
+                          String nome,
+                          String descricao,
+                          String codigo,
+                          BigDecimal acrescimoPreco,
+                          Integer quantidadeMaximaPorItem,
+                          Boolean selecionadaPorPadrao,
+                          Boolean ativa,
+                          Integer ordemExibicao) {
+        atualizarCampos(grupoModificador, nome, descricao, codigo, acrescimoPreco, quantidadeMaximaPorItem, selecionadaPorPadrao, ativa, ordemExibicao);
+    }
+
+    private void atualizarCampos(GrupoModificador grupoModificador,
                           String nome,
                           String descricao,
                           String codigo,

@@ -1,12 +1,12 @@
 # Multi-stage build: Maven never runs inside the published runtime container.
-FROM maven:3.9.11-eclipse-temurin-17 AS build
+FROM maven:3.10.2-eclipse-temurin-25-noble AS build
 WORKDIR /workspace
 COPY pom.xml ./
 RUN mvn -B -ntp dependency:go-offline
 COPY src ./src
 RUN mvn -B -ntp -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre-noble
 RUN groupadd --system --gid 10001 stockos && \
     useradd --system --uid 10001 --gid 10001 --home-dir /opt/stockos stockos
 WORKDIR /opt/stockos

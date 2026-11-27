@@ -87,11 +87,25 @@ public class FichaTecnicaIngrediente {
         validar(id >= 0, "ID do ingrediente nao pode ser negativo.");
         this.id = id;
         this.criadoEm = LocalDateTime.now();
-        atualizar(fichaTecnicaVersao, produto, unidadeInformada, quantidadeInformada, quantidadeLiquidaBase,
+        atualizarCampos(fichaTecnicaVersao, produto, unidadeInformada, quantidadeInformada, quantidadeLiquidaBase,
                 percentualPerda, quantidadeBrutaBase, ingredienteCritico, politicaFalta, ordem, observacao);
     }
 
     public void atualizar(FichaTecnicaVersao fichaTecnicaVersao,
+                          Produto produto,
+                          UnidadeMedida unidadeInformada,
+                          BigDecimal quantidadeInformada,
+                          BigDecimal quantidadeLiquidaBase,
+                          BigDecimal percentualPerda,
+                          BigDecimal quantidadeBrutaBase,
+                          Boolean ingredienteCritico,
+                          PoliticaFaltaIngrediente politicaFalta,
+                          int ordem,
+                          String observacao) {
+        atualizarCampos(fichaTecnicaVersao, produto, unidadeInformada, quantidadeInformada, quantidadeLiquidaBase, percentualPerda, quantidadeBrutaBase, ingredienteCritico, politicaFalta, ordem, observacao);
+    }
+
+    private void atualizarCampos(FichaTecnicaVersao fichaTecnicaVersao,
                           Produto produto,
                           UnidadeMedida unidadeInformada,
                           BigDecimal quantidadeInformada,

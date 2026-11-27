@@ -1,6 +1,8 @@
 package repository;
 
 import model.Fornecedor;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,10 +17,10 @@ import java.util.Optional;
  */
 
 public interface FornecedorRepository {
-    Fornecedor salvar(Fornecedor fornecedor);
+    Fornecedor salvar(@NonNull Fornecedor fornecedor);
 
     Optional<Fornecedor> buscarPorId(long id);
-    Optional<Fornecedor> buscarPorCnpj(String cnpj);
+    Optional<Fornecedor> buscarPorCnpj(@Nullable String cnpj);
 
     List<Fornecedor> listarAtivos();
     List<Fornecedor> listarTodos();

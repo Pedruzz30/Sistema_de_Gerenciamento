@@ -161,7 +161,9 @@ public class VendaItem {
         validar(id >= 0, "ID do item da venda nao pode ser negativo.");
         validar(venda != null, "Venda do item e obrigatoria.");
         validar(itemCardapio != null, "Item de cardapio e obrigatorio.");
-        validar(variacaoItemCardapio != null, "Variacao de cardapio e obrigatoria.");
+        if (variacaoItemCardapio == null) {
+            throw new IllegalArgumentException("Variacao de cardapio e obrigatoria.");
+        }
         validar(quantidade != null && quantidade.compareTo(BigDecimal.ZERO) > 0,
                 "Quantidade do item deve ser maior que zero.");
 
@@ -174,8 +176,9 @@ public class VendaItem {
         this.status = StatusVendaItem.ATIVO;
         this.criadoEm = LocalDateTime.now();
         this.composicaoMultipla = Boolean.FALSE;
-        aplicarSnapshotComercial(variacaoItemCardapio, BigDecimal.ZERO, BigDecimal.ZERO);
-        aplicarCusto(null, null, null, BigDecimal.ZERO, BigDecimal.ZERO);
+        atualizarSnapshotComercial(variacaoItemCardapio, variacaoItemCardapio.getPrecoVenda(),
+                BigDecimal.ZERO, BigDecimal.ZERO);
+        atualizarCusto(null, null, null, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     public void aplicarSnapshotComercial(VariacaoItemCardapio variacao,
@@ -188,7 +191,16 @@ public class VendaItem {
                                                      BigDecimal precoUnitarioBase,
                                                      BigDecimal descontoUnitario,
                                                      BigDecimal acrescimoUnitario) {
-        validar(variacao != null, "Variacao de cardapio e obrigatoria.");
+        atualizarSnapshotComercial(variacao, precoUnitarioBase, descontoUnitario, acrescimoUnitario);
+    }
+
+    private void atualizarSnapshotComercial(VariacaoItemCardapio variacao,
+                                              BigDecimal precoUnitarioBase,
+                                              BigDecimal descontoUnitario,
+                                              BigDecimal acrescimoUnitario) {
+        if (variacao == null) {
+            throw new IllegalArgumentException("Variacao de cardapio e obrigatoria.");
+        }
         BigDecimal desconto = dinheiro(descontoUnitario);
         BigDecimal acrescimo = dinheiro(acrescimoUnitario);
         BigDecimal precoBase = dinheiro(precoUnitarioBase);
@@ -213,6 +225,14 @@ public class VendaItem {
                              Integer numeroVersaoFicha,
                              BigDecimal custoTotal,
                              BigDecimal margemTotal) {
+        atualizarCusto(ficha, versao, numeroVersaoFicha, custoTotal, margemTotal);
+    }
+
+    private void atualizarCusto(FichaTecnica ficha,
+                                 FichaTecnicaVersao versao,
+                                 Integer numeroVersaoFicha,
+                                 BigDecimal custoTotal,
+                                 BigDecimal margemTotal) {
         BigDecimal total = dinheiro(custoTotal);
         BigDecimal margem = dinheiro(margemTotal);
         this.fichaTecnica = ficha;

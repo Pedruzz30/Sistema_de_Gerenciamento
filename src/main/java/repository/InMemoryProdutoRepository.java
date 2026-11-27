@@ -1,8 +1,10 @@
 package repository;
 
 import model.Produto;
+import org.springframework.lang.NonNull;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,7 +15,7 @@ public class InMemoryProdutoRepository implements ProdutoRepository {
     private final AtomicInteger sequenceId = new AtomicInteger(1);
 
     @Override
-    public synchronized Produto salvar(Produto produto) {
+    public synchronized Produto salvar(@NonNull Produto produto) {
         if (produto == null) {
             throw new IllegalArgumentException("Produto não pode ser nulo.");
         }
@@ -58,6 +60,8 @@ public class InMemoryProdutoRepository implements ProdutoRepository {
 
     @Override
     public synchronized List<Produto> listarTodos() {
-        return new ArrayList<>(produtos);
+        List<Produto> ordenados = new ArrayList<>(produtos);
+        ordenados.sort(Comparator.comparingInt(Produto::getId));
+        return ordenados;
     }
 }

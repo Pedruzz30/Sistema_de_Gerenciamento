@@ -102,7 +102,7 @@ public class CompraEstoqueService {
                                        BigDecimal custoTotal,
                                        String motivoEntradaGratuita) {
         validarPermissaoEdicao(usuario);
-        CompraEstoque compra = buscarCompraObrigatoria(compraId);
+        CompraEstoque compra = bloquearCompraObrigatoria(compraId);
         Produto produto = buscarProdutoObrigatorio(produtoId);
         validarProdutoParaCompra(produto);
         validarCusto(custoTotal, motivoEntradaGratuita);
@@ -156,7 +156,7 @@ public class CompraEstoqueService {
                                                       String motivo) {
         validarPermissaoEdicao(usuario);
         String chave = normalizarIdempotencyKey(idempotencyKey);
-        CompraEstoque compra = buscarCompraObrigatoria(compraId);
+        CompraEstoque compra = bloquearCompraObrigatoria(compraId);
         String payloadHash = calcularPayloadHash(compra);
 
         RegistroIdempotencia registro = registroIdempotenciaRepository
@@ -225,6 +225,11 @@ public class CompraEstoqueService {
 
     public CompraEstoque buscarCompraObrigatoria(long compraId) {
         return compraEstoqueRepository.buscarPorId(compraId)
+                .orElseThrow(() -> new IllegalArgumentException("Compra nao encontrada com ID: " + compraId));
+    }
+
+    private CompraEstoque bloquearCompraObrigatoria(long compraId) {
+        return compraEstoqueRepository.buscarPorIdComLock(compraId)
                 .orElseThrow(() -> new IllegalArgumentException("Compra nao encontrada com ID: " + compraId));
     }
 

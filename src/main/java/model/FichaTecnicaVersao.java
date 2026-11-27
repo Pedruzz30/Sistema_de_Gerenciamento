@@ -106,7 +106,7 @@ public class FichaTecnicaVersao {
         this.status = StatusFichaTecnicaVersao.RASCUNHO;
         this.criadaEm = LocalDateTime.now();
         this.criadaPor = criadaPor;
-        atualizarRascunho(rendimentoQuantidade, rendimentoUnidade, quantidadePorPorcao,
+        atualizarRascunhoCampos(rendimentoQuantidade, rendimentoUnidade, quantidadePorPorcao,
                 tempoPreparoMinutos, observacaoInterna, motivoAlteracao);
     }
 
@@ -117,6 +117,16 @@ public class FichaTecnicaVersao {
                                   String observacaoInterna,
                                   String motivoAlteracao) {
         exigirRascunho();
+        atualizarRascunhoCampos(rendimentoQuantidade, rendimentoUnidade, quantidadePorPorcao,
+                tempoPreparoMinutos, observacaoInterna, motivoAlteracao);
+    }
+
+    private void atualizarRascunhoCampos(BigDecimal rendimentoQuantidade,
+                                  UnidadeMedida rendimentoUnidade,
+                                  BigDecimal quantidadePorPorcao,
+                                  Integer tempoPreparoMinutos,
+                                  String observacaoInterna,
+                                  String motivoAlteracao) {
         validar(rendimentoQuantidade != null && rendimentoQuantidade.compareTo(BigDecimal.ZERO) > 0,
                 "Rendimento da ficha tecnica deve ser maior que zero.");
         validar(rendimentoUnidade != null, "Unidade de rendimento e obrigatoria.");

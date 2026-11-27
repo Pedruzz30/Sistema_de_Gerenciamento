@@ -1,6 +1,8 @@
 package repository;
 
 import model.Fornecedor;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,7 +18,7 @@ public class FornecedorRepositoryAdapter implements FornecedorRepository {
     }
 
     @Override
-    public Fornecedor salvar(Fornecedor fornecedor) {
+    public Fornecedor salvar(@NonNull Fornecedor fornecedor) {
         return delegate.save(fornecedor);
     }
 
@@ -26,7 +28,7 @@ public class FornecedorRepositoryAdapter implements FornecedorRepository {
     }
 
     @Override
-    public Optional<Fornecedor> buscarPorCnpj(String cnpj) {
+    public Optional<Fornecedor> buscarPorCnpj(@Nullable String cnpj) {
         if (cnpj == null || cnpj.isBlank()) {
             return Optional.empty();
         }

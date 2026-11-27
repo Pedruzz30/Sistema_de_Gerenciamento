@@ -77,11 +77,21 @@ public class VariacaoGrupoModificador {
         this.id = id;
         this.criadoEm = LocalDateTime.now();
         this.atualizadoEm = this.criadoEm;
-        atualizar(variacaoItemCardapio, grupoModificador, obrigatorioOverride,
+        atualizarCampos(variacaoItemCardapio, grupoModificador, obrigatorioOverride,
                 quantidadeMinimaOverride, quantidadeMaximaOverride, ordemExibicao, ativo);
     }
 
     public void atualizar(VariacaoItemCardapio variacaoItemCardapio,
+                          GrupoModificador grupoModificador,
+                          Boolean obrigatorioOverride,
+                          Integer quantidadeMinimaOverride,
+                          Integer quantidadeMaximaOverride,
+                          Integer ordemExibicao,
+                          Boolean ativo) {
+        atualizarCampos(variacaoItemCardapio, grupoModificador, obrigatorioOverride, quantidadeMinimaOverride, quantidadeMaximaOverride, ordemExibicao, ativo);
+    }
+
+    private void atualizarCampos(VariacaoItemCardapio variacaoItemCardapio,
                           GrupoModificador grupoModificador,
                           Boolean obrigatorioOverride,
                           Integer quantidadeMinimaOverride,

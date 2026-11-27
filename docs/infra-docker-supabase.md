@@ -14,7 +14,7 @@ para exposição pública**.
 
 ## 1. Desenvolvimento local no Windows
 
-Pré-requisitos: Docker Desktop com Docker Compose v2, Git e Maven/Java 17+.
+Pré-requisitos: Docker Desktop com Docker Compose v2 e Git. Para executar o backend fora do container, use Maven 3.6.3 ou superior com JDK 25.
 
 No PowerShell, a partir da raiz do repositório:
 

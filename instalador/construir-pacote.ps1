@@ -7,8 +7,8 @@ $ErrorActionPreference = 'Stop'
 
 $Downloads = @{
     java = @{
-        url  = 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.21%2B9/OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip'
-        hash = 'fe4656bd78fb09812dc38c49da777f79cc33e7ee435a254be82f9e7f40d9d117'
+        url  = 'https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jre_x64_windows_hotspot_25.0.5_8.zip'
+        hash = 'da78d54a2fcdbba1e92d5e3f07dd30236f96297891c4a21a781c3f38f5c0beae'
     }
     pgsql = @{
         url  = 'https://get.enterprisedb.com/postgresql/postgresql-17.11-1-windows-x64-binaries.zip'
@@ -21,7 +21,7 @@ $Programa = Join-Path $Trabalho 'programa'
 
 function Get-Download([string]$Nome) {
     $item = $Downloads[$Nome]
-    $arquivo = Join-Path $Cache "$Nome.zip"
+    $arquivo = Join-Path $Cache ([System.IO.Path]::GetFileName(([uri]$item.url).AbsolutePath))
     if (-not (Test-Path $arquivo)) {
         Write-Host "Baixando $Nome..."
         & curl.exe -sSfL -o $arquivo $item.url

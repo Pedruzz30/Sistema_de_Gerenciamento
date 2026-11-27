@@ -99,7 +99,9 @@ public class Fornecedor {
      */
     public Fornecedor(long id, String nome, String cnpj, String telefone) {
         validar(id >= 0,                  "ID do fornecedor não pode ser negativo.");
-        validar(nome != null && !nome.isBlank(), "Nome é obrigatório.");
+        if (!(nome != null && !nome.isBlank())) {
+            throw new IllegalArgumentException("Nome é obrigatório.");
+        }
 
         String cnpjNormalizado = normalizarCnpj(cnpj);   // valida comprimento
         validar(cnpjDigitosValidos(cnpjNormalizado),      "CNPJ inválido (dígitos verificadores incorretos).");
@@ -150,7 +152,9 @@ public class Fornecedor {
      */
     public void adicionarProduto(Produto produto) {
         validar(ativo,          "Não é possível adicionar produtos a um fornecedor inativo.");
-        validar(produto != null, "Produto não pode ser nulo.");
+        if (produto == null) {
+            throw new IllegalArgumentException("Produto não pode ser nulo.");
+        }
         validar(!produtos.contains(produto),
                 "Produto '" + produto.getNome() + "' já está vinculado a este fornecedor.");
         produtos.add(produto);
@@ -273,7 +277,9 @@ public class Fornecedor {
      * @throws IllegalArgumentException se o CNPJ não contiver exatamente 14 dígitos
      */
     private static String normalizarCnpj(String cnpj) {
-        validar(cnpj != null && !cnpj.isBlank(), "CNPJ é obrigatório.");
+        if (!(cnpj != null && !cnpj.isBlank())) {
+            throw new IllegalArgumentException("CNPJ é obrigatório.");
+        }
         String digitos = cnpj.replaceAll("\\D", "");
         validar(digitos.length() == 14,
                 "CNPJ deve conter 14 dígitos. Recebido: " + digitos.length() + " dígito(s).");

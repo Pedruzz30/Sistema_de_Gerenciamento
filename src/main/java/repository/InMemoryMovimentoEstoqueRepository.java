@@ -1,6 +1,7 @@
 package repository;
 
 import model.MovimentoEstoque;
+import org.springframework.lang.NonNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -14,7 +15,10 @@ public class InMemoryMovimentoEstoqueRepository implements MovimentoEstoqueRepos
     private final AtomicLong sequenceId = new AtomicLong(1);
 
     @Override
-    public synchronized MovimentoEstoque salvar(MovimentoEstoque movimento) {
+    public synchronized MovimentoEstoque salvar(@NonNull MovimentoEstoque movimento) {
+        if (movimento == null) {
+            throw new IllegalArgumentException("Movimento de estoque nao pode ser nulo.");
+        }
         MovimentoEstoque persistido = movimento;
         if (movimento.getId() <= 0) {
             persistido = movimento.comId(sequenceId.getAndIncrement());

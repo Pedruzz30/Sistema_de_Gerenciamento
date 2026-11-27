@@ -117,31 +117,48 @@ public class MovimentoEstoque {
         validar(filialId != null && filialId > 0, "Filial do movimento e obrigatoria.");
         validar(produto != null, "Produto do movimento e obrigatorio.");
         validar(tipo != null, "Tipo de movimento e obrigatorio.");
-        validar(quantidadeBase != null && quantidadeBase.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade base do movimento deve ser maior que zero.");
-        validar(saldoAnterior != null, "Saldo anterior e obrigatorio.");
-        validar(saldoPosterior != null, "Saldo posterior e obrigatorio.");
-        validar(custoUnitario != null && custoUnitario.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo unitario do movimento deve ser nao negativo.");
-        validar(custoTotal != null && custoTotal.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo total do movimento deve ser nao negativo.");
-        validar(custoMedioAnterior != null && custoMedioAnterior.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo medio anterior do movimento deve ser nao negativo.");
-        validar(custoMedioPosterior != null && custoMedioPosterior.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo medio posterior do movimento deve ser nao negativo.");
-        validar(valorEstoqueAnterior != null && valorEstoqueAnterior.compareTo(BigDecimal.ZERO) >= 0,
-                "Valor de estoque anterior do movimento deve ser nao negativo.");
-        validar(valorEstoquePosterior != null && valorEstoquePosterior.compareTo(BigDecimal.ZERO) >= 0,
-                "Valor de estoque posterior do movimento deve ser nao negativo.");
-        validar(origemTipo != null && !origemTipo.isBlank(), "Tipo de origem do movimento e obrigatorio.");
+        if (quantidadeBase == null) {
+            throw new IllegalArgumentException("Quantidade base do movimento deve ser maior que zero.");
+        }
+        BigDecimal quantidadePersistida = quantidadeBase.setScale(6, RoundingMode.HALF_UP);
+        validar(quantidadePersistida.signum() > 0, "Quantidade base do movimento deve ser maior que zero.");
+        if (saldoAnterior == null) {
+            throw new IllegalArgumentException("Saldo anterior e obrigatorio.");
+        }
+        if (saldoPosterior == null) {
+            throw new IllegalArgumentException("Saldo posterior e obrigatorio.");
+        }
+        if (custoUnitario == null || custoUnitario.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Custo unitario do movimento deve ser nao negativo.");
+        }
+        if (custoTotal == null || custoTotal.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Custo total do movimento deve ser nao negativo.");
+        }
+        if (custoMedioAnterior == null || custoMedioAnterior.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Custo medio anterior do movimento deve ser nao negativo.");
+        }
+        if (custoMedioPosterior == null || custoMedioPosterior.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Custo medio posterior do movimento deve ser nao negativo.");
+        }
+        if (valorEstoqueAnterior == null || valorEstoqueAnterior.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Valor de estoque anterior do movimento deve ser nao negativo.");
+        }
+        if (valorEstoquePosterior == null || valorEstoquePosterior.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Valor de estoque posterior do movimento deve ser nao negativo.");
+        }
+        if (!(origemTipo != null && !origemTipo.isBlank())) {
+            throw new IllegalArgumentException("Tipo de origem do movimento e obrigatorio.");
+        }
         validar(origemId != null && origemId > 0, "ID de origem do movimento e obrigatorio.");
-        validar(motivo != null && !motivo.isBlank(), "Motivo do movimento e obrigatorio.");
+        if (!(motivo != null && !motivo.isBlank())) {
+            throw new IllegalArgumentException("Motivo do movimento e obrigatorio.");
+        }
 
         this.id = id;
         this.filialId = filialId;
         this.produto = produto;
         this.tipo = tipo;
-        this.quantidadeBase = quantidadeBase.setScale(6, RoundingMode.HALF_UP);
+        this.quantidadeBase = quantidadePersistida;
         this.saldoAnterior = saldoAnterior.setScale(6, RoundingMode.HALF_UP);
         this.saldoPosterior = saldoPosterior.setScale(6, RoundingMode.HALF_UP);
         this.custoUnitario = custoUnitario.setScale(8, RoundingMode.HALF_UP);

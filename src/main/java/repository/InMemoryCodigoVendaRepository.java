@@ -1,6 +1,7 @@
 package repository;
 
 import model.CodigoVenda;
+import org.springframework.lang.NonNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,9 +16,14 @@ public class InMemoryCodigoVendaRepository implements CodigoVendaRepository {
     private final AtomicLong sequence = new AtomicLong(1);
 
     @Override
-    public synchronized CodigoVenda salvar(CodigoVenda codigo) {
+    public synchronized CodigoVenda salvar(@NonNull CodigoVenda codigo) {
+        if (codigo == null) {
+            throw new IllegalArgumentException("Codigo de venda nao pode ser nulo.");
+        }
         if (codigo.getId() == 0) {
             codigo.atribuirIdGerado(sequence.getAndIncrement());
+        } else {
+            sequence.updateAndGet(atual -> Math.max(atual, codigo.getId() + 1));
         }
         codigos.removeIf(c -> c.getId() == codigo.getId());
         codigos.add(codigo);
@@ -34,7 +40,7 @@ public class InMemoryCodigoVendaRepository implements CodigoVendaRepository {
         return codigos.stream()
                 .filter(CodigoVenda::isAtivo)
                 .filter(c -> c.getCodigo().equals(codigo))
-                .sorted(Comparator.comparing(CodigoVenda::isPadrao).reversed().thenComparing(CodigoVenda::getId))
+                .sorted(Comparator.comparing(CodigoVenda::isPadrao).reversed().thenComparingLong(CodigoVenda::getId))
                 .toList();
     }
 
@@ -43,7 +49,7 @@ public class InMemoryCodigoVendaRepository implements CodigoVendaRepository {
         return codigos.stream()
                 .filter(CodigoVenda::isAtivo)
                 .filter(c -> c.getVariacao().getId() == variacaoId)
-                .sorted(Comparator.comparing(CodigoVenda::getId))
+                .sorted(Comparator.comparingLong(CodigoVenda::getId))
                 .toList();
     }
 
@@ -53,7 +59,7 @@ public class InMemoryCodigoVendaRepository implements CodigoVendaRepository {
                 .filter(CodigoVenda::isAtivo)
                 .sorted(Comparator.comparing(CodigoVenda::getCodigo)
                         .thenComparing(Comparator.comparing(CodigoVenda::isPadrao).reversed())
-                        .thenComparing(CodigoVenda::getId))
+                        .thenComparingLong(CodigoVenda::getId))
                 .toList();
     }
 }

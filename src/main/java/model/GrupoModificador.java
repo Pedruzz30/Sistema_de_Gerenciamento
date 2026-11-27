@@ -89,11 +89,24 @@ public class GrupoModificador {
         this.criadoPor = criadoPor;
         this.criadoEm = LocalDateTime.now();
         this.atualizadoEm = this.criadoEm;
-        atualizar(nome, descricao, codigo, tipoSelecao, obrigatorio, quantidadeMinima,
+        atualizarCampos(nome, descricao, codigo, tipoSelecao, obrigatorio, quantidadeMinima,
                 quantidadeMaxima, permiteRepeticao, ativo, ordemExibicao);
     }
 
     public void atualizar(String nome,
+                          String descricao,
+                          String codigo,
+                          TipoSelecaoModificador tipoSelecao,
+                          Boolean obrigatorio,
+                          Integer quantidadeMinima,
+                          Integer quantidadeMaxima,
+                          Boolean permiteRepeticao,
+                          Boolean ativo,
+                          Integer ordemExibicao) {
+        atualizarCampos(nome, descricao, codigo, tipoSelecao, obrigatorio, quantidadeMinima, quantidadeMaxima, permiteRepeticao, ativo, ordemExibicao);
+    }
+
+    private void atualizarCampos(String nome,
                           String descricao,
                           String codigo,
                           TipoSelecaoModificador tipoSelecao,

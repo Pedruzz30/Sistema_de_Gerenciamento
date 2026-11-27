@@ -28,8 +28,8 @@ class Fase46FlywayMigrationIntegrationTest {
         DatabaseTarget target = criarBancoTemporario("empty");
         try {
             assertDoesNotThrow(() -> {
-                try (ConfigurableApplicationContext ignored = iniciarAplicacao(target.url(), false)) {
-                    // Contexto iniciado: Flyway migrou e Hibernate validou.
+                try (ConfigurableApplicationContext contexto = iniciarAplicacao(target.url(), false)) {
+                    assertTrue(contexto.isActive());
                 }
             });
 
@@ -63,8 +63,8 @@ class Fase46FlywayMigrationIntegrationTest {
             }
 
             assertDoesNotThrow(() -> {
-                try (ConfigurableApplicationContext ignored = iniciarAplicacao(target.url(), true)) {
-                    // Contexto iniciado: schema existente foi baselined e validado.
+                try (ConfigurableApplicationContext contexto = iniciarAplicacao(target.url(), true)) {
+                    assertTrue(contexto.isActive());
                 }
             });
 
@@ -88,9 +88,7 @@ class Fase46FlywayMigrationIntegrationTest {
             }
 
             Exception erro = assertThrows(Exception.class, () -> {
-                try (ConfigurableApplicationContext ignored = iniciarAplicacao(target.url(), true)) {
-                    // Deve falhar durante Flyway.
-                }
+                iniciarAplicacao(target.url(), true).close();
             });
             assertTrue(erro.getMessage() != null && !erro.getMessage().isBlank());
         } finally {

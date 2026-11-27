@@ -1,6 +1,7 @@
 package repository;
 
 import model.Fornecedor;
+import org.springframework.lang.NonNull;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,7 +12,8 @@ public interface JpaFornecedorRepository extends JpaRepository<Fornecedor, Long>
 
     @Override
     @EntityGraph(attributePaths = "produtos")
-    Optional<Fornecedor> findById(Long id);
+    @NonNull
+    Optional<Fornecedor> findById(@NonNull Long id);
 
     @EntityGraph(attributePaths = "produtos")
     Optional<Fornecedor> findByCnpj(String cnpj);

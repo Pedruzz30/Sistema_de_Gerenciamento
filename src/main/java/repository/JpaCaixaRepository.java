@@ -1,6 +1,7 @@
 package repository;
 
 import model.Caixa;
+import org.springframework.lang.NonNull;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,7 +13,8 @@ public interface JpaCaixaRepository extends JpaRepository<Caixa, Long> {
 
     @Override
     @EntityGraph(attributePaths = {"operadorAtual", "movimentacoes", "movimentacoes.operador"})
-    Optional<Caixa> findById(Long id);
+    @NonNull
+    Optional<Caixa> findById(@NonNull Long id);
 
     @EntityGraph(attributePaths = {"operadorAtual", "movimentacoes", "movimentacoes.operador"})
     List<Caixa> findAllByNumeroCaixaAndStatusOrderByIdAsc(int numeroCaixa, Caixa.Status status);

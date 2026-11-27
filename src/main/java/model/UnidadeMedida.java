@@ -81,10 +81,15 @@ public class UnidadeMedida {
     }
 
     public void exigirCompatibilidade(UnidadeMedida destino) {
-        validar(destino != null, "Unidade destino e obrigatoria.");
-        validar(dimensao == destino.dimensao,
-                "Unidades incompatíveis: " + codigo + " (" + dimensao + ") para " +
-                        destino.codigo + " (" + destino.dimensao + ").");
+        if (destino == null) {
+            throw new IllegalArgumentException("Unidade destino e obrigatoria.");
+        }
+        DimensaoUnidade dimensaoDestino = destino.getDimensao();
+        if (dimensao != dimensaoDestino) {
+            throw new IllegalArgumentException(
+                    "Unidades incompatíveis: " + codigo + " (" + dimensao + ") para " +
+                        destino.getCodigo() + " (" + dimensaoDestino + ").");
+        }
     }
 
     public long getId() { return id; }

@@ -11,5 +11,9 @@ public interface CompraEstoqueRepository {
 
     Optional<CompraEstoque> buscarPorId(long id);
 
+    default Optional<CompraEstoque> buscarPorIdComLock(long id) {
+        return buscarPorId(id);
+    }
+
     List<CompraEstoque> listarTodos();
 }
