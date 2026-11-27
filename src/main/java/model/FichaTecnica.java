@@ -52,36 +52,59 @@ public class FichaTecnica {
         // JPA
     }
 
-    public FichaTecnica(long id,
-                        VariacaoItemCardapio variacaoItemCardapio,
-                        String nome,
-                        Long criadaPor) {
-        validar(id >= 0, "ID da ficha tecnica nao pode ser negativo.");
-        validar(variacaoItemCardapio != null, "Variacao da ficha tecnica e obrigatoria.");
-        validar(nome != null && !nome.isBlank(), "Nome da ficha tecnica e obrigatorio.");
-        validar(variacaoItemCardapio.isPreparada(), "Ficha tecnica so pode ser criada para variacao preparada.");
+    public FichaTecnica(
+        long id,
+        VariacaoItemCardapio variacaoItemCardapio,
+        String nome,
+        Long criadaPor) {
 
-        this.id = id;
-        this.variacaoItemCardapio = variacaoItemCardapio;
-        this.nome = nome.trim();
-        this.ativa = Boolean.TRUE;
-        this.criadaPor = criadaPor;
-        this.criadaEm = LocalDateTime.now();
-        this.atualizadoEm = this.criadaEm;
+    validar(id >= 0,
+            "ID da ficha tecnica nao pode ser negativo.");
+
+    if (variacaoItemCardapio == null) {
+        throw new IllegalArgumentException(
+                "Variacao da ficha tecnica e obrigatoria.");
     }
+
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException(
+                "Nome da ficha tecnica e obrigatorio.");
+    }
+
+    validar(variacaoItemCardapio.isPreparada(),
+            "Ficha tecnica so pode ser criada para variacao preparada.");
+
+    this.id = id;
+    this.variacaoItemCardapio = variacaoItemCardapio;
+    this.nome = nome.trim();
+    this.ativa = Boolean.TRUE;
+    this.criadaPor = criadaPor;
+    this.criadaEm = LocalDateTime.now();
+    this.atualizadoEm = this.criadaEm;
+}
 
     public void atualizarNome(String nome) {
-        validar(nome != null && !nome.isBlank(), "Nome da ficha tecnica e obrigatorio.");
-        this.nome = nome.trim();
-        this.atualizadoEm = LocalDateTime.now();
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException(
+                "Nome da ficha tecnica e obrigatorio.");
     }
 
-    public void definirVersaoPublicadaAtual(FichaTecnicaVersao versao) {
-        validar(versao != null, "Versao publicada atual e obrigatoria.");
-        validar(versao.getFichaTecnica().equals(this), "Versao publicada nao pertence a esta ficha.");
-        this.versaoPublicadaAtual = versao;
-        this.atualizadoEm = LocalDateTime.now();
+    this.nome = nome.trim();
+    this.atualizadoEm = LocalDateTime.now();
+}
+
+public void definirVersaoPublicadaAtual(FichaTecnicaVersao versao) {
+    if (versao == null) {
+        throw new IllegalArgumentException(
+                "Versao publicada atual e obrigatoria.");
     }
+
+    validar(versao.getFichaTecnica().equals(this),
+            "Versao publicada nao pertence a esta ficha.");
+
+    this.versaoPublicadaAtual = versao;
+    this.atualizadoEm = LocalDateTime.now();
+}
 
     public long getId() { return id; }
     public VariacaoItemCardapio getVariacaoItemCardapio() { return variacaoItemCardapio; }

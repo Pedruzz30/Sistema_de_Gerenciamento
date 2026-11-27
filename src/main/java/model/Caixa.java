@@ -231,8 +231,11 @@ public class Caixa {
                 "Caixa " + numeroCaixa + " não está aberto. Status: " + status);
         validar(movimentacao != null, "Movimentação não pode ser nula.");
 
-        // Converte na fronteira: double → BigDecimal (seguro via valueOf)
-        BigDecimal valor = movimentacao.getValor();
+       if (movimentacao == null) {
+    throw new IllegalArgumentException("Movimentacao obrigatoria.");
+}
+
+BigDecimal valor = movimentacao.getValor();
 
         if (!movimentacao.afetaGaveta()) {
             // Pix, débito, crédito e voucher não passam pela gaveta: entram nos
@@ -279,41 +282,43 @@ public class Caixa {
      * na fronteira com {@link MovimentacaoCaixa} — que ainda usa {@code double}.
      */
     public BigDecimal calcularTotalEntradas() {
-        return movimentacoes.stream()
-                .filter(m -> m.getTipo().isEntrada())
-                .map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-    }
+    return movimentacoes.stream()
+            .filter(m -> m.getTipo().isEntrada())
+            .map(m -> m.getValor())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b))
+            .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+}
 
     /**
-     * Soma os valores de todas as movimentações de saída
-     * (sangrias, despesas — onde {@link TipoMovimentacaoCaixa#isEntrada()} == {@code false}).
-     */
-    public BigDecimal calcularTotalSaidas() {
-        return movimentacoes.stream()
-                .filter(m -> !m.getTipo().isEntrada())
-                .map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-    }
+ * Soma os valores de todas as movimentações de saída
+ * (sangrias, despesas — onde {@link TipoMovimentacaoCaixa#isEntrada()}
+ * == {@code false}).
+ */
+public BigDecimal calcularTotalSaidas() {
+    return movimentacoes.stream()
+            .filter(m -> !m.getTipo().isEntrada())
+            .map(m -> m.getValor())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b))
+            .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+}
 
     /**
-     * Soma apenas as movimentações do tipo {@link TipoMovimentacaoCaixa#VENDA}.
-     * Subconjunto de {@link #calcularTotalEntradas()}.
-     */
-    public BigDecimal calcularTotalVendas() {
-        BigDecimal vendas = movimentacoes.stream()
-                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
-                .map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal estornos = movimentacoes.stream()
-                .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA)
-                .map(MovimentacaoCaixa::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Total líquido: vendas de todas as formas menos estornos.
-        return vendas.subtract(estornos).setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
-    }
+ * Calcula o total líquido das vendas, descontando os estornos.
+ */
+public BigDecimal calcularTotalVendas() {
+    BigDecimal vendas = movimentacoes.stream()
+            .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.VENDA)
+            .map(m -> m.getValor())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
+
+    BigDecimal estornos = movimentacoes.stream()
+            .filter(m -> m.getTipo() == TipoMovimentacaoCaixa.ESTORNO_VENDA)
+            .map(m -> m.getValor())
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
+
+    return vendas.subtract(estornos)
+            .setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+}
 
     /**
      * Vendas líquidas (vendas − estornos) por forma de pagamento, na ordem do

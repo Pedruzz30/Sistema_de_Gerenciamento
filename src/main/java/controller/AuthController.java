@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import service.AutenticacaoService;
 import service.SessaoService;
+import java.util.Objects;
 
 import java.time.Duration;
 import java.util.List;
@@ -104,22 +105,32 @@ public class AuthController {
     }
 
     @PostMapping("/celular/entrar")
-    public ResponseEntity<UsuarioResponse> entrarPeloCelular(@RequestBody TrocarOperadorRequest request, HttpServletRequest http) {
-        if (request == null || request.ru() == null) {
-            throw new IllegalArgumentException("Escolha quem vai atender.");
-        }
-        var entrada = sessaoService.entrarPorPin(request.ru(), request.pin());
-        ResponseCookie biscoito = ResponseCookie.from(SessaoFilter.COOKIE_SESSAO, entrada.getKey())
-                .httpOnly(true)
-                .secure(cookieSeguro || http.isSecure())
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(sessaoService.getDuracao())
-                .build();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, biscoito.toString())
-                .body(UsuarioResponse.from(entrada.getValue().getUsuario(), true));
+public ResponseEntity<UsuarioResponse> entrarPeloCelular(
+        @RequestBody TrocarOperadorRequest request,
+        HttpServletRequest http) {
+
+    if (request == null || request.ru() == null) {
+        throw new IllegalArgumentException("Escolha quem vai atender.");
     }
+
+    var entrada = sessaoService.entrarPorPin(request.ru(), request.pin());
+
+    ResponseCookie biscoito = ResponseCookie
+            .from(SessaoFilter.COOKIE_SESSAO, entrada.getKey())
+            .httpOnly(true)
+            .secure(cookieSeguro || http.isSecure())
+            .sameSite("Strict")
+            .path("/")
+            .maxAge(Objects.requireNonNull(
+                    sessaoService.getDuracao(),
+                    "Duração da sessão obrigatória."
+            ))
+            .build();
+
+    return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, biscoito.toString())
+            .body(UsuarioResponse.from(entrada.getValue().getUsuario(), true));
+}
 
     @GetMapping("/celular/sessao")
     public ResponseEntity<OperadorResponse> sessaoDoCelular(HttpServletRequest http) {
@@ -131,16 +142,18 @@ public class AuthController {
                 .orElseThrow(() -> new SecurityException("Sessao encerrada. Entre de novo."));
     }
 
-    /** HttpOnly: o JavaScript não lê. SameSite=Strict: outro site não consegue usar a sessão. */
-    private ResponseCookie cookie(String valor, Duration duracao) {
-        return ResponseCookie.from(SessaoFilter.COOKIE_SESSAO, valor)
-                .httpOnly(true)
-                .secure(cookieSeguro)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(duracao)
-                .build();
-    }
+    /** HttpOnly impede a leitura via JavaScript.
+ * SameSite=Strict restringe o envio do cookie entre sites.
+ */
+private ResponseCookie cookie(String valor, Duration duracao) {
+    return ResponseCookie.from(SessaoFilter.COOKIE_SESSAO, valor)
+            .httpOnly(true)
+            .secure(cookieSeguro)
+            .sameSite("Strict")
+            .path("/")
+            .maxAge(Objects.requireNonNull(duracao, "Duração obrigatória"))
+            .build();
+}
 
     public record LoginRequest(String nome, String sobrenome, String senha) {}
 
@@ -169,25 +182,33 @@ public class AuthController {
             boolean viaPin
     ) {
         public static UsuarioResponse from(Usuario u, boolean viaPin) {
-            ClasseFuncionario classe = u.getClasse();
-            Set<String> permissoes = classe == null
-                    ? Set.of()
-                    : classe.getPermissoes().stream()
-                    .map(Enum::name)
+    ClasseFuncionario classe = u.getClasse();
+
+    Set<String> permissoes = classe == null
+            ? Set.of()
+            : classe.getPermissoes().stream()
+                    .map(permissao -> {
+                        if (permissao == null) {
+                            throw new IllegalStateException(
+                                    "Permissão inválida: valor nulo."
+                            );
+                        }
+                        return permissao.name();
+                    })
                     .collect(Collectors.toSet());
 
-            return new UsuarioResponse(
-                    u.getRu(),
-                    u.getNome(),
-                    u.getSobrenome(),
-                    classe != null ? classe.getNome() : null,
-                    permissoes,
-                    u.getPerfil() != null ? u.getPerfil().name() : null,
-                    u.isAtivo(),
-                    u.isSenhaProvisoria(),
-                    u.getPinHash() != null,
-                    viaPin
-            );
-        }
+    return new UsuarioResponse(
+            u.getRu(),
+            u.getNome(),
+            u.getSobrenome(),
+            classe != null ? classe.getNome() : null,
+            permissoes,
+            u.getPerfil() != null ? u.getPerfil().name() : null,
+            u.isAtivo(),
+            u.isSenhaProvisoria(),
+            u.getPinHash() != null,
+            viaPin
+    );
+}
     }
 }

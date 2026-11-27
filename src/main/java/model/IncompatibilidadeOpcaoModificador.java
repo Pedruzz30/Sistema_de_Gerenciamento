@@ -49,22 +49,36 @@ public class IncompatibilidadeOpcaoModificador {
         // JPA
     }
 
-    public IncompatibilidadeOpcaoModificador(long id,
-                                             OpcaoModificador opcaoOrigem,
-                                             OpcaoModificador opcaoIncompativel,
-                                             String motivo,
-                                             Boolean ativa) {
-        validar(id >= 0, "ID da incompatibilidade nao pode ser negativo.");
-        validar(opcaoOrigem != null, "Opcao origem e obrigatoria.");
-        validar(opcaoIncompativel != null, "Opcao incompativel e obrigatoria.");
-        validar(!opcaoOrigem.equals(opcaoIncompativel), "Opcao nao pode ser incompativel consigo mesma.");
-        this.id = id;
-        this.opcaoOrigem = opcaoOrigem;
-        this.opcaoIncompativel = opcaoIncompativel;
-        this.motivo = normalizar(motivo);
-        this.ativa = ativa == null || ativa;
-        this.criadaEm = LocalDateTime.now();
+    public IncompatibilidadeOpcaoModificador(
+        long id,
+        OpcaoModificador opcaoOrigem,
+        OpcaoModificador opcaoIncompativel,
+        String motivo,
+        Boolean ativa) {
+
+    validar(id >= 0,
+            "ID da incompatibilidade nao pode ser negativo.");
+
+    if (opcaoOrigem == null) {
+        throw new IllegalArgumentException(
+                "Opcao origem e obrigatoria.");
     }
+
+    if (opcaoIncompativel == null) {
+        throw new IllegalArgumentException(
+                "Opcao incompativel e obrigatoria.");
+    }
+
+    validar(!opcaoOrigem.equals(opcaoIncompativel),
+            "Opcao nao pode ser incompativel consigo mesma.");
+
+    this.id = id;
+    this.opcaoOrigem = opcaoOrigem;
+    this.opcaoIncompativel = opcaoIncompativel;
+    this.motivo = normalizar(motivo);
+    this.ativa = ativa == null || ativa;
+    this.criadaEm = LocalDateTime.now();
+}
 
     public long getId() { return id; }
     public OpcaoModificador getOpcaoOrigem() { return opcaoOrigem; }

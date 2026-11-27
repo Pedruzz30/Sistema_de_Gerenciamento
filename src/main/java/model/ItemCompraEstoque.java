@@ -60,29 +60,57 @@ public class ItemCompraEstoque {
                              BigDecimal quantidadeComprada,
                              BigDecimal quantidadeBase,
                              BigDecimal custoTotal) {
-        validar(id >= 0, "ID do item de compra nao pode ser negativo.");
-        validar(produto != null, "Produto do item de compra e obrigatorio.");
-        validar(embalagem != null || unidadeCompra != null,
-                "Informe embalagem ou unidade de compra.");
-        validar(embalagem == null || embalagem.pertenceAoProduto(produto.getId()),
-                "Embalagem nao pertence ao produto informado.");
-        validar(quantidadeComprada != null && quantidadeComprada.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade comprada deve ser maior que zero.");
-        validar(quantidadeBase != null && quantidadeBase.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade convertida para base deve ser maior que zero.");
-        validar(custoTotal != null && custoTotal.compareTo(BigDecimal.ZERO) >= 0,
-                "Custo total deve ser nao negativo.");
+        validar(id >= 0,
+        "ID do item de compra nao pode ser negativo.");
 
-        this.id = id;
-        this.produto = produto;
-        this.embalagem = embalagem;
-        this.unidadeCompra = unidadeCompra;
-        this.quantidadeComprada = quantidadeComprada.setScale(6, RoundingMode.HALF_UP);
-        this.quantidadeBase = quantidadeBase.setScale(6, RoundingMode.HALF_UP);
-        this.custoTotal = custoTotal.setScale(4, RoundingMode.HALF_UP);
-        this.custoUnitarioCompra = this.custoTotal.divide(this.quantidadeComprada, 8, RoundingMode.HALF_UP);
-        this.custoUnitarioBase = this.custoTotal.divide(this.quantidadeBase, 8, RoundingMode.HALF_UP);
-    }
+if (produto == null) {
+    throw new IllegalArgumentException(
+            "Produto do item de compra e obrigatorio.");
+}
+
+validar(embalagem != null || unidadeCompra != null,
+        "Informe embalagem ou unidade de compra.");
+
+validar(embalagem == null || embalagem.pertenceAoProduto(produto.getId()),
+        "Embalagem nao pertence ao produto informado.");
+
+if (quantidadeComprada == null
+        || quantidadeComprada.compareTo(BigDecimal.ZERO) <= 0) {
+    throw new IllegalArgumentException(
+            "Quantidade comprada deve ser maior que zero.");
+}
+
+if (quantidadeBase == null
+        || quantidadeBase.compareTo(BigDecimal.ZERO) <= 0) {
+    throw new IllegalArgumentException(
+            "Quantidade convertida para base deve ser maior que zero.");
+}
+
+if (custoTotal == null
+        || custoTotal.compareTo(BigDecimal.ZERO) < 0) {
+    throw new IllegalArgumentException(
+            "Custo total deve ser nao negativo.");
+}
+
+this.id = id;
+this.produto = produto;
+this.embalagem = embalagem;
+this.unidadeCompra = unidadeCompra;
+
+this.quantidadeComprada = quantidadeComprada.setScale(
+        6, RoundingMode.HALF_UP);
+
+this.quantidadeBase = quantidadeBase.setScale(
+        6, RoundingMode.HALF_UP);
+
+this.custoTotal = custoTotal.setScale(
+        4, RoundingMode.HALF_UP);
+
+this.custoUnitarioCompra = this.custoTotal.divide(
+        this.quantidadeComprada, 8, RoundingMode.HALF_UP);
+
+this.custoUnitarioBase = this.custoTotal.divide(
+        this.quantidadeBase, 8, RoundingMode.HALF_UP);}
 
     public ItemCompraEstoque comId(long novoId) {
         validar(novoId > 0, "Novo ID do item de compra deve ser maior que zero.");

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import repository.UsuarioRepository;
 import service.ErroNegocioException;
 import service.MovimentoEstoqueService;
+import java.util.Objects;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -63,7 +64,12 @@ public class MovimentoEstoqueController {
             );
             return ResponseEntity.ok(MovimentoResponse.from(movimento));
         } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
+            return ResponseEntity.status(
+        Objects.requireNonNull(
+                statusErroNegocio(e),
+                "Status HTTP do erro de negócio obrigatório."
+        ))
+        .body(ErroResponse.from(e));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
         }

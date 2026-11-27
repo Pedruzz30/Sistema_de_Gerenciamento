@@ -53,31 +53,54 @@ public class EmbalagemProduto {
         // JPA
     }
 
-    public EmbalagemProduto(long id,
-                            Produto produto,
-                            String nome,
-                            BigDecimal quantidadeBase,
-                            UnidadeMedida unidadeBase,
-                            String codigoBarras,
-                            Boolean ativa) {
-        validar(id >= 0, "ID da embalagem nao pode ser negativo.");
-        validar(produto != null, "Produto da embalagem e obrigatorio.");
-        validar(nome != null && !nome.isBlank(), "Nome da embalagem e obrigatorio.");
-        validar(quantidadeBase != null && quantidadeBase.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade base da embalagem deve ser maior que zero.");
-        validar(unidadeBase != null, "Unidade base da embalagem e obrigatoria.");
-        if (produto.getUnidadeBase() != null) {
-            produto.getUnidadeBase().exigirCompatibilidade(unidadeBase);
-        }
+    public EmbalagemProduto(
+        long id,
+        Produto produto,
+        String nome,
+        BigDecimal quantidadeBase,
+        UnidadeMedida unidadeBase,
+        String codigoBarras,
+        Boolean ativa) {
 
-        this.id = id;
-        this.produto = produto;
-        this.nome = nome.trim();
-        this.quantidadeBase = quantidadeBase.setScale(6, RoundingMode.HALF_UP);
-        this.unidadeBase = unidadeBase;
-        this.codigoBarras = normalizar(codigoBarras);
-        this.ativa = ativa == null ? Boolean.TRUE : ativa;
+    validar(id >= 0,
+            "ID da embalagem nao pode ser negativo.");
+
+    if (produto == null) {
+        throw new IllegalArgumentException(
+                "Produto da embalagem e obrigatorio.");
     }
+
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException(
+                "Nome da embalagem e obrigatorio.");
+    }
+
+    if (quantidadeBase == null
+            || quantidadeBase.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException(
+                "Quantidade base da embalagem deve ser maior que zero.");
+    }
+
+    if (unidadeBase == null) {
+        throw new IllegalArgumentException(
+                "Unidade base da embalagem e obrigatoria.");
+    }
+
+    UnidadeMedida unidadeProduto = produto.getUnidadeBase();
+
+    if (unidadeProduto != null) {
+        unidadeProduto.exigirCompatibilidade(unidadeBase);
+    }
+
+    this.id = id;
+    this.produto = produto;
+    this.nome = nome.trim();
+    this.quantidadeBase = quantidadeBase.setScale(
+            6, RoundingMode.HALF_UP);
+    this.unidadeBase = unidadeBase;
+    this.codigoBarras = normalizar(codigoBarras);
+    this.ativa = ativa == null ? Boolean.TRUE : ativa;
+}
 
     public EmbalagemProduto comId(long novoId) {
         validar(novoId > 0, "Novo ID da embalagem deve ser maior que zero.");

@@ -84,11 +84,16 @@ public class ItemNotaFiscal {
      * @throws IllegalArgumentException se qualquer argumento for inválido
      */
     public ItemNotaFiscal(Produto produto, int quantidade, BigDecimal precoUnitarioNota) {
-        validar(produto != null,                                 "Produto é obrigatório.");
-        validar(quantidade > 0,                                  "Quantidade deve ser maior que zero.");
-        validar(precoUnitarioNota != null,                       "Preço unitário é obrigatório.");
-        validar(precoUnitarioNota.compareTo(BigDecimal.ZERO) >= 0,
-                "Preço unitário não pode ser negativo.");
+        validar(produto != null, "Produto é obrigatório.");
+validar(quantidade > 0, "Quantidade deve ser maior que zero.");
+
+if (precoUnitarioNota == null) {
+    throw new IllegalArgumentException(
+            "Preço unitário é obrigatório.");
+}
+
+validar(precoUnitarioNota.compareTo(BigDecimal.ZERO) >= 0,
+        "Preço unitário não pode ser negativo.");
 
         this.produto           = produto;
         this.quantidade        = quantidade;
@@ -177,10 +182,16 @@ public class ItemNotaFiscal {
      * @throws IllegalArgumentException se {@code novoPreco} for inválido
      */
     public void atualizarPrecoUnitarioNota(BigDecimal novoPreco) {
-        validar(novoPreco != null,                           "Preço unitário é obrigatório.");
-        validar(novoPreco.compareTo(BigDecimal.ZERO) >= 0,  "Preço unitário não pode ser negativo.");
-        this.precoUnitarioNota = normalizar(novoPreco);
+    if (novoPreco == null) {
+        throw new IllegalArgumentException(
+                "Preço unitário é obrigatório.");
     }
+
+    validar(novoPreco.compareTo(BigDecimal.ZERO) >= 0,
+            "Preço unitário não pode ser negativo.");
+
+    this.precoUnitarioNota = normalizar(novoPreco);
+}
 
     // ── Regras de agrupamento e pertinência ───────────────────────────────────
 

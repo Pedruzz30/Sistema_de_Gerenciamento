@@ -127,31 +127,37 @@ public class FechamentoCaixa {
                                         BigDecimal divergencia,
                                         String observacao) {
         validar(caixa != null, "Caixa nao pode ser nulo.");
-        validar(caixa.getStatus() == Caixa.Status.ENCERRADO,
-                "So e possivel gerar fechamento de caixa ENCERRADO. Status atual: " + caixa.getStatus());
+       if (caixa == null) {
+    throw new IllegalArgumentException("Caixa nao pode ser nulo.");
+}
         validar(caixa.getDataEncerramento() != null,
                 "Data de encerramento ausente; o caixa pode nao ter sido encerrado corretamente.");
         validar(caixa.getOperadorAtual() != null,
                 "Operador de abertura ausente no caixa encerrado.");
         validar(atorFechamento != null, "Operador de fechamento e obrigatorio.");
 
-        return new FechamentoCaixa(
-                0,
-                caixa.getId(),
-                caixa.getNumeroCaixa(),
-                caixa.getOperadorAtual().getNomeCompleto(),
-                atorFechamento.getNomeCompleto(),
-                caixa.getMovimentacoes().size(),
-                caixa.getSaldoInicial(),
-                caixa.calcularTotalEntradas(),
-                caixa.calcularTotalSaidas(),
-                caixa.calcularTotalVendas(),
-                valorSistema,
-                valorContado,
-                divergencia,
-                observacao,
-                caixa.getDataEncerramento()
-        );
+        if (atorFechamento == null) {
+    throw new IllegalArgumentException(
+            "Operador de fechamento e obrigatorio.");
+}
+
+return new FechamentoCaixa(
+        0,
+        caixa.getId(),
+        caixa.getNumeroCaixa(),
+        caixa.getOperadorAtual().getNomeCompleto(),
+        atorFechamento.getNomeCompleto(),
+        caixa.getMovimentacoes().size(),
+        caixa.getSaldoInicial(),
+        caixa.calcularTotalEntradas(),
+        caixa.calcularTotalSaidas(),
+        caixa.calcularTotalVendas(),
+        valorSistema,
+        valorContado,
+        divergencia,
+        observacao,
+        caixa.getDataEncerramento()
+);
     }
 
     public FechamentoCaixa comId(long novoId) {
@@ -322,17 +328,28 @@ public class FechamentoCaixa {
     }
 
     private static BigDecimal normalizarValor(BigDecimal valor) {
-        validar(valor != null, "Valor monetario nao pode ser nulo.");
-        return valor.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+    if (valor == null) {
+        throw new IllegalArgumentException(
+                "Valor monetario nao pode ser nulo.");
     }
 
-    private static String normalizarTextoObrigatorio(String texto, int limite, String mensagem) {
-        validar(texto != null && !texto.isBlank(), mensagem);
-        String textoNormalizado = texto.trim();
-        validar(textoNormalizado.length() <= limite,
-                "Texto excede o limite de " + limite + " caracteres.");
-        return textoNormalizado;
+    return valor.setScale(ESCALA_MONETARIA, RoundingMode.HALF_UP);
+}
+
+private static String normalizarTextoObrigatorio(
+        String texto, int limite, String mensagem) {
+
+    if (texto == null || texto.isBlank()) {
+        throw new IllegalArgumentException(mensagem);
     }
+
+    String textoNormalizado = texto.trim();
+
+    validar(textoNormalizado.length() <= limite,
+            "Texto excede o limite de " + limite + " caracteres.");
+
+    return textoNormalizado;
+}
 
     private static String normalizarTextoOpcional(String texto, int limite) {
         if (texto == null || texto.isBlank()) {

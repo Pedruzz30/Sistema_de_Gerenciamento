@@ -130,17 +130,21 @@ public class GrupoModificador {
         int ordem = ordemExibicao == null ? 0 : ordemExibicao;
         validar(ordem >= 0, "Ordem de exibicao nao pode ser negativa.");
 
-        this.nome = nome.trim();
-        this.descricao = normalizar(descricao);
-        this.codigo = normalizarCodigo(codigo);
-        this.tipoSelecao = tipoSelecao;
-        this.obrigatorio = obrig;
-        this.quantidadeMinima = minimo;
-        this.quantidadeMaxima = maximo;
-        this.permiteRepeticao = permiteRepeticao != null && permiteRepeticao;
-        this.ativo = ativo == null || ativo;
-        this.ordemExibicao = ordem;
-        this.atualizadoEm = LocalDateTime.now();
+        if (nome == null) {
+    throw new IllegalArgumentException("Nome do grupo e obrigatorio.");
+}
+
+this.nome = nome.trim();
+this.descricao = normalizar(descricao);
+this.codigo = normalizarCodigo(codigo);
+this.tipoSelecao = tipoSelecao;
+this.obrigatorio = obrig;
+this.quantidadeMinima = minimo;
+this.quantidadeMaxima = maximo;
+this.permiteRepeticao = permiteRepeticao != null && permiteRepeticao;
+this.ativo = ativo == null || ativo;
+this.ordemExibicao = ordem;
+this.atualizadoEm = LocalDateTime.now();
     }
 
     public void alterarStatus(boolean ativo) {

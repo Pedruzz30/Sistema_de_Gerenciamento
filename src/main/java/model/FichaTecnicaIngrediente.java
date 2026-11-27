@@ -116,20 +116,46 @@ public class FichaTecnicaIngrediente {
                           PoliticaFaltaIngrediente politicaFalta,
                           int ordem,
                           String observacao) {
-        validar(fichaTecnicaVersao != null, "Versao da ficha tecnica e obrigatoria.");
-        fichaTecnicaVersao.exigirRascunho();
-        validar(produto != null, "Produto do ingrediente e obrigatorio.");
-        validar(produto.isAtivo(), "Produto inativo nao pode ser usado em ficha tecnica.");
-        validar(unidadeInformada != null, "Unidade informada e obrigatoria.");
-        validar(quantidadeInformada != null && quantidadeInformada.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade informada deve ser maior que zero.");
-        validar(quantidadeBrutaBase != null && quantidadeBrutaBase.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade bruta em unidade-base deve ser maior que zero.");
-        validar(percentualPerda == null || percentualPerda.compareTo(BigDecimal.ZERO) >= 0,
-                "Percentual de perda nao pode ser negativo.");
-        validar(percentualPerda == null || percentualPerda.compareTo(new BigDecimal("100")) < 0,
-                "Percentual de perda deve ser menor que 100.");
-        validar(ordem >= 0, "Ordem do ingrediente nao pode ser negativa.");
+        if (fichaTecnicaVersao == null) {
+    throw new IllegalArgumentException(
+            "Versao da ficha tecnica e obrigatoria.");
+}
+
+fichaTecnicaVersao.exigirRascunho();
+
+if (produto == null) {
+    throw new IllegalArgumentException(
+            "Produto do ingrediente e obrigatorio.");
+}
+
+validar(produto.isAtivo(),
+        "Produto inativo nao pode ser usado em ficha tecnica.");
+
+validar(unidadeInformada != null,
+        "Unidade informada e obrigatoria.");
+
+if (quantidadeInformada == null
+        || quantidadeInformada.compareTo(BigDecimal.ZERO) <= 0) {
+    throw new IllegalArgumentException(
+            "Quantidade informada deve ser maior que zero.");
+}
+
+if (quantidadeBrutaBase == null
+        || quantidadeBrutaBase.compareTo(BigDecimal.ZERO) <= 0) {
+    throw new IllegalArgumentException(
+            "Quantidade bruta em unidade-base deve ser maior que zero.");
+}
+
+validar(percentualPerda == null
+                || percentualPerda.compareTo(BigDecimal.ZERO) >= 0,
+        "Percentual de perda nao pode ser negativo.");
+
+validar(percentualPerda == null
+                || percentualPerda.compareTo(new BigDecimal("100")) < 0,
+        "Percentual de perda deve ser menor que 100.");
+
+validar(ordem >= 0,
+        "Ordem do ingrediente nao pode ser negativa.");
 
         this.fichaTecnicaVersao = fichaTecnicaVersao;
         this.produto = produto;

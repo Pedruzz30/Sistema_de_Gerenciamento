@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import repository.CategoriaCardapioRepository;
 import repository.ItemCardapioRepository;
-import repository.ProdutoRepository;
 import service.EstoqueService;
 
 import java.math.BigDecimal;
@@ -37,22 +36,21 @@ public class DemoCatalogSeedRunner implements CommandLineRunner {
     );
 
     private final EstoqueService estoqueService;
-    private final CategoriaCardapioRepository categoriaRepository;
-    private final ItemCardapioRepository itemRepository;
-    private final ProdutoRepository produtoRepository;
-    private final Usuario adminSuperior;
+private final CategoriaCardapioRepository categoriaRepository;
+private final ItemCardapioRepository itemRepository;
+private final Usuario adminSuperior;
 
-    public DemoCatalogSeedRunner(EstoqueService estoqueService,
-                                 CategoriaCardapioRepository categoriaRepository,
-                                 ItemCardapioRepository itemRepository,
-                                 ProdutoRepository produtoRepository,
-                                 Usuario adminSuperior) {
-        this.estoqueService = estoqueService;
-        this.categoriaRepository = categoriaRepository;
-        this.itemRepository = itemRepository;
-        this.produtoRepository = produtoRepository;
-        this.adminSuperior = adminSuperior;
-    }
+public DemoCatalogSeedRunner(
+        EstoqueService estoqueService,
+        CategoriaCardapioRepository categoriaRepository,
+        ItemCardapioRepository itemRepository,
+        Usuario adminSuperior) {
+
+    this.estoqueService = estoqueService;
+    this.categoriaRepository = categoriaRepository;
+    this.itemRepository = itemRepository;
+    this.adminSuperior = adminSuperior;
+}
 
     @Override
     public void run(String... args) {

@@ -38,8 +38,9 @@ public class LogController {
 
     // ── Constantes ────────────────────────────────────────────────────────────
 
-    private static final String          FORMATO_DATA = "dd/MM/yyyy HH:mm:ss";
-    private static final DateTimeFormatter FORMATTER  =
+    private static final String FORMATO_DATA = "dd/MM/yyyy HH:mm:ss";
+
+    private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern(FORMATO_DATA);
 
     /** Limite padrão de registros quando {@code limit} não é fornecido. */
@@ -50,12 +51,14 @@ public class LogController {
 
     // ── Dependências ──────────────────────────────────────────────────────────
 
-    private final LogRepository     logRepository;
+    private final LogRepository logRepository;
     private final UsuarioRepository usuarioRepository;
 
-    public LogController(LogRepository logRepository,
-                         UsuarioRepository usuarioRepository) {
-        this.logRepository     = logRepository;
+    public LogController(
+            LogRepository logRepository,
+            UsuarioRepository usuarioRepository) {
+
+        this.logRepository = logRepository;
         this.usuarioRepository = usuarioRepository;
     }
 
@@ -69,7 +72,7 @@ public class LogController {
      * logins bem-sucedidos do usuário de RU 3.
      *
      * @param ruHeader header {@code X-User-RU} do usuário requisitando os logs
-     * @param acao     filtra por tipo de ação exato (case-insensitive); ex: {@code CAIXA_ABERTO}
+     * @param acao     filtra por tipo de ação exato (case-insensitive)
      * @param ru       filtra por RU do usuário responsável pela ação
      * @param limit    número máximo de registros; padrão {@value #LIMITE_PADRAO},
      *                 máximo {@value #LIMITE_MAXIMO}
@@ -79,10 +82,11 @@ public class LogController {
     public ResponseEntity<?> listarLogs(
             @RequestHeader(value = "X-User-RU", required = false) String ruHeader,
             @RequestParam(required = false) String acao,
-            @RequestParam(required = false) Long   ru,
+            @RequestParam(required = false) Long ru,
             @RequestParam(required = false) Integer limit) {
 
-        // ── Autorização ───────────────────────────────────────────────────
+        // ── Autorização ───────────────────────────────────────────────────────
+
         ControllerUtils.resolveUserAndRequirePermission(
                 ruHeader,
                 usuarioRepository,
@@ -90,17 +94,23 @@ public class LogController {
                 "Voce nao tem permissao para visualizar os logs."
         );
 
-        // ── Limite sanitizado ─────────────────────────────────────────────
+        // ── Limite sanitizado ─────────────────────────────────────────────────
+
         int tamanho = Optional.ofNullable(limit)
                 .filter(l -> l > 0)
                 .map(l -> Math.min(l, LIMITE_MAXIMO))
                 .orElse(LIMITE_PADRAO);
 
-        // ── Pipeline: ordena → filtra → limita → projeta ─────────────────
+        // ── Pipeline: ordena → filtra → limita → projeta ──────────────────────
+
         List<LogResponse> logs = logRepository.listarTodos().stream()
-                .sorted(Comparator.comparing(LogAcao::getDataHora).reversed())
-                .filter(log -> acao == null || log.getAcao().equalsIgnoreCase(acao))
-                .filter(log -> ru   == null || (log.getUsuarioRu() != null
+                .sorted(Comparator.comparing(
+                        (LogAcao log) -> log.getDataHora()
+                ).reversed())
+                .filter(log -> acao == null
+                        || log.getAcao().equalsIgnoreCase(acao))
+                .filter(log -> ru == null
+                        || (log.getUsuarioRu() != null
                         && log.getUsuarioRu().equals(ru)))
                 .limit(tamanho)
                 .map(LogResponse::from)
@@ -123,13 +133,14 @@ public class LogController {
      * O frontend usa esse campo para exibir "sistema" em vez de "RU: null".
      */
     public record LogResponse(
-            long    id,
-            Long    usuarioRu,
+            long id,
+            Long usuarioRu,
             boolean possuiUsuario,
-            String  acao,
-            String  descricao,
-            String  dataHora
+            String acao,
+            String descricao,
+            String dataHora
     ) {
+
         public static LogResponse from(LogAcao log) {
             return new LogResponse(
                     log.getId(),
@@ -142,6 +153,10 @@ public class LogController {
         }
     }
 
-    /** Resposta de erro padronizada — consistente com {@code GlobalExceptionHandler}. */
-    public record ErroResponse(String erro) {}
+    /**
+     * Resposta de erro padronizada — consistente com
+     * {@code GlobalExceptionHandler}.
+     */
+    public record ErroResponse(String erro) {
+    }
 }

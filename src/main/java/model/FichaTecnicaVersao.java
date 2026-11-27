@@ -121,29 +121,50 @@ public class FichaTecnicaVersao {
                 tempoPreparoMinutos, observacaoInterna, motivoAlteracao);
     }
 
-    private void atualizarRascunhoCampos(BigDecimal rendimentoQuantidade,
-                                  UnidadeMedida rendimentoUnidade,
-                                  BigDecimal quantidadePorPorcao,
-                                  Integer tempoPreparoMinutos,
-                                  String observacaoInterna,
-                                  String motivoAlteracao) {
-        validar(rendimentoQuantidade != null && rendimentoQuantidade.compareTo(BigDecimal.ZERO) > 0,
-                "Rendimento da ficha tecnica deve ser maior que zero.");
-        validar(rendimentoUnidade != null, "Unidade de rendimento e obrigatoria.");
-        validar(quantidadePorPorcao == null || quantidadePorPorcao.compareTo(BigDecimal.ZERO) > 0,
-                "Quantidade por porcao deve ser maior que zero.");
-        validar(tempoPreparoMinutos == null || tempoPreparoMinutos >= 0,
-                "Tempo de preparo nao pode ser negativo.");
+    private void atualizarRascunhoCampos(
+        BigDecimal rendimentoQuantidade,
+        UnidadeMedida rendimentoUnidade,
+        BigDecimal quantidadePorPorcao,
+        Integer tempoPreparoMinutos,
+        String observacaoInterna,
+        String motivoAlteracao) {
 
-        this.rendimentoQuantidade = rendimentoQuantidade.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-        this.rendimentoUnidade = rendimentoUnidade;
-        this.quantidadePorPorcao = quantidadePorPorcao == null
-                ? null
-                : quantidadePorPorcao.setScale(ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
-        this.tempoPreparoMinutos = tempoPreparoMinutos;
-        this.observacaoInterna = observacaoInterna == null ? null : observacaoInterna.trim();
-        this.motivoAlteracao = motivoAlteracao == null ? null : motivoAlteracao.trim();
+    if (rendimentoQuantidade == null
+            || rendimentoQuantidade.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException(
+                "Rendimento da ficha tecnica deve ser maior que zero.");
     }
+
+    validar(rendimentoUnidade != null,
+            "Unidade de rendimento e obrigatoria.");
+
+    validar(quantidadePorPorcao == null
+                    || quantidadePorPorcao.compareTo(BigDecimal.ZERO) > 0,
+            "Quantidade por porcao deve ser maior que zero.");
+
+    validar(tempoPreparoMinutos == null || tempoPreparoMinutos >= 0,
+            "Tempo de preparo nao pode ser negativo.");
+
+    this.rendimentoQuantidade = rendimentoQuantidade.setScale(
+            ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+
+    this.rendimentoUnidade = rendimentoUnidade;
+
+    this.quantidadePorPorcao = quantidadePorPorcao == null
+            ? null
+            : quantidadePorPorcao.setScale(
+                    ESCALA_QUANTIDADE, RoundingMode.HALF_UP);
+
+    this.tempoPreparoMinutos = tempoPreparoMinutos;
+
+    this.observacaoInterna = observacaoInterna == null
+            ? null
+            : observacaoInterna.trim();
+
+    this.motivoAlteracao = motivoAlteracao == null
+            ? null
+            : motivoAlteracao.trim();
+}
 
     public void publicar(Long publicadaPor, String motivo) {
         exigirRascunho();

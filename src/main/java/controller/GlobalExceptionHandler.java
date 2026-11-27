@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import service.ErroNegocioException;
+import java.util.Objects;
 
 import java.util.Map;
 
@@ -28,11 +29,23 @@ public class GlobalExceptionHandler {
     public record ErroResponse(String erro, String codigo, Map<String, Object> detalhes) {}
 
     @ExceptionHandler(ErroNegocioException.class)
-    public ResponseEntity<ErroResponse> handleErroNegocio(ErroNegocioException ex, HttpServletRequest request) {
-        registrarAviso(request, ex.getCodigo(), ex.getMessage());
-        return ResponseEntity.status(statusErroNegocio(ex))
-                .body(new ErroResponse(ex.getMessage(), ex.getCodigo(), ex.getDetalhes()));
-    }
+public ResponseEntity<ErroResponse> handleErroNegocio(
+        ErroNegocioException ex,
+        HttpServletRequest request) {
+
+    registrarAviso(request, ex.getCodigo(), ex.getMessage());
+
+    return ResponseEntity.status(
+            Objects.requireNonNull(
+                    statusErroNegocio(ex),
+                    "Status HTTP do erro de negócio obrigatório."
+            ))
+            .body(new ErroResponse(
+                    ex.getMessage(),
+                    ex.getCodigo(),
+                    ex.getDetalhes()
+            ));
+}
 
     /** Validation errors and invalid input → 400 Bad Request */
     @ExceptionHandler(IllegalArgumentException.class)

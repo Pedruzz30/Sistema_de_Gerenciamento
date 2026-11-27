@@ -17,6 +17,7 @@ import repository.UsuarioRepository;
 import service.CompraEstoqueService;
 import service.ConflitoIdempotenciaException;
 import service.ErroNegocioException;
+import java.util.Objects;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -53,18 +54,34 @@ public class CompraEstoqueController {
     public ResponseEntity<?> criar(@RequestBody(required = false) CriarCompraRequest request,
                                    @RequestHeader(value = "X-User-RU", required = false) String ruHeader) {
         try {
-            Usuario ator = ControllerUtils.resolveUser(ruHeader, usuarioRepository);
-            CompraEstoque compra = compraEstoqueService.criarCompra(
-                    ator,
-                    request != null ? request.fornecedorId() : null
-            );
-            return ResponseEntity.status(HttpStatus.CREATED).body(CompraResponse.from(compra));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
-        }
-    }
+    Usuario ator = ControllerUtils.resolveUser(
+            ruHeader, usuarioRepository);
+
+    CompraEstoque compra = compraEstoqueService.criarCompra(
+            ator,
+            request != null ? request.fornecedorId() : null
+    );
+
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(CompraResponse.from(compra));
+
+} catch (ErroNegocioException e) {
+    return ResponseEntity.status(
+            Objects.requireNonNull(
+                    statusErroNegocio(e),
+                    "Status HTTP do erro de negócio obrigatório."
+            ))
+            .body(ErroResponse.from(e));
+
+} catch (IllegalArgumentException | IllegalStateException e) {
+    return ResponseEntity.badRequest()
+            .body(new ErroResponse(
+                    e.getMessage(),
+                    codigoPorMensagem(e.getMessage()),
+                    Map.of()
+            ));
+}
+}
 
     @PostMapping("/{id}/itens")
     public ResponseEntity<?> adicionarItem(@PathVariable long id,
@@ -82,13 +99,25 @@ public class CompraEstoqueController {
                     request.custoTotal(),
                     request.motivoEntradaGratuita()
             );
-            return ResponseEntity.ok(CompraResponse.from(compra));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
-        }
-    }
+           return ResponseEntity.ok(CompraResponse.from(compra));
+
+} catch (ErroNegocioException e) {
+    return ResponseEntity.status(
+            Objects.requireNonNull(
+                    statusErroNegocio(e),
+                    "Status HTTP do erro de negócio obrigatório."
+            ))
+            .body(ErroResponse.from(e));
+
+} catch (IllegalArgumentException | IllegalStateException e) {
+    return ResponseEntity.badRequest()
+            .body(new ErroResponse(
+                    e.getMessage(),
+                    codigoPorMensagem(e.getMessage()),
+                    Map.of()
+            ));
+}
+}
 
     @PostMapping("/{id}/confirmar")
     public ResponseEntity<?> confirmar(@PathVariable long id,
@@ -107,14 +136,28 @@ public class CompraEstoqueController {
                     request != null ? request.motivo() : null
             );
             return ResponseEntity.ok(CompraResponse.from(compra));
-        } catch (ConflitoIdempotenciaException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(ErroResponse.from(e));
-        } catch (ErroNegocioException e) {
-            return ResponseEntity.status(statusErroNegocio(e)).body(ErroResponse.from(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(new ErroResponse(e.getMessage(), codigoPorMensagem(e.getMessage()), Map.of()));
-        }
-    }
+
+} catch (ConflitoIdempotenciaException e) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ErroResponse.from(e));
+
+} catch (ErroNegocioException e) {
+    return ResponseEntity.status(
+            Objects.requireNonNull(
+                    statusErroNegocio(e),
+                    "Status HTTP do erro de negócio obrigatório."
+            ))
+            .body(ErroResponse.from(e));
+
+} catch (IllegalArgumentException | IllegalStateException e) {
+    return ResponseEntity.badRequest()
+            .body(new ErroResponse(
+                    e.getMessage(),
+                    codigoPorMensagem(e.getMessage()),
+                    Map.of()
+            ));
+}
+}
 
     public record CriarCompraRequest(Long fornecedorId) {}
 

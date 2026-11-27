@@ -86,15 +86,19 @@ public class LogAcao {
      * @throws IllegalArgumentException se {@code id < 0} ou {@code acao} for inválida
      */
     public LogAcao(long id, Long usuarioRu, String acao, String descricao) {
-        validar(id >= 0,                       "ID do log não pode ser negativo.");
-        validar(acao != null && !acao.isBlank(),"Ação é obrigatória e não pode ser vazia.");
+    validar(id >= 0, "ID do log não pode ser negativo.");
 
-        this.id        = id;
-        this.usuarioRu = usuarioRu;
-        this.acao      = acao.trim().toUpperCase();
-        this.descricao = descricao != null ? descricao.trim() : "";
-        this.dataHora  = LocalDateTime.now();
+    if (acao == null || acao.isBlank()) {
+        throw new IllegalArgumentException(
+                "Ação é obrigatória e não pode ser vazia.");
     }
+
+    this.id = id;
+    this.usuarioRu = usuarioRu;
+    this.acao = acao.trim().toUpperCase();
+    this.descricao = descricao != null ? descricao.trim() : "";
+    this.dataHora = LocalDateTime.now();
+}
 
     /**
      * Construtor privado usado por {@link #comId} para preservar o timestamp.

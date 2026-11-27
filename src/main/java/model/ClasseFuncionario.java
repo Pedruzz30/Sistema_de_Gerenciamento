@@ -101,15 +101,21 @@ public class ClasseFuncionario {
      * @param descricao descrição do cargo; não pode ser vazia
      */
     public ClasseFuncionario(long id, String nome, String descricao) {
-        validar(id >= 0,                         "ID não pode ser negativo.");
-        validar(nome != null && !nome.isBlank(),      "Nome é obrigatório.");
-        validar(descricao != null && !descricao.isBlank(), "Descrição é obrigatória.");
+    validar(id >= 0, "ID não pode ser negativo.");
 
-        this.id         = id;
-        this.nome       = nome.trim();
-        this.descricao  = descricao.trim();
-        this.permissoes = EnumSet.noneOf(Permissao.class);
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException("Nome é obrigatório.");
     }
+
+    if (descricao == null || descricao.isBlank()) {
+        throw new IllegalArgumentException("Descrição é obrigatória.");
+    }
+
+    this.id = id;
+    this.nome = nome.trim();
+    this.descricao = descricao.trim();
+    this.permissoes = EnumSet.noneOf(Permissao.class);
+}
 
     // ── Builder ───────────────────────────────────────────────────────────────
 
@@ -146,13 +152,20 @@ public class ClasseFuncionario {
         private final EnumSet<Permissao> permissoes = EnumSet.noneOf(Permissao.class);
 
         private Builder(long id, String nome, String descricao) {
-            validar(id >= 0,                              "ID não pode ser negativo.");
-            validar(nome != null && !nome.isBlank(),      "Nome é obrigatório.");
-            validar(descricao != null && !descricao.isBlank(), "Descrição é obrigatória.");
-            this.id        = id;
-            this.nome      = nome.trim();
-            this.descricao = descricao.trim();
-        }
+    validar(id >= 0, "ID não pode ser negativo.");
+
+    if (nome == null || nome.isBlank()) {
+        throw new IllegalArgumentException("Nome é obrigatório.");
+    }
+
+    if (descricao == null || descricao.isBlank()) {
+        throw new IllegalArgumentException("Descrição é obrigatória.");
+    }
+
+    this.id = id;
+    this.nome = nome.trim();
+    this.descricao = descricao.trim();
+}
 
         /**
          * Adiciona uma ou mais permissões à classe em construção.
